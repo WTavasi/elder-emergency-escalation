@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# generated token outputs (rebuilt by `npm run tokens:build`)
+packages/tokens/dist/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# environment and secrets, never commit these
+.env
+.env.*
+!.env.example
+credentials/
+*-service-account*.json
+*.pem
+*.p8
+*.keystore
+*.jks
+
+# flutter / dart
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+
+# test and coverage
+coverage/
+.nyc_output/
+
+# editors and os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.swp
+
+# logs
+*.log
+npm-debug.log*

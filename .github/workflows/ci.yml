@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  design-tokens:
+    name: Design tokens and accessibility gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Contrast gate
+        run: npm run tokens:check
+
+      - name: Generate token outputs
+        run: npm run tokens:build
+
+      - name: Upload contrast report
+        uses: actions/upload-artifact@v4
+        with:
+          name: contrast-report
+          path: packages/tokens/dist/contrast-report.json
+          if-no-files-found: error
+
+  # Added with the API workspace: lint, typecheck, unit and integration tests
+  # against Postgres and Redis services, then a Docker build.
