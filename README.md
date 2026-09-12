@@ -31,11 +31,16 @@ docs/
 ## Quick start
 
 ```bash
-npm install            # also generates the token outputs via postinstall
-cp .env.example .env   # then fill in the secrets
-docker compose up -d   # Postgres and Redis
-npm run tokens:build   # regenerate Dart, CSS and TS tokens after editing tokens.json
+npm install                       # also generates the token outputs via postinstall
+cp .env.example apps/api/.env     # then fill in the secrets
+docker compose up -d              # Postgres and Redis
+npm run db:migrate -w @mzazicare/api   # create the schema
+npm run db:seed -w @mzazicare/api      # synthetic development data
 ```
+
+The environment file lives at `apps/api/.env`, not the repository root, because the
+Prisma CLI resolves it relative to the workspace it runs in. `.env` is gitignored at
+every level.
 
 ## Design tokens
 

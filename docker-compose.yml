@@ -1,0 +1,55 @@
+# Local development services. Production uses Render's managed Postgres and Redis.
+#
+#   docker compose up -d      start
+#   docker compose ps         check health
+#   docker compose logs -f    follow logs
+#   docker compose down       stop, keeping data
+#   docker compose down -v    stop and delete data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mzazicare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mzazicare
+      POSTGRES_PASSWORD: mzazicare
+      POSTGRES_DB: mzazicare
+      # Deterministic collation, so ordering matches between dev and Render.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mzazicare -d mzazicare"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mzazicare-redis
+    restart: unless-stopped
+    # notify-keyspace-events Ex publishes a message when a key expires, which is
+    # what drives escalation timeouts. Without Ex the escalation engine would have
+    # to poll, which is the design we explicitly rejected.
+    # appendonly yes so a pending escalation timer survives a container restart.
+    command: >
+      redis-server
+      --notify-keyspace-events Ex
+      --appendonly yes
+      --appendfsync everysec
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:
