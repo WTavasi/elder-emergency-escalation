@@ -43,8 +43,44 @@ export function verifyPassword(plain, stored) {
   return key.length === candidate.length && timingSafeEqual(key, candidate);
 }
 
-/** Development password for every seeded account. Never used outside development. */
-const DEV_PASSWORD = 'Dev!2026';
+/**
+ * Development password for every seeded account. Override with SEED_PASSWORD.
+ * These accounts exist so the escalation chain can be exercised locally; they are
+ * not intended to exist anywhere else.
+ */
+const DEV_PASSWORD = process.env.SEED_PASSWORD ?? 'Dev!2026';
+
+/**
+ * Refuse to seed anything that is not a local database.
+ *
+ * Without this, a stray DATABASE_URL would write nine accounts with a published
+ * password into a deployed database. Set SEED_ALLOW_REMOTE=true to override,
+ * deliberately and once.
+ */
+function assertLocalDatabase() {
+  const url = process.env.DATABASE_URL ?? '';
+  if (!url) {
+    throw new Error('DATABASE_URL is not set. Check apps/api/.env');
+  }
+  const isLocal = /@(localhost|127\.0\.0\.1|\[::1\]|host\.docker\.internal|postgres)[:/]/.test(url);
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction || (!isLocal && process.env.SEED_ALLOW_REMOTE !== 'true')) {
+    const host = url.replace(/\/\/[^@]*@/, '//***@');
+    console.error(
+      [
+        '',
+        'Refusing to seed: this does not look like a local database.',
+        `  DATABASE_URL host: ${host}`,
+        `  NODE_ENV:          ${process.env.NODE_ENV ?? '(unset)'}`,
+        '',
+        'These accounts share one known password and are for local development only.',
+        'If you really mean to seed this database, set SEED_ALLOW_REMOTE=true.',
+        '',
+      ].join('\n'),
+    );
+    process.exit(1);
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * People
@@ -158,6 +194,7 @@ const severityFactors = [
 /* ------------------------------------------------------------------ */
 
 async function main() {
+  assertLocalDatabase();
   console.log('Seeding development data. All records are synthetic.\n');
 
   const passwordHash = hashPassword(DEV_PASSWORD);
