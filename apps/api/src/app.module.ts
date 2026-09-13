@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { SeverityModule } from './severity/severity.module';
 import { validateEnv } from './config/env.schema';
 
 @Module({
@@ -19,6 +21,8 @@ import { validateEnv } from './config/env.schema';
     PrismaModule,
     RedisModule,
     AuthModule,
+    SeverityModule,
+    AlertsModule,
     HealthModule,
   ],
   providers: [

@@ -88,6 +88,11 @@ Base path `/api/v1`. Health sits outside it so a platform check has a stable add
 | POST | `/api/v1/auth/refresh` | none | Rotates the refresh token |
 | POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
+| POST | `/api/v1/alerts` | elder | Raise an emergency. Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window |
+| POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
+| GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `?open=true` for live ones |
+| GET | `/api/v1/alerts/:id` | participants | One emergency |
 
 Elders are registered by a caregiver rather than themselves, because the consent record
 has to name who consented on whose behalf. Emergency responders and administrators are

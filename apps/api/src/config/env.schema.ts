@@ -80,6 +80,30 @@ export class EnvSchema {
   @Min(0)
   CANCEL_GRACE_WINDOW: number = 10;
 
+  // Severity policy inputs. Weights live in the severity_factors table; these are the
+  // thresholds and measurement boundaries the factors are scored against.
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  NIGHT_START_HOUR: number = 22;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  NIGHT_END_HOUR: number = 6;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  AWAY_FROM_HOME_METRES: number = 250;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  RECENT_ACTIVITY_HOURS: number = 6;
+
   @Type(() => Number)
   @IsInt()
   @Min(0)
