@@ -42,6 +42,24 @@ The environment file lives at `apps/api/.env`, not the repository root, because 
 Prisma CLI resolves it relative to the workspace it runs in. `.env` is gitignored at
 every level.
 
+### Two environment files, on purpose
+
+| File | Read by | Holds |
+| --- | --- | --- |
+| `apps/api/.env` | the API and the Prisma CLI | database URL, Redis URL, JWT secrets, provider keys |
+| `.env` at the repository root | Docker Compose only | `POSTGRES_PORT` and `REDIS_PORT` host port overrides |
+
+The root file is optional. Create it only if port 5432 or 6379 is already taken on
+your machine, for example by a Homebrew Postgres:
+
+```bash
+printf 'POSTGRES_PORT=5433\nREDIS_PORT=6379\n' > .env
+docker compose up -d
+```
+
+Then change the port in `apps/api/.env` to match:
+`DATABASE_URL=postgresql://mzazicare:mzazicare@localhost:5433/mzazicare`
+
 ## Design tokens
 
 `packages/tokens/tokens.json` is the only place a colour is defined. `npm run tokens:build`
