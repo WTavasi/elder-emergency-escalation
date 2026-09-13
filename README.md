@@ -154,6 +154,15 @@ to 102 mean accepted, 500 and above mean their gateway is unwell and the job sho
 retry, and everything else, such as an invalid number or an empty balance, will fail
 identically next time and so becomes a permanent failure.
 
+To check the SMS credentials on their own, without going through the API:
+
+```bash
+npm run check:sms -w @mzazicare/api -- +254712345678
+```
+
+It reports the username, the key's length and first and last characters, which endpoint
+it chose and what came back, without ever printing the key.
+
 Switch either on in `apps/api/.env` with `PUSH_PROVIDER=fcm` and
 `SMS_PROVIDER=africastalking`. In the Africa's Talking sandbox the username is always
 the literal string `sandbox` and messages arrive in their web simulator rather than on

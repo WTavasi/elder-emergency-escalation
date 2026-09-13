@@ -20,7 +20,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "test:integration": "jest --config jest.integration.config.js --runInBand"
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
+    "check:sms": "node --env-file=.env scripts/check-sms.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
