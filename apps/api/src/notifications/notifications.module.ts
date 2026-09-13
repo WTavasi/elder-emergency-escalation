@@ -5,9 +5,12 @@ import { parseRedisUrl } from '../common/redis-url';
 import { NotificationsProcessor } from './notifications.processor';
 import { NOTIFICATIONS_QUEUE } from './notifications.queue';
 import { NotificationsService } from './notifications.service';
+import { AfricasTalkingSmsProvider } from './providers/africas-talking-sms.provider';
+import { FcmPushProvider } from './providers/fcm-push.provider';
+import { createFcmMessaging } from './providers/firebase.factory';
 import { LoggingPushProvider, LoggingSmsProvider } from './providers/logging-push.provider';
-import { PUSH_PROVIDER } from './providers/push.provider';
-import { SMS_PROVIDER } from './providers/sms.provider';
+import { PUSH_PROVIDER, type PushProvider } from './providers/push.provider';
+import { SMS_PROVIDER, type SmsProvider } from './providers/sms.provider';
 
 /**
  * Refuses to start a deployment that would only pretend to notify people.
@@ -41,20 +44,32 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
     {
       provide: PUSH_PROVIDER,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const provider = config.get<string>('PUSH_PROVIDER', 'logging');
-        assertUsableInProduction(config, 'PUSH_PROVIDER', provider);
-        new Logger('Notifications').log(`Push provider: ${provider}`);
-        return new LoggingPushProvider();
+      useFactory: (config: ConfigService): PushProvider => {
+        const choice = config.get<string>('PUSH_PROVIDER', 'logging');
+        assertUsableInProduction(config, 'PUSH_PROVIDER', choice);
+        new Logger('Notifications').log(`Push provider: ${choice}`);
+
+        return choice === 'fcm'
+          ? new FcmPushProvider(createFcmMessaging(config))
+          : new LoggingPushProvider();
       },
     },
     {
       provide: SMS_PROVIDER,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const provider = config.get<string>('SMS_PROVIDER', 'logging');
-        assertUsableInProduction(config, 'SMS_PROVIDER', provider);
-        new Logger('Notifications').log(`SMS provider: ${provider}`);
+      useFactory: (config: ConfigService): SmsProvider => {
+        const choice = config.get<string>('SMS_PROVIDER', 'logging');
+        assertUsableInProduction(config, 'SMS_PROVIDER', choice);
+
+        if (choice === 'africastalking') {
+          const username = config.getOrThrow<string>('AT_USERNAME');
+          new Logger('Notifications').log(
+            `SMS provider: africastalking (${username === 'sandbox' ? 'sandbox, delivers to the simulator only' : 'live'})`,
+          );
+          return new AfricasTalkingSmsProvider(config);
+        }
+
+        new Logger('Notifications').log('SMS provider: logging');
         return new LoggingSmsProvider();
       },
     },

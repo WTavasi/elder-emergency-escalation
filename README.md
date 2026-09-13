@@ -146,7 +146,20 @@ The SMS fallback fires at most once per recipient per tier, so a push failing tw
 not put two texts on somebody's phone. The critical severity band sends SMS alongside
 push from the start rather than waiting for push to fail.
 
-In development both providers are the logging ones: they write what would have been sent
+Two real adapters are wired behind those interfaces. Firebase Cloud Messaging sends at
+high priority, which is what wakes a device out of doze, and treats an unregistered
+token as permanent so the SMS fallback runs immediately rather than after three
+retries. Africa's Talking is called over its HTTP API directly: their status codes 100
+to 102 mean accepted, 500 and above mean their gateway is unwell and the job should
+retry, and everything else, such as an invalid number or an empty balance, will fail
+identically next time and so becomes a permanent failure.
+
+Switch either on in `apps/api/.env` with `PUSH_PROVIDER=fcm` and
+`SMS_PROVIDER=africastalking`. In the Africa's Talking sandbox the username is always
+the literal string `sandbox` and messages arrive in their web simulator rather than on
+a handset, which needs no registered number.
+
+In development both providers default to the logging ones: they write what would have been sent
 and report success, so the whole chain including the fallback can be exercised without
 credentials. The API refuses to start in production while either is still set to logging.
 

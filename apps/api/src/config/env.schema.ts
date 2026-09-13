@@ -149,10 +149,12 @@ export class EnvSchema {
   // Notification providers. "logging" writes what would have been sent and reports
   // success, which is what lets the whole escalation chain run without credentials.
   // Starting in production with it is refused.
-  @IsIn(['logging'], { message: 'PUSH_PROVIDER must be "logging" until a real adapter is added' })
+  @IsIn(['logging', 'fcm'], { message: 'PUSH_PROVIDER must be "logging" or "fcm"' })
   PUSH_PROVIDER = 'logging';
 
-  @IsIn(['logging'], { message: 'SMS_PROVIDER must be "logging" until a real adapter is added' })
+  @IsIn(['logging', 'africastalking'], {
+    message: 'SMS_PROVIDER must be "logging" or "africastalking"',
+  })
   SMS_PROVIDER = 'logging';
 
   // Provider credentials. Optional until the notification stage, so the API runs
