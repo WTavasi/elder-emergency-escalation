@@ -36,6 +36,7 @@ cp .env.example apps/api/.env     # then fill in the secrets
 docker compose up -d              # Postgres and Redis
 npm run db:migrate -w @mzazicare/api   # create the schema
 npm run db:seed -w @mzazicare/api      # synthetic development data
+npm run test:integration -w @mzazicare/api  # escalation end to end, needs the services up
 ```
 
 The environment file lives at `apps/api/.env`, not the repository root, because the
@@ -93,6 +94,9 @@ Base path `/api/v1`. Health sits outside it so a platform check has a stable add
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `?open=true` for live ones |
 | GET | `/api/v1/alerts/:id` | participants | One emergency |
+| POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
+| POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome |
+| POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
 
 Elders are registered by a caregiver rather than themselves, because the consent record
 has to name who consented on whose behalf. Emergency responders and administrators are
@@ -100,6 +104,24 @@ created by an administrator. Those endpoints arrive with the users module.
 
 Every route is authenticated unless it declares `@Public()`, so a new endpoint is
 protected by default rather than by remembering to protect it.
+
+## How escalation actually works
+
+An acknowledgement window is a Redis key with a time to live. Nothing polls and nothing
+waits: when the key expires, Redis publishes an expiry event, the listener catches it and
+promotes the emergency to the next tier.
+
+Redis expiry notifications are delivered once, to whoever is listening at that moment,
+and never again. If the API is restarting when a key expires, that escalation would be
+lost forever. So every dispatch also writes `current_tier_deadline_at` to the database,
+and on boot the listener compares every open event against it: overdue events escalate
+immediately, and events still inside their window have their Redis key restored with the
+time that remains. A deployment cannot swallow an escalation.
+
+Acknowledging, resolving, cancelling and requesting a responder all clear the pending
+timers first, so a stale expiry cannot promote an emergency somebody is already handling.
+Expiries that arrive late are ignored rather than treated as errors, because a timer
+firing just after an acknowledgement is normal.
 
 ## Conventions
 

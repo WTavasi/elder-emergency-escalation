@@ -15,6 +15,8 @@ import {
   type EmergencyEvent,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EscalationService } from '../escalation/escalation.service';
+import { EscalationTimerService } from '../escalation/escalation-timer.service';
 import { SeverityService } from '../severity/severity.service';
 import type { SeverityAssessment } from '../severity/severity.types';
 import type { CoverWindow } from '../common/time';
@@ -45,6 +47,8 @@ export class AlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly severity: SeverityService,
+    private readonly escalation: EscalationService,
+    private readonly timers: EscalationTimerService,
     private readonly config: ConfigService,
   ) {}
 
@@ -127,6 +131,13 @@ export class AlertsService {
     this.logger.log(
       `Emergency ${event.id} raised, severity ${assessment.band} at score ${assessment.score}`,
     );
+
+    // Awaited on purpose. What this does is write durable state and arm a timer, not
+    // call a provider: if it were left to run after the response, a process that died
+    // in the next second would leave an emergency nobody is counting down for. The
+    // actual sending, which is network work that can fail and retry, is queued.
+    await this.escalation.dispatchTier(event.id, 1, 'initial');
+
     return event;
   }
 
@@ -161,11 +172,14 @@ export class AlertsService {
     }
 
     const now = new Date();
+    await this.timers.cancelAll(eventId);
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
           state: EventState.CANCELLED,
+          currentTierDeadlineAt: null,
           outcome: EventOutcome.CANCELLED_BY_ELDER,
           resolvedAt: now,
         },
@@ -242,12 +256,13 @@ export class AlertsService {
     const band = this.severity.highestOf(event.severity, assessment.band);
     const tier = assignment?.priorityOrder ?? 1;
 
-    return this.prisma.$transaction(async (tx) => {
+    const reopened = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
           state: EventState.TRIGGERED,
           currentTier: tier,
+          currentTierDeadlineAt: null,
           outcome: null,
           resolvedAt: null,
           acknowledgedBy: null,
@@ -277,6 +292,9 @@ export class AlertsService {
 
       return updated;
     });
+
+    await this.escalation.dispatchTier(eventId, tier, 'initial');
+    return reopened;
   }
 
   /** One emergency, if the caller is part of it. */

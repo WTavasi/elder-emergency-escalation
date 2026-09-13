@@ -82,5 +82,40 @@ jobs:
           path: apps/api/coverage/
           if-no-files-found: warn
 
-  # Integration tests against real Postgres and Redis services arrive with the
-  # escalation engine, where proving a tier times out needs both.
+  integration:
+    name: Escalation end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The project's own compose file rather than GitHub service containers, so the
+      # Redis here has the same --notify-keyspace-events Ex the engine depends on.
+      - name: Start Postgres and Redis
+        run: docker compose up -d --wait
+
+      - name: Configure the API environment
+        run: |
+          cp .env.example apps/api/.env
+          sed -i "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=$(openssl rand -base64 48)|" apps/api/.env
+          sed -i "s|^JWT_REFRESH_SECRET=.*|JWT_REFRESH_SECRET=$(openssl rand -base64 48)|" apps/api/.env
+
+      - name: Apply migrations and seed
+        run: |
+          npm run prisma:generate -w @mzazicare/api
+          npm run db:deploy -w @mzazicare/api
+          npm run db:seed -w @mzazicare/api
+
+      - name: Escalation integration tests
+        run: npm run test:integration -w @mzazicare/api
+
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100

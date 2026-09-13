@@ -240,6 +240,15 @@ model EmergencyEvent {
   severityScore   Int      @default(0) @map("severity_score") @db.SmallInt
   severityFactors Json?    @map("severity_factors")
 
+  /// EXTENSION. When the current tier's acknowledgement window runs out.
+  ///
+  /// The timer itself lives in Redis, which is what makes expiry event-driven rather
+  /// than polled. This column is the durable copy: if the API is down at the moment a
+  /// key expires, the notification is gone forever, and without a recorded deadline
+  /// that emergency would sit silently. On boot, every open event is compared against
+  /// this value, so a deployment cannot swallow an escalation.
+  currentTierDeadlineAt DateTime? @map("current_tier_deadline_at") @db.Timestamptz(3)
+
   /// EXTENSION. Set when a caregiver or family member manually requests an emergency
   /// responder, which supersedes the automatic chain and stops pending timers.
   responderRequestedAt DateTime? @map("responder_requested_at") @db.Timestamptz(3)

@@ -5,6 +5,7 @@ import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { EscalationModule } from './escalation/escalation.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -22,6 +23,7 @@ import { validateEnv } from './config/env.schema';
     RedisModule,
     AuthModule,
     SeverityModule,
+    EscalationModule,
     AlertsModule,
     HealthModule,
   ],

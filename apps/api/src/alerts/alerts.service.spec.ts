@@ -4,6 +4,8 @@ import type { ConfigService } from '@nestjs/config';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SeverityService } from '../severity/severity.service';
+import type { EscalationService } from '../escalation/escalation.service';
+import type { EscalationTimerService } from '../escalation/escalation-timer.service';
 
 const settings: Record<string, number> = { CANCEL_GRACE_WINDOW: 10, RECENT_ACTIVITY_HOURS: 6 };
 const config = {
@@ -111,8 +113,23 @@ const buildPrisma = (): PrismaMock => {
   return mock;
 };
 
-const build = (prisma: PrismaMock, severity = buildSeverity()): AlertsService =>
-  new AlertsService(prisma as unknown as PrismaService, severity, config);
+const buildEscalation = () =>
+  ({ dispatchTier: jest.fn().mockResolvedValue(undefined) }) as unknown as EscalationService & {
+    dispatchTier: jest.Mock;
+  };
+
+const buildTimers = () =>
+  ({ cancelAll: jest.fn().mockResolvedValue(1) }) as unknown as EscalationTimerService & {
+    cancelAll: jest.Mock;
+  };
+
+const build = (
+  prisma: PrismaMock,
+  severity = buildSeverity(),
+  escalation = buildEscalation(),
+  timers = buildTimers(),
+): AlertsService =>
+  new AlertsService(prisma as unknown as PrismaService, severity, escalation, timers, config);
 
 describe('AlertsService', () => {
   describe('create', () => {
@@ -163,6 +180,17 @@ describe('AlertsService', () => {
       );
     });
 
+    it('dispatches the first tier before returning, so a timer is running', async () => {
+      const prisma = buildPrisma();
+      const escalation = buildEscalation();
+      await build(prisma, buildSeverity(), escalation).create('elder-1', {
+        latitude: -1.28,
+        longitude: 36.78,
+      });
+
+      expect(escalation.dispatchTier).toHaveBeenCalledWith(expect.any(String), 1, 'initial');
+    });
+
     it('refuses anyone who is not the person being cared for', async () => {
       const prisma = buildPrisma();
       prisma.user.findUnique.mockResolvedValue({ ...elder, role: Role.CAREGIVER });
@@ -193,6 +221,17 @@ describe('AlertsService', () => {
       const entry = prisma.auditLog.create.mock.calls[0][0].data as Record<string, unknown>;
       expect(entry.action).toBe(AuditAction.CANCELLED);
       expect((entry.detail as { secondsAfterTrigger: number }).secondsAfterTrigger).toBe(4);
+    });
+
+    it('stops the pending timers when the alert is withdrawn', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ triggeredAt: new Date(Date.now() - 2000) }),
+      );
+
+      await build(prisma, buildSeverity(), buildEscalation(), timers).cancel(event().id, 'elder-1');
+      expect(timers.cancelAll).toHaveBeenCalledWith(event().id);
     });
 
     it('refuses once the grace window has passed', async () => {
@@ -276,6 +315,16 @@ describe('AlertsService', () => {
       );
       // The stored score was 20 and the new assessment scores 45, so the higher wins.
       expect(updated.severityScore).toBe(45);
+    });
+
+    it('restarts the chain at the reopening tier', async () => {
+      const prisma = buildPrisma();
+      const escalation = buildEscalation();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(cancelled());
+      prisma.careAssignment.findFirst.mockResolvedValue({ priorityOrder: 2 });
+
+      await build(prisma, buildSeverity(), escalation).reopen(cancelled().id, 'family-1');
+      expect(escalation.dispatchTier).toHaveBeenCalledWith(cancelled().id, 2, 'initial');
     });
 
     it('refuses to reopen anything that is not cancelled', async () => {
