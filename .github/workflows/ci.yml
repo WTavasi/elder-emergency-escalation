@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Prisma needs the variable to exist to generate a client. It never connects here.
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
 jobs:
   design-tokens:
     name: Design tokens and accessibility gate
@@ -28,15 +32,55 @@ jobs:
       - name: Contrast gate
         run: npm run tokens:check
 
-      - name: Generate token outputs
-        run: npm run tokens:build
-
       - name: Upload contrast report
-        uses: actions/upload-artifact@v4
+        run: npm run tokens:build
+      - uses: actions/upload-artifact@v4
         with:
           name: contrast-report
           path: packages/tokens/dist/contrast-report.json
           if-no-files-found: error
 
-  # Added with the API workspace: lint, typecheck, unit and integration tests
-  # against Postgres and Redis services, then a Docker build.
+  api:
+    name: API lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate -w @mzazicare/api
+
+      - name: Validate the Prisma schema
+        run: npm run prisma:validate -w @mzazicare/api
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests with coverage
+        run: npm run test:cov -w @mzazicare/api
+
+      - name: Build
+        run: npm run build -w @mzazicare/api
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: apps/api/coverage/
+          if-no-files-found: warn
+
+  # Integration tests against real Postgres and Redis services arrive with the
+  # escalation engine, where proving a tier times out needs both.

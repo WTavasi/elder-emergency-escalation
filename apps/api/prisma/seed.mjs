@@ -30,7 +30,14 @@ const SCRYPT = {
 export function hashPassword(plain) {
   const salt = randomBytes(16);
   const key = scryptSync(plain, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p });
-  return ['scrypt', SCRYPT.N, SCRYPT.r, SCRYPT.p, salt.toString('base64'), key.toString('base64')].join('$');
+  return [
+    'scrypt',
+    SCRYPT.N,
+    SCRYPT.r,
+    SCRYPT.p,
+    salt.toString('base64'),
+    key.toString('base64'),
+  ].join('$');
 }
 
 export function verifyPassword(plain, stored) {
@@ -38,7 +45,9 @@ export function verifyPassword(plain, stored) {
   if (scheme !== 'scrypt') return false;
   const key = Buffer.from(keyB64, 'base64');
   const candidate = scryptSync(plain, Buffer.from(saltB64, 'base64'), key.length, {
-    N: Number(N), r: Number(r), p: Number(p),
+    N: Number(N),
+    r: Number(r),
+    p: Number(p),
   });
   return key.length === candidate.length && timingSafeEqual(key, candidate);
 }
@@ -88,21 +97,29 @@ function assertLocalDatabase() {
 
 const people = [
   {
-    phone: '+254700000001', name: 'Asha Njeri', role: 'ADMINISTRATOR',
+    phone: '+254700000001',
+    name: 'Asha Njeri',
+    role: 'ADMINISTRATOR',
     email: 'admin@mzazicare.example',
   },
 
   // Elders
   {
-    phone: '+254700000010', name: 'Grace Wanjiru', role: 'ELDER',
+    phone: '+254700000010',
+    name: 'Grace Wanjiru',
+    role: 'ELDER',
     careLevel: 'HIGH_DEPENDENCY',
-    homeLatitude: -1.283300, homeLongitude: 36.783300,
+    homeLatitude: -1.2833,
+    homeLongitude: 36.7833,
     homeAddressLabel: 'Kileleshwa, Nairobi',
   },
   {
-    phone: '+254700000011', name: 'Joseph Kimani', role: 'ELDER',
+    phone: '+254700000011',
+    name: 'Joseph Kimani',
+    role: 'ELDER',
     careLevel: 'ASSISTED',
-    homeLatitude: -1.268000, homeLongitude: 36.811000,
+    homeLatitude: -1.268,
+    homeLongitude: 36.811,
     homeAddressLabel: 'Westlands, Nairobi',
   },
 
@@ -111,19 +128,37 @@ const people = [
   { phone: '+254700000021', name: 'Peter Mwangi', role: 'CAREGIVER', email: 'peter@example.com' },
 
   // Family members
-  { phone: '+254700000030', name: 'Aisha Wanjiru', role: 'FAMILY_MEMBER', email: 'aisha@example.com' },
-  { phone: '+254700000031', name: 'David Kimani', role: 'FAMILY_MEMBER', email: 'david@example.com' },
+  {
+    phone: '+254700000030',
+    name: 'Aisha Wanjiru',
+    role: 'FAMILY_MEMBER',
+    email: 'aisha@example.com',
+  },
+  {
+    phone: '+254700000031',
+    name: 'David Kimani',
+    role: 'FAMILY_MEMBER',
+    email: 'david@example.com',
+  },
 
   // Emergency responders, registered with the areas they cover
   {
-    phone: '+254700000040', name: 'Kileleshwa Response Unit', role: 'EMERGENCY_RESPONDER',
+    phone: '+254700000040',
+    name: 'Kileleshwa Response Unit',
+    role: 'EMERGENCY_RESPONDER',
     coverageAreaName: 'Kileleshwa and Lavington',
-    coverageLatitude: -1.286000, coverageLongitude: 36.780000, coverageRadiusKm: 5.0,
+    coverageLatitude: -1.286,
+    coverageLongitude: 36.78,
+    coverageRadiusKm: 5.0,
   },
   {
-    phone: '+254700000041', name: 'Westlands Response Unit', role: 'EMERGENCY_RESPONDER',
+    phone: '+254700000041',
+    name: 'Westlands Response Unit',
+    role: 'EMERGENCY_RESPONDER',
     coverageAreaName: 'Westlands and Parklands',
-    coverageLatitude: -1.265000, coverageLongitude: 36.805000, coverageRadiusKm: 6.0,
+    coverageLatitude: -1.265,
+    coverageLongitude: 36.805,
+    coverageRadiusKm: 6.0,
   },
 ];
 
@@ -137,20 +172,83 @@ const people = [
 
 const escalationRules = [
   // Standard: fully sequential, the timeouts agreed for the build.
-  { severity: 'STANDARD', tierOrder: 1, responderRole: 'CAREGIVER',           timeoutSeconds: 120,  dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
-  { severity: 'STANDARD', tierOrder: 2, responderRole: 'FAMILY_MEMBER',       timeoutSeconds: 180,  dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
-  { severity: 'STANDARD', tierOrder: 3, responderRole: 'EMERGENCY_RESPONDER', timeoutSeconds: null, dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
+  {
+    severity: 'STANDARD',
+    tierOrder: 1,
+    responderRole: 'CAREGIVER',
+    timeoutSeconds: 120,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
+  {
+    severity: 'STANDARD',
+    tierOrder: 2,
+    responderRole: 'FAMILY_MEMBER',
+    timeoutSeconds: 180,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
+  {
+    severity: 'STANDARD',
+    tierOrder: 3,
+    responderRole: 'EMERGENCY_RESPONDER',
+    timeoutSeconds: null,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
 
   // Elevated: halved first timeout, responder reached sooner.
-  { severity: 'ELEVATED', tierOrder: 1, responderRole: 'CAREGIVER',           timeoutSeconds: 60,   dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
-  { severity: 'ELEVATED', tierOrder: 2, responderRole: 'FAMILY_MEMBER',       timeoutSeconds: 120,  dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
-  { severity: 'ELEVATED', tierOrder: 3, responderRole: 'EMERGENCY_RESPONDER', timeoutSeconds: null, dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
+  {
+    severity: 'ELEVATED',
+    tierOrder: 1,
+    responderRole: 'CAREGIVER',
+    timeoutSeconds: 60,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
+  {
+    severity: 'ELEVATED',
+    tierOrder: 2,
+    responderRole: 'FAMILY_MEMBER',
+    timeoutSeconds: 120,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
+  {
+    severity: 'ELEVATED',
+    tierOrder: 3,
+    responderRole: 'EMERGENCY_RESPONDER',
+    timeoutSeconds: null,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
 
   // Critical: caregiver and family together at once, responder after 60s,
   // SMS sent on first dispatch rather than after a push failure.
-  { severity: 'CRITICAL', tierOrder: 1, responderRole: 'CAREGIVER',           timeoutSeconds: 60,   dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: true },
-  { severity: 'CRITICAL', tierOrder: 2, responderRole: 'FAMILY_MEMBER',       timeoutSeconds: 60,   dispatchMode: 'PARALLEL',   smsFallbackImmediate: true },
-  { severity: 'CRITICAL', tierOrder: 3, responderRole: 'EMERGENCY_RESPONDER', timeoutSeconds: null, dispatchMode: 'SEQUENTIAL', smsFallbackImmediate: false },
+  {
+    severity: 'CRITICAL',
+    tierOrder: 1,
+    responderRole: 'CAREGIVER',
+    timeoutSeconds: 60,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: true,
+  },
+  {
+    severity: 'CRITICAL',
+    tierOrder: 2,
+    responderRole: 'FAMILY_MEMBER',
+    timeoutSeconds: 60,
+    dispatchMode: 'PARALLEL',
+    smsFallbackImmediate: true,
+  },
+  {
+    severity: 'CRITICAL',
+    tierOrder: 3,
+    responderRole: 'EMERGENCY_RESPONDER',
+    timeoutSeconds: null,
+    dispatchMode: 'SEQUENTIAL',
+    smsFallbackImmediate: false,
+  },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -160,34 +258,46 @@ const escalationRules = [
 
 const severityFactors = [
   {
-    key: 'care_level', weight: 30,
+    key: 'care_level',
+    weight: 30,
     label: 'Declared care level of the elder',
-    description: 'INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.',
+    description:
+      'INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.',
   },
   {
-    key: 'no_cancel_in_grace_window', weight: 30,
+    key: 'no_cancel_in_grace_window',
+    weight: 30,
     label: 'Grace window elapsed without a cancel',
-    description: 'Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.',
+    description:
+      'Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.',
   },
   {
-    key: 'time_of_day', weight: 15,
+    key: 'time_of_day',
+    weight: 15,
     label: 'Alert raised at night',
-    description: 'Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.',
+    description:
+      'Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.',
   },
   {
-    key: 'caregiver_outside_cover', weight: 10,
+    key: 'caregiver_outside_cover',
+    weight: 10,
     label: 'No caregiver inside a declared cover window',
-    description: 'Scores full when no care assignment declares cover at the moment of the alert. Declared availability, not verified presence.',
+    description:
+      'Scores full when no care assignment declares cover at the moment of the alert. Declared availability, not verified presence.',
   },
   {
-    key: 'away_from_home', weight: 10,
+    key: 'away_from_home',
+    weight: 10,
     label: 'Alert raised away from the registered home',
-    description: 'Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.',
+    description:
+      'Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.',
   },
   {
-    key: 'recent_activity', weight: 5,
+    key: 'recent_activity',
+    weight: 5,
     label: 'Recent or unresolved prior alert',
-    description: 'Scores full when another alert was raised in the last 6 hours or a prior event is still open.',
+    description:
+      'Scores full when another alert was raised in the last 6 hours or a prior event is still open.',
   },
 ];
 
@@ -212,16 +322,34 @@ async function main() {
 
   // Escalation chains. Priority order is the rank inside one elder's chain.
   const chains = [
-    { elder: '+254700000010', contacts: [
-      { phone: '+254700000020', priorityOrder: 1, coverDaysOfWeek: [1, 2, 3, 4, 5], coverStartMinute: 8 * 60, coverEndMinute: 17 * 60 },
-      { phone: '+254700000030', priorityOrder: 2 },
-      { phone: '+254700000040', priorityOrder: 3 },
-    ] },
-    { elder: '+254700000011', contacts: [
-      { phone: '+254700000021', priorityOrder: 1, coverDaysOfWeek: [1, 2, 3, 4, 5, 6], coverStartMinute: 7 * 60, coverEndMinute: 19 * 60 },
-      { phone: '+254700000031', priorityOrder: 2 },
-      { phone: '+254700000041', priorityOrder: 3 },
-    ] },
+    {
+      elder: '+254700000010',
+      contacts: [
+        {
+          phone: '+254700000020',
+          priorityOrder: 1,
+          coverDaysOfWeek: [1, 2, 3, 4, 5],
+          coverStartMinute: 8 * 60,
+          coverEndMinute: 17 * 60,
+        },
+        { phone: '+254700000030', priorityOrder: 2 },
+        { phone: '+254700000040', priorityOrder: 3 },
+      ],
+    },
+    {
+      elder: '+254700000011',
+      contacts: [
+        {
+          phone: '+254700000021',
+          priorityOrder: 1,
+          coverDaysOfWeek: [1, 2, 3, 4, 5, 6],
+          coverStartMinute: 7 * 60,
+          coverEndMinute: 19 * 60,
+        },
+        { phone: '+254700000031', priorityOrder: 2 },
+        { phone: '+254700000041', priorityOrder: 3 },
+      ],
+    },
   ];
 
   for (const chain of chains) {
@@ -247,7 +375,9 @@ async function main() {
 
   for (const rule of escalationRules) {
     await prisma.escalationRule.upsert({
-      where: { one_rule_per_tier_per_severity: { severity: rule.severity, tierOrder: rule.tierOrder } },
+      where: {
+        one_rule_per_tier_per_severity: { severity: rule.severity, tierOrder: rule.tierOrder },
+      },
       update: rule,
       create: rule,
     });
@@ -255,7 +385,11 @@ async function main() {
   console.log(`  rules     ${escalationRules.length} escalation rules across 3 severity bands`);
 
   for (const factor of severityFactors) {
-    await prisma.severityFactor.upsert({ where: { key: factor.key }, update: factor, create: factor });
+    await prisma.severityFactor.upsert({
+      where: { key: factor.key },
+      update: factor,
+      create: factor,
+    });
   }
   const totalWeight = severityFactors.reduce((sum, f) => sum + f.weight, 0);
   console.log(`  severity  ${severityFactors.length} factors, weights summing to ${totalWeight}`);

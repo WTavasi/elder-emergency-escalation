@@ -13,10 +13,38 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "husky",
     "postinstall": "npm run tokens:build --silent",
+    "dev": "npm run start:dev -w @mzazicare/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:cov": "npm run test:cov --workspaces --if-present",
     "tokens:build": "node packages/tokens/src/build.mjs",
-    "tokens:check": "node packages/tokens/src/build.mjs --check",
-    "lint": "echo \"lint: no workspaces configured yet\" && exit 0",
-    "test": "echo \"test: no workspaces configured yet\" && exit 0"
+    "tokens:check": "node packages/tokens/src/build.mjs --check"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.10.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.5.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.5.1",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
   }
 }

@@ -1,0 +1,5 @@
+# Formatting and lint on staged files only, then the accessibility gate.
+npx lint-staged
+
+# The palette is a promise about contrast. Do not let it regress into a commit.
+npm run tokens:check --silent

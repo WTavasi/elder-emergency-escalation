@@ -36,7 +36,10 @@ function resolve(value, path) {
 const themes = {};
 for (const [themeName, roles] of Object.entries(tokens.themes)) {
   themes[themeName] = Object.fromEntries(
-    Object.entries(roles).map(([role, value]) => [role, resolve(value, `themes.${themeName}.${role}`)]),
+    Object.entries(roles).map(([role, value]) => [
+      role,
+      resolve(value, `themes.${themeName}.${role}`),
+    ]),
   );
 }
 
@@ -106,7 +109,9 @@ function buildCss() {
   const { space, radius, motion, type } = tokens;
   const scale = [
     ...space.map((v) => `  --space-${v}: ${v}px;`),
-    ...Object.entries(radius).map(([k, v]) => `  --radius-${kebab(k)}: ${v === 999 ? '999px' : v + 'px'};`),
+    ...Object.entries(radius).map(
+      ([k, v]) => `  --radius-${kebab(k)}: ${v === 999 ? '999px' : v + 'px'};`,
+    ),
     ...Object.entries(motion).map(([k, v]) => `  --motion-${kebab(k)}: ${v}ms;`),
     ...Object.entries(type.standard).map(([k, v]) => `  --font-size-${kebab(k)}: ${v}px;`),
     `  --font-sans: "${type.family.sans}", system-ui, -apple-system, "Segoe UI", sans-serif;`,
@@ -139,7 +144,10 @@ function buildCss() {
 
 function dartColorClass(name, theme) {
   const fields = Object.entries(theme)
-    .map(([role, hex]) => `  static const Color ${role} = Color(0xFF${hex.replace('#', '').toUpperCase()});`)
+    .map(
+      ([role, hex]) =>
+        `  static const Color ${role} = Color(0xFF${hex.replace('#', '').toUpperCase()});`,
+    )
     .join('\n');
   return [`class ${name} {`, `  ${name}._();`, '', fields, '}'].join('\n');
 }
@@ -265,7 +273,9 @@ for (const r of results) {
 if (failures.length > 0) {
   console.error(`\n${failures.length} contrast target(s) below minimum:`);
   for (const f of failures) {
-    console.error(`  ${f.theme}: ${f.fg} (${f.fgHex}) on ${f.bg} (${f.bgHex}) is ${f.ratio}:1, needs ${f.min}:1 for ${f.why}`);
+    console.error(
+      `  ${f.theme}: ${f.fg} (${f.fgHex}) on ${f.bg} (${f.bgHex}) is ${f.ratio}:1, needs ${f.min}:1 for ${f.why}`,
+    );
   }
   console.error('\nFix the values in tokens.json, or change the documented minimum and say why.');
   process.exit(1);
@@ -282,7 +292,8 @@ writeFileSync(join(distDir, 'tokens.dart'), buildDart());
 writeFileSync(join(distDir, 'tokens.ts'), buildTs());
 writeFileSync(
   join(distDir, 'contrast-report.json'),
-  JSON.stringify({ generatedFrom: 'tokens.json', version: tokens.meta.version, results }, null, 2) + '\n',
+  JSON.stringify({ generatedFrom: 'tokens.json', version: tokens.meta.version, results }, null, 2) +
+    '\n',
 );
 
 console.log('\nAll contrast targets met. Wrote:');
