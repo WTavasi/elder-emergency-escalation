@@ -1,6 +1,7 @@
 import { Type, plainToInstance } from 'class-transformer';
 import {
   IsEnum,
+  Matches,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -58,10 +59,10 @@ export class EnvSchema {
   })
   JWT_REFRESH_SECRET: string;
 
-  @IsString()
+  @Matches(/^\d+[smhd]$/, { message: 'JWT_ACCESS_TTL must look like 15m, 2h or 900' })
   JWT_ACCESS_TTL = '15m';
 
-  @IsString()
+  @Matches(/^\d+[smhd]$/, { message: 'JWT_REFRESH_TTL must look like 30d, 12h or 900' })
   JWT_REFRESH_TTL = '30d';
 
   @Type(() => Number)

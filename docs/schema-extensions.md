@@ -40,6 +40,7 @@ emergency event, and `event_id` stays mandatory there exactly as Figure 4.4 show
 
 | Table | Columns | Why |
 |---|---|---|
+| `users` | `refresh_token_hash`, `refresh_token_updated_at` | SHA-256 of the current refresh token, never the token. Gives rotation, replay detection and revocation without a sessions table, matching the one-device-per-user simplification |
 | `users` | `push_token`, `push_token_updated_at` | FCM needs a device target. One device per user in this build |
 | `users` | `care_level` | Severity input. Operational dependency level set by a caregiver, not a clinical field |
 | `users` | `home_latitude`, `home_longitude`, `home_address_label` | The registered home, needed for the away-from-home factor |

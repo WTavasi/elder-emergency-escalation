@@ -76,6 +76,26 @@ The build recomputes every declared contrast pair to WCAG 2.1 and exits non-zero
 falls below its documented minimum, so an inaccessible palette fails CI rather than
 shipping. Never hard-code a hex value in an app.
 
+## API
+
+Base path `/api/v1`. Health sits outside it so a platform check has a stable address.
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/health` | none | Postgres and Redis checked separately; 503 if either is down |
+| POST | `/api/v1/auth/register` | none | Self-registration, caregivers and family members only |
+| POST | `/api/v1/auth/login` | none | Phone and password, returns both tokens |
+| POST | `/api/v1/auth/refresh` | none | Rotates the refresh token |
+| POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
+| GET | `/api/v1/auth/me` | bearer | The signed-in user |
+
+Elders are registered by a caregiver rather than themselves, because the consent record
+has to name who consented on whose behalf. Emergency responders and administrators are
+created by an administrator. Those endpoints arrive with the users module.
+
+Every route is authenticated unless it declares `@Public()`, so a new endpoint is
+protected by default rather than by remembering to protect it.
+
 ## Conventions
 
 - Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`

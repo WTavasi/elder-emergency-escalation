@@ -1,6 +1,9 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator';
 import { HealthReport, HealthService } from './health.service';
 
+// The platform health check has no credentials, so this one route is unauthenticated.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly health: HealthService) {}

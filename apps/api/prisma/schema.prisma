@@ -138,6 +138,12 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  /// EXTENSION. SHA-256 of the current refresh token, never the token itself, so a
+  /// stolen database yields no usable sessions. Null means signed out everywhere.
+  /// One value per user, which matches the one-device-per-user simplification.
+  refreshTokenHash      String?   @map("refresh_token_hash") @db.VarChar(64)
+  refreshTokenUpdatedAt DateTime? @map("refresh_token_updated_at") @db.Timestamptz(3)
+
   /// EXTENSION. Push target for Firebase Cloud Messaging. One device per user in
   /// this build; a devices table is the obvious later change.
   pushToken          String?   @map("push_token") @db.VarChar(255)
