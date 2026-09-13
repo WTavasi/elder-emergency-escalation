@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolveCredentialsPath } from './credentials-path';
 import type { FcmMessaging } from './fcm-push.provider';
 
 /**
@@ -20,7 +20,7 @@ export function createFcmMessaging(config: ConfigService): FcmMessaging {
     );
   }
 
-  const absolute = resolve(path);
+  const absolute = resolveCredentialsPath(path);
   let credentials: { project_id?: string; client_email?: string; private_key?: string };
 
   try {
