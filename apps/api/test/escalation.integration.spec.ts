@@ -6,6 +6,7 @@ import { AlertsService } from '../src/alerts/alerts.service';
 import { EscalationService } from '../src/escalation/escalation.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PasswordService } from '../src/auth/password.service';
+import { RedisService } from '../src/redis/redis.service';
 
 /**
  * The claim this project makes is that an unacknowledged emergency climbs the chain by
@@ -33,6 +34,17 @@ describe('escalation, end to end', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
+
+    // Fail here with an explanation rather than four seconds later with a confusing
+    // state assertion. Without expiry events nothing in this suite can pass.
+    const redis = app.get(RedisService);
+    const reply: unknown = await redis.client.config('GET', 'notify-keyspace-events');
+    const flags = Array.isArray(reply) ? String(reply[1] ?? '') : '';
+    if (!RedisService.publishesExpiry(flags)) {
+      throw new Error(
+        `Redis is not publishing key expiry events (flags: "${flags}"), so no timer can ever fire. Check which server is on the port with: lsof -nP -iTCP:6379 -sTCP:LISTEN`,
+      );
+    }
 
     prisma = app.get(PrismaService);
     alerts = app.get(AlertsService);

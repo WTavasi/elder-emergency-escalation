@@ -118,6 +118,12 @@ and on boot the listener compares every open event against it: overdue events es
 immediately, and events still inside their window have their Redis key restored with the
 time that remains. A deployment cannot swallow an escalation.
 
+Key expiry events are off in a default Redis, and a Redis without them accepts every
+timer and silently never mentions them again. The API checks on boot and, if the flags
+are missing, sets them at runtime while preserving any that are already there. If the
+server refuses CONFIG SET, which a managed Redis may, it logs the exact setting to
+change rather than starting up quietly broken.
+
 Acknowledging, resolving, cancelling and requesting a responder all clear the pending
 timers first, so a stale expiry cannot promote an emergency somebody is already handling.
 Expiries that arrive late are ignored rather than treated as errors, because a timer

@@ -7,8 +7,7 @@ import Redis from 'ioredis';
  *
  * A Redis client in subscribe mode cannot issue ordinary commands, so the escalation
  * engine needs one connection subscribed to keyspace expiry notifications and a
- * separate one to read and write the keys themselves. Creating both here means the
- * engine stage does not have to revisit connection management.
+ * separate one to read and write the keys themselves.
  */
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -36,21 +35,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     await Promise.all([this.client.connect(), this.subscriber.connect()]);
-
-    // Verify the server is configured to publish expiry events. Without the Ex flag
-    // the escalation engine would sit silent, which is the one failure in this system
-    // that must never be quiet.
-    // CONFIG GET replies as a flat [name, value] array, which ioredis types as unknown.
-    const reply: unknown = await this.client.config('GET', 'notify-keyspace-events');
-    const flags = Array.isArray(reply) ? String(reply[1] ?? '') : '';
-
-    if (!flags.includes('E')) {
-      this.logger.error(
-        `Redis notify-keyspace-events is "${flags}". Escalation timeouts rely on keyspace expiry events and will not fire. Start Redis with --notify-keyspace-events Ex.`,
-      );
-    } else {
-      this.logger.log(`Connected to Redis, keyspace events: "${flags}"`);
-    }
+    await this.ensureExpiryEvents();
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -59,5 +44,64 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async ping(): Promise<string> {
     return this.client.ping();
+  }
+
+  /**
+   * Escalation depends on Redis publishing an event when a key expires, which is off
+   * by default. A Redis without it accepts every timer we set and silently never
+   * mentions them again, so an emergency would sit unescalated with nothing in the
+   * logs to explain why.
+   *
+   * That failure is severe enough to be worth fixing rather than only reporting: if
+   * the flags are missing, they are set at runtime, preserving any that are already
+   * there. A managed Redis may refuse CONFIG SET, in which case this says so and names
+   * the exact setting to change.
+   */
+  private async ensureExpiryEvents(): Promise<void> {
+    const current = await this.readKeyspaceFlags();
+
+    if (RedisService.publishesExpiry(current)) {
+      this.logger.log(`Connected to Redis, keyspace events: "${current}"`);
+      return;
+    }
+
+    // Keep whatever is configured and add only what is missing: another application
+    // may be relying on flags we know nothing about.
+    const desired = RedisService.withExpiryFlags(current);
+
+    try {
+      await this.client.config('SET', 'notify-keyspace-events', desired);
+      this.logger.warn(
+        `Redis was not publishing key expiry events (flags: "${current}"). Set to "${desired}" at runtime so escalation timeouts fire. Add "--notify-keyspace-events ${desired}" to the server configuration to make it permanent.`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Redis is not publishing key expiry events (flags: "${current}") and CONFIG SET was refused. Escalation timeouts will NOT fire. Start Redis with "--notify-keyspace-events Ex", or set it on your managed instance. Cause: ${
+          error instanceof Error ? error.message : 'unknown'
+        }`,
+      );
+    }
+  }
+
+  private async readKeyspaceFlags(): Promise<string> {
+    // CONFIG GET replies as a flat [name, value] array, which ioredis types as unknown.
+    const reply: unknown = await this.client.config('GET', 'notify-keyspace-events');
+    return Array.isArray(reply) ? String(reply[1] ?? '') : '';
+  }
+
+  /**
+   * Expiry events need the keyevent class (E) and the expired class (x). A is an alias
+   * covering every class including x, so E plus A is equally valid.
+   */
+  static publishesExpiry(flags: string): boolean {
+    return flags.includes('E') && (flags.includes('x') || flags.includes('A'));
+  }
+
+  /** Adds the missing flags without disturbing any that are already set. */
+  static withExpiryFlags(flags: string): string {
+    const set = new Set(flags.split(''));
+    set.add('E');
+    if (!set.has('A')) set.add('x');
+    return [...set].join('');
   }
 }
