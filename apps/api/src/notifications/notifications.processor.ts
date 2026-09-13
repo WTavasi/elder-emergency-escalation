@@ -75,7 +75,7 @@ export class NotificationsProcessor extends WorkerHost {
 
       // A permanent failure, such as a device that is no longer registered. Retrying
       // would only delay the fallback.
-      await this.recordFailure(notification.id, notification.eventId, result.error ?? 'rejected');
+      await this.recordFailure(notification, result.error ?? 'rejected');
       await this.fallBackToSms(notification);
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown provider error';
@@ -85,30 +85,45 @@ export class NotificationsProcessor extends WorkerHost {
         throw error;
       }
 
-      this.logger.error(`Giving up on notification ${notification.id} after ${attempts} attempts`);
-      await this.recordFailure(notification.id, notification.eventId, reason);
+      await this.recordFailure(notification, reason, attempts);
       await this.fallBackToSms(notification);
     }
   }
 
+  /**
+   * Records a failed delivery, and says so out loud.
+   *
+   * A silent failure is the worst kind this system has: the emergency continues, the
+   * chain keeps climbing, and nothing in the log explains why nobody was reached. The
+   * reason is stored on the notification too, but an operator watching the console
+   * should not have to query the database to learn that sending is broken.
+   */
   private async recordFailure(
-    notificationId: string,
-    eventId: string,
+    notification: { id: string; eventId: string; channel: NotificationChannel },
     reason: string,
+    afterAttempts?: number,
   ): Promise<void> {
+    const trimmed = reason.slice(0, 400);
+    const attempts = afterAttempts === undefined ? '' : ` after ${afterAttempts} attempts`;
+
+    this.logger.error(
+      `${notification.channel} delivery failed${attempts} for notification ${notification.id}: ${trimmed}`,
+    );
+
     await this.prisma.notification.update({
-      where: { id: notificationId },
-      data: { status: NotificationStatus.FAILED, failureReason: reason.slice(0, 400) },
+      where: { id: notification.id },
+      data: { status: NotificationStatus.FAILED, failureReason: trimmed },
     });
 
     await this.prisma.auditLog.create({
       data: {
-        eventId,
+        eventId: notification.eventId,
         actorId: null,
         action: AuditAction.NOTIFICATION_FAILED,
         detail: {
-          notificationId,
-          reason: reason.slice(0, 400),
+          notificationId: notification.id,
+          channel: notification.channel,
+          reason: trimmed,
         } as unknown as Prisma.InputJsonValue,
       },
     });
