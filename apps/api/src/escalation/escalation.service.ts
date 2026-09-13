@@ -20,6 +20,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { isWithinMetres } from '../common/geo';
 import { EscalationTimerService } from './escalation-timer.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const OPEN_STATES: EventState[] = [
   EventState.TRIGGERED,
@@ -45,6 +46,7 @@ export class EscalationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly timers: EscalationTimerService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -82,17 +84,31 @@ export class EscalationService {
     const deadline =
       rule.timeoutSeconds === null ? null : new Date(now.getTime() + rule.timeoutSeconds * 1000);
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.notification.createMany({
-        data: recipients.map((recipientId) => ({
-          eventId,
-          recipientId,
-          channel: NotificationChannel.PUSH,
-          status: NotificationStatus.QUEUED,
-          tier,
-          createdAt: now,
-        })),
-      });
+    // Created one at a time rather than in bulk because the queue needs their ids, and
+    // recorded inside the transaction so a committed dispatch is always in the audit
+    // trail even if the queue is unreachable.
+    const channels = rule.smsFallbackImmediate
+      ? [NotificationChannel.PUSH, NotificationChannel.SMS]
+      : [NotificationChannel.PUSH];
+
+    const notificationIds = await this.prisma.$transaction(async (tx) => {
+      const created = await Promise.all(
+        recipients.flatMap((recipientId) =>
+          channels.map((channel) =>
+            tx.notification.create({
+              data: {
+                eventId,
+                recipientId,
+                channel,
+                status: NotificationStatus.QUEUED,
+                tier,
+                createdAt: now,
+              },
+              select: { id: true },
+            }),
+          ),
+        ),
+      );
 
       await tx.emergencyEvent.update({
         where: { id: eventId },
@@ -117,12 +133,19 @@ export class EscalationService {
             reason,
             responderRole: rule.responderRole,
             recipients: recipients.length,
+            channels,
             timeoutSeconds: rule.timeoutSeconds,
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
         },
       });
+
+      return created.map((notification) => notification.id);
     });
+
+    // Queued after the transaction commits: a job that ran against uncommitted rows
+    // would find nothing to send.
+    await this.notifications.enqueue(notificationIds);
 
     if (rule.timeoutSeconds !== null) {
       await this.timers.arm(eventId, tier, rule.timeoutSeconds);

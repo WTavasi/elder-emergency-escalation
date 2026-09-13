@@ -1,6 +1,7 @@
 import { Type, plainToInstance } from 'class-transformer';
 import {
   IsEnum,
+  IsIn,
   Matches,
   IsInt,
   IsNotEmpty,
@@ -144,6 +145,15 @@ export class EnvSchema {
   // Origin allowed to call the API from a browser, which is the admin dashboard.
   @IsUrl({ require_tld: false })
   ADMIN_ORIGIN = 'http://localhost:5173';
+
+  // Notification providers. "logging" writes what would have been sent and reports
+  // success, which is what lets the whole escalation chain run without credentials.
+  // Starting in production with it is refused.
+  @IsIn(['logging'], { message: 'PUSH_PROVIDER must be "logging" until a real adapter is added' })
+  PUSH_PROVIDER = 'logging';
+
+  @IsIn(['logging'], { message: 'SMS_PROVIDER must be "logging" until a real adapter is added' })
+  SMS_PROVIDER = 'logging';
 
   // Provider credentials. Optional until the notification stage, so the API runs
   // without them, but an empty value must be an explicit absence rather than a

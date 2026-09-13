@@ -11,6 +11,7 @@ import {
 import { EscalationService } from './escalation.service';
 import type { EscalationTimerService } from './escalation-timer.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 
 const rule = (
   tierOrder: number,
@@ -51,12 +52,15 @@ interface PrismaMock {
   escalationRule: { findMany: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
   user: { findMany: jest.Mock };
-  notification: { createMany: jest.Mock; updateMany: jest.Mock; findFirst: jest.Mock };
+  notification: { create: jest.Mock; updateMany: jest.Mock; findFirst: jest.Mock };
   auditLog: { create: jest.Mock };
   $transaction: jest.Mock;
 }
 
+let created = 1;
+
 const buildPrisma = (): PrismaMock => {
+  created = 1;
   const mock: PrismaMock = {
     emergencyEvent: {
       findUnique: jest.fn().mockResolvedValue(event()),
@@ -73,7 +77,9 @@ const buildPrisma = (): PrismaMock => {
     },
     user: { findMany: jest.fn().mockResolvedValue([]) },
     notification: {
-      createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      create: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve({ id: `notification-${created++}` })),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       findFirst: jest.fn().mockResolvedValue(null),
     },
@@ -91,8 +97,25 @@ const buildTimers = () =>
     secondsRemaining: jest.fn(),
   }) as unknown as EscalationTimerService & { arm: jest.Mock; cancelAll: jest.Mock };
 
-const build = (prisma: PrismaMock, timers = buildTimers()): EscalationService =>
-  new EscalationService(prisma as unknown as PrismaService, timers);
+const buildNotifications = () =>
+  ({ enqueue: jest.fn().mockResolvedValue(undefined) }) as unknown as NotificationsService & {
+    enqueue: jest.Mock;
+  };
+
+const build = (
+  prisma: PrismaMock,
+  timers = buildTimers(),
+  notifications = buildNotifications(),
+): EscalationService =>
+  new EscalationService(prisma as unknown as PrismaService, timers, notifications);
+
+/** Every (recipient, tier, channel) the service decided to notify. */
+const notified = (
+  prisma: PrismaMock,
+): Array<{ recipientId: string; tier: number; channel: string }> =>
+  prisma.notification.create.mock.calls.map(
+    (call) => (call[0] as { data: { recipientId: string; tier: number; channel: string } }).data,
+  );
 
 const auditActions = (prisma: PrismaMock): string[] =>
   prisma.auditLog.create.mock.calls.map(
@@ -106,15 +129,33 @@ describe('EscalationService', () => {
       const timers = buildTimers();
       await build(prisma, timers).dispatchTier('event-1', 1, 'initial');
 
-      expect(prisma.notification.createMany).toHaveBeenCalledWith({
-        data: [expect.objectContaining({ recipientId: 'caregiver-1', tier: 1 })],
-      });
+      expect(notified(prisma)).toEqual([
+        expect.objectContaining({ recipientId: 'caregiver-1', tier: 1 }),
+      ]);
       expect(prisma.emergencyEvent.update.mock.calls[0][0].data).toMatchObject({
         state: EventState.NOTIFIED,
         currentTier: 1,
       });
       expect(timers.arm).toHaveBeenCalledWith('event-1', 1, 120);
       expect(auditActions(prisma)).toContain(AuditAction.TIER_DISPATCHED);
+    });
+
+    it('queues the delivery only after the transaction commits', async () => {
+      const prisma = buildPrisma();
+      const notifications = buildNotifications();
+      await build(prisma, buildTimers(), notifications).dispatchTier('event-1', 1, 'initial');
+
+      expect(notifications.enqueue).toHaveBeenCalledWith(['notification-1']);
+    });
+
+    it('sends SMS alongside push when the rule says not to wait for a push failure', async () => {
+      const prisma = buildPrisma();
+      prisma.escalationRule.findMany.mockResolvedValue([
+        { ...rule(1, Role.CAREGIVER, 60), smsFallbackImmediate: true },
+      ]);
+
+      await build(prisma).dispatchTier('event-1', 1, 'initial');
+      expect(notified(prisma).map((notification) => notification.channel)).toEqual(['PUSH', 'SMS']);
     });
 
     it('records a durable deadline alongside the Redis timer', async () => {
@@ -151,9 +192,9 @@ describe('EscalationService', () => {
       await build(prisma).dispatchTier('event-1', 1, 'initial');
 
       expect(auditActions(prisma)).toContain(AuditAction.ESCALATED);
-      expect(prisma.notification.createMany).toHaveBeenCalledWith({
-        data: [expect.objectContaining({ recipientId: 'family-1', tier: 2 })],
-      });
+      expect(notified(prisma)).toEqual([
+        expect.objectContaining({ recipientId: 'family-1', tier: 2 }),
+      ]);
     });
 
     it('sends a parallel tier out with the one before it, not after its timeout', async () => {
@@ -164,10 +205,7 @@ describe('EscalationService', () => {
 
       await build(prisma).dispatchTier('event-1', 1, 'initial');
 
-      const tiers = prisma.notification.createMany.mock.calls.map(
-        (call) => (call[0] as { data: Array<{ tier: number }> }).data[0].tier,
-      );
-      expect(tiers).toEqual([1, 2]);
+      expect(notified(prisma).map((notification) => notification.tier)).toEqual([1, 2]);
     });
 
     it('does nothing when the severity band has no rule for that tier', async () => {
@@ -175,7 +213,7 @@ describe('EscalationService', () => {
       prisma.escalationRule.findMany.mockResolvedValue([rule(1, Role.CAREGIVER, 120)]);
 
       await build(prisma).dispatchTier('event-1', 2, 'escalation');
-      expect(prisma.notification.createMany).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
     });
 
     it('refuses to dispatch a cancelled emergency', async () => {
@@ -207,9 +245,7 @@ describe('EscalationService', () => {
 
         await build(prisma).dispatchTier('event-1', 3, 'escalation');
 
-        expect(prisma.notification.createMany).toHaveBeenCalledWith({
-          data: [expect.objectContaining({ recipientId: 'unit-near' })],
-        });
+        expect(notified(prisma)).toEqual([expect.objectContaining({ recipientId: 'unit-near' })]);
       });
 
       it('falls back to the assigned chain when no coverage area matches', async () => {
@@ -226,9 +262,9 @@ describe('EscalationService', () => {
 
         await build(prisma).dispatchTier('event-1', 3, 'escalation');
 
-        expect(prisma.notification.createMany).toHaveBeenCalledWith({
-          data: [expect.objectContaining({ recipientId: 'assigned-unit' })],
-        });
+        expect(notified(prisma)).toEqual([
+          expect.objectContaining({ recipientId: 'assigned-unit' }),
+        ]);
       });
     });
   });
@@ -407,9 +443,9 @@ describe('EscalationService', () => {
 
       expect(timers.cancelAll).toHaveBeenCalledWith('event-1');
       expect(auditActions(prisma)).toContain(AuditAction.RESPONDER_REQUESTED);
-      expect(prisma.notification.createMany).toHaveBeenCalledWith({
-        data: [expect.objectContaining({ recipientId: 'unit-near', tier: 3 })],
-      });
+      expect(notified(prisma)).toEqual([
+        expect.objectContaining({ recipientId: 'unit-near', tier: 3 }),
+      ]);
     });
 
     it('refuses someone outside the emergency', async () => {

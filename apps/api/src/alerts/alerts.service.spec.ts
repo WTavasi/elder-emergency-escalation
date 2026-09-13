@@ -6,6 +6,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { SeverityService } from '../severity/severity.service';
 import type { EscalationService } from '../escalation/escalation.service';
 import type { EscalationTimerService } from '../escalation/escalation-timer.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 
 const settings: Record<string, number> = { CANCEL_GRACE_WINDOW: 10, RECENT_ACTIVITY_HOURS: 6 };
 const config = {
@@ -123,13 +124,26 @@ const buildTimers = () =>
     cancelAll: jest.Mock;
   };
 
+const buildNotifications = () =>
+  ({
+    notifyCancellation: jest.fn().mockResolvedValue(undefined),
+  }) as unknown as NotificationsService & { notifyCancellation: jest.Mock };
+
 const build = (
   prisma: PrismaMock,
   severity = buildSeverity(),
   escalation = buildEscalation(),
   timers = buildTimers(),
+  notifications = buildNotifications(),
 ): AlertsService =>
-  new AlertsService(prisma as unknown as PrismaService, severity, escalation, timers, config);
+  new AlertsService(
+    prisma as unknown as PrismaService,
+    severity,
+    escalation,
+    timers,
+    notifications,
+    config,
+  );
 
 describe('AlertsService', () => {
   describe('create', () => {
@@ -232,6 +246,20 @@ describe('AlertsService', () => {
 
       await build(prisma, buildSeverity(), buildEscalation(), timers).cancel(event().id, 'elder-1');
       expect(timers.cancelAll).toHaveBeenCalledWith(event().id);
+    });
+
+    it('tells everyone who was alerted that it was withdrawn', async () => {
+      const prisma = buildPrisma();
+      const notifications = buildNotifications();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ triggeredAt: new Date(Date.now() - 2000) }),
+      );
+
+      await build(prisma, buildSeverity(), buildEscalation(), buildTimers(), notifications).cancel(
+        event().id,
+        'elder-1',
+      );
+      expect(notifications.notifyCancellation).toHaveBeenCalledWith(event().id);
     });
 
     it('refuses once the grace window has passed', async () => {

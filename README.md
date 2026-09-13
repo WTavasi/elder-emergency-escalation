@@ -129,6 +129,27 @@ timers first, so a stale expiry cannot promote an emergency somebody is already 
 Expiries that arrive late are ignored rather than treated as errors, because a timer
 firing just after an acknowledgement is normal.
 
+## How notifications are delivered
+
+Dispatching records who should be told, inside the same transaction that moves the
+emergency, so a committed dispatch always appears in the audit trail even if the queue
+is unreachable. The sending itself is a queued job with three attempts and exponential
+backoff, because it is the one part of the system that talks to somebody else's network.
+
+Providers report failure in two different ways, and the difference matters. A permanent
+failure, such as a device that is no longer registered, returns `delivered: false` and
+the caller moves straight to SMS. A transient failure, such as a timeout, throws and the
+job retries. Getting that backwards either burns retries on a dead token or gives up on
+a working one.
+
+The SMS fallback fires at most once per recipient per tier, so a push failing twice does
+not put two texts on somebody's phone. The critical severity band sends SMS alongside
+push from the start rather than waiting for push to fail.
+
+In development both providers are the logging ones: they write what would have been sent
+and report success, so the whole chain including the fallback can be exercised without
+credentials. The API refuses to start in production while either is still set to logging.
+
 ## Conventions
 
 - Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`

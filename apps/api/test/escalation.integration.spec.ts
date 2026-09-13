@@ -1,6 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AuditAction, EventState, Role, Severity } from '@prisma/client';
+import {
+  AuditAction,
+  EventState,
+  NotificationChannel,
+  NotificationStatus,
+  Role,
+  Severity,
+} from '@prisma/client';
 import { AppModule } from '../src/app.module';
 import { AlertsService } from '../src/alerts/alerts.service';
 import { EscalationService } from '../src/escalation/escalation.service';
@@ -177,6 +184,45 @@ describe('escalation, end to end', () => {
     expect(stored.state).toBe(EventState.ACKNOWLEDGED);
     expect(stored.currentTier).toBe(1);
     expect(stored.currentTierDeadlineAt).toBeNull();
+  });
+
+  it('falls back to SMS when the recipient has no registered device', async () => {
+    const event = await alerts.create(ids.elder as string, home);
+
+    // The seeded accounts have no push token, which the logging provider refuses
+    // exactly as Firebase would, so the fallback path runs for real here.
+    await wait(2000);
+
+    const notifications = await prisma.notification.findMany({
+      where: { eventId: event.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const push = notifications.find((item) => item.channel === NotificationChannel.PUSH);
+    const sms = notifications.find((item) => item.channel === NotificationChannel.SMS);
+
+    expect(push?.status).toBe(NotificationStatus.FAILED);
+    expect(push?.failureReason).toContain('no registered device');
+    expect(sms).toBeDefined();
+    expect(sms?.status).toBe(NotificationStatus.SENT);
+    expect(sms?.recipientId).toBe(ids.caregiver);
+
+    const failures = await prisma.auditLog.findMany({
+      where: { eventId: event.id, action: AuditAction.NOTIFICATION_FAILED },
+    });
+    expect(failures).toHaveLength(1);
+  });
+
+  it('tells the caregiver when the elder cancels, so they can call to check', async () => {
+    const event = await alerts.create(ids.elder as string, home);
+    await wait(1500);
+    const before = await prisma.notification.count({ where: { eventId: event.id } });
+
+    await alerts.cancel(event.id, ids.elder as string);
+    await wait(1500);
+
+    const after = await prisma.notification.count({ where: { eventId: event.id } });
+    expect(after).toBeGreaterThan(before);
   });
 
   it('stops climbing once the elder cancels inside the grace window', async () => {

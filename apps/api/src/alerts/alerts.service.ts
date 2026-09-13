@@ -17,6 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EscalationService } from '../escalation/escalation.service';
 import { EscalationTimerService } from '../escalation/escalation-timer.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SeverityService } from '../severity/severity.service';
 import type { SeverityAssessment } from '../severity/severity.types';
 import type { CoverWindow } from '../common/time';
@@ -49,6 +50,7 @@ export class AlertsService {
     private readonly severity: SeverityService,
     private readonly escalation: EscalationService,
     private readonly timers: EscalationTimerService,
+    private readonly notifications: NotificationsService,
     private readonly config: ConfigService,
   ) {}
 
@@ -174,7 +176,7 @@ export class AlertsService {
     const now = new Date();
     await this.timers.cancelAll(eventId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const cancelled = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
@@ -199,6 +201,11 @@ export class AlertsService {
 
       return updated;
     });
+
+    // Everyone who was told about the emergency is told it was withdrawn, so nobody is
+    // left believing help is still on its way, and so they can call to check.
+    await this.notifications.notifyCancellation(eventId);
+    return cancelled;
   }
 
   /**
