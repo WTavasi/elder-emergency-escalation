@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -18,6 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EscalationService } from '../escalation/escalation.service';
 import { EscalationTimerService } from '../escalation/escalation-timer.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { REALTIME_PUBLISHER, type RealtimePublisher } from '../realtime/realtime.publisher';
 import { SeverityService } from '../severity/severity.service';
 import type { SeverityAssessment } from '../severity/severity.types';
 import type { CoverWindow } from '../common/time';
@@ -51,6 +53,7 @@ export class AlertsService {
     private readonly escalation: EscalationService,
     private readonly timers: EscalationTimerService,
     private readonly notifications: NotificationsService,
+    @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly config: ConfigService,
   ) {}
 
@@ -138,6 +141,7 @@ export class AlertsService {
     // call a provider: if it were left to run after the response, a process that died
     // in the next second would leave an emergency nobody is counting down for. The
     // actual sending, which is network work that can fail and retry, is queued.
+    this.realtime.emergencyUpdated(event);
     await this.escalation.dispatchTier(event.id, 1, 'initial');
 
     return event;
@@ -204,6 +208,7 @@ export class AlertsService {
 
     // Everyone who was told about the emergency is told it was withdrawn, so nobody is
     // left believing help is still on its way, and so they can call to check.
+    this.realtime.emergencyUpdated(cancelled);
     await this.notifications.notifyCancellation(eventId);
     return cancelled;
   }
@@ -300,6 +305,7 @@ export class AlertsService {
       return updated;
     });
 
+    this.realtime.emergencyUpdated(reopened);
     await this.escalation.dispatchTier(eventId, tier, 'initial');
     return reopened;
   }

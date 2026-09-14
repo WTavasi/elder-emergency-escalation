@@ -12,6 +12,7 @@ import { EscalationService } from './escalation.service';
 import type { EscalationTimerService } from './escalation-timer.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import { NoopRealtimePublisher } from '../realtime/realtime.publisher';
 
 const rule = (
   tierOrder: number,
@@ -107,7 +108,12 @@ const build = (
   timers = buildTimers(),
   notifications = buildNotifications(),
 ): EscalationService =>
-  new EscalationService(prisma as unknown as PrismaService, timers, notifications);
+  new EscalationService(
+    prisma as unknown as PrismaService,
+    timers,
+    notifications,
+    new NoopRealtimePublisher(),
+  );
 
 /** Every (recipient, tier, channel) the service decided to notify. */
 const notified = (

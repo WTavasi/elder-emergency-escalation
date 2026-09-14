@@ -172,6 +172,31 @@ In development both providers default to the logging ones: they write what would
 and report success, so the whole chain including the fallback can be exercised without
 credentials. The API refuses to start in production while either is still set to logging.
 
+## Live updates
+
+Responder screens and the dashboard connect to a Socket.IO namespace at `/realtime`
+and receive an `emergency.updated` message whenever an emergency changes: raised,
+dispatched, escalated, acknowledged, resolved, cancelled or reopened.
+
+The handshake carries an access token, the same one used for HTTP:
+
+```js
+io('http://localhost:3000/realtime', { auth: { token: accessToken } });
+```
+
+A socket with no token, or a bad one, is disconnected rather than left attached. Rooms
+are worked out once at connection time from the same care assignments that decide who
+gets notified, so a publish is one emit to one room rather than a query per change, and
+a caregiver cannot subscribe to an elder they have no relationship with because they
+were never put in that room. Administrators join a room that receives everything.
+
+The message is a compact snapshot rather than the database row. The audit trail and the
+severity breakdown are fetched over HTTP when someone opens an event.
+
+Publishing is fire and forget. A screen that misses a message refreshes over HTTP,
+whereas an escalation that failed because a socket was unavailable would be a real
+emergency lost to a cosmetic feature.
+
 ## Conventions
 
 - Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`

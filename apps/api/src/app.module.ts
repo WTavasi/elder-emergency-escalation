@@ -9,6 +9,7 @@ import { EscalationModule } from './escalation/escalation.module';
 import { HealthModule } from './health/health.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { RedisModule } from './redis/redis.module';
 import { SeverityModule } from './severity/severity.module';
 import { validateEnv } from './config/env.schema';
@@ -22,6 +23,7 @@ import { validateEnv } from './config/env.schema';
     }),
     PrismaModule,
     RedisModule,
+    RealtimeModule,
     AuthModule,
     SeverityModule,
     NotificationsModule,

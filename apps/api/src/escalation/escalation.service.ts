@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -21,6 +22,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { isWithinMetres } from '../common/geo';
 import { EscalationTimerService } from './escalation-timer.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { REALTIME_PUBLISHER, type RealtimePublisher } from '../realtime/realtime.publisher';
 
 const OPEN_STATES: EventState[] = [
   EventState.TRIGGERED,
@@ -47,6 +49,7 @@ export class EscalationService {
     private readonly prisma: PrismaService,
     private readonly timers: EscalationTimerService,
     private readonly notifications: NotificationsService,
+    @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
   ) {}
 
   /**
@@ -91,7 +94,7 @@ export class EscalationService {
       ? [NotificationChannel.PUSH, NotificationChannel.SMS]
       : [NotificationChannel.PUSH];
 
-    const notificationIds = await this.prisma.$transaction(async (tx) => {
+    const dispatched = await this.prisma.$transaction(async (tx) => {
       const created = await Promise.all(
         recipients.flatMap((recipientId) =>
           channels.map((channel) =>
@@ -110,7 +113,7 @@ export class EscalationService {
         ),
       );
 
-      await tx.emergencyEvent.update({
+      const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
           // ESCALATED is sticky: once a tier has timed out, the event stays marked as
@@ -140,12 +143,15 @@ export class EscalationService {
         },
       });
 
-      return created.map((notification) => notification.id);
+      return { updated, notificationIds: created.map((notification) => notification.id) };
     });
+
+    // Screens update the moment the chain moves, rather than on their next poll.
+    this.realtime.emergencyUpdated(dispatched.updated);
 
     // Queued after the transaction commits: a job that ran against uncommitted rows
     // would find nothing to send.
-    await this.notifications.enqueue(notificationIds);
+    await this.notifications.enqueue(dispatched.notificationIds);
 
     if (rule.timeoutSeconds !== null) {
       await this.timers.arm(eventId, tier, rule.timeoutSeconds);
@@ -197,7 +203,7 @@ export class EscalationService {
     const now = new Date();
     await this.timers.cancelAll(eventId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const acknowledged = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
@@ -234,6 +240,9 @@ export class EscalationService {
 
       return updated;
     });
+
+    this.realtime.emergencyUpdated(acknowledged);
+    return acknowledged;
   }
 
   /** Closes the emergency with a recorded outcome. */
@@ -244,7 +253,7 @@ export class EscalationService {
     const now = new Date();
     await this.timers.cancelAll(eventId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const resolved = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.emergencyEvent.update({
         where: { id: eventId },
         data: {
@@ -272,6 +281,9 @@ export class EscalationService {
 
       return updated;
     });
+
+    this.realtime.emergencyUpdated(resolved);
+    return resolved;
   }
 
   /**

@@ -7,6 +7,7 @@ import type { SeverityService } from '../severity/severity.service';
 import type { EscalationService } from '../escalation/escalation.service';
 import type { EscalationTimerService } from '../escalation/escalation-timer.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import { NoopRealtimePublisher } from '../realtime/realtime.publisher';
 
 const settings: Record<string, number> = { CANCEL_GRACE_WINDOW: 10, RECENT_ACTIVITY_HOURS: 6 };
 const config = {
@@ -142,6 +143,7 @@ const build = (
     escalation,
     timers,
     notifications,
+    new NoopRealtimePublisher(),
     config,
   );
 
