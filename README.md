@@ -13,19 +13,6 @@ the fact from the factor values stored alongside it.
 Final year project, Strathmore University. Not a medical device. It detects nothing on
 its own and is not a substitute for emergency services.
 
-## Status
-
-| Part | State |
-| --- | --- |
-| API, escalation engine, notifications, live updates | complete |
-| Administrator dashboard | complete |
-| Flutter app | not started |
-| Deployment, load and usability testing | not started |
-
-223 API tests across 27 suites, 16 dashboard tests, and an integration suite that runs
-against real Postgres and Redis. CI runs all of it on every push, including the
-dashboard's production build.
-
 ## Getting started
 
 New to the project, or starting the laptop from cold? Read
