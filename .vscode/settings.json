@@ -32,4 +32,6 @@
     "$shared": { "baseUrl": "http://localhost:3000/api/v1" },
     "local": { "password": "Dev!2026" }
   }
+  // Use this setting to pin the Prisma extension to version 6.
+  // "prisma.pinToPrisma6": true
 }
