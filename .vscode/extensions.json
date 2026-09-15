@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Prisma.prisma",
+    "humao.rest-client",
+    "ms-azuretools.vscode-docker",
+    "Dart-Code.dart-code",
+    "Dart-Code.flutter"
+  ]
+}

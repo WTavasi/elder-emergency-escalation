@@ -1,0 +1,229 @@
+### MzaziCare API
+#
+# Every endpoint, in the order an emergency actually moves through them. Install the
+# REST Client extension (humao.rest-client) and a "Send Request" link appears above each
+# block. Responses open beside the request, which makes this a better demonstration
+# surface than a terminal full of curl.
+#
+# Start the services and the API first:
+#   docker compose up -d
+#   npm run dev
+#
+# @name blocks capture a response so later requests can use it. Run them top to bottom.
+
+@baseUrl = http://localhost:3000/api/v1
+@password = Dev!2026
+
+# Seeded accounts. Grace is the elder, Mary her caregiver, Aisha her daughter.
+@elderPhone = +254700000010
+@caregiverPhone = +254700000020
+@familyPhone = +254700000030
+@adminPhone = +254700000001
+
+###############################################################################
+# Health. Reports Postgres and Redis separately, and returns 503 if either is down.
+###############################################################################
+
+GET http://localhost:3000/health
+
+###############################################################################
+# 1. Sign in as the elder
+###############################################################################
+
+# @name elderLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "phone": "{{elderPhone}}", "password": "{{password}}" }
+
+###
+
+@elderToken = {{elderLogin.response.body.accessToken}}
+
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{elderToken}}
+
+###############################################################################
+# 2. Raise an emergency
+#
+# The response carries the severity band, the score, and the factor breakdown that
+# produced it. That breakdown is the evidence that severity is a policy rather than a
+# guess, so it is worth reading aloud during a demonstration.
+###############################################################################
+
+# @name alert
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{
+  "latitude": -1.2833,
+  "longitude": 36.7833,
+  "addressLabel": "Kileleshwa, Nairobi"
+}
+
+###
+
+@eventId = {{alert.response.body.id}}
+
+###############################################################################
+# 3. The same alert, raised away from home
+#
+# Adds ten points for being away from the registered address. Run both and compare the
+# severityScore field.
+###############################################################################
+
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{ "latitude": -1.268, "longitude": 36.811, "addressLabel": "Westlands, Nairobi" }
+
+###############################################################################
+# 4. Cancel inside the grace window
+#
+# Only the elder can cancel, and only within ten seconds. Run this straight after
+# creating an alert or it will refuse, which is itself worth demonstrating.
+###############################################################################
+
+POST {{baseUrl}}/alerts/{{eventId}}/cancel
+Authorization: Bearer {{elderToken}}
+
+###############################################################################
+# 5. Sign in as the caregiver
+###############################################################################
+
+# @name caregiverLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "phone": "{{caregiverPhone}}", "password": "{{password}}" }
+
+###
+
+@caregiverToken = {{caregiverLogin.response.body.accessToken}}
+
+###############################################################################
+# 6. What the caregiver can see
+#
+# Scoped to the elders whose chains they belong to. An emergency they are not part of
+# returns not found rather than forbidden, so the API cannot be used to discover which
+# emergencies exist.
+###############################################################################
+
+GET {{baseUrl}}/alerts
+Authorization: Bearer {{caregiverToken}}
+
+###
+
+GET {{baseUrl}}/alerts?open=true
+Authorization: Bearer {{caregiverToken}}
+
+###
+
+GET {{baseUrl}}/alerts/{{eventId}}
+Authorization: Bearer {{caregiverToken}}
+
+###############################################################################
+# 7. Reopen a cancelled alert
+#
+# For the case where a caregiver is told an alert was cancelled, calls to check, and
+# nobody answers. Restarts the chain at that person's own tier.
+###############################################################################
+
+POST {{baseUrl}}/alerts/{{eventId}}/reopen
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "reason": "Called twice, no answer" }
+
+###############################################################################
+# 8. Acknowledge, with one location capture
+#
+# Stops every pending timer for this emergency. A second acknowledgement is refused.
+###############################################################################
+
+POST {{baseUrl}}/alerts/{{eventId}}/acknowledge
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "latitude": -1.2841, "longitude": 36.7822 }
+
+###############################################################################
+# 9. Call in an emergency responder directly
+#
+# Supersedes the automatic chain: clears pending timers and dispatches the responder
+# tier now, rather than after the tiers in between have each waited out their window.
+###############################################################################
+
+POST {{baseUrl}}/alerts/{{eventId}}/request-responder
+Authorization: Bearer {{caregiverToken}}
+
+###############################################################################
+# 10. Resolve with a recorded outcome
+#
+# One of: FALSE_ALARM, CANCELLED_BY_ELDER, HANDLED_AT_HOME, RESPONDER_ATTENDED,
+# HOSPITAL_TRANSFER, NO_RESPONSE
+###############################################################################
+
+POST {{baseUrl}}/alerts/{{eventId}}/resolve
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "outcome": "HANDLED_AT_HOME" }
+
+###############################################################################
+# 11. Access control, worth demonstrating deliberately
+###############################################################################
+
+# No token at all
+GET {{baseUrl}}/alerts
+
+###
+
+# A caregiver trying to raise an alert. Only the person being cared for may do that.
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "latitude": -1.2833, "longitude": 36.7833 }
+
+###
+
+# Wrong password and unknown number answer identically, so the endpoint cannot be used
+# to discover who is registered. Compare the two responses.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "phone": "{{caregiverPhone}}", "password": "wrong-password" }
+
+###
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "phone": "+254799999999", "password": "wrong-password" }
+
+###############################################################################
+# 12. Session handling
+###############################################################################
+
+# @name refreshed
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{caregiverLogin.response.body.refreshToken}}" }
+
+###
+
+# Replaying the first refresh token now fails, and revokes every session for that user,
+# because a token that verifies but no longer matches has already been spent.
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{caregiverLogin.response.body.refreshToken}}" }
+
+###
+
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{caregiverToken}}

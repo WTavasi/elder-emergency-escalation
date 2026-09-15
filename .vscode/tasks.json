@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Services: start",
+      "type": "shell",
+      "command": "docker compose up -d --wait",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Services: stop",
+      "type": "shell",
+      "command": "docker compose down",
+      "problemMatcher": []
+    },
+    {
+      "label": "API: run",
+      "type": "shell",
+      "command": "npm run dev",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "isBackground": true
+    },
+    {
+      "label": "Tests: unit",
+      "type": "shell",
+      "command": "npm test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests: integration",
+      "type": "shell",
+      "command": "npm run test:integration -w @mzazicare/api",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Demonstration",
+      "type": "shell",
+      "command": "npm run demo -w @mzazicare/api",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Database: browse",
+      "type": "shell",
+      "command": "npm run db:studio -w @mzazicare/api",
+      "problemMatcher": [],
+      "isBackground": true
+    }
+  ]
+}

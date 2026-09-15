@@ -33,7 +33,12 @@ export default tseslint.config(
   },
   {
     // Seed and build scripts are operator tools; printing is the point.
-    files: ['**/seed.mjs', 'packages/tokens/src/build.mjs', '**/*.config.{js,mjs}'],
+    files: [
+      '**/seed.mjs',
+      'apps/api/scripts/**/*.mjs',
+      'packages/tokens/src/build.mjs',
+      '**/*.config.{js,mjs}',
+    ],
     rules: { 'no-console': 'off' },
   },
   {
