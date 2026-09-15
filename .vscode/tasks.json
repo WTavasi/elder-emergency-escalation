@@ -6,7 +6,10 @@
       "type": "shell",
       "command": "docker compose up -d --wait",
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
     },
     {
       "label": "Services: stop",
@@ -19,14 +22,32 @@
       "type": "shell",
       "command": "npm run dev",
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "isBackground": true
+    },
+    {
+      "label": "Dashboard: run",
+      "type": "shell",
+      "command": "npm run dev:dashboard",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "group": "run"
+      },
+      "detail": "Serves the administrator dashboard on http://localhost:5173. Needs the API running."
     },
     {
       "label": "Tests: unit",
       "type": "shell",
       "command": "npm test",
-      "group": { "kind": "test", "isDefault": true },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "problemMatcher": []
     },
     {
@@ -41,7 +62,11 @@
       "type": "shell",
       "command": "npm run demo -w @mzazicare/api",
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
     },
     {
       "label": "Database: browse",

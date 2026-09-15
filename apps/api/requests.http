@@ -227,3 +227,79 @@ Content-Type: application/json
 
 POST {{baseUrl}}/auth/logout
 Authorization: Bearer {{caregiverToken}}
+
+###############################################################################
+# 13. What the administrator dashboard reads
+#
+# These are the only endpoints the dashboard calls. Running them here shows that the
+# console displays the API's answers rather than computing anything of its own.
+###############################################################################
+
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "phone": "{{adminPhone}}", "password": "{{password}}" }
+
+###
+
+@adminToken = {{adminLogin.response.body.accessToken}}
+
+# The live board. An administrator is scoped to every elder, which is the one thing
+# this role can do that no other role can.
+GET {{baseUrl}}/alerts?open=true&limit=200
+Authorization: Bearer {{adminToken}}
+
+###
+
+# The history view, narrowed the way the filter controls narrow it.
+GET {{baseUrl}}/alerts?state=ESCALATED&severity=CRITICAL&limit=50
+Authorization: Bearer {{adminToken}}
+
+###
+
+# An unrecognised state is refused here rather than reaching the database.
+GET {{baseUrl}}/alerts?state=NOT_A_STATE
+Authorization: Bearer {{adminToken}}
+
+###
+
+# One emergency in full: the care chain, the audit trail and every delivery attempt.
+# Replace the id with one from the list above.
+GET {{baseUrl}}/alerts/{{raised.response.body.id}}
+Authorization: Bearer {{adminToken}}
+
+###
+
+# The reporting figures. Median and mean response time, how far emergencies climbed,
+# and the per-channel delivery rates that justify the SMS fallback.
+GET {{baseUrl}}/dashboard/overview?days=30
+Authorization: Bearer {{adminToken}}
+
+###############################################################################
+# 14. What the dashboard cannot do
+#
+# An administrator oversees emergencies; they do not take ownership of one. The API
+# refuses all three actions for this account, which is why the console has no buttons
+# for them. This is enforcement, not a hidden control.
+###############################################################################
+
+# Expect 403. An administrator is not part of this elder's care chain.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/acknowledge
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+# Expect 403 for the same reason.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/request-responder
+Authorization: Bearer {{adminToken}}
+
+###
+
+# Expect 403. A caregiver account, by contrast, is refused the reporting endpoint,
+# because that one is restricted by role rather than by care relationship.
+GET {{baseUrl}}/dashboard/overview
+Authorization: Bearer {{caregiverToken}}

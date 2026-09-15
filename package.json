@@ -13,19 +13,20 @@
     "packages/*"
   ],
   "scripts": {
-    "prepare": "husky",
-    "postinstall": "npm run tokens:build --silent",
-    "dev": "npm run start:dev -w @mzazicare/api",
     "build": "npm run build --workspaces --if-present",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "dev": "npm run start:dev -w @mzazicare/api",
+    "dev:dashboard": "npm run dev -w @mzazicare/dashboard",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "postinstall": "npm run tokens:build --silent",
+    "prepare": "husky",
     "test": "npm run test --workspaces --if-present",
     "test:cov": "npm run test:cov --workspaces --if-present",
     "tokens:build": "node packages/tokens/src/build.mjs",
-    "tokens:check": "node packages/tokens/src/build.mjs --check"
+    "tokens:check": "node packages/tokens/src/build.mjs --check",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [
