@@ -4,6 +4,18 @@ The administrator console for the escalation framework. It shows every open
 emergency as it happens, the full record of any one of them, and the figures the
 evaluation chapter reports.
 
+## A note on native binaries
+
+`node_modules` is shared with any other machine that opens this folder, and Vite's
+bundler ships a compiled binary chosen for one platform at install time. If you ever
+see "Cannot find native binding", the tree was installed somewhere else. The fix is a
+clean reinstall on this machine:
+
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
 ## Running it
 
 The dashboard is a client. It needs the services and the API running first.
