@@ -82,6 +82,37 @@ jobs:
           path: apps/api/coverage/
           if-no-files-found: warn
 
+  dashboard:
+    name: Dashboard test and production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # A clean install on a clean machine. The bundler ships a compiled binary chosen
+      # for one platform at install time, so building here rather than on a developer's
+      # laptop is what keeps the production build honest: it is verified on every push
+      # by a machine nobody has configured by hand.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm run test -w @mzazicare/dashboard
+
+      - name: Production build
+        run: npm run build -w @mzazicare/dashboard
+
+      - name: Upload the built dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: apps/dashboard/dist/
+          if-no-files-found: error
+
   integration:
     name: Escalation end to end
     runs-on: ubuntu-latest
