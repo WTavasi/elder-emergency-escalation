@@ -14,6 +14,7 @@ import {
   Prisma,
   Role,
   type EmergencyEvent,
+  type Severity,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EscalationService } from '../escalation/escalation.service';
@@ -24,6 +25,7 @@ import { SeverityService } from '../severity/severity.service';
 import type { SeverityAssessment } from '../severity/severity.types';
 import type { CoverWindow } from '../common/time';
 import type { CreateAlertDto } from './dto/create-alert.dto';
+import type { AlertDetail, AlertSummary } from './alert-views';
 
 /** The columns of a care assignment that the severity policy reads. */
 interface CoverSource {
@@ -39,6 +41,61 @@ const OPEN_STATES: EventState[] = [
   EventState.ACKNOWLEDGED,
   EventState.ESCALATED,
 ];
+
+/** Narrowing applied to the history view. Every field is optional. */
+export interface AlertFilters {
+  onlyOpen?: boolean;
+  states?: EventState[];
+  severities?: Severity[];
+  elderId?: string;
+  from?: Date;
+  to?: Date;
+  limit?: number;
+  cursor?: string;
+}
+
+/**
+ * The relations every projected alert carries. Declared once and shared by the list
+ * and the detail query, so the two can never drift into disclosing different columns.
+ */
+const SUMMARY_INCLUDE = {
+  elder: { select: { id: true, name: true, homeAddressLabel: true } },
+  owner: { select: { id: true, name: true, role: true } },
+} satisfies Prisma.EmergencyEventInclude;
+
+type SummaryRow = Prisma.EmergencyEventGetPayload<{ include: typeof SUMMARY_INCLUDE }>;
+
+/**
+ * Projects a row onto the wire.
+ *
+ * Decimal becomes number and Date becomes an ISO string here rather than at the
+ * controller, because a Prisma Decimal serialises as an object and a Date serialises
+ * differently depending on the interceptor that touches it last. Doing it once means
+ * a client never has to guess which it received.
+ */
+function toSummary(row: SummaryRow): AlertSummary {
+  return {
+    eventId: row.id,
+    state: row.state,
+    severity: row.severity,
+    severityScore: row.severityScore,
+    currentTier: row.currentTier,
+    outcome: row.outcome,
+    elder: { id: row.elder.id, name: row.elder.name, addressLabel: row.elder.homeAddressLabel },
+    acknowledgedBy: row.owner,
+    latitude: Number(row.alertLatitude),
+    longitude: Number(row.alertLongitude),
+    addressLabel: row.alertAddressLabel,
+    triggeredAt: row.triggeredAt.toISOString(),
+    acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    deadlineAt: row.currentTierDeadlineAt?.toISOString() ?? null,
+    responderRequestedAt: row.responderRequestedAt?.toISOString() ?? null,
+    responseSeconds: row.acknowledgedAt
+      ? Math.round((row.acknowledgedAt.getTime() - row.triggeredAt.getTime()) / 1000)
+      : null,
+  };
+}
 
 /** Before anyone has taken ownership, so still cancellable by the elder. */
 const UNOWNED_STATES: EventState[] = [EventState.TRIGGERED, EventState.NOTIFIED];
@@ -310,8 +367,130 @@ export class AlertsService {
     return reopened;
   }
 
-  /** One emergency, if the caller is part of it. */
-  async findOne(eventId: string, userId: string, role: Role): Promise<EmergencyEvent> {
+  /** One emergency in full, if the caller is part of it. */
+  async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
+    const event = await this.requireVisible(eventId, userId, role);
+
+    const [row, chain, logs, deliveries] = await Promise.all([
+      this.prisma.emergencyEvent.findUniqueOrThrow({
+        where: { id: eventId },
+        include: SUMMARY_INCLUDE,
+      }),
+      this.prisma.careAssignment.findMany({
+        where: { elderlyId: event.elderlyId },
+        orderBy: { priorityOrder: 'asc' },
+        select: {
+          priorityOrder: true,
+          responder: { select: { id: true, name: true, role: true } },
+        },
+      }),
+      this.prisma.auditLog.findMany({
+        where: { eventId },
+        orderBy: { occurredAt: 'asc' },
+        include: { actor: { select: { id: true, name: true, role: true } } },
+      }),
+      this.prisma.notification.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'asc' },
+        include: { recipient: { select: { id: true, name: true, role: true } } },
+      }),
+    ]);
+
+    const triggeredAt = row.triggeredAt.getTime();
+
+    return {
+      ...toSummary(row),
+      severityFactors: row.severityFactors,
+      chain: chain.map((link) => ({
+        responderId: link.responder.id,
+        name: link.responder.name,
+        role: link.responder.role,
+        priorityOrder: link.priorityOrder,
+      })),
+      timeline: logs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        previousState: log.previousState,
+        newState: log.newState,
+        actor: log.actor,
+        detail: log.detail,
+        occurredAt: log.occurredAt.toISOString(),
+        secondsFromTrigger: Math.round((log.occurredAt.getTime() - triggeredAt) / 1000),
+      })),
+      deliveries: deliveries.map((delivery) => ({
+        id: delivery.id,
+        channel: delivery.channel,
+        status: delivery.status,
+        tier: delivery.tier,
+        recipient: delivery.recipient,
+        failureReason: delivery.failureReason ?? null,
+        sentAt: delivery.sentAt?.toISOString() ?? null,
+        deliveredAt: delivery.deliveredAt?.toISOString() ?? null,
+        acknowledgedAt: delivery.acknowledgedAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  /**
+   * Emergencies the caller is part of: their own if they are an elder, and those of
+   * every elder whose chain they belong to. A 404 rather than a 403 on an event they
+   * are not part of, so the API does not confirm that an id exists.
+   *
+   * The filters exist because the dashboard's history view would otherwise have to
+   * fetch everything and narrow it in the browser, which discloses more than the
+   * operator asked to see and stops working as soon as the table is large.
+   */
+  async findForUser(
+    userId: string,
+    role: Role,
+    filters: AlertFilters = {},
+  ): Promise<AlertSummary[]> {
+    const scope = await this.scopeFor(userId, role);
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 200);
+
+    const rows = await this.prisma.emergencyEvent.findMany({
+      where: {
+        ...scope,
+        ...(filters.onlyOpen ? { state: { in: OPEN_STATES } } : {}),
+        ...(filters.states?.length ? { state: { in: filters.states } } : {}),
+        ...(filters.severities?.length ? { severity: { in: filters.severities } } : {}),
+        ...(filters.elderId ? { elderlyId: filters.elderId } : {}),
+        ...(filters.from || filters.to
+          ? {
+              triggeredAt: {
+                ...(filters.from ? { gte: filters.from } : {}),
+                ...(filters.to ? { lte: filters.to } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: { triggeredAt: 'desc' },
+      include: SUMMARY_INCLUDE,
+      take: limit,
+      ...(filters.cursor ? { skip: 1, cursor: { id: filters.cursor } } : {}),
+    });
+
+    return rows.map(toSummary);
+  }
+
+  /** The events an administrator may see, expressed as a Prisma filter. */
+  private async scopeFor(userId: string, role: Role): Promise<Prisma.EmergencyEventWhereInput> {
+    if (role === Role.ADMINISTRATOR) return {};
+
+    const assignments = await this.prisma.careAssignment.findMany({
+      where: { responderId: userId },
+      select: { elderlyId: true },
+    });
+
+    return { elderlyId: { in: [userId, ...assignments.map((a) => a.elderlyId)] } };
+  }
+
+  /** Authorisation only. Returns the raw row so callers can project it themselves. */
+  private async requireVisible(
+    eventId: string,
+    userId: string,
+    role: Role,
+  ): Promise<EmergencyEvent> {
     const event = await this.requireEvent(eventId);
     if (role === Role.ADMINISTRATOR || event.elderlyId === userId) return event;
 
@@ -321,36 +500,6 @@ export class AlertsService {
     if (!assignment) throw new NotFoundException('Emergency not found');
 
     return event;
-  }
-
-  /**
-   * Emergencies the caller is part of: their own if they are an elder, and those of
-   * every elder whose chain they belong to. A 404 rather than a 403 on an event they
-   * are not part of, so the API does not confirm that an id exists.
-   */
-  async findForUser(userId: string, role: Role, onlyOpen = false): Promise<EmergencyEvent[]> {
-    const where =
-      role === Role.ADMINISTRATOR
-        ? {}
-        : {
-            elderlyId: {
-              in: [
-                userId,
-                ...(
-                  await this.prisma.careAssignment.findMany({
-                    where: { responderId: userId },
-                    select: { elderlyId: true },
-                  })
-                ).map((assignment) => assignment.elderlyId),
-              ],
-            },
-          };
-
-    return this.prisma.emergencyEvent.findMany({
-      where: onlyOpen ? { ...where, state: { in: OPEN_STATES } } : where,
-      orderBy: { triggeredAt: 'desc' },
-      take: 50,
-    });
   }
 
   private async requireEvent(eventId: string): Promise<EmergencyEvent> {

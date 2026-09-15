@@ -10,11 +10,13 @@ import {
   Query,
 } from '@nestjs/common';
 import { Role, type EmergencyEvent } from '@prisma/client';
+import type { AlertDetail, AlertSummary } from './alert-views';
 import { AlertsService } from './alerts.service';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateAlertDto } from './dto/create-alert.dto';
 import { ReopenAlertDto } from './dto/reopen-alert.dto';
+import { ListAlertsDto } from './dto/list-alerts.dto';
 
 @Controller('alerts')
 export class AlertsController {
@@ -51,19 +53,34 @@ export class AlertsController {
     return this.alerts.reopen(id, user.userId, dto.reason);
   }
 
+  /**
+   * The history view. Scoped to the caller's own care relationships, so the same
+   * endpoint serves a family member's short list and an administrator's whole table
+   * without either of them naming a scope the API would then have to police.
+   */
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('open') open?: string,
-  ): Promise<EmergencyEvent[]> {
-    return this.alerts.findForUser(user.userId, user.role, open === 'true');
+    @Query() query: ListAlertsDto,
+  ): Promise<AlertSummary[]> {
+    return this.alerts.findForUser(user.userId, user.role, {
+      onlyOpen: query.open,
+      states: query.state,
+      severities: query.severity,
+      elderId: query.elderId,
+      from: query.from,
+      to: query.to,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
   }
 
+  /** One emergency with its chain, its audit trail and every delivery attempt. */
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<EmergencyEvent> {
+  ): Promise<AlertDetail> {
     return this.alerts.findOne(id, user.userId, user.role);
   }
 }

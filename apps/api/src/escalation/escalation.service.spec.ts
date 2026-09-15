@@ -49,7 +49,12 @@ const event = (overrides: Record<string, unknown> = {}) => ({
 });
 
 interface PrismaMock {
-  emergencyEvent: { findUnique: jest.Mock; update: jest.Mock };
+  emergencyEvent: {
+    findUnique: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
+  };
   escalationRule: { findMany: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
   user: { findMany: jest.Mock };
@@ -59,9 +64,11 @@ interface PrismaMock {
 }
 
 let created = 1;
+let claimed: Record<string, unknown> | null = null;
 
 const buildPrisma = (): PrismaMock => {
   created = 1;
+  claimed = null;
   const mock: PrismaMock = {
     emergencyEvent: {
       findUnique: jest.fn().mockResolvedValue(event()),
@@ -70,6 +77,12 @@ const buildPrisma = (): PrismaMock => {
         .mockImplementation((args: { data: Record<string, unknown> }) =>
           Promise.resolve({ ...event(), ...args.data }),
         ),
+      // The conditional claim: one affected row means this caller won the race.
+      updateMany: jest.fn().mockImplementation((args: { data: Record<string, unknown> }) => {
+        claimed = { ...event(), ...args.data };
+        return Promise.resolve({ count: 1 });
+      }),
+      findUniqueOrThrow: jest.fn().mockImplementation(() => Promise.resolve(claimed ?? event())),
     },
     escalationRule: { findMany: jest.fn().mockResolvedValue(STANDARD_RULES) },
     careAssignment: {
@@ -391,6 +404,33 @@ describe('EscalationService', () => {
       await expect(build(prisma).acknowledge('event-1', 'stranger')).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('gives ownership to exactly one of two responders acknowledging at the same instant', async () => {
+      const prisma = buildPrisma();
+      // Both callers read the event before either wrote, so both see acknowledgedBy
+      // null and both pass the guard. The database decides between them: the second
+      // conditional update matches no row, because the first already set the column.
+      prisma.emergencyEvent.updateMany
+        .mockImplementationOnce((args: { data: Record<string, unknown> }) => {
+          claimed = { ...event(), ...args.data };
+          return Promise.resolve({ count: 1 });
+        })
+        .mockImplementationOnce(() => Promise.resolve({ count: 0 }));
+
+      const service = build(prisma);
+      const results = await Promise.allSettled([
+        service.acknowledge(event().id, 'caregiver-1'),
+        service.acknowledge(event().id, 'family-1'),
+      ]);
+
+      const won = results.filter((r) => r.status === 'fulfilled');
+      const lost = results.filter((r) => r.status === 'rejected');
+
+      expect(won).toHaveLength(1);
+      expect(lost).toHaveLength(1);
+      expect((lost[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictException);
+      expect(prisma.emergencyEvent.updateMany).toHaveBeenCalledTimes(2);
     });
 
     it('accepts a responder who was notified but is not in the chain', async () => {

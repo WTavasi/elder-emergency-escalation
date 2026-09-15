@@ -204,8 +204,15 @@ export class EscalationService {
     await this.timers.cancelAll(eventId);
 
     const acknowledged = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.emergencyEvent.update({
-        where: { id: eventId },
+      // NFR-04. The check above reads the event and then writes it as two separate
+      // statements, so two responders pressing "I am on my way" in the same instant
+      // can both find acknowledgedBy null and both be told they own the emergency.
+      // Ownership is therefore claimed by a conditional write: the database applies
+      // the WHERE and the SET atomically, so exactly one of the two updates can match
+      // a row. Zero affected rows means somebody else got there first, which is a
+      // conflict rather than a failure, and the loser is told so.
+      const claim = await tx.emergencyEvent.updateMany({
+        where: { id: eventId, acknowledgedBy: null, state: { in: OPEN_STATES } },
         data: {
           state: EventState.ACKNOWLEDGED,
           acknowledgedBy: userId,
@@ -215,6 +222,12 @@ export class EscalationService {
           responderLongitude: location ? new Prisma.Decimal(location.longitude) : null,
         },
       });
+
+      if (claim.count === 0) {
+        throw new ConflictException('Someone is already responding to this emergency');
+      }
+
+      const updated = await tx.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
 
       // One location capture, at the moment of acknowledgement. No background tracking.
       await tx.notification.updateMany({

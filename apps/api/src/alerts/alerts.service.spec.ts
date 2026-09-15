@@ -74,12 +74,14 @@ interface PrismaMock {
   careAssignment: { findFirst: jest.Mock; findMany: jest.Mock };
   emergencyEvent: {
     findUnique: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
     count: jest.Mock;
   };
-  auditLog: { create: jest.Mock; createMany: jest.Mock };
+  auditLog: { create: jest.Mock; createMany: jest.Mock; findMany: jest.Mock };
+  notification: { findMany: jest.Mock };
   $transaction: jest.Mock;
 }
 
@@ -92,6 +94,9 @@ const buildPrisma = (): PrismaMock => {
     },
     emergencyEvent: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve({ ...event(), elder: elder, owner: null })),
       findMany: jest.fn().mockResolvedValue([]),
       create: jest
         .fn()
@@ -108,7 +113,9 @@ const buildPrisma = (): PrismaMock => {
     auditLog: {
       create: jest.fn().mockResolvedValue({}),
       createMany: jest.fn().mockResolvedValue({ count: 2 }),
+      findMany: jest.fn().mockResolvedValue([]),
     },
+    notification: { findMany: jest.fn().mockResolvedValue([]) },
     $transaction: jest.fn(),
   };
   mock.$transaction.mockImplementation((fn: (tx: PrismaMock) => unknown) => fn(mock));
@@ -426,13 +433,42 @@ describe('AlertsService', () => {
 
     it('filters to open emergencies when asked', async () => {
       const prisma = buildPrisma();
-      await build(prisma).findForUser('caregiver-1', Role.CAREGIVER, true);
+      await build(prisma).findForUser('caregiver-1', Role.CAREGIVER, { onlyOpen: true });
 
       const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
         state: { in: EventState[] };
       };
       expect(where.state.in).toContain(EventState.TRIGGERED);
       expect(where.state.in).not.toContain(EventState.CANCELLED);
+    });
+
+    it('narrows by state, severity and date when the history view asks', async () => {
+      const prisma = buildPrisma();
+      const from = new Date('2026-01-01T00:00:00.000Z');
+      const to = new Date('2026-01-31T00:00:00.000Z');
+
+      await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, {
+        states: [EventState.ESCALATED],
+        severities: [Severity.CRITICAL],
+        from,
+        to,
+      });
+
+      const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
+        state: { in: EventState[] };
+        severity: { in: Severity[] };
+        triggeredAt: { gte: Date; lte: Date };
+      };
+      expect(where.state.in).toEqual([EventState.ESCALATED]);
+      expect(where.severity.in).toEqual([Severity.CRITICAL]);
+      expect(where.triggeredAt).toEqual({ gte: from, lte: to });
+    });
+
+    it('caps the page size, so a caller cannot ask for the whole table', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, { limit: 10_000 });
+
+      expect(prisma.emergencyEvent.findMany.mock.calls[0][0].take).toBe(200);
     });
   });
 });

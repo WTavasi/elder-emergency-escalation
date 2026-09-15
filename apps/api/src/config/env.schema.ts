@@ -105,6 +105,18 @@ export class EnvSchema {
   @Min(1)
   RECENT_ACTIVITY_HOURS: number = 6;
 
+  /**
+   * The acknowledgement time the system is evaluated against, in seconds.
+   *
+   * Configuration rather than a constant because it is a claim about what counts as
+   * an acceptable response, and that belongs to the deployment rather than to the
+   * code. The dashboard reports the percentage of emergencies answered within it.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  RESPONSE_TARGET_SECONDS: number = 300;
+
   @Type(() => Number)
   @IsInt()
   @Min(0)
