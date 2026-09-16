@@ -33,10 +33,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _submit() async {
     if (!(_form.currentState?.validate() ?? false)) return;
 
-    await context.read<AuthController>().signIn(
-          phone: _phone.text,
-          password: _password.text,
-        );
+    await context.read<AuthController>().signIn(phone: _phone.text, password: _password.text);
   }
 
   @override
@@ -74,10 +71,9 @@ class _SignInScreenState extends State<SignInScreen> {
                         labelText: 'Phone number',
                         hintText: '+254700000010',
                       ),
-                      validator: (String? value) =>
-                          (value == null || value.trim().length < 8)
-                              ? 'Enter the phone number this account uses.'
-                              : null,
+                      validator: (String? value) => (value == null || value.trim().length < 8)
+                          ? 'Enter the phone number this account uses.'
+                          : null,
                     ),
                     const SizedBox(height: MzaziSpace.s16),
                     TextFormField(

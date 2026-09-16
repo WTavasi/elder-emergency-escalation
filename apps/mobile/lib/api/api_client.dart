@@ -105,7 +105,11 @@ class ApiClient {
   }
 
   Future<Emergency> cancelAlert(String id) async {
-    final Map<String, dynamic> body = await _send('POST', '/alerts/$id/cancel', body: const <String, dynamic>{});
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/alerts/$id/cancel',
+      body: const <String, dynamic>{},
+    );
     return Emergency.fromJson(body);
   }
 

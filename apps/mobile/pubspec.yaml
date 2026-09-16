@@ -19,16 +19,16 @@ dependencies:
   # A plain HTTP client. The API is eight endpoints of JSON over REST, and a heavier
   # client would bring interceptors, transformers and a cache that this app has no use
   # for, in exchange for another dependency to explain.
-  http: ^1.6.0
+  http: ^1.2.0
 
   # The tokens are a credential on a device an elder may leave on a table, so they go
   # to the Keychain and the Android Keystore rather than to shared preferences.
-  flutter_secure_storage: ^10.0.0
+  flutter_secure_storage: ^9.2.2
 
   # Deliberately the smallest thing that works for this app's state. The elder path has
   # one signed-in session and one live emergency; a full state-management framework
   # would be more machinery than either of those needs.
-  provider: ^6.1.6
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:

@@ -12,13 +12,14 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 /// cannot quietly pass a test that was written to a copy of the old value.
 void main() {
   Widget host(Widget child, {AppAudience audience = AppAudience.elder}) => MaterialApp(
-        theme: MzaziTheme.light(audience),
-        home: Scaffold(body: child),
-      );
+    theme: MzaziTheme.light(audience),
+    home: Scaffold(body: child),
+  );
 
   group('the panic control', () {
-    testWidgets('is never smaller than the elder touch target, even in a cramped space',
-        (WidgetTester tester) async {
+    testWidgets('is never smaller than the elder touch target, even in a cramped space', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         host(
           // Deliberately far smaller than the floor. The control must refuse to shrink
@@ -52,28 +53,18 @@ void main() {
 
     testWidgets('carries a label a screen reader can announce', (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await tester.pumpWidget(
-        host(const PanicButton(onPressed: _noop, label: 'Get help')),
-      );
+      await tester.pumpWidget(host(const PanicButton(onPressed: _noop, label: 'Get help')));
 
-      expect(
-        find.bySemanticsLabel(RegExp('Get help now')),
-        findsOneWidget,
-      );
+      expect(find.bySemanticsLabel(RegExp('Get help now')), findsOneWidget);
       handle.dispose();
     });
 
-    testWidgets('does not respond when disabled, so one press cannot become two',
-        (WidgetTester tester) async {
+    testWidgets('does not respond when disabled, so one press cannot become two', (
+      WidgetTester tester,
+    ) async {
       int presses = 0;
       await tester.pumpWidget(
-        host(
-          PanicButton(
-            onPressed: () => presses += 1,
-            label: 'Get help',
-            enabled: false,
-          ),
-        ),
+        host(PanicButton(onPressed: () => presses += 1, label: 'Get help', enabled: false)),
       );
 
       await tester.tap(find.byType(InkWell));
@@ -120,9 +111,7 @@ void main() {
     test('are at least one touch target tall for the audience', () {
       for (final AppAudience audience in AppAudience.values) {
         final ThemeData theme = MzaziTheme.light(audience);
-        final Size? filled = theme.filledButtonTheme.style?.minimumSize?.resolve(
-          <WidgetState>{},
-        );
+        final Size? filled = theme.filledButtonTheme.style?.minimumSize?.resolve(<WidgetState>{});
         final Size? outlined = theme.outlinedButtonTheme.style?.minimumSize?.resolve(
           <WidgetState>{},
         );

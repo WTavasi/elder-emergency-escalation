@@ -17,32 +17,32 @@ enum AppAudience { elder, standard }
 /// there are none.
 abstract final class MzaziTheme {
   static ThemeData light(AppAudience audience) => _build(
-        audience: audience,
-        brightness: Brightness.light,
-        bg: MzaziColorsLight.bg,
-        surface: MzaziColorsLight.surface,
-        surfaceSunk: MzaziColorsLight.surfaceSunk,
-        text: MzaziColorsLight.text,
-        textSoft: MzaziColorsLight.textSoft,
-        line: MzaziColorsLight.line,
-        emergency: MzaziColorsLight.emergency,
-        onEmergency: MzaziColorsLight.onEmergency,
-        focus: MzaziColorsLight.focus,
-      );
+    audience: audience,
+    brightness: Brightness.light,
+    bg: MzaziColorsLight.bg,
+    surface: MzaziColorsLight.surface,
+    surfaceSunk: MzaziColorsLight.surfaceSunk,
+    text: MzaziColorsLight.text,
+    textSoft: MzaziColorsLight.textSoft,
+    line: MzaziColorsLight.line,
+    emergency: MzaziColorsLight.emergency,
+    onEmergency: MzaziColorsLight.onEmergency,
+    focus: MzaziColorsLight.focus,
+  );
 
   static ThemeData dark(AppAudience audience) => _build(
-        audience: audience,
-        brightness: Brightness.dark,
-        bg: MzaziColorsDark.bg,
-        surface: MzaziColorsDark.surface,
-        surfaceSunk: MzaziColorsDark.surfaceSunk,
-        text: MzaziColorsDark.text,
-        textSoft: MzaziColorsDark.textSoft,
-        line: MzaziColorsDark.line,
-        emergency: MzaziColorsDark.emergency,
-        onEmergency: MzaziColorsDark.onEmergency,
-        focus: MzaziColorsDark.focus,
-      );
+    audience: audience,
+    brightness: Brightness.dark,
+    bg: MzaziColorsDark.bg,
+    surface: MzaziColorsDark.surface,
+    surfaceSunk: MzaziColorsDark.surfaceSunk,
+    text: MzaziColorsDark.text,
+    textSoft: MzaziColorsDark.textSoft,
+    line: MzaziColorsDark.line,
+    emergency: MzaziColorsDark.emergency,
+    onEmergency: MzaziColorsDark.onEmergency,
+    focus: MzaziColorsDark.focus,
+  );
 
   static double bodySize(AppAudience audience) =>
       audience == AppAudience.elder ? MzaziTypeElder.body : MzaziTypeStandard.body;
@@ -143,9 +143,7 @@ abstract final class MzaziTheme {
           backgroundColor: emergency,
           foregroundColor: onEmergency,
           textStyle: textTheme.labelLarge,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(MzaziRadius.input),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.input)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -154,9 +152,7 @@ abstract final class MzaziTheme {
           foregroundColor: text,
           textStyle: textTheme.labelLarge,
           side: BorderSide(color: line),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(MzaziRadius.input),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.input)),
         ),
       ),
       inputDecorationTheme: InputDecorationThemeData(
@@ -167,15 +163,11 @@ abstract final class MzaziTheme {
           vertical: MzaziSpace.s16,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            elder ? MzaziRadius.elderInput : MzaziRadius.input,
-          ),
+          borderRadius: BorderRadius.circular(elder ? MzaziRadius.elderInput : MzaziRadius.input),
           borderSide: BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(
-            elder ? MzaziRadius.elderInput : MzaziRadius.input,
-          ),
+          borderRadius: BorderRadius.circular(elder ? MzaziRadius.elderInput : MzaziRadius.input),
           // Three logical pixels, because a focus ring that can only be seen by
           // someone looking for it is not doing its job.
           borderSide: BorderSide(color: focus, width: 3),

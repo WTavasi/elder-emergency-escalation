@@ -26,10 +26,9 @@ class MzaziCareApp extends StatelessWidget {
 
     // The elder scale until we know otherwise. A caregiver seeing one oversized frame
     // for an instant is harmless; an elder seeing a 16pt screen is not.
-    final AppAudience audience =
-        auth.account?.role == Role.elder || auth.account == null
-            ? AppAudience.elder
-            : AppAudience.standard;
+    final AppAudience audience = auth.account?.role == Role.elder || auth.account == null
+        ? AppAudience.elder
+        : AppAudience.standard;
 
     return MaterialApp(
       title: 'MzaziCare',
@@ -57,12 +56,12 @@ class _Home extends StatelessWidget {
 
     return switch (auth.account!.role) {
       Role.elder => ChangeNotifierProvider<AlertController>(
-          // Keyed on the account, so signing out and back in as somebody else builds a
-          // fresh controller rather than inheriting the previous person's emergency.
-          key: ValueKey<String>(auth.account!.id),
-          create: (_) => AlertController(api: api, home: auth.account!.home),
-          child: const ElderHomeScreen(),
-        ),
+        // Keyed on the account, so signing out and back in as somebody else builds a
+        // fresh controller rather than inheriting the previous person's emergency.
+        key: ValueKey<String>(auth.account!.id),
+        create: (_) => AlertController(api: api, home: auth.account!.home),
+        child: const ElderHomeScreen(),
+      ),
       _ => const _NotBuiltYet(),
     };
   }
@@ -90,10 +89,7 @@ class _NotBuiltYet extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 24),
-                OutlinedButton(
-                  onPressed: () => auth.signOut(),
-                  child: const Text('Sign out'),
-                ),
+                OutlinedButton(onPressed: () => auth.signOut(), child: const Text('Sign out')),
               ],
             ),
           ),

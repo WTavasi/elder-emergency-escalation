@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Declared in the main manifest, not only the debug one. This app talks to an
+         API; a release build without it would install and then fail at the first
+         request, which is a fault nobody finds until it is in somebody's hands. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="mzazicare"
+        android:label="MzaziCare"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

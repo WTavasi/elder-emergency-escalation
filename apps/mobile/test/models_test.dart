@@ -50,12 +50,20 @@ void main() {
   group('Account', () {
     test('reads an elder home, and survives a role that has none', () {
       final Account elder = Account.fromJson(<String, dynamic>{
-        'id': 'e', 'name': 'Grace', 'phone': '+254700000010', 'email': null, 'role': 'ELDER',
+        'id': 'e',
+        'name': 'Grace',
+        'phone': '+254700000010',
+        'email': null,
+        'role': 'ELDER',
         'home': <String, dynamic>{'latitude': -1.1, 'longitude': 36.8, 'addressLabel': 'Home'},
       });
       final Account carer = Account.fromJson(<String, dynamic>{
-        'id': 'c', 'name': 'Mary', 'phone': '+254700000020', 'email': null,
-        'role': 'CAREGIVER', 'home': null,
+        'id': 'c',
+        'name': 'Mary',
+        'phone': '+254700000020',
+        'email': null,
+        'role': 'CAREGIVER',
+        'home': null,
       });
 
       expect(elder.home?.latitude, -1.1);
@@ -64,7 +72,11 @@ void main() {
 
     test('survives a half location rather than sending a meaningless coordinate', () {
       final Account elder = Account.fromJson(<String, dynamic>{
-        'id': 'e', 'name': 'Grace', 'phone': '+254700000010', 'email': null, 'role': 'ELDER',
+        'id': 'e',
+        'name': 'Grace',
+        'phone': '+254700000010',
+        'email': null,
+        'role': 'ELDER',
         'home': <String, dynamic>{'latitude': -1.1, 'longitude': null},
       });
 

@@ -37,8 +37,8 @@ class AlertController extends ChangeNotifier {
     required GeoPoint? home,
     this.cancelWindow = const Duration(seconds: 10),
     this.pollInterval = const Duration(seconds: 5),
-  })  : _api = api,
-        _home = home;
+  }) : _api = api,
+       _home = home;
 
   final ApiClient _api;
   final GeoPoint? _home;
@@ -62,7 +62,8 @@ class AlertController extends ChangeNotifier {
   int get secondsLeft => _secondsLeft;
 
   /// Whether the panic control should accept a press.
-  bool get canRaise => _phase == AlertPhase.idle || _phase == AlertPhase.cancelled || _phase == AlertPhase.closed;
+  bool get canRaise =>
+      _phase == AlertPhase.idle || _phase == AlertPhase.cancelled || _phase == AlertPhase.closed;
 
   /// Whether this app can raise an alert at all. False only if the account has no
   /// registered home and no other location source, which is a setup fault rather than
@@ -74,7 +75,8 @@ class AlertController extends ChangeNotifier {
 
     final GeoPoint? at = _home;
     if (at == null) {
-      _error = 'This account has no registered home address, so help cannot be sent yet. '
+      _error =
+          'This account has no registered home address, so help cannot be sent yet. '
           'Ask your caregiver to add it.';
       notifyListeners();
       return;

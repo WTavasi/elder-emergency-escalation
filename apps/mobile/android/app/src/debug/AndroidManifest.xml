@@ -4,4 +4,10 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Android blocks plain HTTP by default, and the development API is plain HTTP on
+         the host machine. This overlay applies to the debug build only: a release build
+         keeps the default, so the shipped app cannot talk to an unencrypted server even
+         if somebody points it at one by mistake. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

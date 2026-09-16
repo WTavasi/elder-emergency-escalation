@@ -26,24 +26,20 @@ class Exchange {
   int index = 0;
 
   final MockClient transport = MockClient((http.Request request) async {
-    calls.add(
-      Exchange(request.method, request.url.path, request.headers['Authorization']),
-    );
+    calls.add(Exchange(request.method, request.url.path, request.headers['Authorization']));
     final List<http.Response> answers = handler(request, index);
     index += 1;
     return answers.first;
   });
 
-  return (
-    api: ApiClient(baseUrl: 'http://api.test/api/v1', httpClient: transport),
-    calls: calls,
-  );
+  return (api: ApiClient(baseUrl: 'http://api.test/api/v1', httpClient: transport), calls: calls);
 }
 
-http.Response json(Object body, [int status = 200]) =>
-    http.Response(jsonEncode(body), status, headers: const <String, String>{
-      'content-type': 'application/json',
-    });
+http.Response json(Object body, [int status = 200]) => http.Response(
+  jsonEncode(body),
+  status,
+  headers: const <String, String>{'content-type': 'application/json'},
+);
 
 Map<String, dynamic> sessionBody({String access = 'access-1', String refresh = 'refresh-1'}) =>
     <String, dynamic>{
@@ -66,15 +62,14 @@ Map<String, dynamic> sessionBody({String access = 'access-1', String refresh = '
 Map<String, dynamic> emergencyBody({
   String state = 'NOTIFIED',
   Map<String, dynamic>? acknowledgedBy,
-}) =>
-    <String, dynamic>{
-      'id': 'event-1',
-      'state': state,
-      'severity': 'ELEVATED',
-      'currentTier': 1,
-      'triggeredAt': '2026-09-16T10:00:00.000Z',
-      if (acknowledgedBy != null) 'acknowledgedBy': acknowledgedBy,
-    };
+}) => <String, dynamic>{
+  'id': 'event-1',
+  'state': state,
+  'severity': 'ELEVATED',
+  'currentTier': 1,
+  'triggeredAt': '2026-09-16T10:00:00.000Z',
+  if (acknowledgedBy != null) 'acknowledgedBy': acknowledgedBy,
+};
 
 const GeoPoint testHome = GeoPoint(
   latitude: -1.286389,

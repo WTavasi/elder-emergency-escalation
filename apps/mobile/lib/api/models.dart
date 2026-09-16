@@ -15,13 +15,13 @@ enum Role {
   administrator;
 
   static Role parse(String value) => switch (value) {
-        'ELDER' => Role.elder,
-        'CAREGIVER' => Role.caregiver,
-        'FAMILY_MEMBER' => Role.familyMember,
-        'EMERGENCY_RESPONDER' => Role.emergencyResponder,
-        'ADMINISTRATOR' => Role.administrator,
-        _ => throw FormatException('Unknown role: $value'),
-      };
+    'ELDER' => Role.elder,
+    'CAREGIVER' => Role.caregiver,
+    'FAMILY_MEMBER' => Role.familyMember,
+    'EMERGENCY_RESPONDER' => Role.emergencyResponder,
+    'ADMINISTRATOR' => Role.administrator,
+    _ => throw FormatException('Unknown role: $value'),
+  };
 }
 
 enum EventState {
@@ -33,24 +33,23 @@ enum EventState {
   cancelled;
 
   static EventState parse(String value) => switch (value) {
-        'TRIGGERED' => EventState.triggered,
-        'NOTIFIED' => EventState.notified,
-        'ACKNOWLEDGED' => EventState.acknowledged,
-        'ESCALATED' => EventState.escalated,
-        'RESOLVED' => EventState.resolved,
-        'CANCELLED' => EventState.cancelled,
-        _ => throw FormatException('Unknown state: $value'),
-      };
+    'TRIGGERED' => EventState.triggered,
+    'NOTIFIED' => EventState.notified,
+    'ACKNOWLEDGED' => EventState.acknowledged,
+    'ESCALATED' => EventState.escalated,
+    'RESOLVED' => EventState.resolved,
+    'CANCELLED' => EventState.cancelled,
+    _ => throw FormatException('Unknown state: $value'),
+  };
 
   /// Whether this emergency is still live. Drives what the elder is shown.
   bool get isOpen => switch (this) {
-        EventState.triggered ||
-        EventState.notified ||
-        EventState.acknowledged ||
-        EventState.escalated =>
-          true,
-        EventState.resolved || EventState.cancelled => false,
-      };
+    EventState.triggered ||
+    EventState.notified ||
+    EventState.acknowledged ||
+    EventState.escalated => true,
+    EventState.resolved || EventState.cancelled => false,
+  };
 }
 
 enum Severity {
@@ -59,20 +58,16 @@ enum Severity {
   critical;
 
   static Severity parse(String value) => switch (value) {
-        'STANDARD' => Severity.standard,
-        'ELEVATED' => Severity.elevated,
-        'CRITICAL' => Severity.critical,
-        _ => throw FormatException('Unknown severity: $value'),
-      };
+    'STANDARD' => Severity.standard,
+    'ELEVATED' => Severity.elevated,
+    'CRITICAL' => Severity.critical,
+    _ => throw FormatException('Unknown severity: $value'),
+  };
 }
 
 /// Where an emergency is raised from.
 class GeoPoint {
-  const GeoPoint({
-    required this.latitude,
-    required this.longitude,
-    this.addressLabel,
-  });
+  const GeoPoint({required this.latitude, required this.longitude, this.addressLabel});
 
   final double latitude;
   final double longitude;
@@ -112,40 +107,36 @@ class Account {
   final GeoPoint? home;
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        phone: json['phone'] as String,
-        role: Role.parse(json['role'] as String),
-        home: GeoPoint.fromJson(json['home'] as Map<String, dynamic>?),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    phone: json['phone'] as String,
+    role: Role.parse(json['role'] as String),
+    home: GeoPoint.fromJson(json['home'] as Map<String, dynamic>?),
+  );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        'phone': phone,
-        'role': switch (role) {
-          Role.elder => 'ELDER',
-          Role.caregiver => 'CAREGIVER',
-          Role.familyMember => 'FAMILY_MEMBER',
-          Role.emergencyResponder => 'EMERGENCY_RESPONDER',
-          Role.administrator => 'ADMINISTRATOR',
-        },
-        if (home != null)
-          'home': <String, dynamic>{
-            'latitude': home!.latitude,
-            'longitude': home!.longitude,
-            'addressLabel': home!.addressLabel,
-          },
-      };
+    'id': id,
+    'name': name,
+    'phone': phone,
+    'role': switch (role) {
+      Role.elder => 'ELDER',
+      Role.caregiver => 'CAREGIVER',
+      Role.familyMember => 'FAMILY_MEMBER',
+      Role.emergencyResponder => 'EMERGENCY_RESPONDER',
+      Role.administrator => 'ADMINISTRATOR',
+    },
+    if (home != null)
+      'home': <String, dynamic>{
+        'latitude': home!.latitude,
+        'longitude': home!.longitude,
+        'addressLabel': home!.addressLabel,
+      },
+  };
 }
 
 /// A session: who is signed in, and the two tokens that prove it.
 class Session {
-  const Session({
-    required this.account,
-    required this.accessToken,
-    required this.refreshToken,
-  });
+  const Session({required this.account, required this.accessToken, required this.refreshToken});
 
   final Account account;
   final String accessToken;
@@ -155,16 +146,16 @@ class Session {
       Session(account: account, accessToken: access, refreshToken: refresh);
 
   factory Session.fromJson(Map<String, dynamic> json) => Session(
-        account: Account.fromJson(json['user'] as Map<String, dynamic>),
-        accessToken: json['accessToken'] as String,
-        refreshToken: json['refreshToken'] as String,
-      );
+    account: Account.fromJson(json['user'] as Map<String, dynamic>),
+    accessToken: json['accessToken'] as String,
+    refreshToken: json['refreshToken'] as String,
+  );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'user': account.toJson(),
-        'accessToken': accessToken,
-        'refreshToken': refreshToken,
-      };
+    'user': account.toJson(),
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+  };
 }
 
 /// One emergency, as the elder's own screen needs it.
@@ -201,8 +192,9 @@ class Emergency {
       severity: Severity.parse(json['severity'] as String),
       currentTier: (json['currentTier'] as num).toInt(),
       triggeredAt: DateTime.parse(json['triggeredAt'] as String).toLocal(),
-      acknowledgedByName:
-          acknowledgedBy is Map<String, dynamic> ? acknowledgedBy['name'] as String? : null,
+      acknowledgedByName: acknowledgedBy is Map<String, dynamic>
+          ? acknowledgedBy['name'] as String?
+          : null,
     );
   }
 }

@@ -22,23 +22,17 @@ void main() {
   group('raising', () {
     test('sends one emergency however many times the control is pressed', () async {
       int raises = 0;
-      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int index) {
-          if (request.url.path.endsWith('/alerts')) raises += 1;
-          return <http.Response>[json(emergencyBody())];
-        },
-      );
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int index) {
+        if (request.url.path.endsWith('/alerts')) raises += 1;
+        return <http.Response>[json(emergencyBody())];
+      });
 
       final AlertController alerts = build(t.api);
 
       // Three presses in the same instant, which is exactly what a frightened person
       // does. The controller refuses the second and third, because the first has
       // already moved it out of the state that accepts a press.
-      await Future.wait<void>(<Future<void>>[
-        alerts.raise(),
-        alerts.raise(),
-        alerts.raise(),
-      ]);
+      await Future.wait<void>(<Future<void>>[alerts.raise(), alerts.raise(), alerts.raise()]);
 
       expect(raises, 1);
       alerts.dispose();

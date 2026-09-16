@@ -12,12 +12,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 /// There is no press animation and no ripple. Feedback is the screen changing to the
 /// countdown, which is the thing that actually needs to be noticed.
 class PanicButton extends StatelessWidget {
-  const PanicButton({
-    required this.onPressed,
-    required this.label,
-    this.enabled = true,
-    super.key,
-  });
+  const PanicButton({required this.onPressed, required this.label, this.enabled = true, super.key});
 
   final VoidCallback onPressed;
   final String label;

@@ -53,11 +53,7 @@ class _Header extends StatelessWidget {
     return Row(
       children: <Widget>[
         Expanded(
-          child: Text(
-            name,
-            style: theme.textTheme.titleLarge,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: Text(name, style: theme.textTheme.titleLarge, overflow: TextOverflow.ellipsis),
         ),
         // Deliberately plain and deliberately small next to the panic control. Signing
         // out is the last thing anybody needs on this screen, and it must never be
@@ -83,15 +79,15 @@ class _Body extends StatelessWidget {
       AlertPhase.cancellable => _Cancellable(alerts: alerts),
       AlertPhase.live => _Live(alerts: alerts),
       AlertPhase.cancelled => _Finished(
-          alerts: alerts,
-          headline: 'Cancelled',
-          detail: 'Nobody is being called. You can press for help again at any time.',
-        ),
+        alerts: alerts,
+        headline: 'Cancelled',
+        detail: 'Nobody is being called. You can press for help again at any time.',
+      ),
       AlertPhase.closed => _Finished(
-          alerts: alerts,
-          headline: 'This is finished',
-          detail: 'Your emergency has been closed. You can press for help again at any time.',
-        ),
+        alerts: alerts,
+        headline: 'This is finished',
+        detail: 'Your emergency has been closed. You can press for help again at any time.',
+      ),
     };
   }
 }

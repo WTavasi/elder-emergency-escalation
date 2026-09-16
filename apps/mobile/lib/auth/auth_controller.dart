@@ -9,8 +9,8 @@ import 'session_store.dart';
 /// Who is signed in, and how that changes.
 class AuthController extends ChangeNotifier {
   AuthController({required ApiClient api, required SessionStore store})
-      : _api = api,
-        _store = store {
+    : _api = api,
+      _store = store {
     // The client rotates tokens on its own when one expires, and it ends the session
     // when a refresh is refused. Both have to reach the app: the first so the new
     // tokens are persisted, the second so the person is returned to sign-in rather

@@ -112,12 +112,10 @@ void main() {
   group('raising an alert', () {
     test('sends the location exactly once, in the request that raises it', () async {
       late http.Request captured;
-      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int index) {
-          if (index == 1) captured = request;
-          return <http.Response>[index == 0 ? json(sessionBody()) : json(emergencyBody())];
-        },
-      );
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int index) {
+        if (index == 1) captured = request;
+        return <http.Response>[index == 0 ? json(sessionBody()) : json(emergencyBody())];
+      });
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
       await t.api.raiseAlert(testHome);
