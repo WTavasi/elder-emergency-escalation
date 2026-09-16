@@ -5,6 +5,7 @@ import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { HSTS_HEADER, SECURITY_HEADERS } from './common/security-headers';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
@@ -14,6 +15,25 @@ async function bootstrap(): Promise<void> {
   // /health stays outside the version prefix so platform health checks have a stable
   // address that never moves with an API version.
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+
+  // Before anything else, so a response produced by an error filter carries them too.
+  const production = config.get<string>('NODE_ENV') === 'production';
+  app.use(
+    (
+      _request: unknown,
+      response: { setHeader(name: string, value: string): void },
+      next: () => void,
+    ) => {
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        response.setHeader(name, value);
+      }
+      if (production) response.setHeader('Strict-Transport-Security', HSTS_HEADER);
+      next();
+    },
+  );
+
+  // Express announces itself by default, which tells an attacker what to look up.
+  app.getHttpAdapter().getInstance().disable?.('x-powered-by');
 
   app.useGlobalPipes(
     new ValidationPipe({

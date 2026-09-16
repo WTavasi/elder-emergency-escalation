@@ -10,7 +10,9 @@ const buildConfig = (overrides: Record<string, string> = {}) => {
   };
   return {
     getOrThrow: (key: string) => values[key],
-    get: (key: string) => values[key],
+    // The real ConfigService returns the fallback for a key it does not hold, and a
+    // stub that returns undefined instead hides bugs that only appear in production.
+    get: (key: string, fallback?: unknown) => values[key] ?? fallback,
   } as unknown as ConfigService;
 };
 
@@ -156,5 +158,26 @@ describe('AfricasTalkingSmsProvider', () => {
     await expect(
       new AfricasTalkingSmsProvider(buildConfig(), fetchImpl).send(message),
     ).rejects.toThrow('ENOTFOUND');
+  });
+
+  describe('timeouts', () => {
+    it("gives the request a deadline, because Node's fetch has none of its own", async () => {
+      const fetchImpl = jest.fn().mockResolvedValue(reply(200, accepted));
+      await new AfricasTalkingSmsProvider(buildConfig(), fetchImpl).send(message);
+
+      const init = fetchImpl.mock.calls[0][1] as { signal?: AbortSignal };
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('reports a timeout as a throw, so the queue retries rather than giving up', async () => {
+      const aborted = Object.assign(new Error('aborted'), { name: 'TimeoutError' });
+      const fetchImpl = jest.fn().mockRejectedValue(aborted);
+
+      // A gateway that did not answer in time may well answer the next attempt, and an
+      // SMS fallback is the last channel there is.
+      await expect(
+        new AfricasTalkingSmsProvider(buildConfig(), fetchImpl).send(message),
+      ).rejects.toThrow('no response within');
+    });
   });
 });

@@ -16,6 +16,7 @@
     "prisma:format": "prisma format",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
+    "retention:sweep": "nest build && node dist/retention/retention.cli.js",
     "start": "nest start",
     "start:debug": "nest start --debug --watch",
     "start:dev": "nest start --watch",

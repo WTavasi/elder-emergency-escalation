@@ -146,6 +146,7 @@ npm run tokens:check                          # the contrast gate
 npm run db:migrate -w @mzazicare/api          # create or update the schema
 npm run db:seed -w @mzazicare/api             # synthetic development data
 npm run db:studio -w @mzazicare/api           # browse the database
+npm run retention:sweep -w @mzazicare/api     # run one retention sweep and report it
 ```
 
 ## Data protection
@@ -154,8 +155,9 @@ The system processes location and contact data about people who are frequently n
 ones operating the app. It is governed by the Kenya Data Protection Act 2019 and the
 Data Protection (General) Regulations 2021.
 
-Consent is recorded as data. Retention windows are configuration, enforced by a
-scheduled job. A responder's location is captured once, at the moment they take
+Consent is recorded as data. Retention windows are configuration, enforced by a daily
+sweep that deletes closed emergencies and expired audit entries; it can also be run on
+demand with `npm run retention:sweep -w @mzazicare/api`. A responder's location is captured once, at the moment they take
 responsibility, with no background or proximity tracking. Neither surface contains
 analytics, tracking or any third-party embed, and the dashboard sets no cookies, which
 is why it asks for no cookie consent. The console states all of this on its own data

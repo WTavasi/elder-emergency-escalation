@@ -1,5 +1,6 @@
-import { Type, plainToInstance } from 'class-transformer';
+import { Transform, Type, plainToInstance } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsIn,
   Matches,
@@ -148,6 +149,45 @@ export class EnvSchema {
   @IsInt()
   @Min(1)
   RETENTION_AUDIT_LOG_DAYS: number = 365;
+
+  /**
+   * Lets a deployment turn the sweep off without removing the windows themselves.
+   *
+   * Needed because the integration suite and the seed both create data with deliberate
+   * ages, and a sweep running underneath them would be a test that fails occasionally
+   * for a reason nobody can reproduce.
+   */
+  @Transform(({ value }) => (value === undefined ? true : value === 'true' || value === true))
+  @IsBoolean()
+  RETENTION_ENABLED: boolean = true;
+
+  /**
+   * How long to wait for a notification provider before giving up, milliseconds.
+   *
+   * Node's fetch has no default timeout at all, so without this a stalled connection
+   * holds a queued job until its lock expires. Ten seconds is long enough for a slow
+   * mobile gateway and short enough that three attempts still finish inside the first
+   * escalation window.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1_000)
+  @Max(60_000)
+  PROVIDER_TIMEOUT_MS: number = 10_000;
+
+  /**
+   * Lets a deployment turn rate limiting off, which the integration suite needs: it
+   * signs in repeatedly from one address within seconds, and a limit would make it
+   * fail for a reason that has nothing to do with escalation.
+   */
+  @Transform(({ value }) => (value === undefined ? true : value === 'true' || value === true))
+  @IsBoolean()
+  RATE_LIMIT_ENABLED: boolean = true;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  RETENTION_INTERVAL_HOURS: number = 24;
 
   @Type(() => Number)
   @IsInt()
