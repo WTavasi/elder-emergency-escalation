@@ -228,8 +228,54 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(buildUser({ refreshTokenHash: 'abc' }));
 
       const summary = await buildService(prisma).me('user-1');
-      expect(Object.keys(summary).sort()).toEqual(['email', 'id', 'name', 'phone', 'role']);
+      expect(Object.keys(summary).sort()).toEqual(['email', 'home', 'id', 'name', 'phone', 'role']);
       expect(JSON.stringify(summary)).not.toContain('scrypt');
+    });
+
+    it('gives an elder their own registered home, which the app needs to raise an alert', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({
+          role: Role.ELDER,
+          homeLatitude: new Prisma.Decimal('-1.286389'),
+          homeLongitude: new Prisma.Decimal('36.817223'),
+          homeAddressLabel: 'Kilimani, Nairobi',
+        }),
+      );
+
+      const summary = await buildService(prisma).me('user-1');
+
+      // Numbers rather than Decimals, because this crosses the wire to a client that
+      // has no such type.
+      expect(summary.home).toEqual({
+        latitude: -1.286389,
+        longitude: 36.817223,
+        addressLabel: 'Kilimani, Nairobi',
+      });
+    });
+
+    it('gives a caregiver no home at all', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({
+          role: Role.CAREGIVER,
+          homeLatitude: new Prisma.Decimal('-1.286389'),
+          homeLongitude: new Prisma.Decimal('36.817223'),
+        }),
+      );
+
+      // A caregiver learns where an emergency happened from the emergency itself, not
+      // from a standing copy of somebody's address.
+      expect((await buildService(prisma).me('user-1')).home).toBeNull();
+    });
+
+    it('gives an elder with no registered home null rather than a half location', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({ role: Role.ELDER, homeLatitude: null, homeLongitude: null }),
+      );
+
+      expect((await buildService(prisma).me('user-1')).home).toBeNull();
     });
   });
 });

@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Prisma, type Role, type User } from '@prisma/client';
+import { Prisma, Role, type User } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { redactPhone } from '../common/redaction';
@@ -14,6 +14,18 @@ export interface UserSummary {
   phone: string;
   email: string | null;
   role: Role;
+
+  /**
+   * The elder's own registered home, and null for every other role.
+   *
+   * Included because raising an alert requires coordinates and the app needs a source
+   * for them that cannot fail. A device location is better when it is available, but a
+   * denied permission, an indoor fix that never arrives or a phone with location
+   * switched off must not be able to stop somebody calling for help. The registered
+   * home is the floor underneath that: always present, always the elder's own data,
+   * and already known to everyone who would respond.
+   */
+  home: { latitude: number; longitude: number; addressLabel: string | null } | null;
 }
 
 export interface AuthResult {
@@ -146,12 +158,25 @@ export class AuthService {
   }
 
   private static summarise(user: User): UserSummary {
+    // Only an elder has one, and only an elder is ever told it. A caregiver learns
+    // where an emergency happened from the emergency, which records the location at
+    // the moment it was raised, rather than from a standing copy of somebody's address.
+    const home =
+      user.role === Role.ELDER && user.homeLatitude !== null && user.homeLongitude !== null
+        ? {
+            latitude: Number(user.homeLatitude),
+            longitude: Number(user.homeLongitude),
+            addressLabel: user.homeAddressLabel,
+          }
+        : null;
+
     return {
       id: user.id,
       name: user.name,
       phone: user.phone,
       email: user.email,
       role: user.role,
+      home,
     };
   }
 }
