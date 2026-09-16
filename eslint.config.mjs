@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/coverage/**',
       'packages/tokens/dist/**',
       'apps/api/prisma/migrations/**',
+      // Dart and Flutter. Linted by `flutter analyze`, not by ESLint.
+      'apps/mobile/**',
     ],
   },
   js.configs.recommended,
