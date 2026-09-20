@@ -2,6 +2,12 @@
 
 The elder-facing app, and later the caregiver and responder screens.
 
+## Prerequisites
+
+Flutter, plus **CocoaPods for the iOS build only**: `brew install cocoapods`. Several
+plugins ship native iOS code, and Flutter uses CocoaPods to build it. Android needs
+none of this.
+
 ## Running it
 
 The app is a client. The API has to be running first, from the repository root:
@@ -40,6 +46,25 @@ debug build only, so a release build keeps the default and cannot talk to an
 unencrypted server even if somebody points it at one. iOS uses `NSAllowsLocalNetworking`
 in `Info.plist`, which permits local addresses only rather than opening the app to
 arbitrary unencrypted traffic.
+
+## On a real phone
+
+A phone is not on `localhost` and not on `10.0.2.2`. It reaches the development
+machine over Wi-Fi, so it needs that machine's address on the network:
+
+```bash
+ipconfig getifaddr en0                       # the Mac's Wi-Fi address
+flutter run --dart-define=API_BASE_URL=http://<that address>:3000/api/v1
+```
+
+Both devices must be on the same Wi-Fi. Before blaming the app, open
+`http://<that address>:3000/health` in the phone's own browser: if that returns JSON,
+the network path is fine and anything still failing is the app.
+
+Android needs developer options and USB debugging switched on, and nothing else. An
+iPhone additionally needs a signing team in Xcode, Developer Mode enabled on the
+device, and CocoaPods installed on the Mac, and its seven day provisioning expiry means
+the app stops opening after a week until it is installed again.
 
 ## What is built
 

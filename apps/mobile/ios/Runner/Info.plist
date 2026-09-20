@@ -70,6 +70,13 @@
 	     HTTP on this machine. NSAllowsLocalNetworking permits it for local addresses
 	     only: it does not open the app to arbitrary unencrypted traffic, so a release
 	     build still cannot talk to an unencrypted server on the internet. -->
+	<!-- iOS asks the person's permission before an app may reach other devices on the
+	     Wi-Fi network, and refuses the connection outright if the app has not said why
+	     it wants to. This is what a real phone needs to talk to the API running on a
+	     development machine; it has no effect on a deployed build talking to a server
+	     over the internet. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MzaziCare connects to the MzaziCare server running on your development machine so the app can be tested before it is deployed.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
