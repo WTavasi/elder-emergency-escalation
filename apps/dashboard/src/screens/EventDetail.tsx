@@ -113,44 +113,65 @@ export function EventDetail() {
         </section>
 
         <div className="stack">
-          <section className="card stack" aria-labelledby="severity-heading">
-            <h2 id="severity-heading">Why this severity</h2>
+          {/*
+            Closed by default. An operator opening an emergency wants the timeline and
+            who was told, not a weights table. The breakdown is kept one click away
+            rather than removed, because the severity policy is a weighted rule
+            precisely so that an escalation can be explained afterwards, and an
+            explanation nobody can reach is not one. A native details element is used
+            rather than a toggle built by hand: it is keyboard operable and announces
+            its own expanded state without any of that having to be written or tested.
+          */}
+          <section className="card" aria-labelledby="severity-heading">
             {factors.length === 0 ? (
-              <p className="muted">No severity breakdown was recorded for this emergency.</p>
+              <div className="stack">
+                <h2 id="severity-heading">Why this severity</h2>
+                <p className="muted">No severity breakdown was recorded for this emergency.</p>
+              </div>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Factor</th>
-                    <th scope="col">Weight</th>
-                    <th scope="col">Value</th>
-                    <th scope="col">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {factors.map((factor) => (
-                    <tr key={factor.key}>
-                      <td>
-                        {humanise(factor.key)}
-                        {factor.detail ? <div className="micro">{factor.detail}</div> : null}
-                      </td>
-                      <td className="mono">{factor.weight}</td>
-                      <td className="mono">{factor.value}</td>
-                      <td className="mono">{factor.contribution}</td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td>
-                      <strong>Score</strong>
-                    </td>
-                    <td />
-                    <td />
-                    <td className="mono">
-                      <strong>{alert.severityScore}</strong>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <details className="disclosure">
+                <summary className="disclosure__summary">
+                  <h2 id="severity-heading">Why this severity</h2>
+                  <span className="micro">
+                    {factors.length} factors, scoring {alert.severityScore}
+                  </span>
+                </summary>
+                <div className="disclosure__body">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Factor</th>
+                        <th scope="col">Weight</th>
+                        <th scope="col">Value</th>
+                        <th scope="col">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {factors.map((factor) => (
+                        <tr key={factor.key}>
+                          <td>
+                            {humanise(factor.key)}
+                            {factor.detail ? <div className="micro">{factor.detail}</div> : null}
+                          </td>
+                          <td className="mono">{factor.weight}</td>
+                          <td className="mono">{factor.value}</td>
+                          <td className="mono">{factor.contribution}</td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td>
+                          <strong>Score</strong>
+                        </td>
+                        <td />
+                        <td />
+                        <td className="mono">
+                          <strong>{alert.severityScore}</strong>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             )}
           </section>
 

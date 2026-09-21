@@ -47,7 +47,7 @@ a {
 
 /* A visible focus ring on every interactive element. Removing it would fail the
    keyboard requirement, and the token exists so the ring is legible in both themes. */
-:where(a, button, input, select, [tabindex]):focus-visible {
+:where(a, button, input, select, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -207,6 +207,44 @@ a {
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* A section the operator opens when they want it.
+   The summary is the control, so it carries the touch target rather than the text
+   inside it, and the default triangle is replaced by a chevron that can be given a
+   token colour and sized against the rest of the interface. */
+.disclosure__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: var(--min-touch-target);
+  cursor: pointer;
+  list-style: none;
+}
+
+.disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure__summary::after {
+  content: '';
+  margin-left: auto;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--text-soft);
+  border-bottom: 2px solid var(--text-soft);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--motion-state) ease;
+}
+
+.disclosure[open] .disclosure__summary::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.disclosure__body {
+  margin-top: var(--space-16);
+  overflow-x: auto;
 }
 
 /* A pill states what something is. The colour is a second channel, never the only
