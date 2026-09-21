@@ -27,6 +27,6 @@ npm run dev               # the API, on port 3000
 npm run dev:dashboard     # the dashboard, on port 5173
 ```
 
-Sign in at http://localhost:5173 with `+254700000001` and `Dev!2026`.
+Sign in on your own system at http://localhost:5173 with `+254700000001` and `Dev!2026`.
 
 
