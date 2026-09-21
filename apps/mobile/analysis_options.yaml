@@ -1,0 +1,37 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+
+  # An analyser warning in this app is a defect waiting to happen, so the build treats
+  # it as one rather than as advice.
+  errors:
+    missing_required_param: error
+    missing_return: error
+    todo: ignore
+
+linter:
+  rules:
+    # Every widget that can be const should be, because an emergency screen rebuilding
+    # its whole tree on a countdown tick is wasted work on a device that may be old.
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_const_literals_to_create_immutables
+
+    # Names and structure.
+    - always_declare_return_types
+    - avoid_relative_lib_imports
+    - directives_ordering
+    - prefer_final_locals
+    - unnecessary_lambdas
+
+    # Correctness that matters here specifically.
+    - avoid_slow_async_io
+    - cancel_subscriptions
+    - close_sinks
+    - only_throw_errors
+    - unawaited_futures
+    - use_build_context_synchronously

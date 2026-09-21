@@ -5,3 +5,9 @@ packages/tokens/dist/
 apps/api/prisma/migrations/
 package-lock.json
 *.md
+
+# The Flutter workspace. Its generated files follow Xcode, Gradle and pub conventions,
+# and reformatting them is at best noise and at worst a broken project file. Dart is
+# formatted by `dart format`, which Prettier does not replace.
+apps/mobile/
+packages/tokens/lib/src/

@@ -78,6 +78,53 @@ read by Docker Compose alone and holds only `POSTGRES_PORT` and `REDIS_PORT`.
 They were briefly the same file, which is how the published database port and
 `DATABASE_URL` came to disagree without anything reporting it. One secret has one home.
 
+## Retention is enforced, not just configured
+
+The privacy notice and the console's data handling page both tell people how long their
+data is kept. For a while the windows existed as configuration and nothing acted on
+them, which made a published promise the system could not keep.
+
+A daily sweep now deletes closed emergencies past their window, which cascades to their
+audit logs and notifications, then removes audit entries that outlived their own,
+shorter window while their emergency is still retained. An open emergency is never
+deleted whatever its age: one nobody ever closed is a failure worth keeping the
+evidence of, and the window is measured from when an emergency finished rather than
+when it was raised.
+
+It is a plain daily timer rather than a cron library, because it runs once a day and
+needs no schedule expression. `npm run retention:sweep -w @mzazicare/api` runs the same
+code on demand, so the policy can be demonstrated rather than waited for.
+
+## Waiting on a provider is bounded
+
+Node's `fetch` has no default timeout. A connection that opened and then stalled would
+hold a queued notification until its lock expired minutes later, which in an emergency
+means nothing is sent and nothing is reported.
+
+Both providers now have a deadline. A timeout throws, which the processor reads as
+transient and retries, and that is the right reading: a gateway that did not answer in
+time may answer the next attempt. The push timeout bounds the wait rather than
+cancelling the request, because Firebase's client offers no way to cancel, so a retry
+after a timeout can produce a duplicate. For an emergency alert that is the right
+trade: a duplicate is an annoyance, a job blocked on a dead socket is an alert nobody
+receives.
+
+## Rate limiting is counted in Redis, and is opt-in per route
+
+An in-memory limiter is only a limit while there is one instance of the API. The moment
+the platform runs two, an attacker gets double the attempts and the limit quietly stops
+being one. The Redis already running for escalation timers is the natural home.
+
+Applied per route rather than globally, because the panic button is the one endpoint
+where refusing a request could cost somebody their emergency. Sign-in is limited where
+brute force is the threat; raising an alert is limited far above anything a frightened
+person pressing repeatedly would reach, and only to stop a compromised account filling
+the database.
+
+If Redis is unreachable the request is allowed. The limit is a mitigation, not the
+access control, and refusing every sign-in because Redis is down would turn a degraded
+system into an unusable one.
+
 ## Colour is defined once
 
 `packages/tokens/tokens.json` is the only place a colour exists. Every consumer reads a

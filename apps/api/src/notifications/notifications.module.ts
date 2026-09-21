@@ -50,7 +50,10 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
         new Logger('Notifications').log(`Push provider: ${choice}`);
 
         return choice === 'fcm'
-          ? new FcmPushProvider(createFcmMessaging(config))
+          ? new FcmPushProvider(
+              createFcmMessaging(config),
+              config.get<number>('PROVIDER_TIMEOUT_MS', 10_000),
+            )
           : new LoggingPushProvider();
       },
     },

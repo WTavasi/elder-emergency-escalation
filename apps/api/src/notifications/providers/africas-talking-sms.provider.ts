@@ -12,7 +12,12 @@ import type { SmsMessage, SmsProvider } from './sms.provider';
  */
 export type FetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: string },
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+    signal?: AbortSignal;
+  },
 ) => Promise<{
   ok: boolean;
   status: number;
@@ -69,18 +74,44 @@ export class AfricasTalkingSmsProvider implements SmsProvider {
     // none is configured.
     if (senderId) body.set('from', senderId);
 
-    const response = await this.fetchImpl(
-      `${AfricasTalkingSmsProvider.baseUrl(username)}/version1/messaging`,
-      {
-        method: 'POST',
-        headers: {
-          apiKey,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json',
+    // Node's fetch has no default timeout, so a connection that opens and then stalls
+    // would hold this job until the queue's lock expired, minutes later. In an
+    // emergency the fallback message is the last channel there is, so an unbounded
+    // wait is the worst possible failure: nothing is sent and nothing is reported.
+    //
+    // An abort rejects, which the processor treats as transient and retries. That is
+    // the right reading: a gateway that did not answer in time may well answer the
+    // next attempt.
+    const timeoutMs = this.config.get<number>('PROVIDER_TIMEOUT_MS', 10_000) ?? 10_000;
+
+    let response;
+    try {
+      response = await this.fetchImpl(
+        `${AfricasTalkingSmsProvider.baseUrl(username)}/version1/messaging`,
+        {
+          method: 'POST',
+          headers: {
+            apiKey,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body: body.toString(),
+          signal: AbortSignal.timeout(timeoutMs),
         },
-        body: body.toString(),
-      },
-    );
+      );
+    } catch (error: unknown) {
+      // Rethrown with the cause named, so a timeout is distinguishable from a DNS or
+      // TLS failure when the delivery log is read back.
+      const reason =
+        error instanceof Error && error.name === 'TimeoutError'
+          ? `no response within ${timeoutMs}ms`
+          : error instanceof Error
+            ? error.message
+            : 'unknown network failure';
+      // The original is attached, so the underlying network fault is still
+      // recoverable from the log rather than replaced by our summary of it.
+      throw new Error(`Africa's Talking request failed: ${reason}`, { cause: error });
+    }
 
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 200);

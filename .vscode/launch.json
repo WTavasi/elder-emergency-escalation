@@ -2,7 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      // Starts the API under the debugger. Breakpoints work in the TypeScript source.
       "name": "Debug API",
       "type": "node",
       "request": "launch",
@@ -14,8 +13,6 @@
       "autoAttachChildProcesses": true
     },
     {
-      // Attaches to an API already started with npm run start:debug, which is useful
-      // when it is running in a terminal you want to keep watching.
       "name": "Attach to API",
       "type": "node",
       "request": "attach",
@@ -40,6 +37,22 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Mobile: Android emulator",
+      "type": "dart",
+      "request": "launch",
+      "program": "apps/mobile/lib/main.dart",
+      "cwd": "apps/mobile",
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1"]
+    },
+    {
+      "name": "Mobile: iOS Simulator",
+      "type": "dart",
+      "request": "launch",
+      "program": "apps/mobile/lib/main.dart",
+      "cwd": "apps/mobile",
+      "args": ["--dart-define=API_BASE_URL=http://localhost:3000/api/v1"]
     }
   ]
 }

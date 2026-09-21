@@ -10,10 +10,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Prisma needs the variable to exist to generate a client. It never connects here.
-  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-
 jobs:
   design-tokens:
     name: Design tokens and accessibility gate
@@ -43,6 +39,13 @@ jobs:
   api:
     name: API lint, typecheck, test, build
     runs-on: ubuntu-latest
+    # A placeholder. Prisma needs the variable to exist in order to generate and
+    # validate, and nothing in this job opens a connection: the unit tests use test
+    # doubles rather than a database. Deliberately not set at workflow level, because
+    # an environment variable beats a .env file, and the integration job below reads
+    # its configuration from one.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
 
@@ -116,6 +119,18 @@ jobs:
   integration:
     name: Escalation end to end
     runs-on: ubuntu-latest
+    # These have to be stated here rather than left to apps/api/.env, because an
+    # environment variable takes precedence over a .env file. A workflow-level
+    # placeholder silently overrode the real credentials and this job failed to
+    # authenticate against a database that was running and healthy.
+    #
+    # The credentials match docker-compose.yml, which is what actually starts here.
+    env:
+      DATABASE_URL: postgresql://mzazicare:mzazicare@localhost:5432/mzazicare
+      REDIS_URL: redis://localhost:6379
+      # The suite creates data with deliberate ages. A sweep running underneath it
+      # would be a test that fails occasionally for a reason nobody can reproduce.
+      RETENTION_ENABLED: 'false'
     steps:
       - uses: actions/checkout@v4
 

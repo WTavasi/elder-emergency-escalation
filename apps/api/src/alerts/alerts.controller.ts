@@ -17,6 +17,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateAlertDto } from './dto/create-alert.dto';
 import { ReopenAlertDto } from './dto/reopen-alert.dto';
 import { ListAlertsDto } from './dto/list-alerts.dto';
+import { Throttle } from '../common/guards/rate-limit.guard';
 
 @Controller('alerts')
 export class AlertsController {
@@ -24,6 +25,11 @@ export class AlertsController {
 
   /** The panic button. Only the person being cared for can raise their own alert. */
   @Roles(Role.ELDER)
+  // Deliberately generous. This is the panic button, and the cost of refusing a real
+  // emergency is not comparable to the cost of accepting a duplicate one. The limit
+  // exists only to stop a compromised account filling the database, and is set far
+  // above anything a frightened person pressing repeatedly would reach.
+  @Throttle(30, 60)
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,

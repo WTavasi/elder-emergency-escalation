@@ -5,6 +5,9 @@ node_modules/
 
 # generated token outputs (rebuilt by `npm run tokens:build`)
 packages/tokens/dist/
+packages/tokens/lib/src/tokens.dart
+packages/tokens/.dart_tool/
+packages/tokens/pubspec.lock
 
 # build output
 dist/
@@ -29,8 +32,19 @@ apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
 apps/mobile/ios/Pods/
 apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/Generated.xcconfig
+apps/mobile/ios/Flutter/flutter_export_environment.sh
 apps/mobile/android/.gradle/
 apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+
+# Firebase client configuration. Not a secret in the way a service account is, since it
+# ships inside the built app, but it names the project and its API keys, and this
+# repository keeps every credential out by default rather than by exception. Download
+# them from the Firebase console; docs/running.md says how.
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/Runner/GoogleService-Info.plist
+apps/mobile/lib/firebase_options.dart
 
 # test and coverage
 coverage/

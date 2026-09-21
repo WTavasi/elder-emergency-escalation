@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { withTimeout } from '../../common/with-timeout';
 import type { DeliveryResult, PushMessage, PushProvider } from './push.provider';
 
 /** The one Firebase call this provider makes, declared so tests need no Firebase. */
@@ -35,7 +36,15 @@ export class FcmPushProvider implements PushProvider {
 
   private readonly logger = new Logger(FcmPushProvider.name);
 
-  constructor(private readonly messaging: FcmMessaging) {}
+  constructor(
+    private readonly messaging: FcmMessaging,
+    /**
+     * Firebase's client has its own internal timeout, but it is theirs to change and
+     * it covers their transport rather than this call. Bounding the wait here means
+     * the guarantee belongs to this system and is visible in one place.
+     */
+    private readonly timeoutMs: number = 10_000,
+  ) {}
 
   async send(message: PushMessage): Promise<DeliveryResult> {
     if (!message.token) {
@@ -43,21 +52,25 @@ export class FcmPushProvider implements PushProvider {
     }
 
     try {
-      const providerMessageId = await this.messaging.send({
-        token: message.token,
-        notification: { title: message.title, body: message.body },
-        data: message.data,
-        // An emergency alert is exactly what high priority exists for: it wakes a
-        // device out of doze rather than waiting for the next maintenance window.
-        android: {
-          priority: 'high',
-          notification: { channelId: 'emergencies', priority: 'max' },
-        },
-        apns: {
-          headers: { 'apns-priority': '10' },
-          payload: { aps: { sound: 'default' } },
-        },
-      });
+      const providerMessageId = await withTimeout(
+        this.messaging.send({
+          token: message.token,
+          notification: { title: message.title, body: message.body },
+          data: message.data,
+          // An emergency alert is exactly what high priority exists for: it wakes a
+          // device out of doze rather than waiting for the next maintenance window.
+          android: {
+            priority: 'high',
+            notification: { channelId: 'emergencies', priority: 'max' },
+          },
+          apns: {
+            headers: { 'apns-priority': '10' },
+            payload: { aps: { sound: 'default' } },
+          },
+        }),
+        this.timeoutMs,
+        'Firebase Cloud Messaging',
+      );
 
       return { delivered: true, providerMessageId };
     } catch (error) {

@@ -19,6 +19,12 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, '..');
 const distDir = join(pkgRoot, 'dist');
+
+// Flutter resolves a path dependency through lib/, not dist/, so the Dart output goes
+// there instead. That makes packages/tokens a real Dart package as well as an npm one,
+// and the app depends on it rather than reaching into a build directory, which is the
+// same relationship the dashboard has with the CSS.
+const dartLibDir = join(pkgRoot, 'lib', 'src');
 const checkOnly = process.argv.includes('--check');
 
 const tokens = JSON.parse(readFileSync(join(pkgRoot, 'tokens.json'), 'utf8'));
@@ -287,8 +293,9 @@ if (checkOnly) {
 }
 
 mkdirSync(distDir, { recursive: true });
+mkdirSync(dartLibDir, { recursive: true });
 writeFileSync(join(distDir, 'tokens.css'), buildCss());
-writeFileSync(join(distDir, 'tokens.dart'), buildDart());
+writeFileSync(join(dartLibDir, 'tokens.dart'), buildDart());
 writeFileSync(join(distDir, 'tokens.ts'), buildTs());
 writeFileSync(
   join(distDir, 'contrast-report.json'),
@@ -297,7 +304,8 @@ writeFileSync(
 );
 
 console.log('\nAll contrast targets met. Wrote:');
-for (const f of ['tokens.css', 'tokens.dart', 'tokens.ts', 'contrast-report.json']) {
+for (const f of ['tokens.css', 'tokens.ts', 'contrast-report.json']) {
   console.log(`  packages/tokens/dist/${f}`);
 }
+console.log('  packages/tokens/lib/src/tokens.dart');
 console.log('');
