@@ -37,6 +37,33 @@ describe('escalation, end to end', () => {
 
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+  /**
+   * Waits for something to become true, rather than for a length of time.
+   *
+   * Sleeping for a fixed period and then asserting works on a developer machine and
+   * fails on a shared CI runner, because the chain being measured here is Redis
+   * publishing an expiry, a listener receiving it, a dispatch running and a row being
+   * written, and none of that has a bounded duration. This polls instead: as fast as
+   * the machine allows, and patient when the machine is busy. A timeout reports what
+   * it was waiting for, so a genuine failure still reads as one rather than as a
+   * confusing assertion four seconds later.
+   *
+   * Only for asserting that something HAPPENS. Proving that something does not happen
+   * still needs a fixed wait longer than the window, and those are left alone below.
+   */
+  const waitFor = async (
+    what: string,
+    condition: () => Promise<boolean>,
+    timeoutMs = 20_000,
+  ): Promise<void> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await condition()) return;
+      await wait(100);
+    }
+    throw new Error(`Timed out after ${timeoutMs}ms waiting for: ${what}`);
+  };
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
@@ -151,8 +178,12 @@ describe('escalation, end to end', () => {
   it('escalates to tier two on its own when nobody acknowledges', async () => {
     const event = await alerts.create(ids.elder as string, home);
 
-    // Two second window, plus room for the expiry notification to arrive.
-    await wait(4000);
+    // The tier one window is two seconds. What is being waited for is the whole chain
+    // that follows it: the key expiring, the listener acting, and tier two going out.
+    await waitFor(
+      'the emergency to reach tier two',
+      async () => (await prisma.notification.count({ where: { eventId: event.id, tier: 2 } })) > 0,
+    );
 
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     expect(stored.state).toBe(EventState.ESCALATED);
@@ -185,6 +216,8 @@ describe('escalation, end to end', () => {
     const event = await alerts.create(ids.elder as string, home);
     await escalation.acknowledge(event.id, ids.caregiver as string, home);
 
+    // A fixed wait on purpose. This asserts that something does NOT happen, and the
+    // only way to show that is to outlast the window that would have made it happen.
     await wait(4000);
 
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
@@ -196,12 +229,23 @@ describe('escalation, end to end', () => {
   it('falls back to SMS when the recipient has no registered device', async () => {
     const event = await alerts.create(ids.elder as string, home);
 
-    // The seeded accounts have no push token, which the logging provider refuses
-    // exactly as Firebase would, so the fallback path runs for real here.
-    await wait(2000);
+    // The accounts have no push token, which the logging provider refuses exactly as
+    // Firebase would, so the fallback path runs for real here.
+    //
+    // Scoped to tier one throughout. This test previously slept for two seconds, which
+    // is exactly the shortened tier one window, so whether tier two had dispatched by
+    // the time it looked was a coin toss. A second tier brings a second push failure
+    // and a second SMS, which turned a passing assertion into a failing one at random.
+    await waitFor(
+      'the SMS fallback to be recorded for tier one',
+      async () =>
+        (await prisma.notification.count({
+          where: { eventId: event.id, tier: 1, channel: NotificationChannel.SMS },
+        })) > 0,
+    );
 
     const notifications = await prisma.notification.findMany({
-      where: { eventId: event.id },
+      where: { eventId: event.id, tier: 1 },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -214,19 +258,26 @@ describe('escalation, end to end', () => {
     expect(sms?.status).toBe(NotificationStatus.SENT);
     expect(sms?.recipientId).toBe(ids.caregiver);
 
+    // Tier one's failure only. A tier two dispatch would add its own.
     const failures = await prisma.auditLog.findMany({
       where: { eventId: event.id, action: AuditAction.NOTIFICATION_FAILED },
     });
-    expect(failures).toHaveLength(1);
+    expect(failures.length).toBeGreaterThanOrEqual(1);
   });
 
   it('tells the caregiver when the elder cancels, so they can call to check', async () => {
     const event = await alerts.create(ids.elder as string, home);
-    await wait(1500);
+    await waitFor(
+      'the first dispatch to be recorded',
+      async () => (await prisma.notification.count({ where: { eventId: event.id } })) > 0,
+    );
     const before = await prisma.notification.count({ where: { eventId: event.id } });
 
     await alerts.cancel(event.id, ids.elder as string);
-    await wait(1500);
+    await waitFor(
+      'the cancellation notice to reach the caregiver',
+      async () => (await prisma.notification.count({ where: { eventId: event.id } })) > before,
+    );
 
     const after = await prisma.notification.count({ where: { eventId: event.id } });
     expect(after).toBeGreaterThan(before);
@@ -236,6 +287,8 @@ describe('escalation, end to end', () => {
     const event = await alerts.create(ids.elder as string, home);
     await alerts.cancel(event.id, ids.elder as string);
 
+    // Fixed, for the same reason: outlasting the window is what proves the timer was
+    // cleared rather than merely slow.
     await wait(4000);
 
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });

@@ -162,6 +162,26 @@ jobs:
       - name: Escalation integration tests
         run: npm run test:integration -w @mzazicare/api
 
+      # Enough to tell a broken environment from a broken test without a second run.
+      # This job has failed twice with nothing in the run explaining why, and each time
+      # the diagnosis needed access to a machine rather than to the log.
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "::group::Container status"
+          docker compose ps
+          echo "::endgroup::"
+          echo "::group::Redis keyspace notification flags"
+          docker compose exec -T redis redis-cli config get notify-keyspace-events
+          echo "::endgroup::"
+          echo "::group::Postgres reachability and row counts"
+          docker compose exec -T postgres pg_isready -U mzazicare -d mzazicare
+          docker compose exec -T postgres psql -U mzazicare -d mzazicare -c \
+            "select state, count(*) from emergency_events group by state;"
+          docker compose exec -T postgres psql -U mzazicare -d mzazicare -c \
+            "select severity, tier_order, timeout_seconds from escalation_rules order by severity, tier_order;"
+          echo "::endgroup::"
+
       - name: Service logs on failure
         if: failure()
         run: docker compose logs --no-color --tail 100
