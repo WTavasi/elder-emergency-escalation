@@ -62,6 +62,33 @@ has: an editor for escalation rules and severity weights, and care circle manage
 Both are configuration rather than intervention, so neither contradicts this decision,
 but both need deciding on rather than drifting into.
 
+## Declining escalates immediately, but never closes an emergency
+
+A tier's timeout bounds how long an unanswered emergency waits. It was never meant to
+make somebody who already knows they cannot attend sit out the rest of it. A caregiver
+who is two hours away can say so, and the emergency moves on at once.
+
+Three rules stop it becoming a way to make an emergency go away. Only the people the
+current tier actually asked may decline, so being asked is what confers the right and a
+contact further down the chain cannot decline on tier one's behalf. Nobody may decline
+once a person has taken ownership, or a decline could undo an acknowledgement. And a
+decline never closes anything: it removes one person from consideration and the chain
+continues to the next tier.
+
+Where a tier asked more than one person, which the critical band does, the emergency
+waits until every one of them has declined. Escalating on the first would cut short
+somebody in the middle of accepting.
+
+The decline is recorded as a timestamp on the notification rather than as a status
+value. Status records what happened to the message; this records what the person said
+about it. Overwriting a delivery outcome with a response would corrupt the per-channel
+reliability figures, which count a delivered message as delivered whatever the answer
+turned out to be.
+
+The elder is not told that somebody declined. They asked for help and help is still
+coming; naming who could not attend would be distressing and would not change anything
+they can act on.
+
 ## Ownership is claimed by a conditional write
 
 Two responders answering in the same instant could both read `acknowledgedBy` as null

@@ -37,11 +37,17 @@ code path, so the API cannot be used to discover who is registered.
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
+| POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome |
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
 
 Every query is scoped to the caller's own care relationships. An emergency the caller is
 not part of returns 404 rather than 403, so the API does not confirm that an id exists.
+
+Declining is narrower than the rest. Only the people the **current tier** actually
+asked may decline, so a tier two contact cannot decline on tier one's behalf and
+somebody outside the chain cannot decline at all. It is refused once anybody has
+acknowledged, and it is idempotent, because a retry on a weak signal is not a failure.
 
 "Participants" means the elder, anybody in that elder's care chain, or anybody who was
 actually notified. An administrator is **not** a participant, so the three action

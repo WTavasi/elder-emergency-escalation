@@ -303,3 +303,58 @@ Authorization: Bearer {{adminToken}}
 # because that one is restricted by role rather than by care relationship.
 GET {{baseUrl}}/dashboard/overview
 Authorization: Bearer {{caregiverToken}}
+
+###############################################################################
+# 15. Declining
+#
+# A tier's timeout bounds how long an unanswered emergency waits. It should not make
+# somebody who already knows they cannot attend sit out the rest of it.
+###############################################################################
+
+# Raise one to decline. Run the elder login block above first if the token expired.
+# @name toDecline
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{ "latitude": -1.2833, "longitude": 36.7833, "addressLabel": "Kileleshwa, Nairobi" }
+
+###
+
+# Mary was asked at tier one, so Mary may decline. The emergency escalates at once
+# rather than waiting out the remaining window.
+POST {{baseUrl}}/alerts/{{toDecline.response.body.id}}/decline
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "reason": "Two hours away, cannot reach her" }
+
+###
+
+# Expect 200 and no second audit entry. A retry from a phone with one bar of signal
+# is not a failure, so declining twice is idempotent.
+POST {{baseUrl}}/alerts/{{toDecline.response.body.id}}/decline
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+# Expect 403. Aisha is tier two and was not asked at tier one, so she cannot decline
+# on tier one's behalf. Being asked is what confers the right to decline.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/decline
+Authorization: Bearer {{familyToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+# Expect 409 once somebody has taken ownership. Declining an emergency that is being
+# handled is meaningless, and allowing it would let a decline undo an acknowledgement.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/decline
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{}

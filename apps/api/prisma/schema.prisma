@@ -106,6 +106,7 @@ enum AuditAction {
   TIER_DISPATCHED
   NOTIFICATION_FAILED
   ACKNOWLEDGED
+  DECLINED
   ESCALATED
   RESPONDER_REQUESTED
   REOPENED
@@ -334,6 +335,15 @@ model Notification {
   sentAt         DateTime? @map("sent_at") @db.Timestamptz(3)
   deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+
+  /// EXTENSION. When this recipient said they cannot attend.
+  ///
+  /// A separate column rather than a status value, because status records what
+  /// happened to the MESSAGE and this records what the person said about it.
+  /// Overwriting a delivery outcome with a response would corrupt the per-channel
+  /// reliability figures, which count a delivered message as delivered whatever the
+  /// answer turned out to be.
+  declinedAt DateTime? @map("declined_at") @db.Timestamptz(3)
 
   /// EXTENSION. Provider message id and failure reason, needed to explain a failed
   /// push in the report and to avoid double-sending an SMS.

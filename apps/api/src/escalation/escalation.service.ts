@@ -259,6 +259,97 @@ export class EscalationService {
   }
 
   /** Closes the emergency with a recorded outcome. */
+  /**
+   * "I cannot come."
+   *
+   * A tier's timeout exists to bound how long an unanswered emergency waits, not to
+   * make somebody who already knows they cannot attend sit out the rest of it. A
+   * caregiver who is two hours away, in theatre, or simply asleep can say so, and the
+   * emergency moves on at once instead of burning the remainder of the window.
+   *
+   * Three rules keep it from being a way to make an emergency disappear. Only the
+   * people this tier actually asked may decline, so somebody further down the chain
+   * cannot decline on tier one's behalf and somebody outside the chain cannot decline
+   * at all. Nobody may decline once a person has taken ownership. And a decline never
+   * closes an emergency: it removes one person from consideration and the chain
+   * continues, which is the opposite of a veto.
+   */
+  async decline(eventId: string, userId: string, reason?: string): Promise<EmergencyEvent> {
+    const event = await this.requireOpenEvent(eventId);
+
+    if (event.acknowledgedBy) {
+      throw new ConflictException('Someone is already responding to this emergency');
+    }
+
+    // Scoped to the current tier. Being asked is what confers the right to decline.
+    const asked = await this.prisma.notification.findMany({
+      where: { eventId, recipientId: userId, tier: event.currentTier },
+      select: { id: true, declinedAt: true },
+    });
+
+    if (asked.length === 0) {
+      throw new ForbiddenException('You were not asked to respond to this emergency');
+    }
+
+    // Idempotent rather than an error. A retry from a phone with one bar of signal is
+    // the most likely way this is called twice, and it should not read as a failure.
+    if (asked.every((notification) => notification.declinedAt !== null)) {
+      return event;
+    }
+
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.notification.updateMany({
+        where: { eventId, recipientId: userId, tier: event.currentTier },
+        data: { declinedAt: now },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          eventId,
+          actorId: userId,
+          action: AuditAction.DECLINED,
+          detail: {
+            tier: event.currentTier,
+            reason: reason ?? null,
+            secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: now,
+        },
+      });
+    });
+
+    // Whether anybody this tier asked could still say yes. The critical band dispatches
+    // two tiers at once, so one person declining is not the same as the tier being
+    // exhausted: escalating on the first decline would cut short somebody who is in the
+    // middle of accepting.
+    const remaining = await this.prisma.notification.findMany({
+      where: { eventId, tier: event.currentTier, declinedAt: null },
+      select: { recipientId: true },
+      distinct: ['recipientId'],
+    });
+
+    if (remaining.length > 0) {
+      this.logger.log(
+        `Event ${eventId}: a tier ${event.currentTier} contact declined, ` +
+          `${remaining.length} still able to answer`,
+      );
+    } else {
+      // Nobody left. The window has nothing to wait for, so it is stopped rather than
+      // left to expire into an escalation that has already happened.
+      this.logger.warn(
+        `Event ${eventId}: every tier ${event.currentTier} contact declined, escalating now`,
+      );
+      await this.timers.cancelAll(eventId);
+      await this.escalate(event, event.currentTier);
+    }
+
+    const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
+    this.realtime.emergencyUpdated(latest);
+    return latest;
+  }
+
   async resolve(eventId: string, userId: string, outcome: EventOutcome): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
