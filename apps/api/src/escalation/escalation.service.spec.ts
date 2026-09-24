@@ -58,7 +58,12 @@ interface PrismaMock {
   escalationRule: { findMany: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
   user: { findMany: jest.Mock };
-  notification: { create: jest.Mock; updateMany: jest.Mock; findFirst: jest.Mock };
+  notification: {
+    create: jest.Mock;
+    updateMany: jest.Mock;
+    findFirst: jest.Mock;
+    findMany: jest.Mock;
+  };
   auditLog: { create: jest.Mock };
   $transaction: jest.Mock;
 }
@@ -91,6 +96,7 @@ const buildPrisma = (): PrismaMock => {
     },
     user: { findMany: jest.fn().mockResolvedValue([]) },
     notification: {
+      findMany: jest.fn().mockResolvedValue([]),
       create: jest
         .fn()
         .mockImplementation(() => Promise.resolve({ id: `notification-${created++}` })),
@@ -503,6 +509,100 @@ describe('EscalationService', () => {
       await expect(build(prisma).requestResponder('event-1', 'stranger')).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('decline', () => {
+    const asked = (declinedAt: Date | null = null) => [{ id: 'n1', declinedAt }];
+
+    it('escalates at once when the only contact asked says they cannot come', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany
+        .mockResolvedValueOnce(asked()) // what this person was asked
+        .mockResolvedValueOnce([]); // nobody left who could still answer
+
+      const timers = buildTimers();
+      await build(prisma, timers).decline(event().id, 'caregiver-1', 'Two hours away');
+
+      // The point of the feature: the window is stopped rather than waited out.
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: AuditAction.DECLINED, actorId: 'caregiver-1' }),
+        }),
+      );
+      expect(timers.cancelAll).toHaveBeenCalledWith(event().id);
+    });
+
+    it('records the tier and the reason, so the trail explains the jump', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce(asked()).mockResolvedValueOnce([]);
+
+      await build(prisma).decline(event().id, 'caregiver-1', 'Two hours away');
+
+      const logged = prisma.auditLog.create.mock.calls[0][0].data as {
+        detail: { tier: number; reason: string | null };
+      };
+      expect(logged.detail.tier).toBe(1);
+      expect(logged.detail.reason).toBe('Two hours away');
+    });
+
+    it('accepts a decline with no reason given', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce(asked()).mockResolvedValueOnce([]);
+
+      await build(prisma).decline(event().id, 'caregiver-1');
+
+      const logged = prisma.auditLog.create.mock.calls[0][0].data as {
+        detail: { reason: string | null };
+      };
+      expect(logged.detail.reason).toBeNull();
+    });
+
+    it('waits when another contact at the same tier could still answer', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany
+        .mockResolvedValueOnce(asked())
+        .mockResolvedValueOnce([{ recipientId: 'family-1' }]);
+
+      const timers = buildTimers();
+      await build(prisma, timers).decline(event().id, 'caregiver-1');
+
+      // The critical band dispatches two tiers at once. Escalating on the first
+      // decline would cut short somebody in the middle of accepting.
+      expect(timers.cancelAll).not.toHaveBeenCalled();
+    });
+
+    it('refuses once somebody has taken ownership', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue({
+        ...event(),
+        acknowledgedBy: 'family-1',
+      });
+
+      await expect(build(prisma).decline(event().id, 'caregiver-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('refuses somebody this tier never asked', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce([]);
+
+      // Being asked is what confers the right to decline. Otherwise a contact further
+      // down the chain could decline on tier one's behalf.
+      await expect(build(prisma).decline(event().id, 'stranger-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('is idempotent, because a retry on a weak signal is not a failure', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce(asked(new Date()));
+
+      await build(prisma).decline(event().id, 'caregiver-1');
+
+      expect(prisma.notification.updateMany).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
     });
   });
 });

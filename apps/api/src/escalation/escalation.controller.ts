@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } fr
 import type { EmergencyEvent } from '@prisma/client';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { AcknowledgeDto } from './dto/acknowledge.dto';
+import { DeclineDto } from './dto/decline.dto';
 import { ResolveDto } from './dto/resolve.dto';
 import { EscalationService } from './escalation.service';
 
@@ -23,6 +24,17 @@ export class EscalationController {
         : undefined;
 
     return this.escalation.acknowledge(id, user.userId, location);
+  }
+
+  /** Say you cannot come, so the emergency stops waiting on you. */
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/decline')
+  decline(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DeclineDto,
+  ): Promise<EmergencyEvent> {
+    return this.escalation.decline(id, user.userId, dto.reason);
   }
 
   @HttpCode(HttpStatus.OK)
