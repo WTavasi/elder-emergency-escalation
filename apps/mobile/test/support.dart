@@ -76,3 +76,95 @@ const GeoPoint testHome = GeoPoint(
   longitude: 36.817223,
   addressLabel: 'Kilimani, Nairobi',
 );
+
+/// A summary row as the alerts endpoint projects it.
+Map<String, dynamic> summaryBody({
+  String id = 'event-1',
+  String state = 'NOTIFIED',
+  String severity = 'ELEVATED',
+  int severityScore = 48,
+  int currentTier = 1,
+  String elderName = 'Grace Wanjiru',
+  String triggeredAt = '2026-09-16T10:00:00.000Z',
+  Map<String, dynamic>? acknowledgedBy,
+  String? outcome,
+}) => <String, dynamic>{
+  'eventId': id,
+  'state': state,
+  'severity': severity,
+  'severityScore': severityScore,
+  'currentTier': currentTier,
+  'outcome': outcome,
+  'elder': <String, dynamic>{'id': 'elder-1', 'name': elderName, 'addressLabel': 'Kilimani'},
+  'acknowledgedBy': acknowledgedBy,
+  'latitude': -1.286389,
+  'longitude': 36.817223,
+  'addressLabel': 'Kilimani, Nairobi',
+  'triggeredAt': triggeredAt,
+  'acknowledgedAt': null,
+  'resolvedAt': null,
+  'deadlineAt': null,
+  'responderRequestedAt': null,
+  'responseSeconds': null,
+};
+
+/// A detail body: a summary plus the three things only the detail screen reads.
+Map<String, dynamic> detailBody({
+  String state = 'NOTIFIED',
+  Map<String, dynamic>? acknowledgedBy,
+}) => <String, dynamic>{
+  ...summaryBody(state: state, acknowledgedBy: acknowledgedBy),
+  'severityFactors': <String, dynamic>{
+    'score': 48,
+    'band': 'ELEVATED',
+    'factors': <Map<String, dynamic>>[
+      <String, dynamic>{
+        'key': 'careLevel',
+        'label': 'Care level',
+        'weight': 25,
+        'value': 1,
+        'contribution': 25,
+        'detail': 'High care level',
+      },
+      <String, dynamic>{
+        'key': 'awayFromHome',
+        'label': 'Away from home',
+        'weight': 15,
+        'value': 0,
+        'contribution': 0,
+        'detail': 'At the registered home',
+      },
+    ],
+  },
+  'chain': <Map<String, dynamic>>[
+    <String, dynamic>{
+      'responderId': 'caregiver-1',
+      'name': 'Peter Mwangi',
+      'role': 'CAREGIVER',
+      'priorityOrder': 1,
+    },
+  ],
+  'timeline': <Map<String, dynamic>>[
+    <String, dynamic>{
+      'id': 'audit-1',
+      'action': 'TRIGGERED',
+      'previousState': null,
+      'newState': 'TRIGGERED',
+      'actor': <String, dynamic>{'id': 'elder-1', 'name': 'Grace Wanjiru', 'role': 'ELDER'},
+      'detail': null,
+      'occurredAt': '2026-09-16T10:00:00.000Z',
+      'secondsFromTrigger': 0,
+    },
+    <String, dynamic>{
+      'id': 'audit-2',
+      'action': 'ESCALATED',
+      'previousState': 'NOTIFIED',
+      'newState': 'ESCALATED',
+      'actor': null,
+      'detail': null,
+      'occurredAt': '2026-09-16T10:02:00.000Z',
+      'secondsFromTrigger': 120,
+    },
+  ],
+  'deliveries': <Map<String, dynamic>>[],
+};

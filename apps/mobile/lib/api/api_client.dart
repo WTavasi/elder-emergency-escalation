@@ -118,11 +118,89 @@ class ApiClient {
     return Emergency.fromJson(body);
   }
 
+  /// The emergencies this account can see, newest first from the API and re-ordered for
+  /// urgency by the caller.
+  ///
+  /// [open] narrows to the ones still running, which is what a responder wants nearly
+  /// always; the full history is the same call without it.
+  Future<List<AlertSummary>> alerts({bool open = false, int limit = 50}) async {
+    final String query = open ? '?open=true&limit=$limit' : '?limit=$limit';
+    final Object? body = await _sendRaw('GET', '/alerts$query');
+    if (body is! List<dynamic>) return const <AlertSummary>[];
+    return body
+        .whereType<Map<String, dynamic>>()
+        .map(AlertSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  /// One emergency in full: the chain, the timeline and the severity reasoning.
+  Future<AlertDetail> alertDetail(String id) async {
+    final Map<String, dynamic> body = await _send('GET', '/alerts/$id');
+    return AlertDetail.fromJson(body);
+  }
+
+  /// Take responsibility. The API settles the race, so two people pressing at once
+  /// produces one owner and a 409 for the other rather than two owners.
+  ///
+  /// [at] is where the responder is, when the device will say. It is optional because
+  /// refusing an acknowledgement over a missing coordinate would be the wrong trade.
+  Future<void> acknowledge(String id, {GeoPoint? at}) async {
+    await _send(
+      'POST',
+      '/alerts/$id/acknowledge',
+      body: at == null
+          ? const <String, dynamic>{}
+          : <String, dynamic>{'latitude': at.latitude, 'longitude': at.longitude},
+    );
+  }
+
+  /// Say you cannot come. The emergency stops waiting on you, and once nobody at this
+  /// tier is still being waited on it climbs immediately.
+  Future<void> decline(String id, {String? reason}) async {
+    await _send(
+      'POST',
+      '/alerts/$id/decline',
+      body: <String, dynamic>{if (reason != null && reason.isNotEmpty) 'reason': reason},
+    );
+  }
+
+  /// Close it, recording how it ended.
+  Future<void> resolve(String id, Outcome outcome) async {
+    await _send('POST', '/alerts/$id/resolve', body: <String, dynamic>{'outcome': outcome.wire});
+  }
+
+  /// Escalate past the care circle to an emergency responder, by hand.
+  Future<void> requestResponder(String id) async {
+    await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
+  }
+
   void dispose() => _http.close();
 
   // ------------------------------------------------------------------ internals --
 
   Future<Map<String, dynamic>> _send(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+    bool allowRetry = true,
+  }) async {
+    final Object? decoded = await _sendRaw(
+      method,
+      path,
+      body: body,
+      authenticated: authenticated,
+      allowRetry: allowRetry,
+    );
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  }
+
+  /// The decoded body, whatever JSON shape it is.
+  ///
+  /// Most endpoints answer with an object and [_send] is the convenient wrapper; the
+  /// list endpoint answers with an array, which would be flattened to an empty map if
+  /// it had to come back through there.
+  Future<Object?> _sendRaw(
     String method,
     String path, {
     Map<String, dynamic>? body,
@@ -152,7 +230,7 @@ class ApiClient {
       throw ApiException(response.statusCode, _messageFrom(decoded, response.statusCode));
     }
 
-    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    return decoded;
   }
 
   Future<http.Response> _dispatch(

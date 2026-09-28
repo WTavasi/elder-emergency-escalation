@@ -9,6 +9,12 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 /// it can never go below, so a small phone shrinks it only as far as the accessibility
 /// budget allows and a large one lets it fill the screen.
 ///
+/// The floor is enforced with an OverflowBox rather than a SizedBox, because a SizedBox
+/// cannot be larger than the constraints handed to it: asked for 72 inside a 20 point
+/// box it quietly becomes 20, which is the one outcome this control must never have.
+/// Overflowing its parent is the lesser fault. A panic button painting a few points
+/// outside its box is untidy; a panic button rendered as a dot is the feature failing.
+///
 /// There is no press animation and no ripple. Feedback is the screen changing to the
 /// countdown, which is the thing that actually needs to be noticed.
 class PanicButton extends StatelessWidget {
@@ -36,9 +42,11 @@ class PanicButton extends StatelessWidget {
             // Spelled out for a screen reader, because "Get help" beside a red circle
             // reads very differently from "Get help" alone.
             label: 'Get help now. Alerts the people who look after you.',
-            child: SizedBox(
-              width: diameter,
-              height: diameter,
+            child: OverflowBox(
+              minWidth: diameter,
+              maxWidth: diameter,
+              minHeight: diameter,
+              maxHeight: diameter,
               child: Material(
                 color: enabled
                     ? theme.colorScheme.primary

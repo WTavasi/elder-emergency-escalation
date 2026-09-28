@@ -198,3 +198,206 @@ class Emergency {
     );
   }
 }
+
+/// One emergency as a row in a responder's list.
+///
+/// The API projects this for every client, so the fields are the ones a person acting
+/// on an emergency needs rather than the columns the table happens to have: a name
+/// instead of a foreign key, a number instead of a Decimal, and an ISO string instead
+/// of a Date whose serialisation depends on who touched it last.
+class AlertSummary {
+  const AlertSummary({
+    required this.eventId,
+    required this.state,
+    required this.severity,
+    required this.severityScore,
+    required this.currentTier,
+    required this.elderName,
+    required this.triggeredAt,
+    this.addressLabel,
+    this.ownerName,
+    this.deadlineAt,
+    this.responseSeconds,
+    this.outcome,
+  });
+
+  final String eventId;
+  final EventState state;
+  final Severity severity;
+  final int severityScore;
+  final int currentTier;
+  final String elderName;
+  final DateTime triggeredAt;
+  final String? addressLabel;
+
+  /// Who took responsibility, once somebody has.
+  final String? ownerName;
+
+  /// When the current tier's window runs out. Null when nothing is timing.
+  final DateTime? deadlineAt;
+
+  /// Seconds between the alert and its acknowledgement. Null while unanswered.
+  final int? responseSeconds;
+
+  /// How it ended, once it has. The wire value, because the set is administrator-facing
+  /// and a screen showing an unrecognised one verbatim is better than one showing
+  /// nothing.
+  final String? outcome;
+
+  bool get isAnswered => ownerName != null;
+
+  factory AlertSummary.fromJson(Map<String, dynamic> json) {
+    final Object? owner = json['acknowledgedBy'];
+    final Object? elder = json['elder'];
+    final Object? deadline = json['deadlineAt'];
+    final Object? response = json['responseSeconds'];
+
+    return AlertSummary(
+      eventId: (json['eventId'] ?? json['id'])! as String,
+      state: EventState.parse(json['state'] as String),
+      severity: Severity.parse(json['severity'] as String),
+      severityScore: (json['severityScore'] as num?)?.toInt() ?? 0,
+      currentTier: (json['currentTier'] as num).toInt(),
+      elderName: elder is Map<String, dynamic> ? elder['name'] as String : 'Unknown',
+      triggeredAt: DateTime.parse(json['triggeredAt'] as String).toLocal(),
+      addressLabel: json['addressLabel'] as String?,
+      ownerName: owner is Map<String, dynamic> ? owner['name'] as String? : null,
+      deadlineAt: deadline is String ? DateTime.parse(deadline).toLocal() : null,
+      responseSeconds: response is num ? response.toInt() : null,
+      outcome: json['outcome'] as String?,
+    );
+  }
+}
+
+/// One factor of the severity score, with the arithmetic that produced it.
+class SeverityFactor {
+  const SeverityFactor({
+    required this.key,
+    required this.label,
+    required this.weight,
+    required this.contribution,
+    this.detail,
+  });
+
+  final String key;
+
+  /// The wording the policy itself carries, so the screen never has to invent a name
+  /// for a factor an administrator added after this code was written.
+  final String label;
+  final int weight;
+  final int contribution;
+  final String? detail;
+
+  /// True when this factor added nothing, which is most of them on a quiet alert.
+  bool get isIdle => contribution == 0;
+
+  factory SeverityFactor.fromJson(Map<String, dynamic> json) => SeverityFactor(
+    key: json['key'] as String,
+    label: json['label'] as String? ?? json['key'] as String,
+    weight: (json['weight'] as num).toInt(),
+    contribution: (json['contribution'] as num).toInt(),
+    detail: json['detail'] as String?,
+  );
+}
+
+/// One line of what happened, for the timeline.
+class TimelineEntry {
+  const TimelineEntry({
+    required this.id,
+    required this.action,
+    required this.secondsFromTrigger,
+    this.actorName,
+  });
+
+  final String id;
+  final String action;
+  final int secondsFromTrigger;
+
+  /// Null for everything the system did on its own, which is what makes an automatic
+  /// escalation distinguishable from a human decision when the trail is read back.
+  final String? actorName;
+
+  factory TimelineEntry.fromJson(Map<String, dynamic> json) {
+    final Object? actor = json['actor'];
+    return TimelineEntry(
+      id: json['id'] as String,
+      action: json['action'] as String,
+      secondsFromTrigger: (json['secondsFromTrigger'] as num).toInt(),
+      actorName: actor is Map<String, dynamic> ? actor['name'] as String? : null,
+    );
+  }
+}
+
+/// One rung of the chain, in the order it would be dispatched.
+class ChainMember {
+  const ChainMember({
+    required this.responderId,
+    required this.name,
+    required this.role,
+    required this.priorityOrder,
+  });
+
+  final String responderId;
+  final String name;
+  final Role role;
+  final int priorityOrder;
+
+  factory ChainMember.fromJson(Map<String, dynamic> json) => ChainMember(
+    responderId: json['responderId'] as String,
+    name: json['name'] as String,
+    role: Role.parse(json['role'] as String),
+    priorityOrder: (json['priorityOrder'] as num).toInt(),
+  );
+}
+
+/// Everything the detail screen needs, in one request.
+///
+/// Deliberately without the delivery log. A responder is deciding whether to go, not
+/// auditing which push failed; that belongs on the operations console.
+class AlertDetail {
+  const AlertDetail({
+    required this.summary,
+    required this.factors,
+    required this.timeline,
+    required this.chain,
+  });
+
+  final AlertSummary summary;
+  final List<SeverityFactor> factors;
+  final List<TimelineEntry> timeline;
+  final List<ChainMember> chain;
+
+  factory AlertDetail.fromJson(Map<String, dynamic> json) {
+    final Object? severity = json['severityFactors'];
+    final List<dynamic> rawFactors = severity is Map<String, dynamic>
+        ? (severity['factors'] as List<dynamic>? ?? const [])
+        : const [];
+
+    return AlertDetail(
+      summary: AlertSummary.fromJson(json),
+      factors: rawFactors
+          .map((dynamic f) => SeverityFactor.fromJson(f as Map<String, dynamic>))
+          .toList(),
+      timeline: (json['timeline'] as List<dynamic>? ?? const [])
+          .map((dynamic t) => TimelineEntry.fromJson(t as Map<String, dynamic>))
+          .toList(),
+      chain: (json['chain'] as List<dynamic>? ?? const [])
+          .map((dynamic c) => ChainMember.fromJson(c as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// How an emergency ended. The subset a caregiver can choose from: cancellation is the
+/// elder's own path, and no-response is something the system concludes, not a person.
+enum Outcome {
+  handledAtHome('HANDLED_AT_HOME', 'Handled at home'),
+  falseAlarm('FALSE_ALARM', 'False alarm'),
+  responderAttended('RESPONDER_ATTENDED', 'An emergency responder attended'),
+  hospitalTransfer('HOSPITAL_TRANSFER', 'Taken to hospital');
+
+  const Outcome(this.wire, this.label);
+
+  final String wire;
+  final String label;
+}
