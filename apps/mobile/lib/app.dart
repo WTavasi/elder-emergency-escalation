@@ -7,6 +7,8 @@ import 'auth/auth_controller.dart';
 import 'auth/sign_in_screen.dart';
 import 'elder/alert_controller.dart';
 import 'elder/elder_home_screen.dart';
+import 'responder/alert_list_screen.dart';
+import 'responder/alerts_controller.dart';
 import 'theme/theme.dart';
 
 /// The app.
@@ -62,14 +64,27 @@ class _Home extends StatelessWidget {
         create: (_) => AlertController(api: api, home: auth.account!.home),
         child: const ElderHomeScreen(),
       ),
-      _ => const _NotBuiltYet(),
+      // Everybody who responds to an emergency gets the same screen. The differences
+      // between a caregiver, a family member and an emergency responder are differences
+      // in who gets asked and when, which the server decides; what each of them does
+      // when asked is identical, so a separate screen per role would be three copies of
+      // one screen.
+      Role.caregiver ||
+      Role.familyMember ||
+      Role.emergencyResponder => ChangeNotifierProvider<AlertsController>(
+        key: ValueKey<String>(auth.account!.id),
+        create: (_) => AlertsController(api: api),
+        child: AlertListScreen(api: api),
+      ),
+      _ => const _ConsoleOnly(),
     };
   }
 }
 
-/// Honest about what does not exist yet, rather than an empty screen that looks broken.
-class _NotBuiltYet extends StatelessWidget {
-  const _NotBuiltYet();
+/// For a role with no place in this app. Honest about it, rather than an empty screen
+/// that looks broken.
+class _ConsoleOnly extends StatelessWidget {
+  const _ConsoleOnly();
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +99,7 @@ class _NotBuiltYet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  'Caregiver and responder screens are not built yet.',
+                  'Administrators work from the web console, not the app.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
