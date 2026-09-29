@@ -171,3 +171,86 @@ being told what is happening".
 
 Publishing is fire and forget. An escalation that failed because a socket was
 unavailable would be a real emergency lost to a cosmetic feature.
+
+## The server decides where an emergency is, and the app never reads the device
+
+The obvious design was to read GPS when the panic control is pressed. It was rejected,
+and what replaced it is better on three counts rather than merely cheaper.
+
+The elder's location is their registered home, unless somebody in the care circle has
+recorded a stay away from it. Raising an emergency sends no coordinates at all.
+
+**Privacy.** An app that never asks for location permission has no location trail to
+secure, to disclose in a privacy notice, or to explain to a research participant before
+they consent. The question "what do you do with my whereabouts" has the strongest
+possible answer, which is that the system never learns them. Continuous tracking of an
+elderly person would have needed a much larger justification for a much smaller gain.
+
+**Integrity.** Location is an input to the severity score, and the severity score decides
+how urgently the system treats a person. A client that could name its own coordinates
+could name coordinates that raise its own priority. Resolving location server-side from a
+record only a caregiver can change puts that input out of the caller's reach.
+
+**Reliability.** A GPS fix can be slow, denied, or unavailable indoors, which is where
+falls happen. Every one of those is a reason a panic request could have failed or stalled
+at the worst possible moment. There is now nothing in the raise path that can fail before
+the request goes out, and the client-side precondition that used to be able to disable the
+panic control for an account with no registered home is gone with it.
+
+The cost is precision. An alert raised while the person is out and about, with no stay
+recorded, is located at their home. That is an accepted limitation rather than an
+oversight: the away-from-home factor still works, because a recorded stay moves the alert
+location while the registered home stays put for it to measure against, and a stay is
+something the care circle already knows about. The version of this with a device location
+is written up as future work, not as an unfinished feature.
+
+## Hands-free activation is future work, and the obstacle is not recognition
+
+A voice trigger, where calling out in a local language raises an alert, was assessed and
+deferred. The finding is worth recording because it is counterintuitive.
+
+Recognising one fixed word in any language is tractable. A keyword spotter trains on
+recordings of the word, not on a language model, so an unsupported language is not the
+barrier; custom wake words are routinely trained for languages no product ships.
+
+The barrier is always-on listening. iOS gives a third-party app no sanctioned way to hold
+the microphone open in the background, and Android can do it only with a foreground
+service, a permanent notification and a battery exemption, which OEM power management will
+still defeat. So the version people imagine, a phone in a drawer that hears someone call
+out, is not deliverable on iOS at all.
+
+If it is revisited, the two routes worth taking are an assistant integration, which
+borrows the always-on wake word the platform already runs and costs about a day, and an
+on-device keyword spotter evaluated properly, where the contribution is the measurement
+rather than the feature: false accepts per hour matter more than accuracy for an emergency
+system, because an alert nobody meant to raise erodes trust faster than a missed one does.
+
+## Escalation has two mechanisms, and the second one exists for deployment
+
+Timers are Redis keys and expiry events promote them. That is the design and it is what
+makes the system event-driven rather than polled. It has one dependency that cannot be
+engineered away: Redis has to be publishing keyspace notifications, which needs
+`notify-keyspace-events Ex`. Compose sets it locally and the API sets it at boot if it is
+missing, but a managed Redis may refuse CONFIG SET, and some disable the feature outright.
+
+The failure that produces is the worst shape available. The system accepts emergencies,
+dispatches tier one, records deadlines, and never escalates any of them. Nothing errors.
+It would look healthy right up until somebody checked whether tier two was ever reached.
+
+So the durable deadline that already existed for boot recovery is reconciled on an
+interval as well. The listener promotes within a second when events arrive; the sweep
+promotes within one interval whatever the provider does. Two mechanisms, different
+guarantees, and no shared point of failure beyond the database.
+
+Three things about it were deliberate. It runs the same code as boot recovery rather than
+its own copy, because a second answer to "which deadlines have passed" is a second thing
+to keep correct. It is silent on a quiet pass and warns when it promotes anything, since
+promoting something means the listener missed an expiry and that is the only interesting
+outcome. And it is switched off in the integration suite, because a safety net that hides
+the failure it is catching would let the suite pass whether the event-driven path worked
+or not.
+
+The cost is a query every fifteen seconds against open emergencies, which is indexed and
+touches nothing else. Calling the system event-driven is still accurate: nothing polls to
+decide when to escalate, and the sweep is a reconciliation against a recorded deadline
+rather than the mechanism by which escalation happens.

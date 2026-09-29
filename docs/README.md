@@ -2,8 +2,8 @@
 
 | Document | What it covers |
 | --- | --- |
-| [running.md](running.md) | Starting the system from a cold laptop, in a terminal or in VS Code |
-| [testing.md](testing.md) | The four testing layers, and how to demonstrate the system |
+| [running.md](running.md) | Starting the system from a cold laptop: a terminal, VS Code, or the Flutter app |
+| [testing.md](testing.md) | The five testing layers, and how to demonstrate the system |
 | [api.md](api.md) | Every endpoint, its authorisation and its filters |
 | [architecture.md](architecture.md) | Escalation, notifications, live updates, design tokens |
 | [decisions.md](decisions.md) | Choices that are not obvious from the code, and why |

@@ -44,6 +44,7 @@ emergency event, and `event_id` stays mandatory there exactly as Figure 4.4 show
 | `users` | `push_token`, `push_token_updated_at` | FCM needs a device target. One device per user in this build |
 | `users` | `care_level` | Severity input. Operational dependency level set by a caregiver, not a clinical field |
 | `users` | `home_latitude`, `home_longitude`, `home_address_label` | The registered home, needed for the away-from-home factor |
+| `users` | `current_latitude`, `current_longitude`, `current_place_label`, `current_place_set_at`, `current_place_set_by_id` | Where an elder is staying when it is not their registered home. A deliberate alternative to reading the device's location: an occasional fact recorded by a person in the care circle rather than a continuous trail inferred from a phone. Null means at home, which is the normal case. The away-from-home factor measures against `home_latitude` and `home_longitude`, which never move |
 | `users` | `coverage_area_name`, `coverage_latitude`, `coverage_longitude`, `coverage_radius_km` | The physical form of `coverage_area` from Figure 4.4. A named area plus a circle, matched by Haversine distance, which avoids adding PostGIS for one query |
 | `users` | `timezone`, `updated_at` | Time-of-day factor is evaluated in the elder's own timezone |
 | `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Declared cover, the caregiver-availability severity factor. Declared availability, never verified presence, and the column names say so |
