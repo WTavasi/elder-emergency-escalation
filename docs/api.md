@@ -31,7 +31,7 @@ code path, so the API cannot be used to discover who is registered.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/v1/alerts` | elder | Raise an emergency. Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of |
@@ -43,6 +43,15 @@ code path, so the API cannot be used to discover who is registered.
 
 Every query is scoped to the caller's own care relationships. An emergency the caller is
 not part of returns 404 rather than 403, so the API does not confirm that an id exists.
+
+Raising takes **no location**. Where an emergency is happening is resolved by the server
+from the elder's own record: a recorded stay away from home if there is one, otherwise the
+registered home. Two reasons. The app never reads the device's location, so there is no
+location trail to protect or to explain to a research participant; and a client that could
+name its own coordinates could name coordinates that raise its own severity score, which
+is an input to a safety decision. The optional `latitude` and `longitude` fields on the
+request are a fallback for an account whose home was never recorded, which registration
+does not yet require, and they come out once it does.
 
 Declining is narrower than the rest. Only the people the **current tier** actually
 asked may decline, so a tier two contact cannot decline on tier one's behalf and
@@ -70,6 +79,29 @@ endpoints refuse an administrator account. That is deliberate and is covered in
 
 An unrecognised value is rejected with a 400 naming the field, rather than reaching the
 database and surfacing as a 500 that discloses something about the schema.
+
+## Where an elder is staying
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/elders/:id/place` | care chain, administrator | Whether they are at home, and where if not |
+| PUT | `/api/v1/elders/:id/place` | care chain, administrator | Record a stay away from home |
+| DELETE | `/api/v1/elders/:id/place` | care chain, administrator | Back home |
+
+The alternative to reading the device's location. A stay away from home is an occasional
+fact that somebody in the care circle already knows, so it is recorded once by a person
+rather than inferred continuously from a phone. Alerts raised during a stay carry that
+place, and the away-from-home severity factor measures against the registered home, which
+never moves, so the factor still scores.
+
+An elder cannot change this about themselves, deliberately: the control exists for the
+people who would know about a stay, and somebody in the middle of an emergency should
+never be asked where they are. A caregiver or family member must be in that elder's care
+circle; an administrator may reach any elder. Anyone else gets 403, and a non-elder id
+gets 404.
+
+`PUT` is idempotent. Clearing a stay still records when it was cleared, so the account
+says the person came back rather than losing that a stay ever happened.
 
 ## Reporting
 

@@ -162,6 +162,32 @@ export class EnvSchema {
   RETENTION_ENABLED: boolean = true;
 
   /**
+   * Whether the escalation reconciliation sweep runs.
+   *
+   * On in production, off in the integration suite. The suite exists to prove that
+   * escalation is genuinely driven by Redis key expiry, and a sweep running underneath
+   * it would promote anything the listener had missed, so the suite would pass whether
+   * the event-driven path worked or not. A safety net that hides the failure it is
+   * catching is worse than no safety net.
+   */
+  @Transform(({ value }) => (value === undefined ? true : value === 'true' || value === true))
+  @IsBoolean()
+  ESCALATION_SWEEP_ENABLED: boolean = true;
+
+  /**
+   * How often the sweep reconciles recorded deadlines against the clock, milliseconds.
+   *
+   * This is the worst-case escalation delay when Redis expiry events are unavailable,
+   * so it is a latency budget rather than a housekeeping interval. Fifteen seconds is
+   * short against the shortest acknowledgement window the system uses and cheap against
+   * the query, which is indexed and touches only open events.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1000)
+  ESCALATION_SWEEP_INTERVAL_MS: number = 15_000;
+
+  /**
    * How long to wait for a notification provider before giving up, milliseconds.
    *
    * Node's fetch has no default timeout at all, so without this a stalled connection

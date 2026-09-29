@@ -15,7 +15,7 @@ void main() {
       );
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
-      await t.api.raiseAlert(testHome);
+      await t.api.raiseAlert();
 
       expect(t.calls[1].authorization, 'Bearer access-1');
     });
@@ -70,7 +70,7 @@ void main() {
       );
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
-      final Emergency raised = await t.api.raiseAlert(testHome);
+      final Emergency raised = await t.api.raiseAlert();
 
       expect(raised.id, 'event-1');
       expect(t.calls, hasLength(4));
@@ -86,7 +86,7 @@ void main() {
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
 
-      await expectLater(t.api.raiseAlert(testHome), throwsA(isA<ApiException>()));
+      await expectLater(t.api.raiseAlert(), throwsA(isA<ApiException>()));
       // Sign-in, the refused request, the refused refresh. Nothing more.
       expect(t.calls, hasLength(3));
       expect(t.api.session, isNull);
@@ -103,14 +103,14 @@ void main() {
       t.api.onSessionChanged = changes.add;
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
-      await expectLater(t.api.raiseAlert(testHome), throwsA(isA<ApiException>()));
+      await expectLater(t.api.raiseAlert(), throwsA(isA<ApiException>()));
 
       expect(changes.last, isNull);
     });
   });
 
   group('raising an alert', () {
-    test('sends the location exactly once, in the request that raises it', () async {
+    test('sends no location, because the server decides where the emergency is', () async {
       late http.Request captured;
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int index) {
         if (index == 1) captured = request;
@@ -118,10 +118,14 @@ void main() {
       });
 
       await t.api.signIn(phone: '+254700000010', password: 'Dev!2026');
-      await t.api.raiseAlert(testHome);
+      await t.api.raiseAlert();
 
-      expect(captured.body, contains('-1.286389'));
-      expect(captured.body, contains('Kilimani, Nairobi'));
+      // This assertion used to be its opposite, and inverting it is the point of the
+      // change rather than a casualty of it. The app never reads the device's location,
+      // so there is nothing here to leak and nothing a client can claim that would raise
+      // its own severity score.
+      expect(captured.body, '{}');
+      expect(captured.body, isNot(contains('latitude')));
     });
   });
 

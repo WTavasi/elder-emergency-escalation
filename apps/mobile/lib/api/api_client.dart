@@ -46,15 +46,13 @@ class ApiClient {
   final Duration timeout;
   final http.Client _http;
 
-  Session? _session;
+  /// The session in flight. Assigned by the app when it restores a saved one on launch,
+  /// and by this client when tokens rotate.
+  Session? session;
 
   /// Called when the tokens rotate or the session ends, so it can be persisted or
   /// cleared. Null means the session is over and the app should return to sign-in.
   void Function(Session? session)? onSessionChanged;
-
-  Session? get session => _session;
-
-  set session(Session? value) => _session = value;
 
   Future<Session> signIn({required String phone, required String password}) async {
     // No refresh attempt on this one. There is nothing to refresh yet, and retrying a
@@ -67,7 +65,7 @@ class ApiClient {
     );
 
     final Session signedIn = Session.fromJson(body);
-    _session = signedIn;
+    session = signedIn;
     onSessionChanged?.call(signedIn);
     return signedIn;
   }
@@ -79,7 +77,7 @@ class ApiClient {
       // The local session is cleared either way. A person tapping sign out on a phone
       // with no signal still expects to be signed out of the phone in front of them.
     } finally {
-      _session = null;
+      session = null;
       onSessionChanged?.call(null);
     }
   }
@@ -89,17 +87,18 @@ class ApiClient {
     return Account.fromJson(body);
   }
 
-  /// Raises an emergency. The location is captured once, here, at the moment it is
-  /// raised, and is never sent again afterwards.
-  Future<Emergency> raiseAlert(GeoPoint at) async {
+  /// Raises an emergency. The body is empty, and that is the point.
+  ///
+  /// This app never reads the device's location and never sends a coordinate. Where an
+  /// emergency is happening is decided by the server from the elder's own record: their
+  /// registered home, or a stay away from home that a caregiver recorded. So there is no
+  /// location permission to ask for, no trail to protect, and nothing for this client to
+  /// get wrong at the worst possible moment.
+  Future<Emergency> raiseAlert() async {
     final Map<String, dynamic> body = await _send(
       'POST',
       '/alerts',
-      body: <String, dynamic>{
-        'latitude': at.latitude,
-        'longitude': at.longitude,
-        if (at.addressLabel != null) 'addressLabel': at.addressLabel,
-      },
+      body: const <String, dynamic>{},
     );
     return Emergency.fromJson(body);
   }
@@ -214,7 +213,7 @@ class ApiClient {
       throw NetworkException('Could not reach MzaziCare. Check the connection. ($error)');
     }
 
-    if (response.statusCode == 401 && authenticated && allowRetry && _session != null) {
+    if (response.statusCode == 401 && authenticated && allowRetry && session != null) {
       if (await _refresh()) {
         try {
           response = await _dispatch(method, path, body, authenticated);
@@ -243,7 +242,7 @@ class ApiClient {
     final Map<String, String> headers = <String, String>{
       'Accept': 'application/json',
       if (body != null) 'Content-Type': 'application/json',
-      if (authenticated && _session != null) 'Authorization': 'Bearer ${_session!.accessToken}',
+      if (authenticated && session != null) 'Authorization': 'Bearer ${session!.accessToken}',
     };
 
     final String? encoded = body == null ? null : jsonEncode(body);
@@ -256,7 +255,7 @@ class ApiClient {
   }
 
   Future<bool> _refresh() async {
-    final Session? current = _session;
+    final Session? current = session;
     if (current == null) return false;
 
     try {
@@ -279,7 +278,7 @@ class ApiClient {
         body['refreshToken'] as String,
       );
 
-      _session = renewed;
+      session = renewed;
       onSessionChanged?.call(renewed);
       return true;
     } on Exception {
@@ -290,7 +289,7 @@ class ApiClient {
   }
 
   void _endSession() {
-    _session = null;
+    session = null;
     onSessionChanged?.call(null);
   }
 

@@ -158,6 +158,24 @@ model User {
   homeLongitude    Decimal?   @map("home_longitude") @db.Decimal(9, 6)
   homeAddressLabel String?    @map("home_address_label") @db.VarChar(200)
 
+  /// EXTENSION. Where this elder is staying, when that is not their registered home.
+  /// Null is the normal case and means at home.
+  ///
+  /// A deliberate alternative to reading the device's location. The app never asks for
+  /// GPS and never sends a coordinate, so there is no continuous location trail to
+  /// protect, disclose or explain to a participant. Instead a caregiver records a stay
+  /// away from home when one actually happens, and alerts raised during it carry that
+  /// place. The away-from-home severity factor measures against homeLatitude and
+  /// homeLongitude, which never move, so the factor still scores.
+  currentLatitude   Decimal?  @map("current_latitude") @db.Decimal(9, 6)
+  currentLongitude  Decimal?  @map("current_longitude") @db.Decimal(9, 6)
+  currentPlaceLabel String?   @map("current_place_label") @db.VarChar(200)
+  currentPlaceSetAt DateTime? @map("current_place_set_at") @db.Timestamptz(3)
+  /// Who recorded the stay. A plain column rather than a relation: a self-relation on
+  /// User for one accountability breadcrumb would complicate every query that touches
+  /// an account, and nothing joins on this.
+  currentPlaceSetById String? @map("current_place_set_by_id") @db.Uuid
+
   // --- emergency-responder-only columns, null for every other role ---
   // coverage_area from Figure 4.4, given physical form as a named area plus a
   // circle. Matching an alert to a responder is a Haversine distance test against

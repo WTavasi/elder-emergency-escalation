@@ -16,8 +16,11 @@ Four things, in this order. Each one depends on the ones above it.
 | 2 | Postgres and Redis containers | ports 5433 and 6379 |
 | 3 | The API | http://localhost:3000 |
 | 4 | The dashboard | http://localhost:5173 |
+| 5 | The Flutter app, when you want it | a simulator or a connected phone |
 
-The Flutter app is not built yet, so there is no fifth step.
+Steps 1 to 4 are the system. Step 5 is optional: the dashboard alone is enough to watch
+an escalation, and the app is what you start when you want to raise one by hand or work
+on a screen. It is Guide C below, and it needs the API already running.
 
 ---
 
@@ -175,6 +178,83 @@ the **Services: stop** task.
 
 ---
 
+## Guide C: the Flutter app
+
+Only on the Mac. Everything here needs the Flutter toolchain, which is not available
+from anywhere else in this project.
+
+### Step 1. Have the API running
+
+Steps 1 to 4 of Guide A, or the tasks in Guide B. The app is useless without them, and
+the failure it shows you is a network error rather than anything informative.
+
+### Step 2. Pick where it will run
+
+```bash
+cd ~/Desktop/Mzazicare/apps/mobile
+flutter devices
+```
+
+That lists the simulators and any phone plugged in. If nothing useful appears, open the
+iOS Simulator from Spotlight, or Android Studio's Device Manager, and start one.
+
+### Step 3. Run it
+
+```bash
+flutter run
+```
+
+On the **Android emulator** this works with no arguments, because the app's default API
+address is `http://10.0.2.2:3000/api/v1`, which is how the emulator reaches the machine
+it is running on.
+
+On the **iOS Simulator**, the simulator shares the Mac's network, so point it at
+localhost:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:3000/api/v1
+```
+
+On a **real phone**, the phone has to reach your Mac over the same Wi-Fi, so use the
+Mac's address on the network. Find it with `ipconfig getifaddr en0`, then:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.42:3000/api/v1
+```
+
+substituting whatever that command printed. Both devices must be on the same network,
+and a captive or guest network will usually block this.
+
+### Step 4. Sign in
+
+Any seeded account, password `Dev!2026`. Which screen you get is decided by the role:
+
+| Phone | Who | What you see |
+| --- | --- | --- |
+| `+254700000010` | Grace Wanjiru, elder | The panic control, at the larger type scale |
+| `+254700000020` | Mary Otieno, caregiver, tier one for Grace | The alert list and the four actions |
+| `+254700000030` | family member, tier two for Grace | The same list |
+| `+254700000040` | emergency responder, tier three | The same list |
+| `+254700000001` | administrator | A note sending you to the web console |
+
+Mary at tier one is the account to use when testing acknowledge and decline, because she
+is the one the first dispatch actually asks. An account that was not asked gets a 403
+from decline, which is the system working rather than a fault.
+
+Raising an alert from the elder account and watching it appear on the dashboard board is
+the quickest end-to-end check that everything is wired together.
+
+Note that the app never asks for location permission, and never sends a coordinate.
+Where an emergency is happening is resolved by the server from the elder's own record.
+
+### Hot reload
+
+While `flutter run` is attached, **r** reloads changed Dart, **R** restarts the app, and
+**q** quits. Changes to `pubspec.yaml` or to anything native need a full **q** and
+`flutter run` again.
+
+---
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
@@ -216,6 +296,27 @@ docker compose up -d
 npm run db:migrate -w @mzazicare/api
 npm run db:seed -w @mzazicare/api
 ```
+
+For the Flutter app, once, from `apps/mobile`:
+
+```bash
+flutter pub get
+```
+
+### After pulling a change that touched the database
+
+Two commands, and the second is the one people forget:
+
+```bash
+npm run db:migrate -w @mzazicare/api    # apply new migrations
+npx prisma generate --schema apps/api/prisma/schema.prisma
+```
+
+The generated Prisma client is not in the repository, so a pull that added a column
+leaves your client describing the old schema. The symptom is a wall of TypeScript errors
+saying a property does not exist on a type, and `npm test` refusing to run at all
+because the test compiler hits them first. `prisma generate` clears every one of them.
+It runs automatically on `npm install`, so a full reinstall also fixes it.
 
 The seed prints every account it created. All of them sign in with `Dev!2026`, and the
 seed refuses to run against anything that is not a local database.

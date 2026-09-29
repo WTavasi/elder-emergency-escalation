@@ -49,6 +49,17 @@ bundled with the app and self-hosted in the dashboard, not loaded from a third-p
 | Contrast | AA everywhere, AAA on body text and the panic control |
 | Font scaling | usable at 200% system font size |
 
+"Asserted in tests" is true of the app, where `test/accessibility_test.dart` compares
+against the constants in the generated token file rather than against numbers typed into
+the test, and of contrast everywhere, which the token build gates on 26 declared pairs.
+It is not yet true of the dashboard's touch targets, and no continuous integration job
+runs the app's tests, so that assertion currently depends on somebody running them.
+
+One caution learned the hard way: a floor computed in code is not a floor enforced in
+code. The panic control clamped its diameter to the elder minimum and then handed that
+number to a widget that cannot exceed its parent's constraints, so a cramped layout
+rendered it at 20 points. The test was right for a fortnight before anybody ran it.
+
 Also required on every screen before it is considered done: text alternatives on all
 images, icons and map views; full keyboard operation of the dashboard with visible focus
 and no traps; visible persistent field labels tied by `for` and `id`; buttons named after

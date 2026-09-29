@@ -3,6 +3,18 @@
 How the parts that are not obvious actually work. The mechanisms here are the ones
 worth being able to explain rather than merely point at.
 
+## The three surfaces
+
+| Surface | Who uses it | What it can do |
+| --- | --- | --- |
+| `apps/mobile`, elder path | the person being cared for | One control: raise, and withdraw inside the grace window |
+| `apps/mobile`, caregiver path | caregivers, family, responders | See the emergencies they are part of, and acknowledge, decline, resolve or call in a responder |
+| `apps/dashboard` | administrators | See everything, measure it, and change nothing about a live emergency |
+
+The split in the last row is deliberate and is covered in [decisions.md](decisions.md).
+The same projection layer serves all three, so none of them can disagree about what an
+emergency looks like.
+
 ## How escalation actually works
 
 An acknowledgement window is a Redis key with a time to live. Nothing polls and nothing
@@ -21,6 +33,27 @@ timer and silently never mentions them again. The API checks on boot and, if the
 are missing, sets them at runtime while preserving any that are already there. If the
 server refuses CONFIG SET, which a managed Redis may, it logs the exact setting to
 change rather than starting up quietly broken.
+
+That log line is not the whole answer, because nobody reads logs during a demonstration.
+The same recorded deadlines are also reconciled against the clock on an interval, by
+`EscalationSweepService`, which runs the identical code path as boot recovery rather than
+a second implementation of it that could drift. So there are two mechanisms with
+different guarantees, and the difference is the design:
+
+| | Promotes | Depends on |
+| --- | --- | --- |
+| The listener | within a second | Redis publishing keyspace expiry events |
+| The sweep | within one interval, 15s by default | only the database and the clock |
+
+The sweep is therefore a latency budget rather than housekeeping, and it is the reason a
+deployment onto a Redis that forbids keyspace notifications degrades to slower escalation
+instead of to no escalation. It logs nothing on a quiet pass and warns loudly when it had
+to promote anything, because having something to promote means the listener missed an
+expiry it should have received.
+
+It is switched off for the integration suite. That suite exists to prove escalation is
+genuinely event-driven, and a safety net running underneath it would promote whatever the
+listener missed, so the suite would pass whether the primary mechanism worked or not.
 
 Acknowledging, resolving, cancelling and requesting a responder all clear the pending
 timers first, so a stale expiry cannot promote an emergency somebody is already handling.
@@ -72,9 +105,14 @@ credentials. The API refuses to start in production while either is still set to
 
 ## Live updates
 
-Responder screens and the dashboard connect to a Socket.IO namespace at `/realtime`
-and receive an `emergency.updated` message whenever an emergency changes: raised,
-dispatched, escalated, acknowledged, resolved, cancelled or reopened.
+The administrator console connects to a Socket.IO namespace at `/realtime` and receives
+an `emergency.updated` message whenever an emergency changes: raised, dispatched,
+escalated, acknowledged, resolved, cancelled or reopened.
+
+The Flutter app does **not** use the socket yet. Both the elder's screen and the
+caregiver's list poll on a timer, which is correct but not instant. The gateway is ready
+and the polling interval is a constructor field on each controller, so the swap is a
+deletion rather than a rewrite.
 
 The handshake carries an access token, the same one used for HTTP:
 
@@ -102,7 +140,7 @@ generates:
 
 | Output | Consumer |
 | --- | --- |
-| `dist/tokens.dart` | Flutter app |
+| `lib/src/tokens.dart` | Flutter app |
 | `dist/tokens.css` | admin dashboard |
 | `dist/tokens.ts` | admin dashboard, typed access |
 | `dist/contrast-report.json` | evidence for the report |

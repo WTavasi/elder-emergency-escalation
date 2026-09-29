@@ -201,7 +201,9 @@ async function run() {
   const event = await api('/alerts', {
     method: 'POST',
     token: elderToken,
-    body: { latitude: -1.2833, longitude: 36.7833, addressLabel: 'Kileleshwa, Nairobi' },
+    // Empty on purpose. The server decides where the emergency is, from the elder's
+    // registered home or a recorded stay away from it; the app never sends a location.
+    body: {},
   });
   const acceptedMs = Date.now() - triggeredAt;
 

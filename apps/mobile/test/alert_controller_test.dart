@@ -14,7 +14,6 @@ void main() {
   AlertController build(ApiClient api, {Duration window = const Duration(seconds: 1)}) =>
       AlertController(
         api: api,
-        home: testHome,
         cancelWindow: window,
         pollInterval: const Duration(milliseconds: 100),
       );
@@ -70,19 +69,34 @@ void main() {
     });
   });
 
-  group('without a location', () {
-    test('says what is wrong rather than failing silently', () async {
+  group('the location', () {
+    test('is not sent, because the server decides where the emergency is', () async {
+      String? sent;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int index) {
+        if (request.method == 'POST') sent = request.body;
+        return <http.Response>[json(emergencyBody())];
+      });
+
+      final AlertController alerts = AlertController(api: t.api);
+      await alerts.raise();
+
+      expect(sent, '{}');
+      alerts.dispose();
+    });
+
+    test('never blocks the press, whatever the account is missing', () async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int index) => <http.Response>[json(emergencyBody())],
       );
 
-      final AlertController alerts = AlertController(api: t.api, home: null);
-
-      expect(alerts.canReportLocation, isFalse);
-
+      // There is deliberately no precondition left to fail. An account with no
+      // registered home still raises, because refusing to call for help over an
+      // incomplete profile is the wrong failure.
+      final AlertController alerts = AlertController(api: t.api);
       await alerts.raise();
-      expect(t.calls, isEmpty);
-      expect(alerts.error, contains('registered home address'));
+
+      expect(t.calls, isNotEmpty);
+      expect(alerts.error, isNull);
       alerts.dispose();
     });
   });

@@ -30,6 +30,9 @@ describe('escalation, end to end', () => {
   let alerts: AlertsService;
   let escalation: EscalationService;
 
+  // The elder's registered home. Written to the account in setup, and never passed to
+  // alerts.create: the server resolves where an emergency is from the account itself, so
+  // passing it here would test the fallback rung instead of the real path.
   const home = { latitude: -1.2833, longitude: 36.7833 };
   const suffix = Date.now().toString().slice(-7);
   const ids: { elder?: string; caregiver?: string; family?: string } = {};
@@ -163,7 +166,7 @@ describe('escalation, end to end', () => {
   });
 
   it('dispatches tier one immediately and arms its acknowledgement window', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
 
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     expect(stored.state).toBe(EventState.NOTIFIED);
@@ -176,7 +179,7 @@ describe('escalation, end to end', () => {
   });
 
   it('escalates to tier two on its own when nobody acknowledges', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
 
     // The tier one window is two seconds. What is being waited for is the whole chain
     // that follows it: the key expiring, the listener acting, and tier two going out.
@@ -213,7 +216,7 @@ describe('escalation, end to end', () => {
   });
 
   it('stops climbing once someone acknowledges', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
     await escalation.acknowledge(event.id, ids.caregiver as string, home);
 
     // A fixed wait on purpose. This asserts that something does NOT happen, and the
@@ -227,7 +230,7 @@ describe('escalation, end to end', () => {
   });
 
   it('falls back to SMS when the recipient has no registered device', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
 
     // The accounts have no push token, which the logging provider refuses exactly as
     // Firebase would, so the fallback path runs for real here.
@@ -266,7 +269,7 @@ describe('escalation, end to end', () => {
   });
 
   it('tells the caregiver when the elder cancels, so they can call to check', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
     await waitFor(
       'the first dispatch to be recorded',
       async () => (await prisma.notification.count({ where: { eventId: event.id } })) > 0,
@@ -284,7 +287,7 @@ describe('escalation, end to end', () => {
   });
 
   it('stops climbing once the elder cancels inside the grace window', async () => {
-    const event = await alerts.create(ids.elder as string, home);
+    const event = await alerts.create(ids.elder as string, {});
     await alerts.cancel(event.id, ids.elder as string);
 
     // Fixed, for the same reason: outlasting the window is what proves the timer was

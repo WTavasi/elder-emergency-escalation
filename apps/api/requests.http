@@ -40,8 +40,13 @@ Content-Type: application/json
 
 @elderToken = {{elderLogin.response.body.accessToken}}
 
+# @name elderMe
 GET {{baseUrl}}/auth/me
 Authorization: Bearer {{elderToken}}
+
+###
+
+@elderId = {{elderMe.response.body.id}}
 
 ###############################################################################
 # 2. Raise an emergency
@@ -358,3 +363,67 @@ Authorization: Bearer {{caregiverToken}}
 Content-Type: application/json
 
 {}
+
+###############################################################################
+# 16. Where the elder is staying, and the away-from-home severity factor
+#
+# Run these four in order. They are the clearest demonstration in the file that
+# severity is computed from data rather than hard-coded, because the same panic
+# request scores differently before and after one recorded fact changes.
+#
+# Note what the panic request below does NOT contain: any coordinates. The server
+# decides where an emergency is, from the elder's own record. The app never reads the
+# device's location, so there is no location trail to protect, and a client cannot
+# name coordinates that would raise its own severity score.
+###############################################################################
+
+# 16a. At home. Read the severityFactors in the response and find the away-from-home
+# factor: it contributes 0, because the alert is located at the registered home.
+# @name atHome
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+# 16b. A caregiver records that she has gone to stay with her daughter. This is the
+# alternative to reading the device's location: an occasional fact somebody in the
+# care circle already knows, recorded once, rather than a continuous trail.
+PUT {{baseUrl}}/elders/{{elderId}}/place
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{
+  "latitude": -1.31,
+  "longitude": 36.83,
+  "label": "Staying with her daughter, South B"
+}
+
+###
+
+# 16c. The same request as 16a, unchanged. The away-from-home factor now contributes,
+# the score is higher, and the alert carries the label a responder can act on rather
+# than a pair of decimals.
+POST {{baseUrl}}/alerts
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{}
+
+###
+
+# 16d. Back home. Alerts are located at the registered home again.
+DELETE {{baseUrl}}/elders/{{elderId}}/place
+Authorization: Bearer {{caregiverToken}}
+
+###
+
+# Expect 403. An elder cannot move themselves, and nobody outside the care circle can
+# move them either. The control exists for the people who would know about a stay.
+PUT {{baseUrl}}/elders/{{elderId}}/place
+Authorization: Bearer {{elderToken}}
+Content-Type: application/json
+
+{ "latitude": -1.31, "longitude": 36.83 }

@@ -131,6 +131,11 @@ jobs:
       # The suite creates data with deliberate ages. A sweep running underneath it
       # would be a test that fails occasionally for a reason nobody can reproduce.
       RETENTION_ENABLED: 'false'
+      # Off deliberately. This job exists to prove that escalation is driven by Redis key
+      # expiry; a sweep running underneath it would promote whatever the listener missed,
+      # so the job would pass whether the event-driven path worked or not. A safety net
+      # that hides the failure it is catching is worse than no safety net.
+      ESCALATION_SWEEP_ENABLED: 'false'
     steps:
       - uses: actions/checkout@v4
 
