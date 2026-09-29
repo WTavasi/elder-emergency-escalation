@@ -45,6 +45,10 @@ const elder = {
   homeLatitude: -1.2833,
   homeLongitude: 36.7833,
   homeAddressLabel: 'Kileleshwa, Nairobi',
+  // At home, which is the normal case.
+  currentLatitude: null,
+  currentLongitude: null,
+  currentPlaceLabel: null,
   timezone: 'Africa/Nairobi',
   assignmentsAsElder: [
     {
@@ -228,6 +232,90 @@ describe('AlertsService', () => {
       await expect(
         build(prisma).create('elder-1', { latitude: -1.28, longitude: 36.78 }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('where the emergency is located', () => {
+    it('uses the registered home, not whatever the caller sent', async () => {
+      const prisma = buildPrisma();
+      const severity = buildSeverity();
+
+      // A caller claiming to be somewhere else. The claim is ignored, because an input
+      // to a severity decision does not belong in the caller's hands.
+      await build(prisma, severity).create('elder-1', { latitude: 1.11, longitude: 2.22 });
+
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alertLocation: { latitude: -1.2833, longitude: 36.7833 },
+        }),
+      );
+      expect(prisma.emergencyEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ alertAddressLabel: 'Kileleshwa, Nairobi' }),
+        }),
+      );
+    });
+
+    it('uses a recorded stay away from home when one is set', async () => {
+      const prisma = buildPrisma();
+      const severity = buildSeverity();
+      prisma.user.findUnique.mockResolvedValue({
+        ...elder,
+        currentLatitude: -1.31,
+        currentLongitude: 36.83,
+        currentPlaceLabel: 'Staying with her daughter, South B',
+      });
+
+      await build(prisma, severity).create('elder-1', {});
+
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alertLocation: { latitude: -1.31, longitude: 36.83 },
+          // The home never moves, so the away-from-home factor has something to measure
+          // against and actually scores.
+          homeLocation: { latitude: -1.2833, longitude: 36.7833 },
+        }),
+      );
+      expect(prisma.emergencyEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            alertAddressLabel: 'Staying with her daughter, South B',
+          }),
+        }),
+      );
+    });
+
+    it('falls back to the caller only when no home was ever recorded', async () => {
+      const prisma = buildPrisma();
+      const severity = buildSeverity();
+      prisma.user.findUnique.mockResolvedValue({
+        ...elder,
+        homeLatitude: null,
+        homeLongitude: null,
+        homeAddressLabel: null,
+      });
+
+      await build(prisma, severity).create('elder-1', { latitude: 1.11, longitude: 2.22 });
+
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({ alertLocation: { latitude: 1.11, longitude: 2.22 } }),
+      );
+    });
+
+    it('still raises the alert when nothing at all is known about the location', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue({
+        ...elder,
+        homeLatitude: null,
+        homeLongitude: null,
+        homeAddressLabel: null,
+      });
+
+      // An emergency that cannot be located is still an emergency. Refusing a panic
+      // request over an incomplete profile would be the worst place to enforce data
+      // quality, so this must not throw.
+      const created = await build(prisma).create('elder-1', {});
+      expect(created.state).toBe(EventState.TRIGGERED);
     });
   });
 

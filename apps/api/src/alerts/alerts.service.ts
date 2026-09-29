@@ -136,10 +136,11 @@ export class AlertsService {
     }
 
     const recentEventCount = await this.countRecentEvents(elderId, at);
+    const where = AlertsService.resolveAlertLocation(elder, dto);
 
     const assessment = await this.severity.evaluate({
       careLevel: elder.careLevel,
-      alertLocation: { latitude: dto.latitude, longitude: dto.longitude },
+      alertLocation: { latitude: where.latitude, longitude: where.longitude },
       homeLocation:
         elder.homeLatitude !== null && elder.homeLongitude !== null
           ? { latitude: Number(elder.homeLatitude), longitude: Number(elder.homeLongitude) }
@@ -155,9 +156,9 @@ export class AlertsService {
       const created = await tx.emergencyEvent.create({
         data: {
           elderlyId: elderId,
-          alertLatitude: new Prisma.Decimal(dto.latitude),
-          alertLongitude: new Prisma.Decimal(dto.longitude),
-          alertAddressLabel: dto.addressLabel ?? elder.homeAddressLabel ?? null,
+          alertLatitude: new Prisma.Decimal(where.latitude),
+          alertLongitude: new Prisma.Decimal(where.longitude),
+          alertAddressLabel: where.addressLabel,
           state: EventState.TRIGGERED,
           currentTier: 1,
           severity: assessment.band,
@@ -518,6 +519,59 @@ export class AlertsService {
         OR: [{ triggeredAt: { gte: since } }, { state: { in: OPEN_STATES } }],
       },
     });
+  }
+
+  /**
+   * Where the emergency is happening, decided by the server.
+   *
+   * Three rungs, in this order, and the order is the point:
+   *
+   * 1. A recorded stay away from home. A caregiver sets this when an elder goes to stay
+   *    with family or travels, and clears it when they come back. It is the only reason
+   *    an alert is ever located anywhere but home, and it is a deliberate human record
+   *    rather than a device reading itself.
+   * 2. The registered home, which is the normal case and covers nearly every alert.
+   * 3. Coordinates from the caller, used only when neither of the above exists. That
+   *    happens for an account registered without a home address, which registration
+   *    does not currently require. This rung is the one to delete once it does.
+   *
+   * Never throws. An emergency that cannot be located is still an emergency, and
+   * refusing a panic request over an incomplete profile would be the worst possible
+   * place to enforce data quality. A missing location scores the away-from-home factor
+   * at zero and says so in the breakdown.
+   */
+  private static resolveAlertLocation(
+    elder: {
+      currentLatitude: Prisma.Decimal | null;
+      currentLongitude: Prisma.Decimal | null;
+      currentPlaceLabel: string | null;
+      homeLatitude: Prisma.Decimal | null;
+      homeLongitude: Prisma.Decimal | null;
+      homeAddressLabel: string | null;
+    },
+    dto: CreateAlertDto,
+  ): { latitude: number; longitude: number; addressLabel: string | null } {
+    if (elder.currentLatitude !== null && elder.currentLongitude !== null) {
+      return {
+        latitude: Number(elder.currentLatitude),
+        longitude: Number(elder.currentLongitude),
+        addressLabel: elder.currentPlaceLabel ?? null,
+      };
+    }
+
+    if (elder.homeLatitude !== null && elder.homeLongitude !== null) {
+      return {
+        latitude: Number(elder.homeLatitude),
+        longitude: Number(elder.homeLongitude),
+        addressLabel: elder.homeAddressLabel ?? null,
+      };
+    }
+
+    return {
+      latitude: dto.latitude ?? 0,
+      longitude: dto.longitude ?? 0,
+      addressLabel: dto.addressLabel ?? null,
+    };
   }
 
   private static toCoverWindows(assignments: CoverSource[]): CoverWindow[] {
