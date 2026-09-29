@@ -29,7 +29,7 @@ class ElderHomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Header(name: auth.account?.name ?? '', onSignOut: () => auth.signOut()),
+              _Header(name: auth.account?.name ?? '', onSignOut: auth.signOut),
               const SizedBox(height: MzaziSpace.s24),
               Expanded(child: _Body(alerts: alerts)),
             ],
@@ -109,11 +109,7 @@ class _Idle extends StatelessWidget {
           const SizedBox(height: MzaziSpace.s16),
         ],
         Expanded(
-          child: PanicButton(
-            label: 'Get\nhelp',
-            enabled: alerts.canRaise && alerts.canReportLocation,
-            onPressed: () => alerts.raise(),
-          ),
+          child: PanicButton(label: 'Get\nhelp', enabled: alerts.canRaise, onPressed: alerts.raise),
         ),
         const SizedBox(height: MzaziSpace.s24),
         Text(
@@ -170,7 +166,7 @@ class _Cancellable extends StatelessWidget {
         SizedBox(
           height: MzaziA11y.elderMinTouchTarget,
           child: OutlinedButton(
-            onPressed: () => alerts.cancel(),
+            onPressed: alerts.cancel,
             // Says what it does, in the words the person would use. "Cancel" alone is
             // ambiguous when the thing on screen is already called a cancellation.
             child: const Text('I am all right, stop this'),
@@ -246,7 +242,7 @@ class _Finished extends StatelessWidget {
         SizedBox(
           height: MzaziA11y.elderMinTouchTarget,
           child: FilledButton(
-            onPressed: () => alerts.reset(),
+            onPressed: alerts.reset,
             child: const Text('Back to the help button'),
           ),
         ),

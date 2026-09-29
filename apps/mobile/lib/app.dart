@@ -61,7 +61,7 @@ class _Home extends StatelessWidget {
         // Keyed on the account, so signing out and back in as somebody else builds a
         // fresh controller rather than inheriting the previous person's emergency.
         key: ValueKey<String>(auth.account!.id),
-        create: (_) => AlertController(api: api, home: auth.account!.home),
+        create: (_) => AlertController(api: api),
         child: const ElderHomeScreen(),
       ),
       // Everybody who responds to an emergency gets the same screen. The differences
@@ -104,7 +104,7 @@ class _ConsoleOnly extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 24),
-                OutlinedButton(onPressed: () => auth.signOut(), child: const Text('Sign out')),
+                OutlinedButton(onPressed: auth.signOut, child: const Text('Sign out')),
               ],
             ),
           ),

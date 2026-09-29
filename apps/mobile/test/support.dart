@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mzazicare/api/api_client.dart';
-import 'package:mzazicare/api/models.dart';
 
 /// A recorded exchange: what the client asked for, and what it was told.
 class Exchange {
@@ -68,14 +67,8 @@ Map<String, dynamic> emergencyBody({
   'severity': 'ELEVATED',
   'currentTier': 1,
   'triggeredAt': '2026-09-16T10:00:00.000Z',
-  if (acknowledgedBy != null) 'acknowledgedBy': acknowledgedBy,
+  'acknowledgedBy': ?acknowledgedBy,
 };
-
-const GeoPoint testHome = GeoPoint(
-  latitude: -1.286389,
-  longitude: 36.817223,
-  addressLabel: 'Kilimani, Nairobi',
-);
 
 /// A summary row as the alerts endpoint projects it.
 Map<String, dynamic> summaryBody({

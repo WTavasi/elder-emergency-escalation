@@ -34,14 +34,11 @@ enum AlertPhase {
 class AlertController extends ChangeNotifier {
   AlertController({
     required ApiClient api,
-    required GeoPoint? home,
     this.cancelWindow = const Duration(seconds: 10),
     this.pollInterval = const Duration(seconds: 5),
-  }) : _api = api,
-       _home = home;
+  }) : _api = api;
 
   final ApiClient _api;
-  final GeoPoint? _home;
 
   /// How long the elder has to withdraw. Matches CANCEL_GRACE_WINDOW on the server,
   /// which is the authority: this copy only decides how long the button is shown, and
@@ -65,29 +62,20 @@ class AlertController extends ChangeNotifier {
   bool get canRaise =>
       _phase == AlertPhase.idle || _phase == AlertPhase.cancelled || _phase == AlertPhase.closed;
 
-  /// Whether this app can raise an alert at all. False only if the account has no
-  /// registered home and no other location source, which is a setup fault rather than
-  /// something the elder can fix in the moment, so it is surfaced before the press.
-  bool get canReportLocation => _home != null;
-
   Future<void> raise() async {
     if (!canRaise) return;
 
-    final GeoPoint? at = _home;
-    if (at == null) {
-      _error =
-          'This account has no registered home address, so help cannot be sent yet. '
-          'Ask your caregiver to add it.';
-      notifyListeners();
-      return;
-    }
-
+    // Nothing is checked before the request goes out. There used to be a location
+    // precondition here, and it could disable the panic control for an account whose
+    // home address had never been filled in. Refusing to call for help because a
+    // profile is incomplete is the wrong failure, and the server no longer needs the
+    // location from this side anyway.
     _phase = AlertPhase.raising;
     _error = null;
     notifyListeners();
 
     try {
-      _emergency = await _api.raiseAlert(at);
+      _emergency = await _api.raiseAlert();
       _startCancelWindow();
     } on ApiException catch (failure) {
       _phase = AlertPhase.idle;
