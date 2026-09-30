@@ -22,7 +22,10 @@ class SessionStore {
     : _storage =
           storage ??
           const FlutterSecureStorage(
-            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            // No AndroidOptions. It used to carry encryptedSharedPreferences: true, which
+            // selected the Jetpack Security backend; that library was deprecated upstream
+            // and the option was removed in flutter_secure_storage 11. The default backend
+            // is now the Keystore-backed one, which is what this always wanted.
             iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
           );
 

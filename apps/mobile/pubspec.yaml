@@ -23,7 +23,10 @@ dependencies:
 
   # The tokens are a credential on a device an elder may leave on a table, so they go
   # to the Keychain and the Android Keystore rather than to shared preferences.
-  flutter_secure_storage: ^9.2.2
+  # 11.x. The Jetpack Security backend behind AndroidOptions.encryptedSharedPreferences
+  # was deprecated upstream and removed in 11.0.0, which is why that option is gone from
+  # session_store.dart. Raises the Android floor to API 24 and the iOS floor to 12.
+  flutter_secure_storage: ^11.2.0
 
   # Deliberately the smallest thing that works for this app's state. The elder path has
   # one signed-in session and one live emergency; a full state-management framework

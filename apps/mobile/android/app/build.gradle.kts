@@ -19,7 +19,11 @@ android {
         applicationId = "ke.ac.strathmore.mzazicare"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Stated rather than inherited. flutter_secure_storage 11 requires API 24, and
+        // Flutter's own default floor has been lower than that; taking the default would
+        // mean the build breaks whenever the SDK moves it, for a reason nothing here
+        // explains. 24 is Android 7, released 2016.
+        minSdk = maxOf(flutter.minSdkVersion, 24)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
