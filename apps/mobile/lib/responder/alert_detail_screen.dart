@@ -125,6 +125,12 @@ class _Header extends StatelessWidget {
         if (alert.outcome != null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
+          if (alert.outcomeNote != null) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s4),
+            // What the person who closed it actually wrote. For an "other" outcome this is
+            // the only record of what happened, so it is shown rather than filed away.
+            Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
+          ],
         ],
       ],
     );
@@ -267,39 +273,188 @@ class _Actions extends StatelessWidget {
   /// Closing records how it ended, because an emergency with no outcome tells the report
   /// nothing about whether the system helped.
   Future<void> _chooseOutcome(BuildContext context) async {
-    final Outcome? chosen = await showModalBottomSheet<Outcome>(
+    final _Closure? closure = await showModalBottomSheet<_Closure>(
       context: context,
-      builder: (BuildContext sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(MzaziSpace.s16),
-              child: Text('How did it end?', style: Theme.of(sheetContext).textTheme.titleMedium),
-            ),
-            for (final Outcome outcome in Outcome.values)
-              ListTile(
-                title: Text(outcome.label),
-                minTileHeight: MzaziA11y.standardMinTouchTarget,
-                onTap: () => Navigator.of(sheetContext).pop(outcome),
-              ),
-            const SizedBox(height: MzaziSpace.s8),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (BuildContext _) => const _OutcomeSheet(),
     );
 
-    if (chosen != null) await controller.resolve(chosen);
+    if (closure != null) {
+      await controller.resolve(closure.outcome, note: closure.note);
+    }
   }
 }
 
-/// What has happened, in the words a person would use.
+/// What came back from the sheet: the outcome, and the words if any were written.
+class _Closure {
+  const _Closure(this.outcome, this.note);
+
+  final Outcome outcome;
+  final String? note;
+}
+
+/// How it ended.
 ///
-/// The audit trail is the system's own record and its action names are enum values:
-/// TIER_DISPATCHED, SEVERITY_EVALUATED, RESPONDER_REQUESTED. Those belong on the
-/// operations console, where somebody is auditing the system. Here the reader is deciding
-/// whether to get in a car, so each entry becomes a sentence, and the two entries that
-/// describe the system talking to itself are dropped rather than translated.
+/// Two steps rather than one screen of controls. Step one is the question and its five
+/// answers; step two only exists for "Something else", where the answer has to be written
+/// rather than chosen. Putting a text field on the first step would have made every closure
+/// look like it needed typing, and most do not.
+class _OutcomeSheet extends StatefulWidget {
+  const _OutcomeSheet();
+
+  @override
+  State<_OutcomeSheet> createState() => _OutcomeSheetState();
+}
+
+class _OutcomeSheetState extends State<_OutcomeSheet> {
+  final TextEditingController _note = TextEditingController();
+  bool _writing = false;
+  bool _tooShort = false;
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return SafeArea(
+      child: Padding(
+        // Lifts the sheet clear of the keyboard on the writing step.
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        // Scrollable, because five options plus the keyboard is taller than a short
+        // phone in landscape, and a sheet that overflows loses the button at the bottom,
+        // which is the only way out of it.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  MzaziSpace.s16,
+                  MzaziSpace.s24,
+                  MzaziSpace.s16,
+                  MzaziSpace.s8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    // The question is bold and the answers are not, so the two are never
+                    // mistaken for each other at a glance.
+                    Text(
+                      _writing ? 'What happened?' : 'How did it end?',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: MzaziSpace.s4),
+                    Text(
+                      _writing
+                          ? 'A sentence is enough. It is kept with the emergency.'
+                          : 'This is kept with the emergency and counted in the reporting.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (_writing) _writingStep(theme) else _choosingStep(theme),
+              const SizedBox(height: MzaziSpace.s8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _choosingStep(ThemeData theme) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      for (final Outcome outcome in Outcome.values)
+        ListTile(
+          title: Text(outcome.label, style: theme.textTheme.bodyLarge),
+          subtitle: Text(outcome.hint, style: theme.textTheme.bodySmall),
+          trailing: outcome.needsNote ? const Icon(Icons.chevron_right) : null,
+          minTileHeight: MzaziA11y.standardMinTouchTarget,
+          onTap: () {
+            if (outcome.needsNote) {
+              setState(() => _writing = true);
+            } else {
+              Navigator.of(context).pop(_Closure(outcome, null));
+            }
+          },
+        ),
+    ],
+  );
+
+  Widget _writingStep(ThemeData theme) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      MzaziSpace.s16,
+      MzaziSpace.s8,
+      MzaziSpace.s16,
+      MzaziSpace.s16,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        TextField(
+          controller: _note,
+          autofocus: true,
+          maxLength: 300,
+          maxLines: 3,
+          minLines: 2,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            hintText: 'She had locked herself out and a neighbour let her in',
+            errorText: _tooShort ? 'Say briefly what happened.' : null,
+          ),
+          onChanged: (String _) {
+            if (_tooShort) setState(() => _tooShort = false);
+          },
+        ),
+        const SizedBox(height: MzaziSpace.s8),
+        Row(
+          children: <Widget>[
+            TextButton(
+              onPressed: () => setState(() {
+                _writing = false;
+                _tooShort = false;
+              }),
+              child: const Text('Back'),
+            ),
+            const SizedBox(width: MzaziSpace.s12),
+            // Expanded, not a Spacer and a fixed box. The theme gives every filled button
+            // Size.fromHeight(48), which is infinitely wide by design so that buttons fill a
+            // column. Inside a row nothing bounds that, and the button asked for infinite
+            // width and failed on every frame. Expanded hands it the rest of the row, which
+            // is also the better layout: the committing action is the large target.
+            Expanded(
+              child: FilledButton(
+                // Checked here as well as on the server. An "something else" with nothing
+                // written against it is a closed emergency nobody can account for later,
+                // and the person is standing right here and can fix it in a second.
+                onPressed: () {
+                  final String text = _note.text.trim();
+                  if (text.isEmpty) {
+                    setState(() => _tooShort = true);
+                    return;
+                  }
+                  Navigator.of(context).pop(_Closure(Outcome.other, text));
+                },
+                // Not 'Close this emergency', which is the label on the button that opened
+                // this sheet. Two controls with one name is confusing to read and
+                // ambiguous to point at.
+                child: const Text('Save and close'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 class _WhatHappened extends StatelessWidget {
   const _WhatHappened({required this.entries, required this.chain});
 

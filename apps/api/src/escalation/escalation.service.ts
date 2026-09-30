@@ -350,7 +350,12 @@ export class EscalationService {
     return latest;
   }
 
-  async resolve(eventId: string, userId: string, outcome: EventOutcome): Promise<EmergencyEvent> {
+  async resolve(
+    eventId: string,
+    userId: string,
+    outcome: EventOutcome,
+    note?: string,
+  ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
 
@@ -363,6 +368,10 @@ export class EscalationService {
         data: {
           state: EventState.RESOLVED,
           outcome,
+          // Trimmed, and an empty string becomes null rather than an empty note. A
+          // column that is sometimes '' and sometimes null is two ways to say the same
+          // thing, and every later query has to know about both.
+          outcomeNote: note?.trim() ? note.trim() : null,
           resolvedAt: now,
           currentTierDeadlineAt: null,
         },
@@ -377,6 +386,7 @@ export class EscalationService {
           newState: EventState.RESOLVED,
           detail: {
             outcome,
+            note: note?.trim() || null,
             secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,

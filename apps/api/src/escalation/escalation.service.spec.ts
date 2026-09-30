@@ -475,6 +475,46 @@ describe('EscalationService', () => {
         build(prisma).resolve('event-1', 'caregiver-1', EventOutcome.FALSE_ALARM),
       ).rejects.toThrow(/already closed/);
     });
+
+    it("records the closer's own words, and puts them in the trail too", async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.ACKNOWLEDGED }));
+
+      await build(prisma).resolve(
+        'event-1',
+        'caregiver-1',
+        EventOutcome.OTHER,
+        '  She had locked herself out and a neighbour let her in  ',
+      );
+
+      const update = prisma.emergencyEvent.update.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      // Trimmed, because leading whitespace from a phone keyboard is not part of what
+      // somebody said.
+      expect(update.data.outcomeNote).toBe('She had locked herself out and a neighbour let her in');
+
+      const audit = prisma.auditLog.create.mock.calls
+        .map(
+          (call: [{ data: { action: AuditAction; detail?: { note?: string } } }]) => call[0].data,
+        )
+        .find((d: { action: AuditAction }) => d.action === AuditAction.RESOLVED);
+      expect(audit?.detail?.note).toContain('locked herself out');
+    });
+
+    it('stores nothing rather than an empty note when none was given', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.ACKNOWLEDGED }));
+
+      await build(prisma).resolve('event-1', 'caregiver-1', EventOutcome.HANDLED_AT_HOME, '   ');
+
+      const update = prisma.emergencyEvent.update.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      // A column that is sometimes '' and sometimes null is two ways to say the same
+      // thing, and every later query would have to know about both.
+      expect(update.data.outcomeNote).toBeNull();
+    });
   });
 
   describe('requestResponder', () => {

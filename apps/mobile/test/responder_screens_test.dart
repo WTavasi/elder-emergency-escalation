@@ -163,6 +163,101 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('closing asks how it ended, with the question set apart from the answers', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> owned = detailBody(
+      state: 'ACKNOWLEDGED',
+      acknowledgedBy: <String, dynamic>{
+        'id': 'caregiver-1',
+        'name': 'Peter Mwangi',
+        'role': 'CAREGIVER',
+      },
+    );
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(owned)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Close this emergency'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('How did it end?'), findsOneWidget);
+    // Every outcome, each with the line that tells two similar ones apart.
+    expect(find.text('Handled at home'), findsOneWidget);
+    expect(find.text('No help was needed'), findsOneWidget);
+    expect(find.text('Something else'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('choosing something else asks for words, and refuses to close without them', (
+    WidgetTester tester,
+  ) async {
+    int posts = 0;
+    String? body;
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+      if (request.method == 'POST') {
+        posts += 1;
+        body = request.body;
+      }
+      return <http.Response>[
+        json(
+          request.method == 'POST'
+              ? emergencyBody(state: 'RESOLVED')
+              : detailBody(
+                  state: 'ACKNOWLEDGED',
+                  acknowledgedBy: <String, dynamic>{
+                    'id': 'caregiver-1',
+                    'name': 'Peter Mwangi',
+                    'role': 'CAREGIVER',
+                  },
+                ),
+        ),
+      ];
+    });
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Close this emergency'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Something else'));
+    // pump rather than pumpAndSettle from here on. The field autofocuses and a focused
+    // field blinks its cursor for as long as it lives, so there is no settled state to
+    // wait for and pumpAndSettle would sit there until it timed out.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('What happened?'), findsOneWidget);
+
+    // Pressing through with an empty field must not close anything. An "other" with
+    // nothing written against it is an emergency nobody can account for later.
+    await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(posts, 0);
+    expect(find.text('Say briefly what happened.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'She locked herself out');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(posts, 1);
+    expect(body, contains('OTHER'));
+    expect(body, contains('She locked herself out'));
+
+    controller.dispose();
+  });
+
   testWidgets('every action control clears the touch target floor', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],

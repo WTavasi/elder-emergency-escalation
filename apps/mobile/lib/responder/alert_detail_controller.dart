@@ -85,8 +85,10 @@ class AlertDetailController extends ChangeNotifier {
     'Recorded. The emergency will not wait on you.',
   );
 
-  Future<void> resolve(Outcome outcome) =>
-      _act(() => _api.resolve(eventId, outcome), 'Closed as ${outcome.label.toLowerCase()}.');
+  Future<void> resolve(Outcome outcome, {String? note}) => _act(
+    () => _api.resolve(eventId, outcome, note: note),
+    'Closed as ${outcome.label.toLowerCase()}.',
+  );
 
   Future<void> requestResponder() =>
       _act(() => _api.requestResponder(eventId), 'An emergency responder has been requested.');

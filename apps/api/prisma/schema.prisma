@@ -70,6 +70,15 @@ enum EventOutcome {
   HOSPITAL_TRANSFER
   NO_RESPONSE
 
+  /// EXTENSION. None of the above, with the real reason in outcome_note.
+  ///
+  /// A fixed list of outcomes is what makes them countable for the response-time and
+  /// escalation-depth figures, and a free-text field would have destroyed that. This is
+  /// the compromise: the list stays closed and countable, and the cases it does not cover
+  /// are recorded honestly in one place instead of being forced into the nearest wrong
+  /// option. An OTHER that keeps appearing is evidence the list needs another value.
+  OTHER
+
   @@map("event_outcome")
 }
 
@@ -252,6 +261,11 @@ model EmergencyEvent {
   state       EventState    @default(TRIGGERED)
   currentTier Int           @default(1) @map("current_tier") @db.SmallInt
   outcome     EventOutcome?
+
+  /// EXTENSION. What happened, in the closer's own words. Required when outcome is OTHER
+  /// and optional otherwise, because a HOSPITAL_TRANSFER sometimes has a detail worth
+  /// keeping too.
+  outcomeNote String? @map("outcome_note") @db.VarChar(300)
 
   /// EXTENSION. Severity band, the weighted score behind it, and the factor values
   /// that produced it, so every escalation decision stays explainable after the fact.

@@ -44,7 +44,7 @@ export class EscalationController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ResolveDto,
   ): Promise<EmergencyEvent> {
-    return this.escalation.resolve(id, user.userId, dto.outcome);
+    return this.escalation.resolve(id, user.userId, dto.outcome, dto.note);
   }
 
   /** Call in the emergency responder now, superseding the automatic chain. */
