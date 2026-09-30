@@ -44,6 +44,32 @@ abstract final class MzaziTheme {
     focus: MzaziColorsDark.focus,
   );
 
+  /// One text style, with the weight declared twice on purpose.
+  ///
+  /// Source Sans 3 is a variable font: weight is an axis inside one file rather than a
+  /// separate file per weight. `fontVariations` is what moves that axis, and
+  /// `fontWeight` is what every other part of the framework reads, including the
+  /// fallback face when a glyph is missing. Setting only the first would leave the rest
+  /// of the framework thinking the text is regular; setting only the second would leave
+  /// the axis at its default and the text would come out the same weight everywhere.
+  ///
+  /// Harmless for the static faces. Atkinson Hyperlegible and IBM Plex Mono have no
+  /// `wght` axis, so the variation is ignored and the real weights are used.
+  static TextStyle _text({
+    required String family,
+    required double size,
+    required FontWeight weight,
+    required Color color,
+    double? height,
+  }) => TextStyle(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    fontVariations: <FontVariation>[FontVariation('wght', weight.value.toDouble())],
+    height: height,
+    color: color,
+  );
+
   static double bodySize(AppAudience audience) =>
       audience == AppAudience.elder ? MzaziTypeElder.body : MzaziTypeStandard.body;
 
@@ -71,40 +97,51 @@ abstract final class MzaziTheme {
     final double body = bodySize(audience);
     final double target = touchTarget(audience);
 
+    // One family per audience. The elder face is Atkinson Hyperlegible, drawn for low
+    // vision; everybody else gets Source Sans 3. Headings are separated from body text by
+    // weight rather than by a third family, which is one fewer file to bundle and one
+    // fewer way for two faces to disagree.
+    final String family = elder ? MzaziFont.elder : MzaziFont.sans;
+
+    // The elder path is bold throughout, which is a legibility decision rather than a
+    // stylistic one and therefore lives in tokens.json.
+    final FontWeight bodyWeight = elder ? MzaziWeight.elderBody : MzaziWeight.body;
+
     final TextTheme textTheme = TextTheme(
-      displayLarge: TextStyle(
-        fontFamily: MzaziFont.display,
-        fontSize: elder ? MzaziTypeElder.display : MzaziTypeStandard.display,
-        fontWeight: FontWeight.w700,
+      displayLarge: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.display : MzaziTypeStandard.display,
+        weight: MzaziWeight.heading,
         height: 1.1,
         color: text,
       ),
-      headlineLarge: TextStyle(
-        fontFamily: MzaziFont.display,
-        fontSize: elder ? MzaziTypeElder.title : MzaziTypeStandard.h1,
-        fontWeight: FontWeight.w700,
+      headlineLarge: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h1,
+        weight: MzaziWeight.heading,
         height: 1.2,
         color: text,
       ),
-      titleLarge: TextStyle(
-        fontFamily: MzaziFont.display,
-        fontSize: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
-        fontWeight: FontWeight.w600,
+      titleLarge: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
+        weight: MzaziWeight.strong,
         color: text,
       ),
-      bodyLarge: TextStyle(fontFamily: MzaziFont.sans, fontSize: body, height: 1.5, color: text),
-      bodyMedium: TextStyle(fontFamily: MzaziFont.sans, fontSize: body, height: 1.5, color: text),
-      labelLarge: TextStyle(
-        fontFamily: MzaziFont.sans,
-        fontSize: elder ? MzaziTypeElder.label : MzaziTypeStandard.body,
-        fontWeight: FontWeight.w600,
+      bodyLarge: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
+      bodyMedium: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
+      labelLarge: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.body,
+        weight: MzaziWeight.strong,
         color: text,
       ),
-      bodySmall: TextStyle(
-        fontFamily: MzaziFont.sans,
+      bodySmall: _text(
+        family: family,
         // Never below the floor for this audience, even for secondary text. On an
         // elder's screen there is no such thing as text that does not have to be read.
-        fontSize: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        weight: bodyWeight,
         height: 1.4,
         color: textSoft,
       ),

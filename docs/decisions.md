@@ -254,3 +254,39 @@ The cost is a query every fifteen seconds against open emergencies, which is ind
 touches nothing else. Calling the system event-driven is still accurate: nothing polls to
 decide when to escalate, and the sweep is a reconciliation against a recorded deadline
 rather than the mechanism by which escalation happens.
+
+## The fonts are bundled, and one of them was chosen for low vision
+
+Before this the token file named IBM Plex Sans and Archivo and no font file existed in the
+repository. Both surfaces asked for faces that were never loaded and fell back to the
+platform default, so the app rendered in San Francisco on iOS and Roboto on Android. The
+design language described type that the product never showed.
+
+Three faces now ship with the build:
+
+**Atkinson Hyperlegible for the elder path.** Drawn by the Braille Institute specifically
+for low vision, with letterforms deliberately differentiated so that b and d, 1 and l and
+I, and O and 0 cannot be mistaken for one another. For an interface an older person reads
+under stress, that property is worth more than any amount of visual character, and it is a
+choice that can be justified from the literature rather than from taste. Weight 700
+throughout, which is a reading decision and therefore a token rather than a per-widget
+choice.
+
+**Source Sans 3 for everybody else**, as one variable file covering 200 to 900. Smaller
+than three static weights would be, and it means headings are separated from body text by
+weight rather than by a fourth family.
+
+**IBM Plex Mono for figures**, where digits have to line up.
+
+Bundled and self-hosted rather than fetched. The console displays an elder's name and
+address, so it makes no third-party request at all, and the API's content security policy
+would refuse one. The cost is about a megabyte in the app, which for an emergency
+application is the right trade: it means the elder screen's legibility is a property of a
+decision rather than of whatever the phone happens to have installed.
+
+Two implementation notes that were not obvious. A variable font carries weight as an axis
+rather than as separate files, so the theme sets `fontVariations` as well as `fontWeight`;
+setting only the latter leaves the axis at its default and every weight renders the same.
+And the licence text is bundled as an asset and registered with Flutter's licence page,
+because bundling a font is distributing it and the Open Font Licence requires the licence
+to travel with it.
