@@ -46,5 +46,16 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- The dialer. From Android 11 an app cannot see other apps unless it declares
+             what it intends to ask them for, and the call button checks that something
+             can handle a tel: link before opening it. Without this the check fails on a
+             phone that plainly has a dialer, and the button does nothing.
+             VIEW rather than DIAL, because VIEW is the intent url_launcher builds when it
+             checks and opens a tel: link. Declaring a different action than the one
+             actually asked about is how that check comes back false. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
     </queries>
 </manifest>

@@ -3,6 +3,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../api/models.dart';
+import '../widgets/call_button.dart';
 import '../widgets/notice.dart';
 import '../widgets/state_pill.dart';
 import 'alert_detail_controller.dart';
@@ -17,11 +18,16 @@ import 'alert_detail_controller.dart';
 /// how a number was produced. The score's band is shown because it says who to attend to
 /// first, and the arithmetic behind it belongs on the operations console.
 class AlertDetailScreen extends StatefulWidget {
-  const AlertDetailScreen({required this.fallback, super.key});
+  const AlertDetailScreen({required this.fallback, this.canOpen, this.open, super.key});
 
   /// The row the list already had. Shown immediately so the screen opens with content
   /// rather than a spinner over information the app is holding.
   final AlertSummary fallback;
+
+  /// How a phone call is placed. Null means the device's own dialler; tests supply their
+  /// own so they can see what would have been dialled.
+  final CanOpen? canOpen;
+  final Open? open;
 
   @override
   State<AlertDetailScreen> createState() => _AlertDetailScreenState();
@@ -61,7 +67,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                 const SizedBox(height: MzaziSpace.s16),
               ],
 
-              _Actions(controller: controller, alert: alert),
+              _Actions(
+                controller: controller,
+                alert: alert,
+                canOpen: widget.canOpen,
+                open: widget.open,
+              ),
               const SizedBox(height: MzaziSpace.s24),
 
               if (detail == null && controller.isLoading)
@@ -158,10 +169,12 @@ class _Header extends StatelessWidget {
 /// explains why it cannot be used is better than a screen that guesses and hides the
 /// only action somebody needed.
 class _Actions extends StatelessWidget {
-  const _Actions({required this.controller, required this.alert});
+  const _Actions({required this.controller, required this.alert, this.canOpen, this.open});
 
   final AlertDetailController controller;
   final AlertSummary alert;
+  final CanOpen? canOpen;
+  final Open? open;
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +186,7 @@ class _Actions extends StatelessWidget {
     }
 
     final bool busy = controller.isWorking;
+    final String? phone = alert.elderPhone;
 
     if (!alert.isAnswered) {
       return Column(
@@ -194,6 +208,22 @@ class _Actions extends StatelessWidget {
               child: const Text('I cannot come'),
             ),
           ),
+          // Here as well as beside the responder button, because ringing her before
+          // deciding whether to set off is the most natural first move of all. Never
+          // disabled while an action is in flight: nothing about a call can interfere
+          // with an acknowledgement, and being unable to ring somebody is never right.
+          if (phone != null) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s12),
+            SizedBox(
+              width: double.infinity,
+              child: CallButton(
+                name: alert.elderName,
+                phone: phone,
+                canOpen: canOpen,
+                open: open,
+              ),
+            ),
+          ],
         ],
       );
     }
@@ -209,12 +239,34 @@ class _Actions extends StatelessWidget {
           ),
         ),
         const SizedBox(height: MzaziSpace.s12),
-        SizedBox(
-          width: double.infinity,
-          height: MzaziA11y.standardMinTouchTarget,
-          child: OutlinedButton(
-            onPressed: busy ? null : controller.requestResponder,
-            child: const Text('Call an emergency responder'),
+        // Side by side, as asked. IntrinsicHeight and stretch keep the pair the same
+        // height when one label wraps to two lines, which "Call an emergency responder"
+        // will in half a phone's width. No fixed 48-point box here: it would clip the
+        // wrapped label, and the theme already guarantees the 48-point floor. Each child
+        // is Expanded because the theme's buttons are infinitely wide by design, and a
+        // row gives an unexpanded child no width limit at all.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (phone != null) ...<Widget>[
+                Expanded(
+                  child: CallButton(
+                    name: alert.elderName,
+                    phone: phone,
+                    canOpen: canOpen,
+                    open: open,
+                  ),
+                ),
+                const SizedBox(width: MzaziSpace.s12),
+              ],
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: busy ? null : controller.requestResponder,
+                  child: const Text('Call an emergency responder', textAlign: TextAlign.center),
+                ),
+              ),
+            ],
           ),
         ),
       ],

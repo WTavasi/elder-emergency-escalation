@@ -558,5 +558,17 @@ describe('AlertsService', () => {
 
       expect(prisma.emergencyEvent.findMany.mock.calls[0][0].take).toBe(200);
     });
+
+    it("asks for the elder's number, so a caregiver can call before deciding to go", async () => {
+      const prisma = buildPrisma();
+      await build(prisma).findForUser('caregiver-1', Role.CAREGIVER);
+
+      // Asserted at the query rather than on the output: if the select drops the column,
+      // the projection would quietly send undefined and the call button would dial nobody.
+      const include = prisma.emergencyEvent.findMany.mock.calls[0][0].include as {
+        elder: { select: Record<string, boolean> };
+      };
+      expect(include.elder.select.phone).toBe(true);
+    });
   });
 });

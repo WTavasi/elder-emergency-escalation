@@ -6,19 +6,37 @@ import 'package:mzazicare/api/models.dart';
 import 'package:mzazicare/responder/alert_detail_controller.dart';
 import 'package:mzazicare/responder/alert_detail_screen.dart';
 import 'package:mzazicare/theme/theme.dart';
+import 'package:mzazicare/widgets/call_button.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import 'support.dart';
 
-Widget _wrap(AlertDetailController controller, AlertSummary fallback) =>
-    ChangeNotifierProvider<AlertDetailController>.value(
-      value: controller,
-      child: MaterialApp(
-        theme: MzaziTheme.light(AppAudience.standard),
-        home: AlertDetailScreen(fallback: fallback),
-      ),
-    );
+Widget _wrap(
+  AlertDetailController controller,
+  AlertSummary fallback, {
+  CanOpen? canOpen,
+  Open? open,
+}) => ChangeNotifierProvider<AlertDetailController>.value(
+  value: controller,
+  child: MaterialApp(
+    theme: MzaziTheme.light(AppAudience.standard),
+    home: AlertDetailScreen(fallback: fallback, canOpen: canOpen, open: open),
+  ),
+);
+
+Map<String, dynamic> _owned({String? elderPhone = '+254700000010'}) {
+  final Map<String, dynamic> body = detailBody(
+    state: 'ACKNOWLEDGED',
+    acknowledgedBy: <String, dynamic>{
+      'id': 'caregiver-1',
+      'name': 'Peter Mwangi',
+      'role': 'CAREGIVER',
+    },
+  );
+  (body['elder'] as Map<String, dynamic>)['phone'] = elderPhone;
+  return body;
+}
 
 void main() {
   testWidgets('an unanswered emergency offers going and declining, and nothing else', (
@@ -256,6 +274,182 @@ void main() {
     expect(body, contains('She locked herself out'));
 
     controller.dispose();
+  });
+
+  group('calling the elder', () {
+    testWidgets('sits beside calling a responder once somebody has taken it', (
+      WidgetTester tester,
+    ) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Call Grace'), findsOneWidget);
+      expect(find.text('Call an emergency responder'), findsOneWidget);
+
+      // Side by side means the same row, so the same vertical position.
+      final double callY = tester.getCenter(find.text('Call Grace')).dy;
+      final double responderY = tester.getCenter(find.text('Call an emergency responder')).dy;
+      expect((callY - responderY).abs(), lessThan(24));
+
+      controller.dispose();
+    });
+
+    testWidgets('is offered before anybody has answered too', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(detailBody())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+      await tester.pumpAndSettle();
+
+      // Ringing her before deciding whether to set off is the most natural first move.
+      expect(find.text('I am on my way'), findsOneWidget);
+      expect(find.text('Call Grace'), findsOneWidget);
+
+      controller.dispose();
+    });
+
+    testWidgets('dials her number through the phone\'s own dialler', (WidgetTester tester) async {
+      final List<Uri> dialled = <Uri>[];
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          controller,
+          AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED')),
+          canOpen: (Uri _) async => true,
+          open: (Uri uri) async {
+            dialled.add(uri);
+            return true;
+          },
+        ),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Call Grace'));
+      await tester.pumpAndSettle();
+
+      expect(dialled.single.toString(), 'tel:+254700000010');
+      // A call did not change anything about the emergency, so nothing was sent.
+      expect(t.calls.where((Exchange e) => e.method == 'POST'), isEmpty);
+
+      controller.dispose();
+    });
+
+    testWidgets('shows the number to dial by hand when the device cannot call', (
+      WidgetTester tester,
+    ) async {
+      bool opened = false;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          controller,
+          AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED')),
+          // A simulator, or a tablet with no SIM.
+          canOpen: (Uri _) async => false,
+          open: (Uri _) async {
+            opened = true;
+            return true;
+          },
+        ),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Call Grace'));
+      await tester.pumpAndSettle();
+
+      // Not a button that silently does nothing. The number, selectable, to dial by hand.
+      expect(opened, isFalse);
+      expect(find.text('This device cannot place calls. Dial this number from a phone:'), findsOneWidget);
+      // Matched on the widget itself: SelectableText renders through an editable field
+      // rather than a plain Text, and whether find.text sees that is not worth guessing.
+      expect(
+        find.byWidgetPredicate(
+          (Widget w) => w is SelectableText && w.data == '+254700000010',
+        ),
+        findsOneWidget,
+      );
+
+      controller.dispose();
+    });
+
+    testWidgets('does not appear when there is no number to call', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned(elderPhone: null))],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          controller,
+          AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED', elderPhone: null)),
+        ),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Call Grace'), findsNothing);
+      // The responder button still has the row to itself.
+      expect(find.text('Call an emergency responder'), findsOneWidget);
+
+      controller.dispose();
+    });
+
+    testWidgets('clears the touch target floor', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byType(CallButton)).height,
+        greaterThanOrEqualTo(MzaziA11y.standardMinTouchTarget),
+      );
+
+      controller.dispose();
+    });
   });
 
   testWidgets('every action control clears the touch target floor', (WidgetTester tester) async {

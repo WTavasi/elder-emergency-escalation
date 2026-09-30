@@ -33,6 +33,11 @@ dependencies:
   # would be more machinery than either of those needs.
   provider: ^6.1.5+1
 
+  # Hands a tel: link to the phone's own dialler. It never places a call by itself:
+  # Android opens the dialler with the number filled in and iOS asks for confirmation,
+  # so no call permission is requested and the person holding the phone decides.
+  url_launcher: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

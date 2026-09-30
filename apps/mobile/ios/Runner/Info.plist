@@ -82,5 +82,13 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Declared so the call button can ask whether a tel: link will open before trying
+	     it. A simulator and a Wi-Fi-only iPad cannot place calls; knowing that lets the
+	     app show the number to dial by hand instead of a button that silently does
+	     nothing. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+	</array>
 </dict>
 </plist>

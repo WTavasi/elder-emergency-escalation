@@ -18,7 +18,15 @@ export interface AlertSummary {
   outcome: EventOutcome | null;
   /** What happened, in the closer's own words. Always set when outcome is OTHER. */
   outcomeNote: string | null;
-  elder: { id: string; name: string; addressLabel: string | null };
+  /**
+   * The elder's phone number is included so a caregiver can call before deciding whether
+   * to set off, which is the most natural first action on receiving an alert. It widens
+   * nothing: every caller who can see this projection is already in the care circle, was
+   * notified about this emergency, or is an administrator, and the care circle has the
+   * number anyway. What it avoids is somebody scrolling through their contacts while an
+   * emergency is open.
+   */
+  elder: { id: string; name: string; phone: string; addressLabel: string | null };
   acknowledgedBy: { id: string; name: string; role: Role } | null;
   latitude: number;
   longitude: number;

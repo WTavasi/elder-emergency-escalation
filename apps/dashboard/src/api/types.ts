@@ -31,7 +31,9 @@ export interface AlertSummary {
   severityScore: number;
   currentTier: number;
   outcome: string | null;
-  elder: { id: string; name: string; addressLabel: string | null };
+  /** What the person who closed it wrote. Always set when outcome is OTHER. */
+  outcomeNote: string | null;
+  elder: { id: string; name: string; phone: string; addressLabel: string | null };
   acknowledgedBy: Person | null;
   latitude: number;
   longitude: number;

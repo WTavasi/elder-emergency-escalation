@@ -59,7 +59,7 @@ export interface AlertFilters {
  * and the detail query, so the two can never drift into disclosing different columns.
  */
 const SUMMARY_INCLUDE = {
-  elder: { select: { id: true, name: true, homeAddressLabel: true } },
+  elder: { select: { id: true, name: true, phone: true, homeAddressLabel: true } },
   owner: { select: { id: true, name: true, role: true } },
 } satisfies Prisma.EmergencyEventInclude;
 
@@ -82,7 +82,12 @@ function toSummary(row: SummaryRow): AlertSummary {
     currentTier: row.currentTier,
     outcome: row.outcome,
     outcomeNote: row.outcomeNote,
-    elder: { id: row.elder.id, name: row.elder.name, addressLabel: row.elder.homeAddressLabel },
+    elder: {
+      id: row.elder.id,
+      name: row.elder.name,
+      phone: row.elder.phone,
+      addressLabel: row.elder.homeAddressLabel,
+    },
     acknowledgedBy: row.owner,
     latitude: Number(row.alertLatitude),
     longitude: Number(row.alertLongitude),

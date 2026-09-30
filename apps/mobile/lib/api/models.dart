@@ -214,6 +214,7 @@ class AlertSummary {
     required this.currentTier,
     required this.elderName,
     required this.triggeredAt,
+    this.elderPhone,
     this.addressLabel,
     this.ownerName,
     this.deadlineAt,
@@ -228,6 +229,10 @@ class AlertSummary {
   final int severityScore;
   final int currentTier;
   final String elderName;
+
+  /// So a caregiver can ring before deciding whether to set off. Null only if the API
+  /// ever stops sending it, in which case the call button simply does not appear.
+  final String? elderPhone;
   final DateTime triggeredAt;
   final String? addressLabel;
 
@@ -263,6 +268,7 @@ class AlertSummary {
       severityScore: (json['severityScore'] as num?)?.toInt() ?? 0,
       currentTier: (json['currentTier'] as num).toInt(),
       elderName: elder is Map<String, dynamic> ? elder['name'] as String : 'Unknown',
+      elderPhone: elder is Map<String, dynamic> ? elder['phone'] as String? : null,
       triggeredAt: DateTime.parse(json['triggeredAt'] as String).toLocal(),
       addressLabel: json['addressLabel'] as String?,
       ownerName: owner is Map<String, dynamic> ? owner['name'] as String? : null,
