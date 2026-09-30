@@ -18,4 +18,9 @@ module.exports = {
   testTimeout: 60_000,
   // One at a time: these share one database and one Redis.
   maxWorkers: 1,
+  // The github-actions reporter turns each failure into an annotation on the run, which
+  // the public API returns to anyone. The raw job log needs admin rights on the
+  // repository, so without this a failure here could only be read by whoever owns it.
+  // Outside Actions the reporter prints nothing, so local runs are unchanged.
+  reporters: ['default', ['github-actions', { silent: false }]],
 };
