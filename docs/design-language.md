@@ -34,9 +34,35 @@ never carries state alone: every pill also carries a glyph and a word.
 
 ## Type
 
-IBM Plex Sans for all readable text, Archivo ExtraBold for timer numerals only, IBM Plex
-Mono for identifiers and timestamps. Both families are SIL Open Font Licence. Fonts are
-bundled with the app and self-hosted in the dashboard, not loaded from a third-party CDN.
+One family per audience, and it is a legibility decision rather than a stylistic one.
+
+| Audience | Face | Why |
+| --- | --- | --- |
+| Elder | Atkinson Hyperlegible, 700 throughout | Drawn by the Braille Institute for low vision. Its letterforms are deliberately differentiated, so b and d, 1 and l and I, and O and 0 cannot be confused. That is the single most useful property a face can have on a screen somebody reads in a panic |
+| Caregiver, responder, administrator | Source Sans 3 | Humanist, unremarkable in a good way, and one variable file covers every weight the interface needs |
+| Figures everywhere | IBM Plex Mono | Timers, scores and identifiers, where digits have to line up |
+
+Headings are separated from body text by weight, not by a fourth family. All three faces
+are SIL Open Font Licence.
+
+Fonts are bundled into the app from `apps/mobile/assets/fonts/` and self-hosted by the
+dashboard from `apps/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
+matters for more than principle: the console reads an elder's name and address, so it
+makes no third-party request at all, and the API's content security policy would deny one.
+The licence text ships inside the app as an asset and is registered with Flutter's licence
+page, because bundling a font is distributing it and the Open Font Licence requires the
+licence to travel with it.
+
+Until 30 September 2026 this section described a set of fonts that no build ever loaded.
+The tokens named IBM Plex Sans and Archivo, nothing was bundled, and both surfaces fell
+back to whatever the platform supplied. The elder screen's legibility was therefore a
+property of the phone rather than of a decision. Recorded here because a design language
+that cannot be observed in the product is not a design language.
+
+Weight is a token (`type.weight`) rather than a per-widget choice, because the elder
+path's boldness is a decision about reading and has to be the same in both surfaces.
+Source Sans 3 is variable, so the app drives the weight axis with `fontVariations` as well
+as setting `fontWeight`; the dashboard declares one `@font-face` with a `200 900` range.
 
 ## Accessibility floors, asserted in tests
 

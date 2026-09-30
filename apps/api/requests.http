@@ -427,3 +427,32 @@ Authorization: Bearer {{elderToken}}
 Content-Type: application/json
 
 { "latitude": -1.31, "longitude": 36.83 }
+
+###############################################################################
+# 17. Closing with a reason the list does not cover
+#
+# The outcome list stays closed and countable, because that is what makes the
+# response-time and escalation-depth figures meaningful. OTHER is the honest escape
+# hatch, and it is the one outcome that cannot be recorded on its own.
+###############################################################################
+
+# Expect 400. An OTHER with nothing written against it would be a closed emergency
+# nobody can account for afterwards, which is the one thing the trail exists to prevent.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/resolve
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{ "outcome": "OTHER" }
+
+###
+
+# Expect 200. The note is stored on the event and repeated in the audit entry, so the
+# reason survives even if the event row is later summarised.
+POST {{baseUrl}}/alerts/{{raised.response.body.id}}/resolve
+Authorization: Bearer {{caregiverToken}}
+Content-Type: application/json
+
+{
+  "outcome": "OTHER",
+  "note": "She had locked herself out and a neighbour let her in"
+}

@@ -219,6 +219,7 @@ class AlertSummary {
     this.deadlineAt,
     this.responseSeconds,
     this.outcome,
+    this.outcomeNote,
   });
 
   final String eventId;
@@ -244,6 +245,9 @@ class AlertSummary {
   /// nothing.
   final String? outcome;
 
+  /// What the person who closed it said happened. Always present for an OTHER outcome.
+  final String? outcomeNote;
+
   bool get isAnswered => ownerName != null;
 
   factory AlertSummary.fromJson(Map<String, dynamic> json) {
@@ -265,11 +269,16 @@ class AlertSummary {
       deadlineAt: deadline is String ? DateTime.parse(deadline).toLocal() : null,
       responseSeconds: response is num ? response.toInt() : null,
       outcome: json['outcome'] as String?,
+      outcomeNote: json['outcomeNote'] as String?,
     );
   }
 }
 
 /// One factor of the severity score, with the arithmetic that produced it.
+///
+/// Parsed but deliberately not shown anywhere in this app. The reasoning is an operations
+/// concern and lives on the web console; this exists so the model matches what the API
+/// sends, and so a test fails if that shape changes.
 class SeverityFactor {
   const SeverityFactor({
     required this.key,
@@ -307,6 +316,10 @@ class TimelineEntry {
     required this.action,
     required this.secondsFromTrigger,
     this.actorName,
+    this.tier,
+    this.toTier,
+    this.recipients,
+    this.outcome,
   });
 
   final String id;
@@ -317,13 +330,32 @@ class TimelineEntry {
   /// escalation distinguishable from a human decision when the trail is read back.
   final String? actorName;
 
+  /// Pulled out of the audit entry's detail payload, so a screen can write a sentence a
+  /// person would say instead of printing an enum. Each is null for the actions that do
+  /// not carry it.
+  final int? tier;
+  final int? toTier;
+  final int? recipients;
+  final String? outcome;
+
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final Object? actor = json['actor'];
+    final Object? detail = json['detail'];
+    final Map<String, dynamic> d = detail is Map<String, dynamic>
+        ? detail
+        : const <String, dynamic>{};
+
+    int? asInt(Object? value) => value is num ? value.toInt() : null;
+
     return TimelineEntry(
       id: json['id'] as String,
       action: json['action'] as String,
       secondsFromTrigger: (json['secondsFromTrigger'] as num).toInt(),
       actorName: actor is Map<String, dynamic> ? actor['name'] as String? : null,
+      tier: asInt(d['tier']) ?? asInt(d['fromTier']),
+      toTier: asInt(d['toTier']),
+      recipients: asInt(d['recipients']),
+      outcome: d['outcome'] as String?,
     );
   }
 }
@@ -391,13 +423,27 @@ class AlertDetail {
 /// How an emergency ended. The subset a caregiver can choose from: cancellation is the
 /// elder's own path, and no-response is something the system concludes, not a person.
 enum Outcome {
-  handledAtHome('HANDLED_AT_HOME', 'Handled at home'),
-  falseAlarm('FALSE_ALARM', 'False alarm'),
-  responderAttended('RESPONDER_ATTENDED', 'An emergency responder attended'),
-  hospitalTransfer('HOSPITAL_TRANSFER', 'Taken to hospital');
+  handledAtHome('HANDLED_AT_HOME', 'Handled at home', 'Sorted out where she was'),
+  falseAlarm('FALSE_ALARM', 'False alarm', 'No help was needed'),
+  responderAttended(
+    'RESPONDER_ATTENDED',
+    'An emergency responder attended',
+    'An ambulance or responder came out',
+  ),
+  hospitalTransfer('HOSPITAL_TRANSFER', 'Taken to hospital', 'She was moved for treatment'),
+  other('OTHER', 'Something else', 'None of these fit. You will be asked to say what happened');
 
-  const Outcome(this.wire, this.label);
+  const Outcome(this.wire, this.label, this.hint);
 
   final String wire;
   final String label;
+
+  /// One line under the label, because 'Handled at home' and 'False alarm' are not as
+  /// obviously different to somebody choosing quickly as they look on this page.
+  final String hint;
+
+  /// The only outcome that cannot be recorded on its own. An OTHER with nothing written
+  /// against it is a closed emergency nobody can account for later, which is worse than
+  /// choosing the nearest imperfect option.
+  bool get needsNote => this == Outcome.other;
 }

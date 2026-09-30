@@ -23,7 +23,10 @@ dependencies:
 
   # The tokens are a credential on a device an elder may leave on a table, so they go
   # to the Keychain and the Android Keystore rather than to shared preferences.
-  flutter_secure_storage: ^9.2.2
+  # 11.x. The Jetpack Security backend behind AndroidOptions.encryptedSharedPreferences
+  # was deprecated upstream and removed in 11.0.0, which is why that option is gone from
+  # session_store.dart. Raises the Android floor to API 24 and the iOS floor to 12.
+  flutter_secure_storage: ^11.2.0
 
   # Deliberately the smallest thing that works for this app's state. The elder path has
   # one signed-in session and one live emergency; a full state-management framework
@@ -37,3 +40,38 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # The licences ship inside the app, not just in the repository. The Open Font Licence
+  # requires the licence to travel with the font, and main.dart registers these with
+  # Flutter's own licence page so "About" shows them.
+  assets:
+    - assets/fonts/OFL-AtkinsonHyperlegible.txt
+    - assets/fonts/OFL-SourceSans3.txt
+    - assets/fonts/OFL-IBMPlexMono.txt
+
+  # Bundled rather than fetched. Before this, the theme named faces that were never
+  # loaded, so the app quietly rendered in whatever the platform happened to supply and
+  # the elder screen's legibility was down to the phone rather than to a decision.
+  fonts:
+    # Designed by the Braille Institute for low vision, which is this app's elder
+    # audience. Two real weights; nothing is synthesised.
+    - family: Atkinson Hyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+
+    # One variable file covering 200 to 900, which is smaller than three static weights
+    # would be. Weight is an axis here, so the theme drives it with fontVariations.
+    - family: Source Sans 3
+      fonts:
+        - asset: assets/fonts/SourceSans3-Variable.ttf
+
+    # Figures, timers and identifiers, where digits have to line up.
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500

@@ -164,8 +164,18 @@ class ApiClient {
   }
 
   /// Close it, recording how it ended.
-  Future<void> resolve(String id, Outcome outcome) async {
-    await _send('POST', '/alerts/$id/resolve', body: <String, dynamic>{'outcome': outcome.wire});
+  ///
+  /// [note] is what the person closing it said happened. The server requires one for the
+  /// OTHER outcome and accepts one alongside any of the others.
+  Future<void> resolve(String id, Outcome outcome, {String? note}) async {
+    await _send(
+      'POST',
+      '/alerts/$id/resolve',
+      body: <String, dynamic>{
+        'outcome': outcome.wire,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
   }
 
   /// Escalate past the care circle to an emergency responder, by hand.

@@ -16,6 +16,8 @@ export interface AlertSummary {
   severityScore: number;
   currentTier: number;
   outcome: EventOutcome | null;
+  /** What happened, in the closer's own words. Always set when outcome is OTHER. */
+  outcomeNote: string | null;
   elder: { id: string; name: string; addressLabel: string | null };
   acknowledgedBy: { id: string; name: string; role: Role } | null;
   latitude: number;

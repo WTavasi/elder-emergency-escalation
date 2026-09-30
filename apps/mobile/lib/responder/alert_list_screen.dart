@@ -6,6 +6,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../auth/auth_controller.dart';
 import '../widgets/notice.dart';
+import '../widgets/sign_out_button.dart';
 import '../widgets/state_pill.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
@@ -47,7 +48,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
           ),
-          IconButton(onPressed: auth.signOut, icon: const Icon(Icons.logout), tooltip: 'Sign out'),
+          SignOutButton(onPressed: auth.signOut),
         ],
       ),
       body: SafeArea(

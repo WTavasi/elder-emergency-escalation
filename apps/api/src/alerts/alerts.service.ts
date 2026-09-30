@@ -81,6 +81,7 @@ function toSummary(row: SummaryRow): AlertSummary {
     severityScore: row.severityScore,
     currentTier: row.currentTier,
     outcome: row.outcome,
+    outcomeNote: row.outcomeNote,
     elder: { id: row.elder.id, name: row.elder.name, addressLabel: row.elder.homeAddressLabel },
     acknowledgedBy: row.owner,
     latitude: Number(row.alertLatitude),

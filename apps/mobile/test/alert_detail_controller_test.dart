@@ -21,8 +21,19 @@ void main() {
 
       final AlertDetail detail = controller.detail!;
       expect(detail.summary.elderName, 'Grace Wanjiru');
-      expect(detail.chain.single.name, 'Peter Mwangi');
-      expect(detail.timeline, hasLength(2));
+
+      // In dispatch order, which is what lets a screen name the person a tier was sent
+      // to instead of printing the tier number.
+      expect(detail.chain.map((ChainMember m) => m.name), <String>['Peter Mwangi', 'Aisha Otieno']);
+      expect(detail.chain.first.priorityOrder, 1);
+
+      expect(detail.timeline, hasLength(4));
+      // The detail payloads are parsed out, because the plain-language trail is built
+      // from them rather than from the action name alone.
+      expect(detail.timeline[2].action, 'TIER_DISPATCHED');
+      expect(detail.timeline[2].tier, 1);
+      expect(detail.timeline.last.toTier, 2);
+
       expect(detail.factors, hasLength(2));
       expect(detail.factors.first.label, 'Care level');
       // The label comes from the policy, so a factor an administrator adds arrives

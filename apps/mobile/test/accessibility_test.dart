@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mzazicare/theme/theme.dart';
 import 'package:mzazicare/widgets/panic_button.dart';
+import 'package:mzazicare/widgets/sign_out_button.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 /// The accessibility floors, asserted rather than documented.
@@ -119,6 +120,47 @@ void main() {
         expect(filled?.height, greaterThanOrEqualTo(MzaziTheme.touchTarget(audience)));
         expect(outlined?.height, greaterThanOrEqualTo(MzaziTheme.touchTarget(audience)));
       }
+    });
+  });
+
+  group('the sign-out control', () {
+    testWidgets('is one component, and clears the floor for whichever audience shows it', (
+      WidgetTester tester,
+    ) async {
+      // One control on all three screens now. If it only cleared the standard floor it
+      // would be a 48dp target on a screen where everything else is 72, which is the sort
+      // of regression sharing a widget between audiences invites.
+      for (final (AppAudience audience, double floor) in <(AppAudience, double)>[
+        (AppAudience.elder, MzaziA11y.elderMinTouchTarget),
+        (AppAudience.standard, MzaziA11y.standardMinTouchTarget),
+      ]) {
+        await tester.pumpWidget(
+          host(
+            SignOutButton(
+              onPressed: _noop,
+              minSize: audience == AppAudience.elder ? MzaziA11y.elderMinTouchTarget : null,
+            ),
+            audience: audience,
+          ),
+        );
+
+        final Size size = tester.getSize(find.byType(SignOutButton));
+        expect(size.height, greaterThanOrEqualTo(floor), reason: '$audience height');
+        expect(size.width, greaterThanOrEqualTo(floor), reason: '$audience width');
+      }
+    });
+
+    testWidgets('announces itself, since it is an icon with no visible label', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await tester.pumpWidget(host(const SignOutButton(onPressed: _noop)));
+
+      // A pattern, and at least one node rather than exactly one. The icon carries the
+      // accessible name and the tooltip may contribute its own node; the guarantee being
+      // asserted is that the name is announced, not how many nodes carry it.
+      expect(find.bySemanticsLabel(RegExp('Sign out')), findsAtLeastNWidgets(1));
+      handle.dispose();
     });
   });
 

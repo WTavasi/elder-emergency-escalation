@@ -136,11 +136,20 @@ Map<String, dynamic> detailBody({
       'role': 'CAREGIVER',
       'priorityOrder': 1,
     },
+    <String, dynamic>{
+      'responderId': 'family-1',
+      'name': 'Aisha Otieno',
+      'role': 'FAMILY_MEMBER',
+      'priorityOrder': 2,
+    },
   ],
+  // Action names and detail payloads as the server actually writes them. An earlier
+  // version of this fixture invented 'TRIGGERED' and left every detail null, which meant
+  // the screen was being tested against a shape the API never sends.
   'timeline': <Map<String, dynamic>>[
     <String, dynamic>{
       'id': 'audit-1',
-      'action': 'TRIGGERED',
+      'action': 'EVENT_CREATED',
       'previousState': null,
       'newState': 'TRIGGERED',
       'actor': <String, dynamic>{'id': 'elder-1', 'name': 'Grace Wanjiru', 'role': 'ELDER'},
@@ -150,11 +159,37 @@ Map<String, dynamic> detailBody({
     },
     <String, dynamic>{
       'id': 'audit-2',
+      'action': 'SEVERITY_EVALUATED',
+      'previousState': null,
+      'newState': null,
+      'actor': null,
+      'detail': <String, dynamic>{'score': 48, 'band': 'ELEVATED'},
+      'occurredAt': '2026-09-16T10:00:00.000Z',
+      'secondsFromTrigger': 0,
+    },
+    <String, dynamic>{
+      'id': 'audit-3',
+      'action': 'TIER_DISPATCHED',
+      'previousState': 'TRIGGERED',
+      'newState': 'NOTIFIED',
+      'actor': null,
+      'detail': <String, dynamic>{
+        'tier': 1,
+        'reason': 'initial',
+        'responderRole': 'CAREGIVER',
+        'recipients': 1,
+        'timeoutSeconds': 60,
+      },
+      'occurredAt': '2026-09-16T10:00:01.000Z',
+      'secondsFromTrigger': 1,
+    },
+    <String, dynamic>{
+      'id': 'audit-4',
       'action': 'ESCALATED',
       'previousState': 'NOTIFIED',
       'newState': 'ESCALATED',
       'actor': null,
-      'detail': null,
+      'detail': <String, dynamic>{'fromTier': 1, 'toTier': 2},
       'occurredAt': '2026-09-16T10:02:00.000Z',
       'secondsFromTrigger': 120,
     },

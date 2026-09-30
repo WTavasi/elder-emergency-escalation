@@ -86,7 +86,7 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('the severity reasoning starts closed', (WidgetTester tester) async {
+  testWidgets('the severity reasoning is nowhere on this screen', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
     );
@@ -96,14 +96,44 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    // The heading is there, so it is reachable; the factor is not, so it is not in the
-    // way of the decision.
-    expect(find.text('How this was scored'), findsOneWidget);
+    // Not collapsed. Absent. How a number was produced is an operations concern, and this
+    // screen belongs to somebody deciding whether to set off.
+    expect(find.text('How this was scored'), findsNothing);
     expect(find.text('Care level'), findsNothing);
+    expect(find.text('Away from home'), findsNothing);
 
-    await tester.tap(find.text('How this was scored'));
+    // The band stays, because it is what says who to attend to first.
+    expect(find.text('Elevated severity'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(detailBody())],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
     await tester.pumpAndSettle();
-    expect(find.text('Care level'), findsOneWidget);
+
+    expect(find.text('Grace Wanjiru asked for help'), findsOneWidget);
+    expect(find.text('when the alert was raised'), findsOneWidget);
+
+    // The escalation names the person it moved on to, taken from the chain.
+    expect(find.text('Nobody answered in time, so it moved on to Aisha Otieno'), findsOneWidget);
+    expect(find.text('Sent to Peter Mwangi'), findsOneWidget);
+
+    // The scoring entry is dropped rather than translated: it is the system talking to
+    // itself and there is nothing a caregiver can do about it.
+    expect(find.textContaining('Severity'), findsNothing);
+    expect(find.text('2 minutes after the alert'), findsOneWidget);
+
+    // And none of the enum names survive.
+    expect(find.text('Escalated'), findsNothing);
+    expect(find.text('Triggered'), findsNothing);
+    expect(find.textContaining('+120s'), findsNothing);
 
     controller.dispose();
   });
@@ -129,6 +159,101 @@ void main() {
     await tester.tap(find.text('Never mind'));
     await tester.pumpAndSettle();
     expect(posts, 0);
+
+    controller.dispose();
+  });
+
+  testWidgets('closing asks how it ended, with the question set apart from the answers', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> owned = detailBody(
+      state: 'ACKNOWLEDGED',
+      acknowledgedBy: <String, dynamic>{
+        'id': 'caregiver-1',
+        'name': 'Peter Mwangi',
+        'role': 'CAREGIVER',
+      },
+    );
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(owned)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Close this emergency'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('How did it end?'), findsOneWidget);
+    // Every outcome, each with the line that tells two similar ones apart.
+    expect(find.text('Handled at home'), findsOneWidget);
+    expect(find.text('No help was needed'), findsOneWidget);
+    expect(find.text('Something else'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('choosing something else asks for words, and refuses to close without them', (
+    WidgetTester tester,
+  ) async {
+    int posts = 0;
+    String? body;
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+      if (request.method == 'POST') {
+        posts += 1;
+        body = request.body;
+      }
+      return <http.Response>[
+        json(
+          request.method == 'POST'
+              ? emergencyBody(state: 'RESOLVED')
+              : detailBody(
+                  state: 'ACKNOWLEDGED',
+                  acknowledgedBy: <String, dynamic>{
+                    'id': 'caregiver-1',
+                    'name': 'Peter Mwangi',
+                    'role': 'CAREGIVER',
+                  },
+                ),
+        ),
+      ];
+    });
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Close this emergency'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Something else'));
+    // pump rather than pumpAndSettle from here on. The field autofocuses and a focused
+    // field blinks its cursor for as long as it lives, so there is no settled state to
+    // wait for and pumpAndSettle would sit there until it timed out.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('What happened?'), findsOneWidget);
+
+    // Pressing through with an empty field must not close anything. An "other" with
+    // nothing written against it is an emergency nobody can account for later.
+    await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(posts, 0);
+    expect(find.text('Say briefly what happened.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'She locked herself out');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(posts, 1);
+    expect(body, contains('OTHER'));
+    expect(body, contains('She locked herself out'));
 
     controller.dispose();
   });

@@ -10,6 +10,7 @@ import 'elder/elder_home_screen.dart';
 import 'responder/alert_list_screen.dart';
 import 'responder/alerts_controller.dart';
 import 'theme/theme.dart';
+import 'widgets/sign_out_button.dart';
 
 /// The app.
 ///
@@ -104,7 +105,7 @@ class _ConsoleOnly extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 24),
-                OutlinedButton(onPressed: auth.signOut, child: const Text('Sign out')),
+                SignOutButton(onPressed: auth.signOut),
               ],
             ),
           ),
