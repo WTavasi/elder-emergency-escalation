@@ -194,18 +194,20 @@ class _Actions extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: MzaziA11y.standardMinTouchTarget,
-            child: FilledButton(
+            child: FilledButton.icon(
               onPressed: busy ? null : controller.acknowledge,
-              child: const Text('I am on my way'),
+              icon: const Icon(Icons.directions_run),
+              label: const Text('I am on my way'),
             ),
           ),
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
             width: double.infinity,
             height: MzaziA11y.standardMinTouchTarget,
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: busy ? null : () => _confirmDecline(context),
-              child: const Text('I cannot come'),
+              icon: const Icon(Icons.do_not_disturb_on_outlined),
+              label: const Text('I cannot come'),
             ),
           ),
           // Here as well as beside the responder button, because ringing her before
@@ -216,12 +218,7 @@ class _Actions extends StatelessWidget {
             const SizedBox(height: MzaziSpace.s12),
             SizedBox(
               width: double.infinity,
-              child: CallButton(
-                name: alert.elderName,
-                phone: phone,
-                canOpen: canOpen,
-                open: open,
-              ),
+              child: CallButton(name: alert.elderName, phone: phone, canOpen: canOpen, open: open),
             ),
           ],
         ],
@@ -233,9 +230,10 @@ class _Actions extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: MzaziA11y.standardMinTouchTarget,
-          child: FilledButton(
+          child: FilledButton.icon(
             onPressed: busy ? null : () => _chooseOutcome(context),
-            child: const Text('Close this emergency'),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Close this emergency'),
           ),
         ),
         const SizedBox(height: MzaziSpace.s12),
@@ -261,9 +259,13 @@ class _Actions extends StatelessWidget {
                 const SizedBox(width: MzaziSpace.s12),
               ],
               Expanded(
-                child: OutlinedButton(
+                // A different icon from Call Grace on purpose. Both labels start with
+                // "Call" and they do different things: one rings her, the other sends
+                // the emergency on through the system and rings nobody.
+                child: OutlinedButton.icon(
                   onPressed: busy ? null : controller.requestResponder,
-                  child: const Text('Call an emergency responder', textAlign: TextAlign.center),
+                  icon: const Icon(Icons.emergency),
+                  label: const Text('Call an emergency responder', textAlign: TextAlign.center),
                 ),
               ),
             ],

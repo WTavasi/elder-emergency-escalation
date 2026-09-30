@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mzazicare/api/models.dart';
 import 'package:mzazicare/theme/theme.dart';
 import 'package:mzazicare/widgets/panic_button.dart';
 import 'package:mzazicare/widgets/sign_out_button.dart';
+import 'package:mzazicare/widgets/state_pill.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 /// The accessibility floors, asserted rather than documented.
@@ -161,6 +163,26 @@ void main() {
       // asserted is that the name is announced, not how many nodes carry it.
       expect(find.bySemanticsLabel(RegExp('Sign out')), findsAtLeastNWidgets(1));
       handle.dispose();
+    });
+  });
+
+  group('state pills', () {
+    testWidgets('carry a glyph as well as a word, so colour never carries state alone', (
+      WidgetTester tester,
+    ) async {
+      final Set<IconData> seen = <IconData>{};
+
+      for (final EventState state in EventState.values) {
+        await tester.pumpWidget(host(StatePill(state: state), audience: AppAudience.standard));
+
+        expect(find.byType(Icon), findsOneWidget, reason: '$state has no glyph');
+        expect(find.text(StatePill.label(state)), findsOneWidget, reason: '$state has no word');
+        seen.add(StatePill.glyph(state));
+      }
+
+      // Triggered and notified are both "Waiting" to a caregiver and share a glyph on
+      // purpose; every other state is its own shape.
+      expect(seen, hasLength(EventState.values.length - 1));
     });
   });
 

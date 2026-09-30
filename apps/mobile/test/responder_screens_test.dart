@@ -305,6 +305,35 @@ void main() {
       controller.dispose();
     });
 
+    testWidgets('is told apart from calling a responder by its icon, not only its words', (
+      WidgetTester tester,
+    ) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(_owned())],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      // Both labels begin with "Call" and they do different things. A phone for the one
+      // that rings her, the emergency mark for the one that rings nobody and sends the
+      // alert on through the system.
+      expect(
+        find.descendant(of: find.byType(CallButton), matching: find.byIcon(Icons.phone)),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.emergency), findsOneWidget);
+
+      controller.dispose();
+    });
+
     testWidgets('is offered before anybody has answered too', (WidgetTester tester) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[json(detailBody())],
@@ -390,13 +419,14 @@ void main() {
 
       // Not a button that silently does nothing. The number, selectable, to dial by hand.
       expect(opened, isFalse);
-      expect(find.text('This device cannot place calls. Dial this number from a phone:'), findsOneWidget);
+      expect(
+        find.text('This device cannot place calls. Dial this number from a phone:'),
+        findsOneWidget,
+      );
       // Matched on the widget itself: SelectableText renders through an editable field
       // rather than a plain Text, and whether find.text sees that is not worth guessing.
       expect(
-        find.byWidgetPredicate(
-          (Widget w) => w is SelectableText && w.data == '+254700000010',
-        ),
+        find.byWidgetPredicate((Widget w) => w is SelectableText && w.data == '+254700000010'),
         findsOneWidget,
       );
 
@@ -461,9 +491,19 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await tester.pumpAndSettle();
 
+    // Any kind of button, found through its label. Matching on an exact type would break
+    // silently the moment a button gains an icon: FilledButton.icon builds a private
+    // subclass, and byType compares runtime types exactly, so the finder would find
+    // nothing and the floor would go unchecked.
+    Finder button(String label) => find.ancestor(
+      of: find.text(label),
+      matching: find.byWidgetPredicate((Widget w) => w is ButtonStyleButton),
+    );
+
     final Map<String, Finder> controls = <String, Finder>{
-      'I am on my way': find.widgetWithText(FilledButton, 'I am on my way'),
-      'I cannot come': find.widgetWithText(OutlinedButton, 'I cannot come'),
+      'I am on my way': button('I am on my way'),
+      'I cannot come': button('I cannot come'),
+      'Call Grace': button('Call Grace'),
     };
 
     for (final MapEntry<String, Finder> control in controls.entries) {

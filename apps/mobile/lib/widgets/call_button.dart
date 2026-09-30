@@ -18,13 +18,7 @@ typedef Open = Future<bool> Function(Uri uri);
 /// the worst outcome, because the person tries again and then loses faith in every
 /// other button too. So when the device says no, the number is shown to dial by hand.
 class CallButton extends StatelessWidget {
-  const CallButton({
-    required this.name,
-    required this.phone,
-    this.canOpen,
-    this.open,
-    super.key,
-  });
+  const CallButton({required this.name, required this.phone, this.canOpen, this.open, super.key});
 
   final String name;
   final String phone;
@@ -78,9 +72,8 @@ class CallButton extends StatelessWidget {
             // Selectable, so it can be copied into another app rather than retyped.
             SelectableText(
               phone,
-              style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
-                fontFamily: MzaziFont.mono,
-              ),
+              style: Theme.of(dialogContext).textTheme.titleLarge
+                  ?.copyWith(fontFamily: MzaziFont.mono),
             ),
           ],
         ),
