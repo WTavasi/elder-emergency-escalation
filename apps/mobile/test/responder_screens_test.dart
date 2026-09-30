@@ -86,7 +86,7 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('the severity reasoning starts closed', (WidgetTester tester) async {
+  testWidgets('the severity reasoning is nowhere on this screen', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
     );
@@ -96,14 +96,44 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    // The heading is there, so it is reachable; the factor is not, so it is not in the
-    // way of the decision.
-    expect(find.text('How this was scored'), findsOneWidget);
+    // Not collapsed. Absent. How a number was produced is an operations concern, and this
+    // screen belongs to somebody deciding whether to set off.
+    expect(find.text('How this was scored'), findsNothing);
     expect(find.text('Care level'), findsNothing);
+    expect(find.text('Away from home'), findsNothing);
 
-    await tester.tap(find.text('How this was scored'));
+    // The band stays, because it is what says who to attend to first.
+    expect(find.text('Elevated severity'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(detailBody())],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
     await tester.pumpAndSettle();
-    expect(find.text('Care level'), findsOneWidget);
+
+    expect(find.text('Grace Wanjiru asked for help'), findsOneWidget);
+    expect(find.text('when the alert was raised'), findsOneWidget);
+
+    // The escalation names the person it moved on to, taken from the chain.
+    expect(find.text('Nobody answered in time, so it moved on to Aisha Otieno'), findsOneWidget);
+    expect(find.text('Sent to Peter Mwangi'), findsOneWidget);
+
+    // The scoring entry is dropped rather than translated: it is the system talking to
+    // itself and there is nothing a caregiver can do about it.
+    expect(find.textContaining('Severity'), findsNothing);
+    expect(find.text('2 minutes after the alert'), findsOneWidget);
+
+    // And none of the enum names survive.
+    expect(find.text('Escalated'), findsNothing);
+    expect(find.text('Triggered'), findsNothing);
+    expect(find.textContaining('+120s'), findsNothing);
 
     controller.dispose();
   });

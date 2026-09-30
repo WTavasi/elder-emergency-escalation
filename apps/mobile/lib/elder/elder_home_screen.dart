@@ -6,6 +6,7 @@ import '../api/models.dart';
 import '../auth/auth_controller.dart';
 import '../widgets/notice.dart';
 import '../widgets/panic_button.dart';
+import '../widgets/sign_out_button.dart';
 import 'alert_controller.dart';
 
 /// The elder's whole app.
@@ -55,13 +56,10 @@ class _Header extends StatelessWidget {
         Expanded(
           child: Text(name, style: theme.textTheme.titleLarge, overflow: TextOverflow.ellipsis),
         ),
-        // Deliberately plain and deliberately small next to the panic control. Signing
-        // out is the last thing anybody needs on this screen, and it must never be
-        // mistaken for the button that matters.
-        TextButton(
-          onPressed: onSignOut,
-          child: Text('Sign out', style: theme.textTheme.bodySmall),
-        ),
+        // The same control the caregiver's app bar uses, at the elder touch target. It
+        // stays visually quiet next to the panic control because it is an icon rather
+        // than a filled button, and it must never be mistaken for the one that matters.
+        SignOutButton(onPressed: onSignOut, minSize: MzaziA11y.elderMinTouchTarget),
       ],
     );
   }

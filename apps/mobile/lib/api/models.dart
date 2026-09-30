@@ -270,6 +270,10 @@ class AlertSummary {
 }
 
 /// One factor of the severity score, with the arithmetic that produced it.
+///
+/// Parsed but deliberately not shown anywhere in this app. The reasoning is an operations
+/// concern and lives on the web console; this exists so the model matches what the API
+/// sends, and so a test fails if that shape changes.
 class SeverityFactor {
   const SeverityFactor({
     required this.key,
@@ -307,6 +311,10 @@ class TimelineEntry {
     required this.action,
     required this.secondsFromTrigger,
     this.actorName,
+    this.tier,
+    this.toTier,
+    this.recipients,
+    this.outcome,
   });
 
   final String id;
@@ -317,13 +325,32 @@ class TimelineEntry {
   /// escalation distinguishable from a human decision when the trail is read back.
   final String? actorName;
 
+  /// Pulled out of the audit entry's detail payload, so a screen can write a sentence a
+  /// person would say instead of printing an enum. Each is null for the actions that do
+  /// not carry it.
+  final int? tier;
+  final int? toTier;
+  final int? recipients;
+  final String? outcome;
+
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final Object? actor = json['actor'];
+    final Object? detail = json['detail'];
+    final Map<String, dynamic> d = detail is Map<String, dynamic>
+        ? detail
+        : const <String, dynamic>{};
+
+    int? asInt(Object? value) => value is num ? value.toInt() : null;
+
     return TimelineEntry(
       id: json['id'] as String,
       action: json['action'] as String,
       secondsFromTrigger: (json['secondsFromTrigger'] as num).toInt(),
       actorName: actor is Map<String, dynamic> ? actor['name'] as String? : null,
+      tier: asInt(d['tier']) ?? asInt(d['fromTier']),
+      toTier: asInt(d['toTier']),
+      recipients: asInt(d['recipients']),
+      outcome: d['outcome'] as String?,
     );
   }
 }

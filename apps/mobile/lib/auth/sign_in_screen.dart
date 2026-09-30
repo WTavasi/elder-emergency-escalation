@@ -67,10 +67,11 @@ class _SignInScreenState extends State<SignInScreen> {
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.next,
                       autofillHints: const <String>[AutofillHints.telephoneNumber],
-                      decoration: const InputDecoration(
-                        labelText: 'Phone number',
-                        hintText: '+254700000010',
-                      ),
+                      // No hint text. A placeholder here used to show a real seeded
+                      // account's number, which told anybody who opened the app a valid
+                      // phone number to try. The label says what the field is; an example
+                      // value is not worth disclosing an account for.
+                      decoration: const InputDecoration(labelText: 'Phone number'),
                       validator: (String? value) => (value == null || value.trim().length < 8)
                           ? 'Enter the phone number this account uses.'
                           : null,

@@ -10,9 +10,12 @@ import 'alert_detail_controller.dart';
 /// One emergency, and the decision.
 ///
 /// The order on the screen is the order of the decision: who and where, then the two
-/// buttons, then everything a person might want to check afterwards. The severity
-/// reasoning sits below the fold and closed, for the same reason it is collapsed on the
-/// console: it explains a number nobody is arguing with while somebody is waiting.
+/// buttons, then what a person might want to check afterwards.
+///
+/// The severity reasoning is deliberately not here at all. It used to be, collapsed, and
+/// that was still wrong: a caregiver is deciding whether to get in a car, not auditing
+/// how a number was produced. The score's band is shown because it says who to attend to
+/// first, and the arithmetic behind it belongs on the operations console.
 class AlertDetailScreen extends StatefulWidget {
   const AlertDetailScreen({required this.fallback, super.key});
 
@@ -64,11 +67,9 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               if (detail == null && controller.isLoading)
                 const Center(child: CircularProgressIndicator())
               else if (detail != null) ...<Widget>[
-                _Timeline(entries: detail.timeline),
+                _WhatHappened(entries: detail.timeline, chain: detail.chain),
                 const SizedBox(height: MzaziSpace.s24),
                 _Chain(members: detail.chain, currentTier: alert.currentTier),
-                const SizedBox(height: MzaziSpace.s24),
-                _SeverityReasoning(factors: detail.factors, score: alert.severityScore),
               ],
 
               if (controller.loadError != null) ...<Widget>[
@@ -292,43 +293,40 @@ class _Actions extends StatelessWidget {
   }
 }
 
-class _Timeline extends StatelessWidget {
-  const _Timeline({required this.entries});
+/// What has happened, in the words a person would use.
+///
+/// The audit trail is the system's own record and its action names are enum values:
+/// TIER_DISPATCHED, SEVERITY_EVALUATED, RESPONDER_REQUESTED. Those belong on the
+/// operations console, where somebody is auditing the system. Here the reader is deciding
+/// whether to get in a car, so each entry becomes a sentence, and the two entries that
+/// describe the system talking to itself are dropped rather than translated.
+class _WhatHappened extends StatelessWidget {
+  const _WhatHappened({required this.entries, required this.chain});
 
   final List<TimelineEntry> entries;
+  final List<ChainMember> chain;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final List<TimelineEntry> shown = entries.where(_isWorthShowing).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text('What has happened', style: theme.textTheme.titleMedium),
         const SizedBox(height: MzaziSpace.s12),
-        if (entries.isEmpty)
+        if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
         else
-          for (final TimelineEntry entry in entries)
+          for (final TimelineEntry entry in shown)
             Padding(
-              padding: const EdgeInsets.only(bottom: MzaziSpace.s8),
-              child: Row(
+              padding: const EdgeInsets.only(bottom: MzaziSpace.s12),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  SizedBox(
-                    width: 56,
-                    child: Text('+${entry.secondsFromTrigger}s', style: theme.textTheme.bodySmall),
-                  ),
-                  Expanded(
-                    child: Text(
-                      // No actor means the system did it on its own, and saying so is
-                      // the point of the trail.
-                      entry.actorName == null
-                          ? '${_actionWord(entry.action)} (automatic)'
-                          : '${_actionWord(entry.action)} by ${entry.actorName}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
+                  Text(_sentence(entry), style: theme.textTheme.bodyLarge),
+                  Text(_when(entry.secondsFromTrigger), style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
@@ -336,7 +334,75 @@ class _Timeline extends StatelessWidget {
     );
   }
 
-  static String _actionWord(String action) {
+  /// Two actions describe the system talking to itself and tell the reader nothing they
+  /// can act on. Scoring is the admin's business, and a failed delivery is already
+  /// visible as the alert still waiting.
+  static bool _isWorthShowing(TimelineEntry entry) =>
+      entry.action != 'SEVERITY_EVALUATED' && entry.action != 'NOTIFICATION_FAILED';
+
+  String _sentence(TimelineEntry entry) {
+    final String who = entry.actorName ?? 'Somebody';
+
+    return switch (entry.action) {
+      'EVENT_CREATED' => '$who asked for help',
+      'TIER_DISPATCHED' => _dispatched(entry),
+      'ESCALATED' => _escalated(entry),
+      'ACKNOWLEDGED' => '$who is on the way',
+      'DECLINED' => '$who cannot come',
+      'RESPONDER_REQUESTED' => '$who called for an emergency responder',
+      'RESOLVED' => '$who closed it',
+      'CANCELLED' => '$who withdrew it',
+      'REOPENED' => '$who reopened it',
+      // An action added on the server after this screen was written. Better a tidied
+      // version of the real name than a blank line pretending nothing happened.
+      _ => _titleCase(entry.action),
+    };
+  }
+
+  /// Names the people if the chain says who sits at that tier, because "Sent to Mary
+  /// Otieno" is worth more to a reader than "Sent to tier 1".
+  String _dispatched(TimelineEntry entry) {
+    final int? tier = entry.tier;
+    if (tier == null) return 'Sent to the first people to ask';
+
+    final List<String> names = chain
+        .where((ChainMember m) => m.priorityOrder == tier)
+        .map((ChainMember m) => m.name)
+        .toList();
+
+    if (names.isEmpty) {
+      final int count = entry.recipients ?? 0;
+      return count == 1 ? 'Sent to 1 person' : 'Sent to $count people';
+    }
+    if (names.length == 1) return 'Sent to ${names.first}';
+    return 'Sent to ${names.take(names.length - 1).join(', ')} and ${names.last}';
+  }
+
+  String _escalated(TimelineEntry entry) {
+    final int? to = entry.toTier;
+    if (to == null) return 'Nobody answered, and there is nobody further to ask';
+
+    final List<String> names = chain
+        .where((ChainMember m) => m.priorityOrder == to)
+        .map((ChainMember m) => m.name)
+        .toList();
+
+    return names.isEmpty
+        ? 'Nobody answered in time, so it moved on'
+        : 'Nobody answered in time, so it moved on to ${names.join(' and ')}';
+  }
+
+  /// Relative to the alert, in units a person reads without counting zeroes.
+  static String _when(int seconds) {
+    if (seconds <= 0) return 'when the alert was raised';
+    if (seconds < 60) return '$seconds seconds after the alert';
+    final int minutes = seconds ~/ 60;
+    if (minutes < 60) return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} after the alert';
+    final int hours = minutes ~/ 60;
+    return '$hours ${hours == 1 ? 'hour' : 'hours'} after the alert';
+  }
+
+  static String _titleCase(String action) {
     final String spaced = action.toLowerCase().replaceAll('_', ' ');
     return spaced.isEmpty ? action : '${spaced[0].toUpperCase()}${spaced.substring(1)}';
   }
@@ -381,60 +447,6 @@ class _Chain extends StatelessWidget {
               ),
             ),
       ],
-    );
-  }
-}
-
-/// Why the score is what it is. Closed, and below everything else.
-class _SeverityReasoning extends StatelessWidget {
-  const _SeverityReasoning({required this.factors, required this.score});
-
-  final List<SeverityFactor> factors;
-  final int score;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    if (factors.isEmpty) return const SizedBox.shrink();
-
-    return Theme(
-      // Removes the divider the expansion tile draws by default, which the token set
-      // has no line for at that weight.
-      data: theme.copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(bottom: MzaziSpace.s8),
-        title: Text('How this was scored', style: theme.textTheme.titleMedium),
-        subtitle: Text(
-          '${factors.length} factors, scoring $score',
-          style: theme.textTheme.bodySmall,
-        ),
-        children: <Widget>[
-          for (final SeverityFactor factor in factors)
-            Padding(
-              padding: const EdgeInsets.only(bottom: MzaziSpace.s8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    width: 40,
-                    child: Text('+${factor.contribution}', style: theme.textTheme.bodySmall),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(factor.label, style: theme.textTheme.bodyMedium),
-                        if (factor.detail != null)
-                          Text(factor.detail!, style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
     );
   }
 }
