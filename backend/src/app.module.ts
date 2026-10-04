@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { AlertsModule } from './alerts/alerts.module';
-import { DashboardModule } from './dashboard/dashboard.module';
-import { EldersModule } from './elders/elders.module';
-import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { RolesGuard } from './auth/guards/roles.guard';
-import { EscalationModule } from './escalation/escalation.module';
-import { HealthModule } from './health/health.module';
-import { NotificationsModule } from './notifications/notifications.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { RealtimeModule } from './realtime/realtime.module';
-import { RedisModule } from './redis/redis.module';
-import { RetentionModule } from './retention/retention.module';
-import { SeverityModule } from './severity/severity.module';
-import { RateLimitGuard } from './common/guards/rate-limit.guard';
-import { validateEnv } from './config/env.schema';
+import { AlertsModule } from './modules/emergency-service/alerts.module';
+import { DashboardModule } from './modules/report-service/dashboard.module';
+import { EldersModule } from './modules/elder-service/elders.module';
+import { AuthModule } from './modules/auth-service/auth.module';
+import { JwtAuthGuard } from './modules/auth-service/guards/jwt-auth.guard';
+import { RolesGuard } from './modules/auth-service/guards/roles.guard';
+import { EscalationModule } from './modules/emergency-service/escalation.module';
+import { HealthModule } from './modules/health-service/health.module';
+import { NotificationsModule } from './modules/notification-service/notifications.module';
+import { PrismaModule } from './db/prisma.module';
+import { RealtimeModule } from './modules/realtime-service/realtime.module';
+import { RedisModule } from './shared/redis/redis.module';
+import { RetentionModule } from './modules/retention-service/retention.module';
+import { SeverityModule } from './modules/emergency-service/severity.module';
+import { RateLimitGuard } from './shared/middleware/rate-limit.guard';
+import { validateEnv } from './shared/config/env.schema';
 
 @Module({
   imports: [

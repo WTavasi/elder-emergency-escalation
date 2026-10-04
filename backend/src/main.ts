@@ -3,9 +3,9 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { HSTS_HEADER, SECURITY_HEADERS } from './common/security-headers';
+import { AllExceptionsFilter } from './shared/middleware/all-exceptions.filter';
+import { LoggingInterceptor } from './shared/middleware/logging.interceptor';
+import { HSTS_HEADER, SECURITY_HEADERS } from './shared/middleware/security-headers';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');

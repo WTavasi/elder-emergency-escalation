@@ -9,11 +9,11 @@ import {
   Severity,
 } from '@prisma/client';
 import { AppModule } from '../src/app.module';
-import { AlertsService } from '../src/alerts/alerts.service';
-import { EscalationService } from '../src/escalation/escalation.service';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { PasswordService } from '../src/auth/password.service';
-import { RedisService } from '../src/redis/redis.service';
+import { AlertsService } from '../src/modules/emergency-service/services/alerts.service';
+import { EscalationService } from '../src/modules/emergency-service/services/escalation.service';
+import { PrismaService } from '../src/db/prisma.service';
+import { PasswordService } from '../src/modules/auth-service/services/password.service';
+import { RedisService } from '../src/shared/redis/redis.service';
 
 /**
  * The claim this project makes is that an unacknowledged emergency climbs the chain by
