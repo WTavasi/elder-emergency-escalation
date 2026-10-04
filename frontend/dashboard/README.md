@@ -44,6 +44,28 @@ An administrator can read every emergency record and the reporting figures. A
 signed-in account with any other role is turned away at the door rather than shown
 an empty console.
 
+## Where things live
+
+Each screen is a folder under `src/features/`; anything two screens share is under
+`src/shared/`. To change a screen, start in its feature folder.
+
+| Folder | What is in it |
+| --- | --- |
+| `src/features/auth/` | Sign-in |
+| `src/features/board/` | Open emergencies, with the countdowns |
+| `src/features/event-detail/` | One emergency: its chain and what has happened |
+| `src/features/history/` | The searchable record |
+| `src/features/reporting/` | Response times, escalation depth, delivery reliability |
+| `src/features/data-handling/` | What the console shows, stores and does not collect |
+| `src/shared/api/` | The HTTP client, the socket, and the response types |
+| `src/shared/state/` | Who is signed in, and the live list of open emergencies |
+| `src/shared/components/` | The page layout and small shared parts |
+| `src/shared/hooks/` | Loading data, counting down |
+| `src/shared/utils/` | Formatting dates, durations and labels |
+
+`App.tsx` holds the routes, `main.tsx` starts the app, and `styles.css` is the one
+stylesheet. Tests sit beside the file they test.
+
 ## Screens
 
 - **Open emergencies.** Everything still live, ordered by whoever has been waiting

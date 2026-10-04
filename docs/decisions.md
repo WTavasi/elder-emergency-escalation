@@ -22,7 +22,7 @@ product.
 The cost of that choice is that Redis publishes an expiry once and never again, so a
 restart at the wrong moment would lose an escalation forever. That is why every dispatch
 also writes a durable `current_tier_deadline_at` and the listener reconciles against it
-on boot. See [architecture.md](architecture.md).
+on boot. See [ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).
 
 ## Provider failure has two kinds, and the difference is load-bearing
 

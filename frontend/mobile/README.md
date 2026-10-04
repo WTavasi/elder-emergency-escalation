@@ -68,7 +68,7 @@ the app stops opening after a week until it is installed again.
 
 ## What is built
 
-The elder path. One screen with four states rather than four screens, because
+**The elder.** One screen with four states rather than four screens, because
 navigation is one more thing to understand at the worst possible moment: the thing the
 elder pressed is replaced, in place, by what happened next.
 
@@ -78,8 +78,26 @@ elder pressed is replaced, in place, by what happened next.
 3. **Live.** Help is coming, and the caregiver's name once somebody acknowledges.
 4. **Finished.** Cancelled or closed, with a way back to the button.
 
-The caregiver, family and responder screens are not built. An account with one of those
-roles is told so rather than shown an empty app.
+**Caregivers, family members and responders.** The emergencies they are part of, and
+for each one: who is being asked, where the elder is, calling the elder or a responder, and taking it on, declining or closing it with an outcome.
+
+## Where things live
+
+Each part of the app is a folder under `lib/features/`; anything more than one part
+uses is under `lib/core/`. To change a screen, start in its feature folder.
+
+| Folder | What is in it |
+| --- | --- |
+| `lib/features/auth/` | Sign-in |
+| `lib/features/elder/` | The panic screen, its controller, and the panic control |
+| `lib/features/responder/` | The alert list and detail screens, their controllers, the call button and state pill |
+| `lib/core/api/` | The HTTP client and the response models |
+| `lib/core/auth/` | Who is signed in, and where the session is kept |
+| `lib/core/theme/` | The theme, built from the design tokens |
+| `lib/core/widgets/` | Shared pieces: the notice banner and the sign-out button |
+
+`main.dart` starts the app and registers the font licences; `app.dart` chooses the
+screen for the signed-in role. Tests are in `test/`, one file per controller or screen.
 
 ## Design
 
@@ -107,9 +125,10 @@ They cover the three things that would fail quietly:
   against numbers typed in the test, so lowering a floor in `tokens.json` fails a test
   instead of passing a review.
 
-## Known limitation
+## Location
 
-Alerts report the elder's registered home rather than the device's location. The device
-location arrives with the permission flow, behind a seam that is one line to swap.
-Until then the severity policy's away-from-home factor scores 0 on every alert raised
-from this app, so do not present that factor as working in a demonstration.
+The app never reads the device's location. The server places each alert itself: where
+the elder is staying, if their care circle has recorded a stay away from home, and
+otherwise their registered home. The away-from-home severity factor therefore scores
+only when a stay has been recorded. Listening for a spoken keyword is noted as future
+work in `docs/decisions.md`, not built.

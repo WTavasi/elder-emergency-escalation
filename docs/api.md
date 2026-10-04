@@ -126,4 +126,4 @@ scope of its own: it reports across everybody. A caregiver is refused.
 ## Live updates
 
 Socket.IO namespace `/realtime`, message `emergency.updated`. See
-[architecture.md](architecture.md).
+[ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).

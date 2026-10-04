@@ -11,7 +11,7 @@ worth being able to explain rather than merely point at.
 | `frontend/mobile`, caregiver path | caregivers, family, responders | See the emergencies they are part of, and acknowledge, decline, resolve or call in a responder |
 | `frontend/dashboard` | administrators | See everything, measure it, and change nothing about a live emergency |
 
-The split in the last row is deliberate and is covered in [decisions.md](decisions.md).
+The split in the last row is deliberate and is covered in [decisions.md](../../docs/decisions.md).
 The same projection layer serves all three, so none of them can disagree about what an
 emergency looks like.
 
