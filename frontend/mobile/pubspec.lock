@@ -275,7 +275,7 @@ packages:
   mzazicare_tokens:
     dependency: "direct main"
     description:
-      path: "../../packages/tokens"
+      path: "../design-tokens"
       relative: true
     source: path
     version: "0.2.0"

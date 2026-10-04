@@ -7,9 +7,9 @@ worth being able to explain rather than merely point at.
 
 | Surface | Who uses it | What it can do |
 | --- | --- | --- |
-| `apps/mobile`, elder path | the person being cared for | One control: raise, and withdraw inside the grace window |
-| `apps/mobile`, caregiver path | caregivers, family, responders | See the emergencies they are part of, and acknowledge, decline, resolve or call in a responder |
-| `apps/dashboard` | administrators | See everything, measure it, and change nothing about a live emergency |
+| `frontend/mobile`, elder path | the person being cared for | One control: raise, and withdraw inside the grace window |
+| `frontend/mobile`, caregiver path | caregivers, family, responders | See the emergencies they are part of, and acknowledge, decline, resolve or call in a responder |
+| `frontend/dashboard` | administrators | See everything, measure it, and change nothing about a live emergency |
 
 The split in the last row is deliberate and is covered in [decisions.md](decisions.md).
 The same projection layer serves all three, so none of them can disagree about what an
@@ -94,7 +94,7 @@ npm run check:sms -w @mzazicare/api -- +254712345678
 It reports the username, the key's length and first and last characters, which endpoint
 it chose and what came back, without ever printing the key.
 
-Switch either on in `apps/api/.env` with `PUSH_PROVIDER=fcm` and
+Switch either on in `backend/.env` with `PUSH_PROVIDER=fcm` and
 `SMS_PROVIDER=africastalking`. In the Africa's Talking sandbox the username is always
 the literal string `sandbox` and messages arrive in their web simulator rather than on
 a handset, which needs no registered number.
@@ -135,7 +135,7 @@ emergency lost to a cosmetic feature.
 
 ## Design tokens
 
-`packages/tokens/tokens.json` is the only place a colour is defined. `npm run tokens:build`
+`frontend/design-tokens/tokens.json` is the only place a colour is defined. `npm run tokens:build`
 generates:
 
 | Output | Consumer |

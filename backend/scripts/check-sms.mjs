@@ -32,7 +32,7 @@ console.log(`  AT_USERNAME: ${username === undefined ? 'NOT SET' : `"${username}
 console.log(`  ${describe('AT_API_KEY ', apiKey)}`);
 
 if (!username || !apiKey) {
-  console.error('\nOne of them is missing from apps/api/.env. Fill it in and run again.\n');
+  console.error('\nOne of them is missing from backend/.env. Fill it in and run again.\n');
   process.exit(1);
 }
 

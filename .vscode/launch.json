@@ -42,16 +42,16 @@
       "name": "Mobile: Android emulator",
       "type": "dart",
       "request": "launch",
-      "program": "apps/mobile/lib/main.dart",
-      "cwd": "apps/mobile",
+      "program": "frontend/mobile/lib/main.dart",
+      "cwd": "frontend/mobile",
       "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1"]
     },
     {
       "name": "Mobile: iOS Simulator",
       "type": "dart",
       "request": "launch",
-      "program": "apps/mobile/lib/main.dart",
-      "cwd": "apps/mobile",
+      "program": "frontend/mobile/lib/main.dart",
+      "cwd": "frontend/mobile",
       "args": ["--dart-define=API_BASE_URL=http://localhost:3000/api/v1"]
     }
   ]

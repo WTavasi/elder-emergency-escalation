@@ -12,7 +12,7 @@ enum AppAudience { elder, standard }
 /// Builds the app's themes from the generated tokens.
 ///
 /// Nothing in this file is a literal. Every colour, size, radius and duration is a
-/// constant from `packages/tokens`, which is where the contrast gate can see it. A
+/// constant from `frontend/design-tokens`, which is where the contrast gate can see it. A
 /// hard-coded value here would be invisible to that gate, which is the entire reason
 /// there are none.
 abstract final class MzaziTheme {

@@ -69,7 +69,7 @@ const DEV_PASSWORD = process.env.SEED_PASSWORD ?? 'Dev!2026';
 function assertLocalDatabase() {
   const url = process.env.DATABASE_URL ?? '';
   if (!url) {
-    throw new Error('DATABASE_URL is not set. Check apps/api/.env');
+    throw new Error('DATABASE_URL is not set. Check backend/.env');
   }
   const isLocal = /@(localhost|127\.0\.0\.1|\[::1\]|host\.docker\.internal|postgres)[:/]/.test(url);
   const isProduction = process.env.NODE_ENV === 'production';

@@ -6,7 +6,7 @@ const present = (...paths: string[]) => {
 };
 
 describe('resolveCredentialsPath', () => {
-  const cwd = '/repo/apps/api';
+  const cwd = '/repo/backend';
 
   it('uses an absolute path exactly as configured', () => {
     expect(resolveCredentialsPath('/etc/secrets/fcm.json', { cwd, exists: () => false })).toBe(
@@ -16,12 +16,12 @@ describe('resolveCredentialsPath', () => {
 
   it('prefers the working directory when the file is there', () => {
     const exists = present(
-      '/repo/apps/api/credentials/fcm.json',
+      '/repo/backend/credentials/fcm.json',
       '/repo/credentials/fcm.json',
       '/repo/.git',
     );
     expect(resolveCredentialsPath('./credentials/fcm.json', { cwd, exists })).toBe(
-      '/repo/apps/api/credentials/fcm.json',
+      '/repo/backend/credentials/fcm.json',
     );
   });
 
@@ -41,7 +41,7 @@ describe('resolveCredentialsPath', () => {
       message = (error as Error).message;
     }
 
-    expect(message).toContain('/repo/apps/api/credentials/fcm.json');
+    expect(message).toContain('/repo/backend/credentials/fcm.json');
     expect(message).toContain('/repo/credentials/fcm.json');
   });
 
@@ -54,7 +54,7 @@ describe('resolveCredentialsPath', () => {
 
 describe('findRepositoryRoot', () => {
   it('walks up to the nearest folder holding a .git entry', () => {
-    expect(findRepositoryRoot('/repo/apps/api/dist', present('/repo/.git'))).toBe('/repo');
+    expect(findRepositoryRoot('/repo/backend/dist', present('/repo/.git'))).toBe('/repo');
   });
 
   it('returns null rather than walking forever', () => {

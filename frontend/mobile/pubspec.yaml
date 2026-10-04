@@ -12,9 +12,9 @@ dependencies:
 
   # The design tokens, as a package rather than a copied file. One source of truth for
   # every colour, type size, spacing step and accessibility floor, generated from
-  # packages/tokens/tokens.json by `npm run tokens:build`.
+  # frontend/design-tokens/tokens.json by `npm run tokens:build`.
   mzazicare_tokens:
-    path: ../../packages/tokens
+    path: ../design-tokens
 
   # A plain HTTP client. The API is eight endpoints of JSON over REST, and a heavier
   # client would bring interceptors, transformers and a cache that this app has no use

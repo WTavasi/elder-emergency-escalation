@@ -296,7 +296,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
         'Invalid environment configuration. The API will not start.',
         ...lines,
         '',
-        'Check apps/api/.env against .env.example.',
+        'Check backend/.env against .env.example.',
       ].join('\n'),
     );
   }

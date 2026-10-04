@@ -4,10 +4,10 @@ node_modules/
 .pnp.js
 
 # generated token outputs (rebuilt by `npm run tokens:build`)
-packages/tokens/dist/
-packages/tokens/lib/src/tokens.dart
-packages/tokens/.dart_tool/
-packages/tokens/pubspec.lock
+frontend/design-tokens/dist/
+frontend/design-tokens/lib/src/tokens.dart
+frontend/design-tokens/.dart_tool/
+frontend/design-tokens/pubspec.lock
 
 # build output
 dist/
@@ -26,25 +26,25 @@ credentials/
 *.jks
 
 # flutter / dart
-apps/mobile/.dart_tool/
-apps/mobile/build/
-apps/mobile/.flutter-plugins
-apps/mobile/.flutter-plugins-dependencies
-apps/mobile/ios/Pods/
-apps/mobile/ios/.symlinks/
-apps/mobile/ios/Flutter/Generated.xcconfig
-apps/mobile/ios/Flutter/flutter_export_environment.sh
-apps/mobile/android/.gradle/
-apps/mobile/android/local.properties
-apps/mobile/android/key.properties
+frontend/mobile/.dart_tool/
+frontend/mobile/build/
+frontend/mobile/.flutter-plugins
+frontend/mobile/.flutter-plugins-dependencies
+frontend/mobile/ios/Pods/
+frontend/mobile/ios/.symlinks/
+frontend/mobile/ios/Flutter/Generated.xcconfig
+frontend/mobile/ios/Flutter/flutter_export_environment.sh
+frontend/mobile/android/.gradle/
+frontend/mobile/android/local.properties
+frontend/mobile/android/key.properties
 
 # Firebase client configuration. Not a secret in the way a service account is, since it
 # ships inside the built app, but it names the project and its API keys, and this
 # repository keeps every credential out by default rather than by exception. Download
 # them from the Firebase console; docs/running.md says how.
-apps/mobile/android/app/google-services.json
-apps/mobile/ios/Runner/GoogleService-Info.plist
-apps/mobile/lib/firebase_options.dart
+frontend/mobile/android/app/google-services.json
+frontend/mobile/ios/Runner/GoogleService-Info.plist
+frontend/mobile/lib/firebase_options.dart
 
 # test and coverage
 coverage/

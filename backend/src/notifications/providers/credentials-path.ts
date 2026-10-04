@@ -10,7 +10,7 @@ export interface PathLookup {
  * Finds a credentials file named by a relative path in configuration.
  *
  * The working directory is not a reliable base in a monorepo. `npm run dev -w` starts
- * the API in apps/api, running the compiled output starts it wherever the process was
+ * the API in backend, running the compiled output starts it wherever the process was
  * launched, and a deployment host picks its own. Meanwhile secrets belong in one place,
  * the repository's credentials folder, so that one .gitignore rule covers all of them.
  *

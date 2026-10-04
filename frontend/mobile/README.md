@@ -17,7 +17,7 @@ docker compose up -d
 npm run dev
 ```
 
-Then, from `apps/mobile`:
+Then, from `frontend/mobile`:
 
 ```bash
 # Android emulator. 10.0.2.2 is how the emulator reaches the host machine.
@@ -84,7 +84,7 @@ roles is told so rather than shown an empty app.
 ## Design
 
 Every colour, type size, spacing step, radius and duration comes from
-`packages/tokens`, consumed as a Dart package. There is no literal anywhere in the
+`frontend/design-tokens`, consumed as a Dart package. There is no literal anywhere in the
 theme, because a hard-coded value is the one thing the contrast gate cannot check.
 
 The type and touch scale follows the role rather than a setting. An elder-facing screen

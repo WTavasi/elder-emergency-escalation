@@ -11,7 +11,7 @@ confirmation. Never on navigation, headers, links, empty states, charts or brand
 
 ## Colour
 
-Defined once in `packages/tokens/tokens.json`. Consumed only through the generated
+Defined once in `frontend/design-tokens/tokens.json`. Consumed only through the generated
 outputs. No hex literals in widgets or components.
 
 Semantic hues are limited to three besides the emergency red: amber for waiting, blue
@@ -74,8 +74,8 @@ One family per audience, and it is a legibility decision rather than a stylistic
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
 
-Fonts are bundled into the app from `apps/mobile/assets/fonts/` and self-hosted by the
-dashboard from `apps/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
+Fonts are bundled into the app from `frontend/mobile/assets/fonts/` and self-hosted by the
+dashboard from `frontend/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
 matters for more than principle: the console reads an elder's name and address, so it
 makes no third-party request at all, and the API's content security policy would deny one.
 The licence text ships inside the app as an asset and is registered with Flutter's licence

@@ -1,7 +1,7 @@
 /// MzaziCare design tokens.
 ///
 /// The one place a colour, type size, spacing step, radius or duration is defined for
-/// the Flutter app. `src/tokens.dart` is generated from `packages/tokens/tokens.json`
+/// the Flutter app. `src/tokens.dart` is generated from `frontend/design-tokens/tokens.json`
 /// by `npm run tokens:build`, which also recomputes every declared contrast pair and
 /// fails the build if one falls below its documented minimum.
 ///

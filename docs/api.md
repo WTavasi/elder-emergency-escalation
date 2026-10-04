@@ -6,7 +6,7 @@ that does not move when the version does.
 Every route is authenticated unless it declares `@Public()`, so a new endpoint is
 protected by default rather than by remembering to protect it.
 
-`apps/api/requests.http` holds all of these as runnable blocks. Open it in VS Code with
+`backend/requests.http` holds all of these as runnable blocks. Open it in VS Code with
 the REST Client extension and a **Send Request** link appears above each one.
 
 ## Authentication

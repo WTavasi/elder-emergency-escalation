@@ -33,7 +33,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: contrast-report
-          path: packages/tokens/dist/contrast-report.json
+          path: frontend/design-tokens/dist/contrast-report.json
           if-no-files-found: error
 
   api:
@@ -82,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: api-coverage
-          path: apps/api/coverage/
+          path: backend/coverage/
           if-no-files-found: warn
 
   dashboard:
@@ -113,13 +113,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-dist
-          path: apps/dashboard/dist/
+          path: frontend/dashboard/dist/
           if-no-files-found: error
 
   integration:
     name: Escalation end to end
     runs-on: ubuntu-latest
-    # These have to be stated here rather than left to apps/api/.env, because an
+    # These have to be stated here rather than left to backend/.env, because an
     # environment variable takes precedence over a .env file. A workflow-level
     # placeholder silently overrode the real credentials and this job failed to
     # authenticate against a database that was running and healthy.
@@ -154,9 +154,9 @@ jobs:
 
       - name: Configure the API environment
         run: |
-          cp .env.example apps/api/.env
-          sed -i "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=$(openssl rand -base64 48)|" apps/api/.env
-          sed -i "s|^JWT_REFRESH_SECRET=.*|JWT_REFRESH_SECRET=$(openssl rand -base64 48)|" apps/api/.env
+          cp .env.example backend/.env
+          sed -i "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=$(openssl rand -base64 48)|" backend/.env
+          sed -i "s|^JWT_REFRESH_SECRET=.*|JWT_REFRESH_SECRET=$(openssl rand -base64 48)|" backend/.env
 
       - name: Apply migrations and seed
         run: |
