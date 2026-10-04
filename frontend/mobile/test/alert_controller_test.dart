@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:mzazicare/api/api_client.dart';
-import 'package:mzazicare/elder/alert_controller.dart';
+import 'package:mzazicare/core/api/api_client.dart';
+import 'package:mzazicare/features/elder/alert_controller.dart';
 
 import 'support.dart';
 

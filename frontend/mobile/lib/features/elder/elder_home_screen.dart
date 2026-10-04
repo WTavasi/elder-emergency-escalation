@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
-import '../api/models.dart';
-import '../auth/auth_controller.dart';
-import '../widgets/notice.dart';
-import '../widgets/panic_button.dart';
-import '../widgets/sign_out_button.dart';
+import '../../core/api/models.dart';
+import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/notice.dart';
+import '../../core/widgets/sign_out_button.dart';
 import 'alert_controller.dart';
+import 'widgets/panic_button.dart';
 
 /// The elder's whole app.
 ///

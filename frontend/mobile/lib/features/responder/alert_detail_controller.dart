@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../api/api_client.dart';
-import '../api/models.dart';
+import '../../core/api/api_client.dart';
+import '../../core/api/models.dart';
 
 /// One emergency, and the four things a person can do about it.
 ///

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
-import '../api/models.dart';
-import '../widgets/call_button.dart';
-import '../widgets/notice.dart';
-import '../widgets/state_pill.dart';
+import '../../core/api/models.dart';
+import '../../core/widgets/notice.dart';
 import 'alert_detail_controller.dart';
+import 'widgets/call_button.dart';
+import 'widgets/state_pill.dart';
 
 /// One emergency, and the decision.
 ///

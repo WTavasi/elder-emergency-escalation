@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mzazicare/api/models.dart';
-import 'package:mzazicare/theme/theme.dart';
-import 'package:mzazicare/widgets/panic_button.dart';
-import 'package:mzazicare/widgets/sign_out_button.dart';
-import 'package:mzazicare/widgets/state_pill.dart';
+import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/theme/theme.dart';
+import 'package:mzazicare/core/widgets/sign_out_button.dart';
+import 'package:mzazicare/features/elder/widgets/panic_button.dart';
+import 'package:mzazicare/features/responder/widgets/state_pill.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 /// The accessibility floors, asserted rather than documented.

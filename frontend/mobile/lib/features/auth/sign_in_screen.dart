@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
-import '../widgets/notice.dart';
-import 'auth_controller.dart';
+import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/notice.dart';
 
 /// Phone number and password, which is what the API accepts.
 ///

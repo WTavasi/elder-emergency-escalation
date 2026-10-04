@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api_client.dart';
-import '../api/models.dart';
-import '../auth/auth_controller.dart';
-import '../widgets/notice.dart';
-import '../widgets/sign_out_button.dart';
-import '../widgets/state_pill.dart';
+import '../../core/api/api_client.dart';
+import '../../core/api/models.dart';
+import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/notice.dart';
+import '../../core/widgets/sign_out_button.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
 import 'alerts_controller.dart';
+import 'widgets/state_pill.dart';
 
 /// What a caregiver or responder opens the app to see.
 ///

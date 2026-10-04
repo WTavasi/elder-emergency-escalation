@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mzazicare/api/api_client.dart';
+import 'package:mzazicare/core/api/api_client.dart';
 
 /// A recorded exchange: what the client asked for, and what it was told.
 class Exchange {

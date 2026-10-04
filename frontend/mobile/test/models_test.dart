@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mzazicare/api/models.dart';
+import 'package:mzazicare/core/api/models.dart';
 
 void main() {
   group('EventState', () {

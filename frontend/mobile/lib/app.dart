@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'api/api_client.dart';
-import 'api/models.dart';
-import 'auth/auth_controller.dart';
-import 'auth/sign_in_screen.dart';
-import 'elder/alert_controller.dart';
-import 'elder/elder_home_screen.dart';
-import 'responder/alert_list_screen.dart';
-import 'responder/alerts_controller.dart';
-import 'theme/theme.dart';
-import 'widgets/sign_out_button.dart';
+import 'core/api/api_client.dart';
+import 'core/api/models.dart';
+import 'core/auth/auth_controller.dart';
+import 'core/theme/theme.dart';
+import 'core/widgets/sign_out_button.dart';
+import 'features/auth/sign_in_screen.dart';
+import 'features/elder/alert_controller.dart';
+import 'features/elder/elder_home_screen.dart';
+import 'features/responder/alert_list_screen.dart';
+import 'features/responder/alerts_controller.dart';
 
 /// The app.
 ///

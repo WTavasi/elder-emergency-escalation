@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'api/api_client.dart';
 import 'app.dart';
-import 'auth/auth_controller.dart';
-import 'auth/session_store.dart';
+import 'core/api/api_client.dart';
+import 'core/auth/auth_controller.dart';
+import 'core/auth/session_store.dart';
 
 /// Where the API is.
 ///

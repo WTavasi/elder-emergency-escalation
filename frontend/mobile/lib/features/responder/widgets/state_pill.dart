@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
-import '../api/models.dart';
+import '../../../core/api/models.dart';
 
 /// The state of an emergency, as a pill.
 ///
