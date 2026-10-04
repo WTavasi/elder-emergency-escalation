@@ -9,8 +9,9 @@
     "npm": ">=10"
   },
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "backend",
+    "frontend/dashboard",
+    "frontend/design-tokens"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -24,8 +25,8 @@
     "prepare": "husky",
     "test": "npm run test --workspaces --if-present",
     "test:cov": "npm run test:cov --workspaces --if-present",
-    "tokens:build": "node packages/tokens/src/build.mjs",
-    "tokens:check": "node packages/tokens/src/build.mjs --check",
+    "tokens:build": "node frontend/design-tokens/src/build.mjs",
+    "tokens:check": "node frontend/design-tokens/src/build.mjs --check",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "lint-staged": {

@@ -147,7 +147,7 @@ Exactly as in Guide A. VS Code cannot do this for you.
 
 Open VS Code, then **File > Open Folder**, and choose `~/Desktop/Mzazicare`.
 
-Open the folder itself, not `apps/api` or any subfolder. The tooling resolves from the
+Open the folder itself, not `backend` or any subfolder. The tooling resolves from the
 repository root, and opening a subfolder gives you type errors that do not exist and
 tasks that are not there.
 
@@ -191,7 +191,7 @@ the failure it shows you is a network error rather than anything informative.
 ### Step 2. Pick where it will run
 
 ```bash
-cd ~/Desktop/Mzazicare/apps/mobile
+cd ~/Desktop/Mzazicare/frontend/mobile
 flutter devices
 ```
 
@@ -269,10 +269,10 @@ That installs everything and, through postinstall hooks, also builds the design 
 and generates the Prisma client.
 
 ```bash
-cp .env.example apps/api/.env
+cp .env.example backend/.env
 ```
 
-Then open `apps/api/.env` and fill in the secrets. Two need generating:
+Then open `backend/.env` and fill in the secrets. Two need generating:
 
 ```bash
 openssl rand -base64 48    # paste as JWT_ACCESS_SECRET
@@ -287,7 +287,7 @@ printf 'POSTGRES_PORT=5433\nREDIS_PORT=6379\n' > .env
 ```
 
 and set `DATABASE_URL=postgresql://mzazicare:mzazicare@localhost:5433/mzazicare` in
-`apps/api/.env`.
+`backend/.env`.
 
 Then bring up the services and create the schema:
 
@@ -297,7 +297,7 @@ npm run db:migrate -w @mzazicare/api
 npm run db:seed -w @mzazicare/api
 ```
 
-For the Flutter app, once, from `apps/mobile`:
+For the Flutter app, once, from `frontend/mobile`:
 
 ```bash
 flutter pub get
@@ -309,7 +309,7 @@ Two commands, and the second is the one people forget:
 
 ```bash
 npm run db:migrate -w @mzazicare/api    # apply new migrations
-npx prisma generate --schema apps/api/prisma/schema.prisma
+npx prisma generate --schema backend/prisma/schema.prisma
 ```
 
 The generated Prisma client is not in the repository, so a pull that added a column

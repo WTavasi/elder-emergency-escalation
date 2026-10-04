@@ -24,7 +24,7 @@
     "**/node_modules": true,
     "**/dist": true,
     "**/coverage": true,
-    "packages/tokens/dist": true
+    "frontend/design-tokens/dist": true
   },
 
   // The REST Client extension reads these when running requests.http.

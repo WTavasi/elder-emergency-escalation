@@ -11,7 +11,7 @@ confirmation. Never on navigation, headers, links, empty states, charts or brand
 
 ## Colour
 
-Defined once in `packages/tokens/tokens.json`. Consumed only through the generated
+Defined once in `frontend/design-tokens/tokens.json`. Consumed only through the generated
 outputs. No hex literals in widgets or components.
 
 Semantic hues are limited to three besides the emergency red: amber for waiting, blue
@@ -32,6 +32,35 @@ number and a role name, never a colour of their own.
 Filled red means nobody has seen it. Outlined red means the system acted on it. Colour
 never carries state alone: every pill also carries a glyph and a word.
 
+The app follows this as of 1 October 2026; before then its pills were word only. The
+console's pills are still word only and still show the raw state name, which is the next
+thing to fix there.
+
+## Icons
+
+An icon beside a label, never an icon instead of one, and only where it earns its place.
+An icon earns it when it does one of three things:
+
+1. **Tells apart two actions that read alike.** "Call Grace" and "Call an emergency
+   responder" both begin with "Call" and do different things. A phone and the emergency
+   mark separate them before either label is read.
+2. **Speeds recognition of a frequent action** under stress. The caregiver's two answers,
+   and closing, each carry one.
+3. **Carries meaning when colour cannot.** Every state pill has a glyph for readers who
+   cannot tell the colours apart.
+
+An icon that does none of these is decoration, and the design anti-patterns this project
+avoids include icons scattered for texture. Icon-only controls are reserved for secondary
+actions with a universally understood symbol, which in practice is sign out alone, and
+every one carries an accessible name.
+
+Glyphs are shared between an action and the state it produces, so they teach each other:
+"I am on my way" and the "Being handled" pill both show a running figure, "Close this
+emergency" and the "Closed" pill both show a tick.
+
+The elder's panic control gets no icon. It is one large labelled circle, and anything added
+to it competes with the only thing that screen is for.
+
 ## Type
 
 One family per audience, and it is a legibility decision rather than a stylistic one.
@@ -45,8 +74,8 @@ One family per audience, and it is a legibility decision rather than a stylistic
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
 
-Fonts are bundled into the app from `apps/mobile/assets/fonts/` and self-hosted by the
-dashboard from `apps/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
+Fonts are bundled into the app from `frontend/mobile/assets/fonts/` and self-hosted by the
+dashboard from `frontend/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
 matters for more than principle: the console reads an elder's name and address, so it
 makes no third-party request at all, and the API's content security policy would deny one.
 The licence text ships inside the app as an asset and is registered with Flutter's licence

@@ -6,7 +6,7 @@ the one before it passed.
 | Layer | Command | Needs | Proves |
 | --- | --- | --- | --- |
 | 1 | `npm test` | nothing | the logic is correct in isolation |
-| 2 | `flutter test` in `apps/mobile` | the Flutter SDK | the app's logic and its accessibility floors |
+| 2 | `flutter test` in `frontend/mobile` | the Flutter SDK | the app's logic and its accessibility floors |
 | 3 | `npm run test:integration -w @mzazicare/api` | Docker | the escalation is genuinely event-driven |
 | 4 | `npm run demo -w @mzazicare/api` | Docker, API | the whole lifecycle works end to end |
 | 5 | the dashboard and the app, by hand | all four above | a person can see and act on it |
@@ -35,7 +35,7 @@ match this page.
 
 **If every suite refuses to run** and the output is TypeScript errors about properties
 that do not exist, the Prisma client is describing an older schema than the one in the
-repository. Run `npx prisma generate --schema apps/api/prisma/schema.prisma` and try
+repository. Run `npx prisma generate --schema backend/prisma/schema.prisma` and try
 again. It is the single most common way this command fails.
 
 No database and no network. It covers the severity policy, the escalation decisions,
@@ -57,7 +57,7 @@ npm test -w @mzazicare/dashboard
 Only on the Mac.
 
 ```bash
-cd ~/Desktop/Mzazicare/apps/mobile
+cd ~/Desktop/Mzazicare/frontend/mobile
 dart format --line-length 100 lib test
 flutter analyze
 flutter test
@@ -80,7 +80,7 @@ the panic control computed its floor correctly and then handed it to a widget th
 cannot exceed its parent's constraints, so a cramped layout rendered it at 20 points.
 
 Note that `flutter test` is not yet run by continuous integration, so it only protects
-you when you remember to run it. Run it before every push that touches `apps/mobile`.
+you when you remember to run it. Run it before every push that touches `frontend/mobile`.
 
 ---
 
@@ -191,7 +191,7 @@ channel.
 
 ### Access control, which is worth demonstrating deliberately
 
-Open `apps/api/requests.http` in VS Code, with the REST Client extension installed. A
+Open `backend/requests.http` in VS Code, with the REST Client extension installed. A
 **Send Request** link appears above each block.
 
 Sections 11 and 12 fail on purpose: a request with no token, a request with a valid
@@ -231,7 +231,7 @@ server's own wording, and acknowledging one somebody else has already taken retu
 
 ### Where the emergency is located, by hand
 
-Section 16 of `apps/api/requests.http` is the clearest demonstration that severity is
+Section 16 of `backend/requests.http` is the clearest demonstration that severity is
 computed from data. Raise an alert, read the away-from-home factor in the breakdown and
 see it contribute zero. Record a stay away from home through the caregiver's endpoint.
 Raise an identical alert and watch the same factor contribute, the score rise, and the

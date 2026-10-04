@@ -1,0 +1,301 @@
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import {
+  AuditAction,
+  EventState,
+  NotificationChannel,
+  NotificationStatus,
+  Role,
+  Severity,
+} from '@prisma/client';
+import { AppModule } from '../src/app.module';
+import { AlertsService } from '../src/modules/emergency-service/services/alerts.service';
+import { EscalationService } from '../src/modules/emergency-service/services/escalation.service';
+import { PrismaService } from '../src/db/prisma.service';
+import { PasswordService } from '../src/modules/auth-service/services/password.service';
+import { RedisService } from '../src/shared/redis/redis.service';
+
+/**
+ * The claim this project makes is that an unacknowledged emergency climbs the chain by
+ * itself. Every other test mocks the clock or the database. This one does not: it runs
+ * against real Postgres and real Redis, sets a two second acknowledgement window, waits,
+ * and checks that the emergency actually moved up a tier because a Redis key expired and
+ * the listener acted on it.
+ *
+ * Requires: docker compose up -d, and migrations applied.
+ */
+describe('escalation, end to end', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let alerts: AlertsService;
+  let escalation: EscalationService;
+
+  // The elder's registered home. Written to the account in setup, and never passed to
+  // alerts.create: the server resolves where an emergency is from the account itself, so
+  // passing it here would test the fallback rung instead of the real path.
+  const home = { latitude: -1.2833, longitude: 36.7833 };
+  const suffix = Date.now().toString().slice(-7);
+  const ids: { elder?: string; caregiver?: string; family?: string } = {};
+  let originalTimeout: number | null = null;
+
+  const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /**
+   * Waits for something to become true, rather than for a length of time.
+   *
+   * Sleeping for a fixed period and then asserting works on a developer machine and
+   * fails on a shared CI runner, because the chain being measured here is Redis
+   * publishing an expiry, a listener receiving it, a dispatch running and a row being
+   * written, and none of that has a bounded duration. This polls instead: as fast as
+   * the machine allows, and patient when the machine is busy. A timeout reports what
+   * it was waiting for, so a genuine failure still reads as one rather than as a
+   * confusing assertion four seconds later.
+   *
+   * Only for asserting that something HAPPENS. Proving that something does not happen
+   * still needs a fixed wait longer than the window, and those are left alone below.
+   */
+  const waitFor = async (
+    what: string,
+    condition: () => Promise<boolean>,
+    timeoutMs = 20_000,
+  ): Promise<void> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await condition()) return;
+      await wait(100);
+    }
+    throw new Error(`Timed out after ${timeoutMs}ms waiting for: ${what}`);
+  };
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    // Fail here with an explanation rather than four seconds later with a confusing
+    // state assertion. Without expiry events nothing in this suite can pass.
+    const redis = app.get(RedisService);
+    const reply: unknown = await redis.client.config('GET', 'notify-keyspace-events');
+    const flags = Array.isArray(reply) ? String(reply[1] ?? '') : '';
+    if (!RedisService.publishesExpiry(flags)) {
+      throw new Error(
+        `Redis is not publishing key expiry events (flags: "${flags}"), so no timer can ever fire. Check which server is on the port with: lsof -nP -iTCP:6379 -sTCP:LISTEN`,
+      );
+    }
+
+    prisma = app.get(PrismaService);
+    alerts = app.get(AlertsService);
+    escalation = app.get(EscalationService);
+    const passwords = app.get(PasswordService);
+    const passwordHash = passwords.hash('Integration!2026');
+
+    const caregiver = await prisma.user.create({
+      data: {
+        name: 'Test Caregiver',
+        phone: `+2547111${suffix}`,
+        role: Role.CAREGIVER,
+        passwordHash,
+      },
+    });
+    const family = await prisma.user.create({
+      data: {
+        name: 'Test Family',
+        phone: `+2547222${suffix}`,
+        role: Role.FAMILY_MEMBER,
+        passwordHash,
+      },
+    });
+    const elder = await prisma.user.create({
+      data: {
+        name: 'Test Elder',
+        phone: `+2547333${suffix}`,
+        role: Role.ELDER,
+        passwordHash,
+        careLevel: 'INDEPENDENT',
+        homeLatitude: home.latitude,
+        homeLongitude: home.longitude,
+      },
+    });
+
+    ids.elder = elder.id;
+    ids.caregiver = caregiver.id;
+    ids.family = family.id;
+
+    await prisma.careAssignment.createMany({
+      data: [
+        { elderlyId: elder.id, responderId: caregiver.id, priorityOrder: 1 },
+        { elderlyId: elder.id, responderId: family.id, priorityOrder: 2 },
+      ],
+    });
+
+    // Shorten the standard first tier so the test takes seconds rather than minutes.
+    const rule = await prisma.escalationRule.findFirst({
+      where: { severity: Severity.STANDARD, tierOrder: 1 },
+    });
+    if (!rule) throw new Error('Seed the database first: npm run db:seed -w @mzazicare/api');
+    originalTimeout = rule.timeoutSeconds;
+    await prisma.escalationRule.update({ where: { id: rule.id }, data: { timeoutSeconds: 2 } });
+  });
+
+  afterAll(async () => {
+    if (prisma && ids.elder) {
+      const events = await prisma.emergencyEvent.findMany({ where: { elderlyId: ids.elder } });
+      const eventIds = events.map((event) => event.id);
+
+      await prisma.auditLog.deleteMany({ where: { eventId: { in: eventIds } } });
+      await prisma.notification.deleteMany({ where: { eventId: { in: eventIds } } });
+      await prisma.emergencyEvent.deleteMany({ where: { elderlyId: ids.elder } });
+      await prisma.careAssignment.deleteMany({ where: { elderlyId: ids.elder } });
+      await prisma.user.deleteMany({
+        where: { id: { in: [ids.elder, ids.caregiver, ids.family].filter(Boolean) as string[] } },
+      });
+
+      if (originalTimeout !== null) {
+        const rule = await prisma.escalationRule.findFirst({
+          where: { severity: Severity.STANDARD, tierOrder: 1 },
+        });
+        if (rule) {
+          await prisma.escalationRule.update({
+            where: { id: rule.id },
+            data: { timeoutSeconds: originalTimeout },
+          });
+        }
+      }
+    }
+    await app?.close();
+  });
+
+  it('dispatches tier one immediately and arms its acknowledgement window', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+
+    const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.state).toBe(EventState.NOTIFIED);
+    expect(stored.currentTier).toBe(1);
+    expect(stored.currentTierDeadlineAt).not.toBeNull();
+
+    const notifications = await prisma.notification.findMany({ where: { eventId: event.id } });
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].recipientId).toBe(ids.caregiver);
+  });
+
+  it('escalates to tier two on its own when nobody acknowledges', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+
+    // The tier one window is two seconds. What is being waited for is the whole chain
+    // that follows it: the key expiring, the listener acting, and tier two going out.
+    await waitFor(
+      'the emergency to reach tier two',
+      async () => (await prisma.notification.count({ where: { eventId: event.id, tier: 2 } })) > 0,
+    );
+
+    const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.state).toBe(EventState.ESCALATED);
+    expect(stored.currentTier).toBe(2);
+
+    const logs = await prisma.auditLog.findMany({
+      where: { eventId: event.id },
+      orderBy: { occurredAt: 'asc' },
+    });
+    // Delivery outcomes are interleaved with the lifecycle and depend on whether the
+    // recipients have registered devices, so this asserts the lifecycle sequence rather
+    // than the whole log. What was delivered is asserted in its own test below.
+    const lifecycle = logs
+      .map((log) => log.action)
+      .filter((action) => action !== AuditAction.NOTIFICATION_FAILED);
+
+    expect(lifecycle).toEqual([
+      AuditAction.EVENT_CREATED,
+      AuditAction.SEVERITY_EVALUATED,
+      AuditAction.TIER_DISPATCHED,
+      AuditAction.ESCALATED,
+      AuditAction.TIER_DISPATCHED,
+    ]);
+
+    const notified = await prisma.notification.findMany({ where: { eventId: event.id, tier: 2 } });
+    expect(notified[0].recipientId).toBe(ids.family);
+  });
+
+  it('stops climbing once someone acknowledges', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+    await escalation.acknowledge(event.id, ids.caregiver as string, home);
+
+    // A fixed wait on purpose. This asserts that something does NOT happen, and the
+    // only way to show that is to outlast the window that would have made it happen.
+    await wait(4000);
+
+    const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.state).toBe(EventState.ACKNOWLEDGED);
+    expect(stored.currentTier).toBe(1);
+    expect(stored.currentTierDeadlineAt).toBeNull();
+  });
+
+  it('falls back to SMS when the recipient has no registered device', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+
+    // The accounts have no push token, which the logging provider refuses exactly as
+    // Firebase would, so the fallback path runs for real here.
+    //
+    // Scoped to tier one throughout. This test previously slept for two seconds, which
+    // is exactly the shortened tier one window, so whether tier two had dispatched by
+    // the time it looked was a coin toss. A second tier brings a second push failure
+    // and a second SMS, which turned a passing assertion into a failing one at random.
+    await waitFor(
+      'the SMS fallback to be recorded for tier one',
+      async () =>
+        (await prisma.notification.count({
+          where: { eventId: event.id, tier: 1, channel: NotificationChannel.SMS },
+        })) > 0,
+    );
+
+    const notifications = await prisma.notification.findMany({
+      where: { eventId: event.id, tier: 1 },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const push = notifications.find((item) => item.channel === NotificationChannel.PUSH);
+    const sms = notifications.find((item) => item.channel === NotificationChannel.SMS);
+
+    expect(push?.status).toBe(NotificationStatus.FAILED);
+    expect(push?.failureReason).toContain('no registered device');
+    expect(sms).toBeDefined();
+    expect(sms?.status).toBe(NotificationStatus.SENT);
+    expect(sms?.recipientId).toBe(ids.caregiver);
+
+    // Tier one's failure only. A tier two dispatch would add its own.
+    const failures = await prisma.auditLog.findMany({
+      where: { eventId: event.id, action: AuditAction.NOTIFICATION_FAILED },
+    });
+    expect(failures.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('tells the caregiver when the elder cancels, so they can call to check', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+    await waitFor(
+      'the first dispatch to be recorded',
+      async () => (await prisma.notification.count({ where: { eventId: event.id } })) > 0,
+    );
+    const before = await prisma.notification.count({ where: { eventId: event.id } });
+
+    await alerts.cancel(event.id, ids.elder as string);
+    await waitFor(
+      'the cancellation notice to reach the caregiver',
+      async () => (await prisma.notification.count({ where: { eventId: event.id } })) > before,
+    );
+
+    const after = await prisma.notification.count({ where: { eventId: event.id } });
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it('stops climbing once the elder cancels inside the grace window', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+    await alerts.cancel(event.id, ids.elder as string);
+
+    // Fixed, for the same reason: outlasting the window is what proves the timer was
+    // cleared rather than merely slow.
+    await wait(4000);
+
+    const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.state).toBe(EventState.CANCELLED);
+    expect(stored.currentTier).toBe(1);
+  });
+});

@@ -10,10 +10,10 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
-      'packages/tokens/dist/**',
-      'apps/api/prisma/migrations/**',
+      'frontend/design-tokens/dist/**',
+      'backend/prisma/migrations/**',
       // Dart and Flutter. Linted by `flutter analyze`, not by ESLint.
-      'apps/mobile/**',
+      'frontend/mobile/**',
     ],
   },
   js.configs.recommended,
@@ -38,8 +38,8 @@ export default tseslint.config(
     // Seed and build scripts are operator tools; printing is the point.
     files: [
       '**/seed.mjs',
-      'apps/api/scripts/**/*.mjs',
-      'packages/tokens/src/build.mjs',
+      'backend/scripts/**/*.mjs',
+      'frontend/design-tokens/src/build.mjs',
       '**/*.config.{js,mjs}',
     ],
     rules: { 'no-console': 'off' },
@@ -48,7 +48,7 @@ export default tseslint.config(
     // The dashboard runs in a browser, not in Node, and its hooks have rules of their
     // own that a type checker cannot enforce: a missing dependency in an effect is a
     // stale screen rather than a type error.
-    files: ['apps/dashboard/**/*.{ts,tsx}'],
+    files: ['frontend/dashboard/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
     plugins: { 'react-hooks': reactHooks },
     rules: {
@@ -57,7 +57,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/dashboard/**/*.test.{ts,tsx}'],
+    files: ['frontend/dashboard/**/*.test.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
   {

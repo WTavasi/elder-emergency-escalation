@@ -22,7 +22,7 @@ product.
 The cost of that choice is that Redis publishes an expiry once and never again, so a
 restart at the wrong moment would lose an escalation forever. That is why every dispatch
 also writes a durable `current_tier_deadline_at` and the listener reconciles against it
-on boot. See [architecture.md](architecture.md).
+on boot. See [ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).
 
 ## Provider failure has two kinds, and the difference is load-bearing
 
@@ -53,7 +53,7 @@ hiding controls the server would reject anyway.
 An administrator overseeing a platform has no business taking personal responsibility
 for a named person's emergency; that belongs to the people that person named. There is
 no operational hole, because the automatic chain already escalates to emergency
-responders when nobody in the chain answers. Section 14 of `apps/api/requests.http`
+responders when nobody in the chain answers. Section 14 of `backend/requests.http`
 demonstrates the refusals, which turns it from a claim into something that can be failed
 on demand.
 
@@ -99,7 +99,7 @@ a conflict rather than an error.
 
 ## Two environment files
 
-`apps/api/.env` is read by the API and the Prisma CLI. The repository root `.env` is
+`backend/.env` is read by the API and the Prisma CLI. The repository root `.env` is
 read by Docker Compose alone and holds only `POSTGRES_PORT` and `REDIS_PORT`.
 
 They were briefly the same file, which is how the published database port and
@@ -154,7 +154,7 @@ system into an unusable one.
 
 ## Colour is defined once
 
-`packages/tokens/tokens.json` is the only place a colour exists. Every consumer reads a
+`frontend/design-tokens/tokens.json` is the only place a colour exists. Every consumer reads a
 generated file, and the generator recomputes 26 declared WCAG pairs and exits non-zero
 if one regresses, so an inaccessible palette fails CI rather than shipping.
 

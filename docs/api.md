@@ -6,7 +6,7 @@ that does not move when the version does.
 Every route is authenticated unless it declares `@Public()`, so a new endpoint is
 protected by default rather than by remembering to protect it.
 
-`apps/api/requests.http` holds all of these as runnable blocks. Open it in VS Code with
+`backend/requests.http` holds all of these as runnable blocks. Open it in VS Code with
 the REST Client extension and a **Send Request** link appears above each one.
 
 ## Authentication
@@ -43,6 +43,13 @@ code path, so the API cannot be used to discover who is registered.
 
 Every query is scoped to the caller's own care relationships. An emergency the caller is
 not part of returns 404 rather than 403, so the API does not confirm that an id exists.
+
+Every alert carries the elder's **phone number**, so a caregiver can ring before deciding
+whether to set off, which is the most natural first move on receiving one. It widens
+nothing: everybody who can see an alert is already in that elder's care circle, was
+notified about the emergency, or is an administrator, and the care circle has the number
+already. What it saves is somebody scrolling through their contacts while an emergency is
+open. The app hands the number to the phone's own dialler and never places a call itself.
 
 Raising takes **no location**. Where an emergency is happening is resolved by the server
 from the elder's own record: a recorded stay away from home if there is one, otherwise the
@@ -119,4 +126,4 @@ scope of its own: it reports across everybody. A caregiver is refused.
 ## Live updates
 
 Socket.IO namespace `/realtime`, message `emergency.updated`. See
-[architecture.md](architecture.md).
+[ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).
