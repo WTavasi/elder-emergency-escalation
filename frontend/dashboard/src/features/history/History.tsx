@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { api } from '../api/client';
-import type { EventState, Severity } from '../api/types';
-import { AlertRow, Empty, ErrorNotice } from '../components/parts';
-import { useLoader } from '../useLoader';
+import { api } from '../../shared/api/client';
+import type { EventState, Severity } from '../../shared/api/types';
+import { AlertRow, Empty, ErrorNotice } from '../../shared/components/parts';
+import { useLoader } from '../../shared/hooks/useLoader';
 
 const STATES: EventState[] = [
   'TRIGGERED',

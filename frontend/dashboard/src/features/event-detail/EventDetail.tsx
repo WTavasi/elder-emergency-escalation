@@ -1,11 +1,17 @@
 import { useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api/client';
-import { useAuth } from '../auth/AuthContext';
-import { useRealtime } from '../api/realtime';
-import { useLoader } from '../useLoader';
-import { Countdown, Empty, ErrorNotice, SeverityLabel, StatePill } from '../components/parts';
-import { formatClock, formatDuration, formatOffset, humanise } from '../format';
+import { api } from '../../shared/api/client';
+import { useAuth } from '../../shared/state/AuthContext';
+import { useRealtime } from '../../shared/api/realtime';
+import { useLoader } from '../../shared/hooks/useLoader';
+import {
+  Countdown,
+  Empty,
+  ErrorNotice,
+  SeverityLabel,
+  StatePill,
+} from '../../shared/components/parts';
+import { formatClock, formatDuration, formatOffset, humanise } from '../../shared/utils/format';
 
 export function EventDetail() {
   const { id = '' } = useParams();

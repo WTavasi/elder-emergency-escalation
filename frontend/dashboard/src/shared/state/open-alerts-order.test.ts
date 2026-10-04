@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { order } from './OpenAlerts';
-import type { AlertSummary, Severity } from './api/types';
+import type { AlertSummary, Severity } from '../api/types';
 
 const alert = (
   eventId: string,

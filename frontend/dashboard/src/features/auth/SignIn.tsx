@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ApiError } from '../api/client';
-import { useAuth } from './AuthContext';
+import { ApiError } from '../../shared/api/client';
+import { useAuth } from '../../shared/state/AuthContext';
 
 /**
  * Sign-in for the operations console.

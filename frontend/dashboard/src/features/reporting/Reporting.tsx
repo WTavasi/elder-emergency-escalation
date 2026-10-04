@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { api } from '../api/client';
-import { Empty, ErrorNotice } from '../components/parts';
-import { useLoader } from '../useLoader';
-import { formatDuration, humanise } from '../format';
+import { api } from '../../shared/api/client';
+import { Empty, ErrorNotice } from '../../shared/components/parts';
+import { useLoader } from '../../shared/hooks/useLoader';
+import { formatDuration, humanise } from '../../shared/utils/format';
 
 const WINDOWS = [7, 30, 90];
 

@@ -1,13 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './auth/AuthContext';
-import { SignIn } from './auth/SignIn';
-import { Layout } from './components/Layout';
-import { Board } from './screens/Board';
-import { EventDetail } from './screens/EventDetail';
-import { History } from './screens/History';
-import { Reporting } from './screens/Reporting';
-import { DataHandling } from './screens/DataHandling';
-import { OpenAlertsProvider } from './OpenAlerts';
+import { useAuth } from './shared/state/AuthContext';
+import { SignIn } from './features/auth/SignIn';
+import { Layout } from './shared/components/Layout';
+import { Board } from './features/board/Board';
+import { EventDetail } from './features/event-detail/EventDetail';
+import { History } from './features/history/History';
+import { Reporting } from './features/reporting/Reporting';
+import { DataHandling } from './features/data-handling/DataHandling';
+import { OpenAlertsProvider } from './shared/state/OpenAlerts';
 
 /**
  * A signed-in account that is not an administrator is turned away here rather than

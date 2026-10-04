@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
-import { useOpenAlerts } from '../OpenAlerts';
-import { humanise } from '../format';
+import { useAuth } from '../state/AuthContext';
+import { useOpenAlerts } from '../state/OpenAlerts';
+import { humanise } from '../utils/format';
 
 export function Layout() {
   const { session, signOut } = useAuth();

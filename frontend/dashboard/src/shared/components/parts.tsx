@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { AlertSummary, EventState, Severity } from '../api/types';
-import { useCountdown } from '../useCountdown';
-import { formatClock, formatDuration } from '../format';
+import { useCountdown } from '../hooks/useCountdown';
+import { formatClock, formatDuration } from '../utils/format';
 
 /** The state, spelled out. Colour is a second channel, never the only one. */
 export function StatePill({ state }: { state: EventState }) {

@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { api } from './api/client';
-import type { AlertSummary, EmergencySnapshot, Severity } from './api/types';
-import { useRealtime, type ConnectionState } from './api/realtime';
-import { useAuth } from './auth/AuthContext';
-import { useLoader } from './useLoader';
+import { api } from '../api/client';
+import type { AlertSummary, EmergencySnapshot, Severity } from '../api/types';
+import { useRealtime, type ConnectionState } from '../api/realtime';
+import { useAuth } from './AuthContext';
+import { useLoader } from '../hooks/useLoader';
 
 /** Critical first, then the longest wait, because that is the order to work them in. */
 const RANK: Record<Severity, number> = { CRITICAL: 0, ELEVATED: 1, STANDARD: 2 };

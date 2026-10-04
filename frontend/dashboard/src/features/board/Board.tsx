@@ -1,7 +1,7 @@
-import { useOpenAlerts } from '../OpenAlerts';
-import type { ConnectionState } from '../api/realtime';
-import { AlertRow, Empty, ErrorNotice } from '../components/parts';
-import { localTimezone } from '../format';
+import { useOpenAlerts } from '../../shared/state/OpenAlerts';
+import type { ConnectionState } from '../../shared/api/realtime';
+import { AlertRow, Empty, ErrorNotice } from '../../shared/components/parts';
+import { localTimezone } from '../../shared/utils/format';
 
 function connectionLabel(state: ConnectionState): string {
   if (state === 'live') return 'Live';
