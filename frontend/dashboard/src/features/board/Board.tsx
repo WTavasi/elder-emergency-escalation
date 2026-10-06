@@ -1,13 +1,13 @@
 import { useOpenAlerts } from '../../shared/state/OpenAlerts';
-import type { ConnectionState } from '../../shared/api/realtime';
-import { AlertRow, Empty, ErrorNotice } from '../../shared/components/parts';
+import { Icon } from '../../shared/components/Icon';
+import {
+  AlertRow,
+  ConnectionStatus,
+  Empty,
+  ErrorNotice,
+  Skeleton,
+} from '../../shared/components/parts';
 import { localTimezone } from '../../shared/utils/format';
-
-function connectionLabel(state: ConnectionState): string {
-  if (state === 'live') return 'Live';
-  if (state === 'connecting') return 'Connecting';
-  return 'Not receiving updates';
-}
 
 export function Board() {
   const { alerts, error, loading, connection, reload } = useOpenAlerts();
@@ -20,10 +20,9 @@ export function Board() {
           <p>Every elder on the platform. Times are shown in {localTimezone()}.</p>
         </div>
         <div className="row">
-          <span className={connection === 'live' ? 'muted' : 'severity severity--CRITICAL'}>
-            {connectionLabel(connection)}
-          </span>
-          <button type="button" onClick={reload}>
+          <ConnectionStatus state={connection} />
+          <button type="button" className="button--with-icon" onClick={reload}>
+            <Icon name="refresh" size={18} />
             Refresh
           </button>
         </div>
@@ -40,9 +39,11 @@ export function Board() {
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         {loading ? (
-          <Empty>Loading</Empty>
+          <Skeleton />
         ) : !alerts || alerts.length === 0 ? (
-          <Empty>No emergency is open. This is the state the system should usually be in.</Empty>
+          <Empty icon="allClear" title="All clear">
+            No emergency is open right now. This is the state the system should usually be in.
+          </Empty>
         ) : (
           <table>
             <caption

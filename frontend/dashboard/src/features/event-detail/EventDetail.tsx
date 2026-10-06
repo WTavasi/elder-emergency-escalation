@@ -4,14 +4,83 @@ import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
+import type { AlertDetail, ChainMember } from '../../shared/api/types';
+import { OPEN_STATES } from '../../shared/api/types';
+import { Icon } from '../../shared/components/Icon';
 import {
   Countdown,
-  Empty,
   ErrorNotice,
   SeverityLabel,
+  Skeleton,
   StatePill,
 } from '../../shared/components/parts';
 import { formatClock, formatDuration, formatOffset, humanise } from '../../shared/utils/format';
+
+/**
+ * Where one person on the chain stands. Worked out from the tier the emergency has
+ * reached and who took it on, because that is everything the record says about them;
+ * whether a message actually reached them is in the delivery table below.
+ */
+function stepFor(
+  member: ChainMember,
+  alert: AlertDetail,
+): { status: 'done' | 'current' | 'asked' | 'later'; text: string } {
+  const open = OPEN_STATES.includes(alert.state);
+  if (alert.acknowledgedBy?.id === member.responderId) {
+    return { status: 'done', text: 'Took it on' };
+  }
+  if (member.priorityOrder < alert.currentTier) return { status: 'asked', text: 'Asked earlier' };
+  if (member.priorityOrder === alert.currentTier) {
+    return open && !alert.acknowledgedBy
+      ? { status: 'current', text: 'Being asked now' }
+      : { status: 'asked', text: 'Asked' };
+  }
+  return open && !alert.acknowledgedBy
+    ? { status: 'later', text: 'Next if nobody answers' }
+    : { status: 'later', text: 'Not needed' };
+}
+
+/**
+ * One banner in place of four equal cards. The four were the same size, so nothing on
+ * the page said which mattered; the banner leads with what an operator acts on (state,
+ * severity, who owns it, time left) and the rest becomes a line of detail beneath it.
+ */
+function StatusBanner({ alert }: { alert: AlertDetail }) {
+  const open = OPEN_STATES.includes(alert.state);
+  const waiting = open && !alert.acknowledgedBy;
+  const tone = waiting ? 'waiting' : open ? 'owned' : 'closed';
+
+  return (
+    <section className={`banner banner--${tone}`} aria-label="Status">
+      <div className="banner__main">
+        <div className="row">
+          <StatePill state={alert.state} />
+          <SeverityLabel severity={alert.severity} score={alert.severityScore} />
+          <span className="muted">Tier {alert.currentTier}</span>
+        </div>
+        <p className="banner__owner">
+          <Icon name="person" />
+          {alert.acknowledgedBy
+            ? `${alert.acknowledgedBy.name}, ${humanise(alert.acknowledgedBy.role)}, has taken it on`
+            : open
+              ? 'Nobody has taken it on yet'
+              : 'Nobody took it on'}
+        </p>
+      </div>
+      {open ? (
+        <div className="banner__timer">
+          <Icon name="timer" />
+          <span>
+            <span className="banner__countdown">
+              <Countdown deadlineAt={alert.deadlineAt} />
+            </span>
+            <span className="micro">left on this tier</span>
+          </span>
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 export function EventDetail() {
   const { id = '' } = useParams();
@@ -40,7 +109,7 @@ export function EventDetail() {
   useRealtime(session?.accessToken ?? null, onUpdate);
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
-  if (loading || !alert) return <Empty>Loading</Empty>;
+  if (loading || !alert) return <Skeleton rows={5} />;
 
   const factors = alert.severityFactors?.factors ?? [];
 
@@ -57,36 +126,15 @@ export function EventDetail() {
             {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
           </p>
         </div>
-        <div className="row">
-          <StatePill state={alert.state} />
-          <SeverityLabel severity={alert.severity} score={alert.severityScore} />
-        </div>
       </div>
 
-      <div className="metrics">
-        <div className="card">
-          <div className="metric__value">
-            {alert.responseSeconds === null ? 'none' : formatDuration(alert.responseSeconds)}
-          </div>
-          <div className="metric__label">Time to acknowledgement</div>
-        </div>
-        <div className="card">
-          <div className="metric__value">{alert.currentTier}</div>
-          <div className="metric__label">Tier reached</div>
-        </div>
-        <div className="card">
-          <div className="metric__value" style={{ fontSize: 'var(--font-size-h2)' }}>
-            <Countdown deadlineAt={alert.deadlineAt} />
-          </div>
-          <div className="metric__label">Time left on this tier</div>
-        </div>
-        <div className="card">
-          <div className="metric__value" style={{ fontSize: 'var(--font-size-h2)' }}>
-            {alert.acknowledgedBy ? alert.acknowledgedBy.name : 'nobody yet'}
-          </div>
-          <div className="metric__label">Owner</div>
-        </div>
-      </div>
+      <StatusBanner alert={alert} />
+      <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
+        {alert.responseSeconds === null
+          ? 'Not answered yet'
+          : `Answered in ${formatDuration(alert.responseSeconds)}`}
+        {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
+      </p>
 
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
@@ -183,14 +231,34 @@ export function EventDetail() {
 
           <section className="card stack" aria-labelledby="chain-heading">
             <h2 id="chain-heading">Escalation chain</h2>
-            <p className="muted micro">The order this elder&apos;s contacts would be tried in.</p>
-            <ol className="stack" style={{ margin: 0, paddingLeft: 'var(--space-24)' }}>
-              {alert.chain.map((member) => (
-                <li key={member.responderId}>
-                  {member.name}
-                  <span className="muted"> {humanise(member.role)}</span>
-                </li>
-              ))}
+            <p className="muted micro">The order this elder&apos;s contacts are tried in.</p>
+            <ol className="steps">
+              {alert.chain.map((member) => {
+                const step = stepFor(member, alert);
+                return (
+                  <li
+                    key={member.responderId}
+                    className={`step step--${step.status}`}
+                    aria-current={step.status === 'current' ? 'step' : undefined}
+                  >
+                    <span className="step__marker" aria-hidden="true">
+                      {step.status === 'done' ? (
+                        <Icon name="check" size={16} />
+                      ) : (
+                        member.priorityOrder
+                      )}
+                    </span>
+                    <span>
+                      <span className="step__name">{member.name}</span>
+                      <span className="micro muted"> {humanise(member.role)}</span>
+                      <span className="step__status">
+                        <span className="visually-hidden">Tier {member.priorityOrder}, </span>
+                        {step.text}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
           </section>
         </div>

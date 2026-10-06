@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { api } from '../../shared/api/client';
 import type { EventState, Severity } from '../../shared/api/types';
-import { AlertRow, Empty, ErrorNotice } from '../../shared/components/parts';
+import { AlertRow, Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 
 const STATES: EventState[] = [
@@ -12,6 +12,19 @@ const STATES: EventState[] = [
   'RESOLVED',
   'CANCELLED',
 ];
+
+/**
+ * The filter needs to tell the two waiting states apart, which the pill does not: the
+ * pill says what a caregiver needs to know, the filter is for looking something up.
+ */
+const STATE_OPTION: Record<EventState, string> = {
+  TRIGGERED: 'Waiting, nobody told yet',
+  NOTIFIED: 'Waiting, people told',
+  ACKNOWLEDGED: 'Being handled',
+  ESCALATED: 'Escalated',
+  RESOLVED: 'Closed',
+  CANCELLED: 'Withdrawn',
+};
 
 const SEVERITIES: Severity[] = ['STANDARD', 'ELEVATED', 'CRITICAL'];
 
@@ -81,7 +94,7 @@ export function History() {
             <option value="">Any state</option>
             {STATES.map((value) => (
               <option key={value} value={value}>
-                {value.toLowerCase()}
+                {STATE_OPTION[value]}
               </option>
             ))}
           </select>
@@ -97,7 +110,7 @@ export function History() {
             <option value="">Any severity</option>
             {SEVERITIES.map((value) => (
               <option key={value} value={value}>
-                {value.toLowerCase()}
+                {value.charAt(0) + value.slice(1).toLowerCase()}
               </option>
             ))}
           </select>
@@ -142,9 +155,11 @@ export function History() {
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         {loading ? (
-          <Empty>Loading</Empty>
+          <Skeleton />
         ) : !alerts || alerts.length === 0 ? (
-          <Empty>No emergency matches these filters.</Empty>
+          <Empty icon="inbox" title="Nothing matches">
+            No emergency matches these filters. Try a wider date range, or clear the filters.
+          </Empty>
         ) : (
           <table>
             <thead>
