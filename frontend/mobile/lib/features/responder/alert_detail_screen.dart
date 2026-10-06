@@ -135,59 +135,73 @@ class _StatusBanner extends StatelessWidget {
         ? (isDark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg)
         : (isDark ? MzaziColorsDark.pillResolvedFg : MzaziColorsLight.pillResolvedFg);
 
+    // Flutter cannot round the corners of a border whose sides differ in colour, so the
+    // coloured edge is a strip inside a uniformly bordered, clipped box instead.
     return Container(
-      padding: const EdgeInsets.all(MzaziSpace.s16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(MzaziRadius.card),
-        border: Border(
-          left: BorderSide(color: edge, width: 6),
-          top: BorderSide(color: theme.dividerColor),
-          right: BorderSide(color: theme.dividerColor),
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
+        border: Border.all(color: theme.dividerColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Wrap(
-            spacing: MzaziSpace.s8,
-            runSpacing: MzaziSpace.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              StatePill(state: alert.state),
-              SeverityMark(severity: alert.severity, suffix: ' severity'),
-            ],
-          ),
-          const SizedBox(height: MzaziSpace.s12),
-          Text(
-            'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
-            style: theme.textTheme.bodyLarge,
-          ),
-          if (alert.addressLabel != null) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s4),
-            _IconLine(icon: Icons.place_outlined, text: alert.addressLabel!),
-          ],
-          if (alert.ownerName != null) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s8),
-            _IconLine(
-              icon: Icons.person_outline,
-              text: '${alert.ownerName} is responding.',
-              style: theme.textTheme.bodyLarge?.weighted(FontWeight.w600),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(width: 6, color: edge),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(MzaziSpace.s16),
+                child: _content(theme),
+              ),
             ),
           ],
-          if (alert.outcome != null) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s8),
-            Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
-            if (alert.outcomeNote != null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s4),
-              // What the person who closed it actually wrote. For an "other" outcome this
-              // is the only record of what happened, so it is shown rather than filed away.
-              Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
-            ],
+        ),
+      ),
+    );
+  }
+
+  Widget _content(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Wrap(
+          spacing: MzaziSpace.s8,
+          runSpacing: MzaziSpace.s8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            StatePill(state: alert.state),
+            SeverityMark(severity: alert.severity, suffix: ' severity'),
+          ],
+        ),
+        const SizedBox(height: MzaziSpace.s12),
+        Text(
+          'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
+          style: theme.textTheme.bodyLarge,
+        ),
+        if (alert.addressLabel != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s4),
+          _IconLine(icon: Icons.place_outlined, text: alert.addressLabel!),
+        ],
+        if (alert.ownerName != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s8),
+          _IconLine(
+            icon: Icons.person_outline,
+            text: '${alert.ownerName} is responding.',
+            style: theme.textTheme.bodyLarge?.weighted(FontWeight.w600),
+          ),
+        ],
+        if (alert.outcome != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s8),
+          Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
+          if (alert.outcomeNote != null) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s4),
+            // What the person who closed it actually wrote. For an "other" outcome this
+            // is the only record of what happened, so it is shown rather than filed away.
+            Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
           ],
         ],
-      ),
+      ],
     );
   }
 
