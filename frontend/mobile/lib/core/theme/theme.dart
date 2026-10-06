@@ -222,7 +222,7 @@ abstract final class MzaziTheme {
 /// as well as the declared weight, for the reason given on `_text` above. A plain
 /// `copyWith(fontWeight:)` changes what the framework believes and leaves the glyphs
 /// exactly as they were.
-extension MzaziWeight on TextStyle {
+extension MzaziTextWeight on TextStyle {
   TextStyle weighted(FontWeight weight) => copyWith(
     fontWeight: weight,
     fontVariations: <FontVariation>[FontVariation('wght', weight.value.toDouble())],
