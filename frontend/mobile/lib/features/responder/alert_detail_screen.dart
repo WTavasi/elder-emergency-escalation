@@ -3,9 +3,12 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import 'alert_detail_controller.dart';
 import 'widgets/call_button.dart';
+import 'widgets/directions_button.dart';
+import 'widgets/severity_mark.dart';
 import 'widgets/state_pill.dart';
 
 /// One emergency, and the decision.
@@ -55,7 +58,19 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
           child: ListView(
             padding: const EdgeInsets.all(MzaziSpace.s16),
             children: <Widget>[
-              _Header(alert: alert),
+              _StatusBanner(alert: alert),
+              if (alert.state.isOpen && alert.hasPlace) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s12),
+                SizedBox(
+                  width: double.infinity,
+                  child: DirectionsButton(
+                    latitude: alert.latitude!,
+                    longitude: alert.longitude!,
+                    addressLabel: alert.addressLabel,
+                    open: widget.open,
+                  ),
+                ),
+              ],
               const SizedBox(height: MzaziSpace.s16),
 
               if (controller.actionError != null) ...<Widget>[
@@ -98,66 +113,114 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.alert});
+/// What state this emergency is in, as one bordered block at the top of the screen.
+///
+/// The left edge says who it is waiting on, with the same meanings as the pills: red
+/// while nobody has answered, blue once somebody owns it, green once it is closed. The
+/// edge is never the only signal; the pill, the glyphs and the sentence below say the
+/// same thing in words.
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.alert});
 
   final AlertSummary alert;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final bool waiting = alert.state.isOpen && !alert.isAnswered;
+    final Color edge = waiting
+        ? MzaziColorsLight.emergencyEdge
+        : alert.state.isOpen
+        ? (isDark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg)
+        : (isDark ? MzaziColorsDark.pillResolvedFg : MzaziColorsLight.pillResolvedFg);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            StatePill(state: alert.state),
-            const SizedBox(width: MzaziSpace.s8),
-            Text(_severityWord(alert.severity), style: theme.textTheme.labelLarge),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(MzaziSpace.s16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(MzaziRadius.card),
+        border: Border(
+          left: BorderSide(color: edge, width: 6),
+          top: BorderSide(color: theme.dividerColor),
+          right: BorderSide(color: theme.dividerColor),
+          bottom: BorderSide(color: theme.dividerColor),
         ),
-        const SizedBox(height: MzaziSpace.s12),
-        Text(
-          'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
-          style: theme.textTheme.bodyLarge,
-        ),
-        if (alert.addressLabel != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s4),
-          Text(alert.addressLabel!, style: theme.textTheme.bodyMedium),
-        ],
-        if (alert.ownerName != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            '${alert.ownerName} is responding.',
-            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Wrap(
+            spacing: MzaziSpace.s8,
+            runSpacing: MzaziSpace.s8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              StatePill(state: alert.state),
+              SeverityMark(severity: alert.severity, suffix: ' severity'),
+            ],
           ),
-        ],
-        if (alert.outcome != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s8),
-          Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
-          if (alert.outcomeNote != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s12),
+          Text(
+            'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
+            style: theme.textTheme.bodyLarge,
+          ),
+          if (alert.addressLabel != null) ...<Widget>[
             const SizedBox(height: MzaziSpace.s4),
-            // What the person who closed it actually wrote. For an "other" outcome this is
-            // the only record of what happened, so it is shown rather than filed away.
-            Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
+            _IconLine(icon: Icons.place_outlined, text: alert.addressLabel!),
+          ],
+          if (alert.ownerName != null) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s8),
+            _IconLine(
+              icon: Icons.person_outline,
+              text: '${alert.ownerName} is responding.',
+              style: theme.textTheme.bodyLarge?.weighted(FontWeight.w600),
+            ),
+          ],
+          if (alert.outcome != null) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s8),
+            Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
+            if (alert.outcomeNote != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              // What the person who closed it actually wrote. For an "other" outcome this
+              // is the only record of what happened, so it is shown rather than filed away.
+              Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
+            ],
           ],
         ],
-      ],
+      ),
     );
   }
-
-  static String _severityWord(Severity severity) => switch (severity) {
-    Severity.standard => 'Standard severity',
-    Severity.elevated => 'Elevated severity',
-    Severity.critical => 'Critical severity',
-  };
 
   /// The enum value made readable, without a lookup table that would go stale the moment
   /// an outcome is added on the server.
   static String _outcomeWord(String wire) {
     final String spaced = wire.toLowerCase().replaceAll('_', ' ');
     return spaced.isEmpty ? wire : '${spaced[0].toUpperCase()}${spaced.substring(1)}';
+  }
+}
+
+/// A line of text with a small icon before it, for the place and the owner.
+class _IconLine extends StatelessWidget {
+  const _IconLine({required this.icon, required this.text, this.style});
+
+  final IconData icon;
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle? resolved = style ?? Theme.of(context).textTheme.bodyMedium;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 18, color: resolved?.color),
+        ),
+        const SizedBox(width: MzaziSpace.s8),
+        Expanded(child: Text(text, style: resolved)),
+      ],
+    );
   }
 }
 
@@ -528,14 +591,52 @@ class _WhatHappened extends StatelessWidget {
         if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
         else
-          for (final TimelineEntry entry in shown)
-            Padding(
-              padding: const EdgeInsets.only(bottom: MzaziSpace.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          for (int index = 0; index < shown.length; index++)
+            // A glyph on a line down the left, so the trail reads as a sequence at a
+            // glance. The glyphs are the ones the buttons and pills already use, so
+            // "is on the way" shows the same running figure as "I am on my way".
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Text(_sentence(entry), style: theme.textTheme.bodyLarge),
-                  Text(_when(entry.secondsFromTrigger), style: theme.textTheme.bodySmall),
+                  SizedBox(
+                    width: 32,
+                    child: Column(
+                      children: <Widget>[
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: theme.dividerColor, width: 2),
+                          ),
+                          child: Icon(
+                            _glyph(shown[index].action),
+                            size: 18,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        if (index < shown.length - 1)
+                          Expanded(child: Container(width: 2, color: theme.dividerColor)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: MzaziSpace.s12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: MzaziSpace.s16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(_sentence(shown[index]), style: theme.textTheme.bodyLarge),
+                          Text(
+                            _when(shown[index].secondsFromTrigger),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -548,6 +649,21 @@ class _WhatHappened extends StatelessWidget {
   /// visible as the alert still waiting.
   static bool _isWorthShowing(TimelineEntry entry) =>
       entry.action != 'SEVERITY_EVALUATED' && entry.action != 'NOTIFICATION_FAILED';
+
+  /// Unlabelled on purpose: the sentence beside it says what happened, and a screen
+  /// reader announcing both would read every entry twice.
+  static IconData _glyph(String action) => switch (action) {
+    'EVENT_CREATED' => Icons.notifications_active_outlined,
+    'TIER_DISPATCHED' => Icons.send_outlined,
+    'ESCALATED' => Icons.arrow_upward,
+    'ACKNOWLEDGED' => Icons.directions_run,
+    'DECLINED' => Icons.do_not_disturb_on_outlined,
+    'RESPONDER_REQUESTED' => Icons.local_hospital_outlined,
+    'RESOLVED' => Icons.check_circle_outline,
+    'CANCELLED' => Icons.undo,
+    'REOPENED' => Icons.replay,
+    _ => Icons.circle_outlined,
+  };
 
   String _sentence(TimelineEntry entry) {
     final String who = entry.actorName ?? 'Somebody';
@@ -648,7 +764,7 @@ class _Chain extends StatelessWidget {
                     child: Text(
                       member.name,
                       style: member.priorityOrder == currentTier
-                          ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)
+                          ? theme.textTheme.bodyMedium?.weighted(FontWeight.w700)
                           : theme.textTheme.bodyMedium,
                     ),
                   ),

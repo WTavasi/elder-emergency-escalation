@@ -10,6 +10,7 @@ import '../../core/widgets/sign_out_button.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
 import 'alerts_controller.dart';
+import 'widgets/severity_mark.dart';
 import 'widgets/state_pill.dart';
 
 /// What a caregiver or responder opens the app to see.
@@ -41,7 +42,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(alerts.openOnly ? 'Open alerts' : 'All alerts'),
+        title: const Text('Alerts'),
         actions: <Widget>[
           IconButton(
             onPressed: alerts.refresh,
@@ -54,31 +55,65 @@ class _AlertListScreenState extends State<AlertListScreen> {
       body: SafeArea(
         child: Column(
           children: <Widget>[
+            // Two views, as a segmented button rather than a switch. A switch says
+            // on or off; these are two different lists, and the history one is where a
+            // caregiver goes back to see what happened and how serious it was.
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: MzaziSpace.s16,
-                vertical: MzaziSpace.s12,
+              padding: const EdgeInsets.fromLTRB(
+                MzaziSpace.s16,
+                MzaziSpace.s12,
+                MzaziSpace.s16,
+                MzaziSpace.s8,
               ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      alerts.unansweredCount == 0
-                          ? 'Nobody is waiting.'
-                          : '${alerts.unansweredCount} waiting for somebody',
-                      style: theme.textTheme.titleMedium,
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<bool>(
+                  segments: const <ButtonSegment<bool>>[
+                    ButtonSegment<bool>(
+                      value: true,
+                      label: Text('Open'),
+                      icon: Icon(Icons.notifications_active_outlined),
+                    ),
+                    ButtonSegment<bool>(
+                      value: false,
+                      label: Text('History'),
+                      icon: Icon(Icons.history),
+                    ),
+                  ],
+                  selected: <bool>{alerts.openOnly},
+                  showSelectedIcon: false,
+                  // Not Size.fromHeight: that asks for infinite width, which a segmented
+                  // button's segments cannot give. A zero width with the 48-point floor
+                  // keeps the touch target the rest of the app guarantees.
+                  style: const ButtonStyle(
+                    minimumSize: WidgetStatePropertyAll<Size>(
+                      Size(0, MzaziA11y.standardMinTouchTarget),
                     ),
                   ),
-                  // A plain switch rather than a filter sheet. There are exactly two
-                  // things to look at, and a sheet for two options is ceremony.
-                  Semantics(
-                    label: 'Show only open alerts',
-                    child: Switch(value: alerts.openOnly, onChanged: alerts.setOpenOnly),
-                  ),
-                  Text('Open only', style: theme.textTheme.bodyMedium),
-                ],
+                  onSelectionChanged: (Set<bool> chosen) => alerts.setOpenOnly(chosen.first),
+                ),
               ),
             ),
+            if (alerts.openOnly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  MzaziSpace.s16,
+                  MzaziSpace.s4,
+                  MzaziSpace.s16,
+                  MzaziSpace.s12,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    alerts.unansweredCount == 0
+                        ? 'Nobody is waiting.'
+                        : '${alerts.unansweredCount} waiting for somebody',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              )
+            else
+              const SizedBox(height: MzaziSpace.s8),
             if (alerts.error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -112,15 +147,31 @@ class _Body extends StatelessWidget {
     }
 
     if (alerts.alerts.isEmpty) {
+      final ThemeData theme = Theme.of(context);
+      // An icon, a short title and one line, the same anatomy as the console's empty
+      // states. Calm wording on purpose: no alerts is the good outcome.
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(MzaziSpace.s24),
-          child: Text(
-            alerts.openOnly
-                ? 'No open alerts. You will see one here the moment it is raised.'
-                : 'No alerts yet.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                alerts.openOnly ? Icons.check_circle_outline : Icons.inbox_outlined,
+                size: 40,
+                color: theme.textTheme.bodySmall?.color,
+              ),
+              const SizedBox(height: MzaziSpace.s12),
+              Text(alerts.openOnly ? 'All clear' : 'No history yet', style: theme.textTheme.titleLarge),
+              const SizedBox(height: MzaziSpace.s8),
+              Text(
+                alerts.openOnly
+                    ? 'No open alerts. You will see one here the moment it is raised.'
+                    : 'Alerts you were part of will be listed here once there are some.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge,
+              ),
+            ],
           ),
         ),
       );
@@ -128,16 +179,46 @@ class _Body extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: alerts.refresh,
-      child: ListView.separated(
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s24),
-        itemCount: alerts.alerts.length,
-        separatorBuilder: (BuildContext _, int _) => const SizedBox(height: MzaziSpace.s12),
-        itemBuilder: (BuildContext context, int index) {
-          final AlertSummary alert = alerts.alerts[index];
-          return _AlertCard(alert: alert, onOpen: () => _open(context, alert));
-        },
+        children: <Widget>[
+          for (final _Group group in _groups(alerts.alerts, byDay: !alerts.openOnly)) ...<Widget>[
+            if (group.heading != null)
+              Padding(
+                padding: const EdgeInsets.only(top: MzaziSpace.s8, bottom: MzaziSpace.s8),
+                child: Semantics(
+                  header: true,
+                  child: Text(group.heading!, style: Theme.of(context).textTheme.titleSmall),
+                ),
+              ),
+            for (final AlertSummary alert in group.alerts)
+              Padding(
+                padding: const EdgeInsets.only(bottom: MzaziSpace.s12),
+                child: _AlertCard(alert: alert, onOpen: () => _open(context, alert)),
+              ),
+          ],
+        ],
       ),
     );
+  }
+
+  /// The open list stays in urgency order with no headings. History is grouped by the
+  /// day each alert was raised, newest first, because "what happened on Tuesday" is how
+  /// a person looks back.
+  static List<_Group> _groups(List<AlertSummary> alerts, {required bool byDay}) {
+    if (!byDay) return <_Group>[_Group(null, alerts)];
+
+    final List<AlertSummary> sorted = List<AlertSummary>.of(alerts)
+      ..sort((AlertSummary a, AlertSummary b) => b.triggeredAt.compareTo(a.triggeredAt));
+    final List<_Group> groups = <_Group>[];
+    for (final AlertSummary alert in sorted) {
+      final String heading = dayHeading(alert.triggeredAt);
+      if (groups.isEmpty || groups.last.heading != heading) {
+        groups.add(_Group(heading, <AlertSummary>[]));
+      }
+      groups.last.alerts.add(alert);
+    }
+    return groups;
   }
 
   Future<void> _open(BuildContext context, AlertSummary alert) async {
@@ -155,6 +236,30 @@ class _Body extends StatelessWidget {
   }
 }
 
+class _Group {
+  _Group(this.heading, this.alerts);
+
+  final String? heading;
+  final List<AlertSummary> alerts;
+}
+
+const List<String> _weekdays = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const List<String> _months = <String>[
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// "Today", "Yesterday", or a short date, for the history headings.
+String dayHeading(DateTime moment, {DateTime? now}) {
+  final DateTime today = DateUtils.dateOnly(now ?? DateTime.now());
+  final DateTime day = DateUtils.dateOnly(moment);
+  final int daysAgo = today.difference(day).inDays;
+  if (daysAgo == 0) return 'Today';
+  if (daysAgo == 1) return 'Yesterday';
+  return '${_weekdays[day.weekday - 1]} ${day.day} ${_months[day.month - 1]}';
+}
+
+/// One alert in the list: a severity tile on the left, then who, what and where, with
+/// how long ago on the right.
 class _AlertCard extends StatelessWidget {
   const _AlertCard({required this.alert, required this.onOpen});
 
@@ -181,31 +286,60 @@ class _AlertCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(MzaziRadius.card),
         child: Padding(
           padding: const EdgeInsets.all(MzaziSpace.s16),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(child: Text(alert.elderName, style: theme.textTheme.titleMedium)),
-                  StatePill(state: alert.state),
-                ],
-              ),
-              const SizedBox(height: MzaziSpace.s8),
-              Text(
-                _line(alert),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.textTheme.bodySmall?.color,
+              // The band as a shape, so the list can be scanned for the octagons before
+              // a single name is read. Decorative to a screen reader: the line below
+              // says the band in words.
+              ExcludeSemantics(
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(MzaziRadius.card),
+                  ),
+                  child: Icon(
+                    SeverityMark.glyph(alert.severity),
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
                 ),
               ),
-              if (alert.addressLabel != null) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s4),
-                Text(
-                  alert.addressLabel!,
-                  style: theme.textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const SizedBox(width: MzaziSpace.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(child: Text(alert.elderName, style: theme.textTheme.titleMedium)),
+                        const SizedBox(width: MzaziSpace.s8),
+                        Text(_when(alert.triggeredAt), style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                    const SizedBox(height: MzaziSpace.s8),
+                    StatePill(state: alert.state),
+                    const SizedBox(height: MzaziSpace.s8),
+                    Text(
+                      _line(alert),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
+                    if (alert.addressLabel != null) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s4),
+                      Text(
+                        alert.addressLabel!,
+                        style: theme.textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -213,19 +347,21 @@ class _AlertCard extends StatelessWidget {
     );
   }
 
-  /// One line of context, chosen by what the reader most needs to know in this state.
-  static String _line(AlertSummary alert) {
-    final String raised = elapsedSince(alert.triggeredAt);
-    final String severity = _severityWord(alert.severity);
-
-    if (!alert.state.isOpen) return '$severity, raised $raised';
-    if (alert.isAnswered) return '$severity, ${alert.ownerName} is responding';
-    return '$severity, raised $raised, tier ${alert.currentTier}';
+  /// How long ago for anything within a day, the clock time for older alerts, which
+  /// already sit under a day heading.
+  static String _when(DateTime triggeredAt) {
+    if (DateTime.now().difference(triggeredAt).inHours < 24) return elapsedSince(triggeredAt);
+    final String hh = triggeredAt.hour.toString().padLeft(2, '0');
+    final String mm = triggeredAt.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
   }
 
-  static String _severityWord(Severity severity) => switch (severity) {
-    Severity.standard => 'Standard',
-    Severity.elevated => 'Elevated',
-    Severity.critical => 'Critical',
-  };
+  /// One line of context, chosen by what the reader most needs to know in this state.
+  static String _line(AlertSummary alert) {
+    final String severity = SeverityMark.word(alert.severity);
+
+    if (!alert.state.isOpen) return '$severity severity';
+    if (alert.isAnswered) return '$severity, ${alert.ownerName} is responding';
+    return '$severity, tier ${alert.currentTier}';
+  }
 }

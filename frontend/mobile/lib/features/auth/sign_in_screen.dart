@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 
 /// Phone number and password, which is what the API accepts.
@@ -54,10 +55,23 @@ class _SignInScreenState extends State<SignInScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Text('MzaziCare', style: theme.textTheme.headlineLarge),
-                    const SizedBox(height: MzaziSpace.s8),
-                    Text('Sign in to get help quickly.', style: theme.textTheme.bodyLarge),
+                    // The same wordmark the console's sign-in carries, so the first
+                    // screen on either looks like one product. Type only: there is no
+                    // logo, and inventing one is not this project's job.
+                    Text(
+                      'MzaziCare',
+                      style: theme.textTheme.headlineLarge?.weighted(FontWeight.w700),
+                    ),
+                    const SizedBox(height: MzaziSpace.s4),
+                    Text(
+                      'Emergency help for elders at home',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
                     const SizedBox(height: MzaziSpace.s24),
+                    Text('Sign in to your account', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: MzaziSpace.s16),
                     if (error != null) ...<Widget>[
                       Notice(message: error, isError: true),
                       const SizedBox(height: MzaziSpace.s16),

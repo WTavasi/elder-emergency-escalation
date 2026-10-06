@@ -216,6 +216,8 @@ class AlertSummary {
     required this.triggeredAt,
     this.elderPhone,
     this.addressLabel,
+    this.latitude,
+    this.longitude,
     this.ownerName,
     this.deadlineAt,
     this.responseSeconds,
@@ -235,6 +237,15 @@ class AlertSummary {
   final String? elderPhone;
   final DateTime triggeredAt;
   final String? addressLabel;
+
+  /// Where the alert was placed: where the elder is staying if their circle recorded a
+  /// stay away from home, otherwise their registered home. Never the phone's position,
+  /// because the app never reads it. Null only if a response leaves them out.
+  final double? latitude;
+  final double? longitude;
+
+  /// Both coordinates or nothing, so a directions link is never built from half a place.
+  bool get hasPlace => latitude != null && longitude != null;
 
   /// Who took responsibility, once somebody has.
   final String? ownerName;
@@ -271,6 +282,8 @@ class AlertSummary {
       elderPhone: elder is Map<String, dynamic> ? elder['phone'] as String? : null,
       triggeredAt: DateTime.parse(json['triggeredAt'] as String).toLocal(),
       addressLabel: json['addressLabel'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       ownerName: owner is Map<String, dynamic> ? owner['name'] as String? : null,
       deadlineAt: deadline is String ? DateTime.parse(deadline).toLocal() : null,
       responseSeconds: response is num ? response.toInt() : null,

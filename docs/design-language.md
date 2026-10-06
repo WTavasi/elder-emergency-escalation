@@ -32,22 +32,38 @@ number and a role name, never a colour of their own.
 Filled red means nobody has seen it. Outlined red means the system acted on it. Colour
 never carries state alone: every pill also carries a glyph and a word.
 
-The app follows this as of 1 October 2026; before then its pills were word only. The
-console's pills are still word only and still show the raw state name, which is the next
-thing to fix there.
+The app follows this as of 1 October 2026 and the console as of 6 October 2026. Both use
+the same words: Waiting, Being handled, Escalated, Closed, Withdrawn. The console's
+history filter alone keeps the two waiting states apart, because it is for looking a
+record up rather than deciding what to do.
+
+Severity is shown the same way, after Carbon's status-indicator pattern: an octagon for
+critical, a triangle for elevated, a dot for standard, each beside its word. Red as text
+uses the `timer` token, which is gated as text on a surface in both themes; the
+`emergency` token is a fill.
+
+Red is never spent on anything that is not an emergency. The console's sign-in button,
+its reporting window picker and its lost-connection label all used to be red and no
+longer are.
 
 ## Icons
 
 An icon beside a label, never an icon instead of one, and only where it earns its place.
 An icon earns it when it does one of three things:
 
-1. **Tells apart two actions that read alike.** "Call Grace" and "Call an emergency
+1. **Marks a place you go many times a day.** The console's four sections and the app's
+   Open and History views each carry one, beside the word.
+2. **Tells apart two actions that read alike.** "Call Grace" and "Call an emergency
    responder" both begin with "Call" and do different things. A phone and the emergency
    mark separate them before either label is read.
-2. **Speeds recognition of a frequent action** under stress. The caregiver's two answers,
+3. **Speeds recognition of a frequent action** under stress. The caregiver's two answers,
    and closing, each carry one.
-3. **Carries meaning when colour cannot.** Every state pill has a glyph for readers who
-   cannot tell the colours apart.
+4. **Carries meaning when colour cannot.** Every state pill and severity mark has a glyph
+   for readers who cannot tell the colours apart, and the trail of what happened has one
+   per entry so it reads as a sequence.
+
+The console draws the same Material Icons the app does, copied in as SVG paths (Apache
+2.0), so a glyph means the same thing on both and nothing is loaded from a CDN.
 
 An icon that does none of these is decoration, and the design anti-patterns this project
 avoids include icons scattered for texture. Icon-only controls are reserved for secondary
