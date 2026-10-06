@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api } from '../../shared/api/client';
-import { Empty, ErrorNotice } from '../../shared/components/parts';
+import { ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { formatDuration, humanise } from '../../shared/utils/format';
 
@@ -33,23 +33,28 @@ export function Reporting() {
           <h1>Reporting</h1>
           <p>Measured from the audit trail and the delivery log.</p>
         </div>
-        <div className="row" role="group" aria-label="Reporting window">
+        {/*
+          One segmented control rather than three buttons. The chosen window used to be
+          filled emergency red, which spent the one colour reserved for emergencies on a
+          date range; it is now marked the way a selected tab is, and aria-pressed says
+          which one is chosen.
+        */}
+        <div className="segmented" role="group" aria-label="Reporting window">
           {WINDOWS.map((window) => (
             <button
               key={window}
               type="button"
               aria-pressed={days === window}
-              className={days === window ? 'button--emergency' : undefined}
               onClick={() => setDays(window)}
             >
-              Last {window} days
+              {window} days
             </button>
           ))}
         </div>
       </div>
 
       {loading || !overview ? (
-        <Empty>Loading</Empty>
+        <Skeleton rows={3} />
       ) : (
         <>
           <section aria-labelledby="live-heading" className="stack">

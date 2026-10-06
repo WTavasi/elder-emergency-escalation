@@ -217,3 +217,14 @@ abstract final class MzaziTheme {
     );
   }
 }
+
+/// A heavier or lighter weight for one piece of text, moving the variable font's axis
+/// as well as the declared weight, for the reason given on `_text` above. A plain
+/// `copyWith(fontWeight:)` changes what the framework believes and leaves the glyphs
+/// exactly as they were.
+extension MzaziTextWeight on TextStyle {
+  TextStyle weighted(FontWeight weight) => copyWith(
+    fontWeight: weight,
+    fontVariations: <FontVariation>[FontVariation('wght', weight.value.toDouble())],
+  );
+}

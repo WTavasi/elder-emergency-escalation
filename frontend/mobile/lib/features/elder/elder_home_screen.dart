@@ -192,13 +192,21 @@ class _Live extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text('Help is on the way', style: theme.textTheme.headlineLarge),
-          const SizedBox(height: MzaziSpace.s16),
-          Text(
-            owner == null
-                ? 'We are contacting the people who look after you. Stay where you are if you can.'
-                : '$owner knows and is coming. Stay where you are if you can.',
-            style: theme.textTheme.bodyLarge,
+          const SizedBox(height: MzaziSpace.s24),
+          // Three steps, ticked off as they happen, the way a delivery is tracked. The
+          // elder can see it moving without having to read a sentence closely, and
+          // without anything to press.
+          const _Step(done: true, text: 'Your call for help was sent'),
+          _Step(
+            done: emergency != null && emergency.state != EventState.triggered,
+            text: 'The people who look after you have been told',
           ),
+          _Step(
+            done: owner != null,
+            text: owner == null ? 'Waiting for someone to answer' : '$owner is coming',
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          Text('Stay where you are if you can.', style: theme.textTheme.bodyLarge),
           const Spacer(),
           Text(
             'Someone will call you. You do not need to do anything else.',
@@ -206,6 +214,50 @@ class _Live extends StatelessWidget {
             style: theme.textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One step of the progress list on the elder's screen. A tick when it has happened,
+/// an empty circle when it has not, and the elder-size text either way; the screen
+/// reader hears "done" or "not yet" first, so the shape is never the only signal.
+class _Step extends StatelessWidget {
+  const _Step({required this.done, required this.text});
+
+  final bool done;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    // Bold either way, as all elder text is. A step not reached yet is set in the
+    // softer text colour, which still meets the elder contrast target.
+    final TextStyle? style = done
+        ? theme.textTheme.bodyLarge
+        : theme.textTheme.bodyLarge?.copyWith(color: theme.textTheme.bodySmall?.color);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: MzaziSpace.s16),
+      child: Semantics(
+        label: '${done ? 'Done' : 'Not yet'}: $text',
+        excludeSemantics: true,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(
+              done ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 32,
+              color: done
+                  ? (theme.brightness == Brightness.dark
+                        ? MzaziColorsDark.pillResolvedFg
+                        : MzaziColorsLight.pillResolvedFg)
+                  : theme.textTheme.bodySmall?.color,
+            ),
+            const SizedBox(width: MzaziSpace.s12),
+            Expanded(child: Text(text, style: style)),
+          ],
+        ),
       ),
     );
   }

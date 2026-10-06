@@ -34,7 +34,15 @@ export function SignIn() {
   return (
     <main className="signin">
       <form className="card signin__card" onSubmit={submit} noValidate>
-        <h1>MzaziCare Operations</h1>
+        {/*
+          The same wordmark the app's sign-in carries, so the first screen anybody sees
+          on either looks like the same product. Type only: there is no logo, and
+          inventing one is not this project's job.
+        */}
+        <p className="wordmark">
+          MzaziCare <span className="wordmark__product">Operations</span>
+        </p>
+        <h1>Sign in to your account</h1>
         <p className="muted" style={{ marginTop: 'var(--space-8)' }}>
           Administrator access to emergency records and reporting.
         </p>
@@ -71,7 +79,7 @@ export function SignIn() {
           />
         </div>
 
-        <button type="submit" className="button--emergency" disabled={busy}>
+        <button type="submit" className="button--primary signin__submit" disabled={busy}>
           {busy ? 'Signing in' : 'Sign in'}
         </button>
 

@@ -75,12 +75,15 @@ elder pressed is replaced, in place, by what happened next.
 1. **Idle.** The panic control and nothing else competing with it.
 2. **Cancellable.** Ten seconds to withdraw, with the count set large in the
    monospaced face so a changing digit does not move the ones beside it.
-3. **Live.** Help is coming, and the caregiver's name once somebody acknowledges.
+3. **Live.** Help is coming, with three large steps ticked off as they happen: sent,
+   the people who look after them told, and who is coming once somebody acknowledges.
 4. **Finished.** Cancelled or closed, with a way back to the button.
 
-**Caregivers, family members and responders.** The emergencies they are part of, and
-for each one: who is being asked, where the elder is with directions, calling the elder
-or a responder, and taking it on, declining or closing it with an outcome.
+**Caregivers, family members and responders.** An Open view of the emergencies they
+are part of, and a History view grouped by day. For each one: who is being asked,
+where the elder is with a Get directions button that opens the phone's maps app,
+calling the elder or a responder, and taking it on, declining or closing it with an
+outcome.
 
 ## Where things live
 
