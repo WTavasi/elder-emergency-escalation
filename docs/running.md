@@ -204,16 +204,10 @@ iOS Simulator from Spotlight, or Android Studio's Device Manager, and start one.
 flutter run
 ```
 
-On the **Android emulator** this works with no arguments, because the app's default API
-address is `http://10.0.2.2:3000/api/v1`, which is how the emulator reaches the machine
-it is running on.
-
-On the **iOS Simulator**, the simulator shares the Mac's network, so point it at
-localhost:
-
-```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:3000/api/v1
-```
+On the **Android emulator** and the **iOS Simulator** this works with no arguments.
+The app picks the Mac's address for the device it is on: `http://10.0.2.2:3000/api/v1`
+on the Android emulator, which is how it reaches the machine it runs on, and
+`http://localhost:3000/api/v1` on the iOS Simulator, which shares the Mac's network.
 
 On a **real phone**, the phone has to reach your Mac over the same Wi-Fi, so use the
 Mac's address on the network. Find it with `ipconfig getifaddr en0`, then:
