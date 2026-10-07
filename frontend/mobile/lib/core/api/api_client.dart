@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
@@ -204,6 +205,17 @@ class ApiClient {
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }
 
+  /// What to say when the server could not be reached.
+  ///
+  /// In a debug build the message names the address that was tried. Nearly every
+  /// "could not reach" during development is the app pointed at the wrong address for
+  /// the device it is on, and naming it turns a twelve second mystery into a one line
+  /// fix. A release build keeps to the plain sentence.
+  String _unreachable(Object error) {
+    final String where = kDebugMode ? ' at ${Uri.parse(baseUrl).origin}' : '';
+    return 'Could not reach MzaziCare$where. Check the connection. ($error)';
+  }
+
   /// The decoded body, whatever JSON shape it is.
   ///
   /// Most endpoints answer with an object and [_send] is the convenient wrapper; the
@@ -220,7 +232,7 @@ class ApiClient {
     try {
       response = await _dispatch(method, path, body, authenticated);
     } on Exception catch (error) {
-      throw NetworkException('Could not reach MzaziCare. Check the connection. ($error)');
+      throw NetworkException(_unreachable(error));
     }
 
     if (response.statusCode == 401 && authenticated && allowRetry && session != null) {
@@ -228,7 +240,7 @@ class ApiClient {
         try {
           response = await _dispatch(method, path, body, authenticated);
         } on Exception catch (error) {
-          throw NetworkException('Could not reach MzaziCare. Check the connection. ($error)');
+          throw NetworkException(_unreachable(error));
         }
       }
     }

@@ -10,20 +10,34 @@ import 'core/api/api_client.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/auth/session_store.dart';
 
-/// Where the API is.
+/// Where the API is, when it was given at build time:
 ///
-/// Supplied at build time rather than read from a file, so a release build cannot
-/// accidentally ship pointing at somebody's laptop:
+///   flutter run --dart-define=API_BASE_URL=http://192.168.1.20:3000/api/v1
 ///
-///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+/// Empty when it was not, and [resolveApiBaseUrl] then picks the development default.
+const String configuredApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+/// The address the app talks to.
 ///
-/// The default is the Android emulator's address for the host machine. 10.0.2.2 is
-/// how the emulator reaches the Mac; localhost inside the emulator is the emulator
-/// itself, which is the first thing that goes wrong for everybody.
-const String apiBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:3000/api/v1',
-);
+/// An explicit API_BASE_URL always wins. Without one, the default depends on where the
+/// app is running, because the host machine has a different address from each:
+///
+/// * the Android emulator reaches the Mac at 10.0.2.2; localhost there is the
+///   emulator itself;
+/// * the iOS Simulator shares the Mac's network, so localhost is the Mac.
+///
+/// The default used to be 10.0.2.2 everywhere. On the iOS Simulator that address leads
+/// nowhere, so a plain `flutter run` waited out the full twelve seconds and failed sign
+/// in with a timeout while the API and the console were working perfectly.
+///
+/// A real phone is neither, and still needs the Mac's Wi-Fi address passed in; see
+/// "On a real phone" in the README.
+String resolveApiBaseUrl({String configured = configuredApiBaseUrl, TargetPlatform? platform}) {
+  if (configured.isNotEmpty) return configured;
+  final TargetPlatform target = platform ?? defaultTargetPlatform;
+  final String host = target == TargetPlatform.android ? '10.0.2.2' : 'localhost';
+  return 'http://$host:3000/api/v1';
+}
 
 /// Registers the font licences with Flutter's own licence page.
 ///
@@ -47,7 +61,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   _registerFontLicences();
 
-  final ApiClient api = ApiClient(baseUrl: apiBaseUrl);
+  final ApiClient api = ApiClient(baseUrl: resolveApiBaseUrl());
   final AuthController auth = AuthController(api: api, store: SessionStore());
 
   unawaited(auth.restore());

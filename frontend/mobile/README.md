@@ -20,16 +20,21 @@ npm run dev
 Then, from `frontend/mobile`:
 
 ```bash
-# Android emulator. 10.0.2.2 is how the emulator reaches the host machine.
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
-
-# iOS Simulator, which shares the Mac's own network.
-flutter run --dart-define=API_BASE_URL=http://localhost:3000/api/v1
+flutter run
 ```
 
-`localhost` inside the Android emulator is the emulator itself, not the Mac. That is
-the first thing that goes wrong for everybody, so the address is passed explicitly
-rather than defaulted to something that works on only one of the two.
+On a simulator or emulator nothing else is needed: the app picks the Mac's address for
+the device it is running on. The Android emulator reaches the Mac at `10.0.2.2`,
+because `localhost` there is the emulator itself, and the iOS Simulator shares the
+Mac's network, so it uses `localhost`. Passing an address overrides that:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+```
+
+A real phone always needs one; see below. If sign in says it could not reach
+MzaziCare, a debug build names the address it tried, which is nearly always the
+problem.
 
 VS Code has both as run configurations: **Mobile: Android emulator** and
 **Mobile: iOS Simulator** in the Run and Debug panel.
