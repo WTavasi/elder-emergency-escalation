@@ -173,7 +173,14 @@ describe('escalation, end to end', () => {
     expect(stored.currentTier).toBe(1);
     expect(stored.currentTierDeadlineAt).not.toBeNull();
 
-    const notifications = await prisma.notification.findMany({ where: { eventId: event.id } });
+    // Push rows only. Dispatch writes one push row per person at the tier, and that is
+    // what this asserts. The caregiver here has no registered device, so the push
+    // fails and the worker adds an SMS row as the fallback; whether that row exists
+    // yet depends on how fast the queue worker ran, which is why counting every row
+    // passed on a laptop and failed on the CI runner with "expected 1, received 2".
+    const notifications = await prisma.notification.findMany({
+      where: { eventId: event.id, channel: NotificationChannel.PUSH },
+    });
     expect(notifications).toHaveLength(1);
     expect(notifications[0].recipientId).toBe(ids.caregiver);
   });
