@@ -231,6 +231,9 @@ Any seeded account, password `Dev!2026`. Which screen you get is decided by the 
 | `+254700000040` | emergency responder, tier three | The same list |
 | `+254700000001` | administrator | A note sending you to the web console |
 
+The phone field has a country button in front of it, set to Kenya, so `0700000010`,
+`700000010` and `+254700000010` all sign in as Grace.
+
 Mary at tier one is the account to use when testing acknowledge and decline, because she
 is the one the first dispatch actually asks. An account that was not asked gets a 403
 from decline, which is the system working rather than a fault.
@@ -240,6 +243,23 @@ the quickest end-to-end check that everything is wired together.
 
 Note that the app never asks for location permission, and never sends a coordinate.
 Where an emergency is happening is resolved by the server from the elder's own record.
+
+
+### Step 5. Try signing up
+
+**Create an account** on the sign-in screen makes a caregiver or family account. In
+development nothing is really sent by SMS: the code is written to the API's terminal, in a
+line like this one, so watch the window running `npm run dev`:
+
+```
+[LoggingSmsProvider] SMS to +254***78: 123456 is your MzaziCare code. It expires in 10 minutes.
+```
+
+Use a number no seeded account has, for example `0712 345 678`. Once signed in, the people
+icon on the alert list opens **People I look after**, where a caregiver can register an
+elder (another unused number, with its own code in the same terminal) and add a family
+member by phone. Finding the elder's home searches OpenStreetMap, so it needs an internet
+connection on the machine running the API.
 
 ### Hot reload
 

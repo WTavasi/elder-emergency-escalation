@@ -4,6 +4,11 @@ Getting a message to a person: push first, SMS when push cannot reach them.
 
 **Mounted at:** nothing. It has no endpoints; other modules ask it to send.
 
+Emergency notifications go through the queue, with retries and the SMS fallback. Sign-up
+codes and "you were added" messages go straight out through `DirectSmsService`: they
+belong to no emergency, and a code that arrives minutes later after a retry is worse than
+one that fails now and can be asked for again.
+
 ## Scope
 
 **Owns:** the wording of every message, the queue, retries, and the fallback from push to
@@ -27,7 +32,8 @@ would either retry something impossible or give up on something recoverable.
 | --- | --- |
 | `notifications.module.ts` | NestJS wiring, and the choice of real or logging providers |
 | `services/notifications.service.ts` | Puts messages on the queue |
-| `services/notification-content.ts` | The wording, per channel and situation |
+| `services/notification-content.ts` | The wording, per channel and situation, and for account messages |
+| `services/direct-sms.service.ts` | An SMS sent at once, outside the queue, for codes and invitations |
 | `workers/notifications.processor.ts` | Sends, retries, falls back to SMS |
 | `workers/notifications.queue.ts` | The queue's name and retry settings |
 | `providers/push.provider.ts`, `providers/sms.provider.ts` | The two contracts every provider meets |

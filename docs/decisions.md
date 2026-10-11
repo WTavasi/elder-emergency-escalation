@@ -290,3 +290,49 @@ setting only the latter leaves the axis at its default and every weight renders 
 And the licence text is bundled as an asset and registered with Flutter's licence page,
 because bundling a font is distributing it and the Open Font Licence requires the licence
 to travel with it.
+
+## Sign-up proves the phone number with a code
+
+Anybody could otherwise create an account with somebody else's number. That person could
+then never sign up themselves, and could be put into an elder's chain they never agreed
+to. So sign-up, and a caregiver registering an elder, both need a six-digit code sent by
+SMS to the number being registered.
+
+The code request answers the same whether or not the number already has an account, so
+it cannot be used to discover who is registered. A registered number is sent a message
+saying somebody tried, which tells the owner without telling the person asking. Codes
+are kept in Redis as a salted hash, live ten minutes, allow five wrong guesses and work
+once; one number gets at most five codes an hour, which keeps the SMS bill out of an
+attacker's hands. Before this, registering a taken number answered "an account already
+exists", which was a way to test whether somebody was registered; that answer is now only
+reachable by somebody who holds the phone.
+
+## A caregiver adds family by phone number, and the place waits for them
+
+A relative does not have to sign up before the caregiver can add them. If the number has
+no account, its place in the chain is held in `chain_invitations` and taken, in the same
+transaction, when that number signs up. Either way the person is sent an SMS saying who
+added them and for whom, because finding out you are somebody's emergency contact during
+the emergency is the wrong moment.
+
+Each rank in a chain still holds one person, which the database has enforced from the
+start. Allowing several family members at one rank is a small change, since dispatch
+already notifies everyone at a rank, but it changes what "the family contact" means in
+the documentation and the ERD, so it is left as a decision to make rather than a side
+effect of sign-up.
+
+## An elder's home is found by address search, on the server
+
+The elder's home needs coordinates, because alerts are placed there and responders are
+given directions to it. Reading the caregiver's phone location while they stood at the
+home would have been simplest, but it would have broken the rule that the app never
+reads a device's location. So the caregiver searches for the address and picks from the
+matches.
+
+The search runs on the API against OpenStreetMap's Nominatim, not in the app, so the only
+party that learns an elder's address is this system, and so the public service's usage
+policy (https://operations.osmfoundation.org/policies/nominatim/) is kept in one place:
+one request a second across all users, an identifying User-Agent with a contact, a day's
+caching, searching on a button rather than as the person types, and the OpenStreetMap
+attribution shown under the results. A deployment with real traffic should run its own
+Nominatim or use a paid geocoder, which is one setting, `GEOCODER_URL`.

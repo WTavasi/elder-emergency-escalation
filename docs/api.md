@@ -14,15 +14,28 @@ the REST Client extension and a **Send Request** link appears above each one.
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/health` | none | Postgres and Redis checked separately; 503 if either is down |
-| POST | `/api/v1/auth/register` | none | Self-registration, caregivers and family members only |
+| POST | `/api/v1/auth/verify-phone` | none | Sends a six-digit sign-up code by SMS. Always 202, sent or not |
+| POST | `/api/v1/auth/register` | none | Sign-up for caregivers and family members, with the code |
 | POST | `/api/v1/auth/login` | none | Phone and password, returns both tokens |
 | POST | `/api/v1/auth/refresh` | none | Rotates the refresh token; a replay revokes every session |
 | POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
 
 Elders are registered by a caregiver rather than themselves, because the consent record
-has to name who consented on whose behalf. Emergency responders and administrators are
-created by an administrator. Those endpoints arrive with the users module.
+has to name who consented on whose behalf (`POST /api/v1/elders`, below). Emergency
+responders and administrators are created by an administrator.
+
+**Sign-up takes two requests.** `verify-phone` with `{ phone }` sends a code; `register`
+with `{ name, phone, code, password, role, email?, acceptedPrivacyNotice: true }` creates
+the account and signs it in. The code is six digits, lives ten minutes
+(`VERIFICATION_CODE_TTL_SECONDS`), allows five wrong guesses, and works once. One number
+is sent at most one code every 30 seconds and five an hour. A number that already has an
+account is sent a message saying somebody tried, instead of a code, and `verify-phone`
+answers 202 either way, so it cannot be used to find out who is registered. In
+development the SMS provider is the logging one, so the code appears in the API's log.
+
+Signing up also records the privacy consent, and turns any chain place held for that
+number into a care assignment.
 
 A wrong password and an unknown phone number produce the same message through the same
 code path, so the API cannot be used to discover who is registered.
@@ -109,6 +122,36 @@ gets 404.
 
 `PUT` is idempotent. Clearing a stay still records when it was cleared, so the account
 says the person came back rather than losing that a stay ever happened.
+
+## Elders and their chains
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/elders` | caregiver, family | The elders the caller looks after, with their own rank |
+| POST | `/api/v1/elders` | caregiver | Register an elder; the caregiver becomes tier one |
+| GET | `/api/v1/elders/address-search?q=` | caregiver, family, administrator | Coordinates for an address |
+| GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
+| POST | `/api/v1/elders/:id/chain` | caregiver in that chain | Add a family member by phone |
+
+**Registering an elder** takes `{ name, phone, code, password, home: { latitude,
+longitude, label }, relationship, careLevel?, consentConfirmed: true }`. The elder's phone
+is sent a code by `verify-phone` exactly as for sign-up, and the caregiver reads it off
+that phone. Three consent rows are written (data processing, location sharing, contact
+sharing) naming the caregiver as the one who gave them and `relationship` as how they are
+related.
+
+**Adding a family member** takes `{ phone, name? }` and fills the chain's family rank. If
+the number has a caregiver or family account, they take the place at once; if it has no
+account, the place is held in `chain_invitations` and taken when that number signs up.
+Either way they get an SMS saying who added them. Each rank holds one person, so a second
+family member is refused with 409 until the first is removed.
+
+**Address search** goes from the API to OpenStreetMap's public Nominatim, never from the
+app, within its usage policy (https://operations.osmfoundation.org/policies/nominatim/):
+one request a second across all users, held in Redis; an identifying User-Agent with the
+contact in `GEOCODER_CONTACT`; results cached for a day; searched on a button, never as
+the person types; and the attribution returned with every result for the app to show. A
+busier deployment should set `GEOCODER_URL` to its own Nominatim.
 
 ## Reporting
 
