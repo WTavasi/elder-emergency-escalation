@@ -84,6 +84,13 @@ elder pressed is replaced, in place, by what happened next.
    the people who look after them told, and who is coming once somebody acknowledges.
 4. **Finished.** Cancelled or closed, with a way back to the button.
 
+**Signing up.** Caregivers and family members create their own account from the
+sign-in screen, with a code sent to their phone. A caregiver then registers the elder
+they look after from **People I look after** (the people icon on the alert list),
+finding the elder's home by address search, and adds family by phone number. Every phone
+field has a country button, Kenya to begin with, and accepts the number however it is
+typed.
+
 **Caregivers, family members and responders.** An Open view of the emergencies they
 are part of, and a History view grouped by day. For each one: who is being asked,
 where the elder is with a Get directions button that opens the phone's maps app,
@@ -97,10 +104,12 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 
 | Folder | What is in it |
 | --- | --- |
-| `lib/features/auth/` | Sign-in |
+| `lib/features/auth/` | Sign-in and sign-up |
+| `lib/features/elders/` | People I look after: registering an elder, their chain, adding family |
 | `lib/features/elder/` | The panic screen, its controller, and the panic control |
 | `lib/features/responder/` | The alert list and detail screens, their controllers, the call button and state pill |
 | `lib/core/api/` | The HTTP client and the response models |
+| `lib/core/phone/` | The phone field, its country list and reading a typed number |
 | `lib/core/auth/` | Who is signed in, and where the session is kept |
 | `lib/core/theme/` | The theme, built from the design tokens |
 | `lib/core/widgets/` | Shared pieces: the notice banner and the sign-out button |

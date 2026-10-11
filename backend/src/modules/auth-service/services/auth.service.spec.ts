@@ -1,10 +1,11 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, Role, type User } from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
+import type { PhoneVerificationService } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { PrismaService } from '../../../db/prisma.service';
 
@@ -45,18 +46,53 @@ interface PrismaMock {
     create: jest.Mock;
     update: jest.Mock;
   };
+  consentRecord: { create: jest.Mock };
+  chainInvitation: { findMany: jest.Mock; deleteMany: jest.Mock };
+  careAssignment: { createMany: jest.Mock };
+  escalationRule: { findFirst: jest.Mock };
+  $transaction: jest.Mock;
 }
 
-const buildPrisma = (): PrismaMock => ({
-  user: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn().mockResolvedValue(undefined),
-  },
-});
+const buildPrisma = (): PrismaMock => {
+  const prisma = {
+    user: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn().mockResolvedValue(undefined),
+    },
+    consentRecord: { create: jest.fn().mockResolvedValue(undefined) },
+    chainInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    careAssignment: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    escalationRule: { findFirst: jest.fn().mockResolvedValue(null) },
+    $transaction: jest.fn(),
+  } as PrismaMock;
+  // The transaction runs its callback against the same mock, which is what a real
+  // interactive transaction looks like from inside.
+  prisma.$transaction.mockImplementation((work: (tx: PrismaMock) => unknown) => work(prisma));
+  return prisma;
+};
 
-const buildService = (prisma: PrismaMock): AuthService =>
-  new AuthService(prisma as unknown as PrismaService, passwords, tokens);
+const buildVerification = () => ({ consume: jest.fn().mockResolvedValue(undefined) });
+
+const buildService = (prisma: PrismaMock, verification = buildVerification()): AuthService =>
+  new AuthService(
+    prisma as unknown as PrismaService,
+    passwords,
+    tokens,
+    verification as unknown as PhoneVerificationService,
+  );
+
+const signUp = {
+  name: 'Mary Otieno',
+  phone: '+254700000020',
+  code: '123456',
+  password: 'Dev!2026',
+  role: Role.CAREGIVER,
+  acceptedPrivacyNotice: true,
+} as const;
 
 describe('AuthService', () => {
   describe('register', () => {
@@ -66,12 +102,7 @@ describe('AuthService', () => {
         Promise.resolve(buildUser({ passwordHash: args.data.passwordHash })),
       );
 
-      const result = await buildService(prisma).register({
-        name: 'Mary Otieno',
-        phone: '+254700000020',
-        password: 'Dev!2026',
-        role: Role.CAREGIVER,
-      });
+      const result = await buildService(prisma).register({ ...signUp });
 
       const stored = prisma.user.create.mock.calls[0][0].data.passwordHash as string;
       expect(stored).not.toContain('Dev!2026');
@@ -84,12 +115,7 @@ describe('AuthService', () => {
       const prisma = buildPrisma();
       prisma.user.create.mockResolvedValue(buildUser());
 
-      const result = await buildService(prisma).register({
-        name: 'Mary Otieno',
-        phone: '+254700000020',
-        password: 'Dev!2026',
-        role: Role.CAREGIVER,
-      });
+      const result = await buildService(prisma).register({ ...signUp });
 
       const saved = prisma.user.update.mock.calls[0][0].data.refreshTokenHash as string;
       expect(saved).toBe(fingerprint(result.refreshToken));
@@ -106,14 +132,56 @@ describe('AuthService', () => {
         }),
       );
 
-      await expect(
-        buildService(prisma).register({
-          name: 'Mary Otieno',
-          phone: '+254700000020',
-          password: 'Dev!2026',
-          role: Role.CAREGIVER,
-        }),
-      ).rejects.toThrow(ConflictException);
+      await expect(buildService(prisma).register({ ...signUp })).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('register, with a phone code', () => {
+    it('writes nothing when the code is wrong', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      verification.consume.mockRejectedValue(new BadRequestException('wrong'));
+
+      await expect(buildService(prisma, verification).register({ ...signUp })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(verification.consume).toHaveBeenCalledWith('+254700000020', '123456');
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('records the privacy consent as given by the person themselves', async () => {
+      const prisma = buildPrisma();
+      prisma.user.create.mockResolvedValue(buildUser());
+
+      await buildService(prisma).register({ ...signUp });
+
+      expect(prisma.consentRecord.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          subjectId: 'user-1',
+          grantedById: 'user-1',
+          type: 'DATA_PROCESSING',
+          grantorRelationship: 'self',
+        }) as unknown,
+      });
+    });
+
+    it('takes any chain places held for the number, at the rank they were held at', async () => {
+      const prisma = buildPrisma();
+      prisma.user.create.mockResolvedValue(buildUser());
+      prisma.chainInvitation.findMany.mockResolvedValue([
+        { elderlyId: 'elder-1', phone: '+254700000020', priorityOrder: 2 },
+      ]);
+      prisma.careAssignment.createMany.mockResolvedValue({ count: 1 });
+
+      await buildService(prisma).register({ ...signUp });
+
+      expect(prisma.careAssignment.createMany).toHaveBeenCalledWith({
+        data: [{ elderlyId: 'elder-1', responderId: 'user-1', priorityOrder: 2 }],
+        skipDuplicates: true,
+      });
+      expect(prisma.chainInvitation.deleteMany).toHaveBeenCalledWith({
+        where: { phone: '+254700000020' },
+      });
     });
   });
 

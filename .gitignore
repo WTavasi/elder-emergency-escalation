@@ -63,3 +63,8 @@ coverage/
 # logs
 *.log
 npm-debug.log*
+
+# Postman Local Mode keeps its own workspace settings here, including a workspace id that
+# belongs to one person. The shared collection and environment live in docs/postman.
+.postman/
+/postman/

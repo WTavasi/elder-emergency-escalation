@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { parseRedisUrl } from '../../shared/utils/redis-url';
 import { NotificationsProcessor } from './workers/notifications.processor';
 import { NOTIFICATIONS_QUEUE } from './workers/notifications.queue';
+import { DirectSmsService } from './services/direct-sms.service';
 import { NotificationsService } from './services/notifications.service';
 import { AfricasTalkingSmsProvider } from './providers/africas-talking-sms.provider';
 import { FcmPushProvider } from './providers/fcm-push.provider';
@@ -40,6 +41,7 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
   ],
   providers: [
     NotificationsService,
+    DirectSmsService,
     NotificationsProcessor,
     {
       provide: PUSH_PROVIDER,
@@ -77,6 +79,6 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
       },
     },
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, DirectSmsService],
 })
 export class NotificationsModule {}

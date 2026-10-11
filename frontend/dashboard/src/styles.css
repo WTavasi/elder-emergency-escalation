@@ -846,6 +846,21 @@ select {
   color: var(--text-soft);
 }
 
+/* A phone number: the country, then the number, on one line. */
+.phone-input__row {
+  display: flex;
+  gap: var(--space-8);
+}
+.phone-input__country {
+  width: auto;
+  max-width: 11rem;
+  flex: none;
+}
+.phone-input__row input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Anyone who has asked their system not to animate gets no animation at all. */
 @media (prefers-reduced-motion: reduce) {
   *,

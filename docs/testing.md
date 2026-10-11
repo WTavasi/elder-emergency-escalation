@@ -150,6 +150,9 @@ deterministic.
 
 ## Layer 5: by hand
 
+The API on its own can be exercised by hand with the Postman collection in
+`docs/postman/`; [api-testing.md](api-testing.md) walks through it step by step.
+
 Start everything as described in [running.md](running.md), then sign in as
 `+254700000001` with `Dev!2026`.
 

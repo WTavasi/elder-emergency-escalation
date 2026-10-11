@@ -1,0 +1,2069 @@
+{
+  "info": {
+    "_postman_id": "d2f01fdd-6236-5cbb-972c-dc4223f6bce6",
+    "name": "MzaziCare API",
+    "description": "Every endpoint of the MzaziCare API, grouped so the folders can be run top to bottom.\n\nImport this with the environment file beside it and choose that environment. Run **1. Sign in** first: it signs in every seeded account and saves their tokens, so every other request is already authorised. Tokens last 15 minutes; run it again when requests start answering 401.\n\nFull guide: docs/api-testing.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Is it running",
+      "description": "Needs no account.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('database and Redis are both up', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(JSON.stringify(body)).to.include('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Sign in",
+      "description": "Signs in each seeded account and saves its token to the environment. Run the whole folder before anything else, and again when requests start answering 401 (tokens last 15 minutes).",
+      "item": [
+        {
+          "name": "Elder (Grace)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{elderPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('elderToken', body.accessToken);",
+                  "pm.environment.set('elderRefresh', body.refreshToken);",
+                  "pm.environment.set('elderId', body.user.id);",
+                  "pm.test('signed in as ELDER', () => pm.expect(body.user.role).to.eql('ELDER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver (Mary, tier 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{caregiverPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('caregiverToken', body.accessToken);",
+                  "pm.environment.set('caregiverRefresh', body.refreshToken);",
+                  "pm.test('signed in as CAREGIVER', () => pm.expect(body.user.role).to.eql('CAREGIVER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family member (tier 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{familyPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('familyToken', body.accessToken);",
+                  "pm.environment.set('familyRefresh', body.refreshToken);",
+                  "pm.test('signed in as FAMILY_MEMBER', () => pm.expect(body.user.role).to.eql('FAMILY_MEMBER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Emergency responder (tier 3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{responderPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('responderToken', body.accessToken);",
+                  "pm.environment.set('responderRefresh', body.refreshToken);",
+                  "pm.test('signed in as EMERGENCY_RESPONDER', () => pm.expect(body.user.role).to.eql('EMERGENCY_RESPONDER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{adminPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('adminToken', body.accessToken);",
+                  "pm.environment.set('adminRefresh', body.refreshToken);",
+                  "pm.test('signed in as ADMINISTRATOR', () => pm.expect(body.user.role).to.eql('ADMINISTRATOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I (caregiver)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/me"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh the caregiver's token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/refresh"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{caregiverRefresh}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Each refresh token works once. Running this twice with the same token signs the caregiver out everywhere, which is the replay protection working; run **Caregiver** sign-in again to recover."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('caregiverToken', body.accessToken);",
+                  "pm.environment.set('caregiverRefresh', body.refreshToken);",
+                  "pm.test('the refresh token changed', () => pm.expect(body.refreshToken).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. An emergency, start to finish",
+      "description": "Run in order. The elder raises an alert, the caregiver sees it, takes it on and closes it.",
+      "item": [
+        {
+          "name": "Elder raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Empty body: the server works out where the elder is. Saves the new alert's id as alertId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);",
+                  "pm.test('has an id', () => pm.expect(pm.environment.get('alertId')).to.be.a('string'));",
+                  "pm.test('the first tier was told', () => pm.expect(pm.response.json().state).to.be.oneOf(['TRIGGERED','NOTIFIED']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver lists open alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts?open=true",
+              "query": [
+                {
+                  "key": "open",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the new alert is in the list', () => {",
+                  "  const ids = pm.response.json().map((a) => a.eventId);",
+                  "  pm.expect(ids).to.include(pm.environment.get('alertId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver opens it",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('carries the chain and the trail', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.chain).to.be.an('array');",
+                  "  pm.expect(body.timeline).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Outcomes: FALSE_ALARM, CANCELLED_BY_ELDER, HANDLED_AT_HOME, RESPONDER_ATTENDED, HOSPITAL_TRANSFER, NO_RESPONSE, OTHER. OTHER needs a note: { \"outcome\": \"OTHER\", \"note\": \"...\" }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The record afterwards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('closed', () => pm.expect(pm.response.json().state).to.eql('RESOLVED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Declining moves it on",
+      "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
+      "item": [
+        {
+          "name": "Elder raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);",
+                  "pm.test('has an id', () => pm.expect(pm.environment.get('alertId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver declines",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/decline"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"At the hospital with my mother\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Only somebody asked at the current tier may decline."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "It reached tier two",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('now at tier two', () => pm.expect(pm.response.json().currentTier).to.be.at.least(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family member takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family member calls in a responder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/request-responder"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family member closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"RESPONDER_ATTENDED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Withdrawing and reopening",
+      "description": "Run in order and quickly: an elder can only withdraw inside the 10 second grace window.",
+      "item": [
+        {
+          "name": "Elder raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);",
+                  "pm.test('has an id', () => pm.expect(pm.environment.get('alertId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elder withdraws it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/cancel"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Refused with 409 after the grace window or once somebody has taken it on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver reopens it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/reopen"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Could not reach her by phone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "For a withdrawn alert nobody could confirm. The chain starts again."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver closes it with a note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"OTHER\",\n  \"note\": \"Phone was off; neighbour checked on her\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Signing up",
+      "description": "Needs one value you type yourself: the code. Send the first request, find the code in the terminal running the API (a line ending 'is your MzaziCare code'), put it in the environment's `code` variable, then send the second.",
+      "item": [
+        {
+          "name": "Send a code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/verify-phone"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{newPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Always 202, whether or not a code was sent, so the endpoint cannot reveal who is registered. One code per number every 30 seconds."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create the account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Caregiver\",\n  \"phone\": \"{{newPhone}}\",\n  \"code\": \"{{code}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"CAREGIVER\",\n  \"acceptedPrivacyNotice\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "role is CAREGIVER or FAMILY_MEMBER. A wrong or expired code answers 400. Each newPhone can sign up once; change it to sign up again."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('newToken', body.accessToken);",
+                  "pm.test('a caregiver', () => pm.expect(body.user.role).to.eql('CAREGIVER'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Elders and their chains",
+      "description": "Uses the account made in 5. Registering an elder needs a second code, sent to the elder's number.",
+      "item": [
+        {
+          "name": "Elders I look after",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search for a home address",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/address-search?q=Kileleshwa, Nairobi",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Kileleshwa, Nairobi"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Goes through the API to OpenStreetMap Nominatim, which allows one search a second for everybody. Do not run it in a loop. Saves the first match as the home for the next request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.results.length > 0) {",
+                  "  pm.environment.set('homeLat', body.results[0].latitude);",
+                  "  pm.environment.set('homeLng', body.results[0].longitude);",
+                  "  pm.environment.set('homeLabel', body.results[0].label);",
+                  "}",
+                  "pm.test('credits OpenStreetMap', () => pm.expect(body.attribution).to.include('OpenStreetMap'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send a code to the elder's phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/verify-phone"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{newElderPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register the elder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Elder\",\n  \"phone\": \"{{newElderPhone}}\",\n  \"code\": \"{{elderCode}}\",\n  \"password\": \"{{password}}\",\n  \"home\": {\n    \"latitude\": \"{{homeLat}}\",\n    \"longitude\": \"{{homeLng}}\",\n    \"label\": \"{{homeLabel}}\"\n  },\n  \"relationship\": \"daughter\",\n  \"careLevel\": \"ASSISTED\",\n  \"consentConfirmed\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Put the code from the API terminal into elderCode first. careLevel is INDEPENDENT, ASSISTED or HIGH_DEPENDENCY, or leave it out."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('newElderId', pm.response.json().id);",
+                  "pm.test('the caregiver is first in the chain', () => pm.expect(pm.response.json().myTier).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The elder's chain",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add a family member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{inviteePhone}}\",\n  \"name\": \"Test Relative\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "No account for that number yet, so the place is held (status 'invited') until it signs up. Sending it twice answers 409: the family place holds one person."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "pm.test('their place is in the chain', () => {",
+                  "  const entries = pm.response.json().entries;",
+                  "  pm.expect(entries.some((e) => e.phone === pm.environment.get('inviteePhone'))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Where an elder is staying",
+      "description": "Seeded elder, seeded caregiver.",
+      "item": [
+        {
+          "name": "Where is she",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She is staying elsewhere",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": -1.3125,\n  \"longitude\": 36.8269,\n  \"label\": \"Staying with her daughter, South B\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('away from home', () => pm.expect(pm.response.json().isAtHome).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She is back home",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('home', () => pm.expect(pm.response.json().isAtHome).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Reporting",
+      "description": "Administrator only.",
+      "item": [
+        {
+          "name": "Overview, last 30 days",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/dashboard/overview?days=30",
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Closed alerts this month",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts?state=RESOLVED,CANCELLED&limit=20",
+              "query": [
+                {
+                  "key": "state",
+                  "value": "RESOLVED,CANCELLED"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Things that must be refused",
+      "description": "Each of these should fail. A pass here means the protection works.",
+      "item": [
+        {
+          "name": "No token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wrong password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{caregiverPhone}}\",\n  \"password\": \"not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 401', () => pm.response.to.have.status(401));",
+                  "pm.environment.set('wrongPasswordMessage', pm.response.json().message);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown phone, same message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+254799999999\",\n  \"password\": \"not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 401', () => pm.response.to.have.status(401));",
+                  "pm.test('cannot tell an unknown number from a wrong password', () =>",
+                  "  pm.expect(pm.response.json().message).to.eql(pm.environment.get('wrongPasswordMessage')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A code for a registered number still answers 202",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/verify-phone"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{caregiverPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "No code is sent; the owner gets a 'somebody tried' SMS instead. The answer reveals nothing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elder raises an alert, for the next check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);",
+                  "pm.test('has an id', () => pm.expect(pm.environment.get('alertId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrator cannot take on an emergency",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "The console is read-only over emergencies: ownership belongs to the people the elder named."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tidy up: caregiver takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tidy up: caregiver closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"FALSE_ALARM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver cannot see reporting",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/dashboard/overview"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elder cannot move herself",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": -1.3,\n  \"longitude\": 36.8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phone in the wrong format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/verify-phone"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0712345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "The API only accepts international format; the apps convert what people type."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An extra field is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"severity\": \"CRITICAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "A client cannot choose its own severity."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": []
+}

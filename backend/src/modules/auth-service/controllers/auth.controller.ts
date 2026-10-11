@@ -9,10 +9,28 @@ import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 import { LoginDto } from '../validation/login.dto';
 import { RefreshDto } from '../validation/refresh.dto';
 import { RegisterDto } from '../validation/register.dto';
+import { StartVerificationDto } from '../validation/start-verification.dto';
+import { PhoneVerificationService } from '../services/phone-verification.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly verification: PhoneVerificationService,
+  ) {}
+
+  /**
+   * Sends a sign-up code to a phone. Always answers 202 with nothing in the body,
+   * whether or not a code went out, so it cannot be used to learn who is registered.
+   * Limited per address here and per number inside the service.
+   */
+  @Public()
+  @Throttle(10, 3600)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('verify-phone')
+  async verifyPhone(@Body() dto: StartVerificationDto): Promise<void> {
+    await this.verification.start(dto.phone);
+  }
 
   @Public()
   // Registration is the most expensive thing an anonymous caller can ask for, and a

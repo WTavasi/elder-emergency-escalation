@@ -36,6 +36,20 @@ record of having consented survives the withdrawal.
 Deliberately not routed through `audit_logs`: that table is scoped to the lifecycle of an
 emergency event, and `event_id` stays mandatory there exactly as Figure 4.4 shows it.
 
+### `chain_invitations`
+
+A place in an elder's chain held for a phone number that has not signed up yet: the elder,
+the number, the name the caregiver gave, the rank it will take and who invited them.
+Unique per elder and number. Signing up with that number turns every place held for it
+into a `care_assignments` row, in the same transaction as the account, and deletes the
+invitations.
+
+Justification: without it, adding a family member would require them to have signed up
+first, so a caregiver setting up the chain would have to wait for each relative and come
+back. A separate table rather than a nullable `responder_id` on `care_assignments` keeps
+the chain itself free of half-people: every row dispatch reads is somebody who can
+actually be notified.
+
 ## New columns on existing tables
 
 | Table | Columns | Why |

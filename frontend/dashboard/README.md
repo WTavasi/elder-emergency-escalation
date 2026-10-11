@@ -57,6 +57,7 @@ Each screen is a folder under `src/features/`; anything two screens share is und
 | `src/features/history/` | The searchable record |
 | `src/features/reporting/` | Response times, escalation depth, delivery reliability |
 | `src/features/data-handling/` | What the console shows, stores and does not collect |
+| `src/shared/phone/` | The phone field with its country list, and reading a typed number |
 | `src/shared/api/` | The HTTP client, the socket, and the response types |
 | `src/shared/state/` | Who is signed in, and the live list of open emergencies |
 | `src/shared/components/` | The page layout and small shared parts |

@@ -1,9 +1,12 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Prisma, Role, type User } from '@prisma/client';
+import { ConsentType, Prisma, Role, type User } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../../../db/prisma.service';
+import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
+import { claimInvitations } from '../../../shared/utils/chain';
 import { redactPhone } from '../../../shared/utils/redaction';
 import { PasswordService } from './password.service';
+import { PhoneVerificationService } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { LoginDto } from '../validation/login.dto';
 import type { RegisterDto } from '../validation/register.dto';
@@ -42,18 +45,46 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly verification: PhoneVerificationService,
   ) {}
 
+  /**
+   * Creates an account for whoever proved they hold the phone number.
+   *
+   * The code is checked first and used up, so a sign-up that then fails for another
+   * reason needs a new code; that is the safe way round. The account, its consent and
+   * any chain places held for the number are written in one transaction.
+   */
   async register(dto: RegisterDto): Promise<AuthResult> {
+    await this.verification.consume(dto.phone, dto.code);
+
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          name: dto.name,
-          phone: dto.phone,
-          email: dto.email ?? null,
-          role: dto.role,
-          passwordHash: this.passwords.hash(dto.password),
-        },
+      const user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            name: dto.name,
+            phone: dto.phone,
+            email: dto.email ?? null,
+            role: dto.role,
+            passwordHash: this.passwords.hash(dto.password),
+          },
+        });
+
+        await tx.consentRecord.create({
+          data: {
+            subjectId: created.id,
+            grantedById: created.id,
+            type: ConsentType.DATA_PROCESSING,
+            policyVersion: PRIVACY_POLICY_VERSION,
+            grantorRelationship: 'self',
+          },
+        });
+
+        const places = await claimInvitations(tx, created);
+        if (places > 0) {
+          this.logger.log(`New account ${created.id} took ${places} waiting chain place(s)`);
+        }
+        return created;
       });
       return this.issue(user);
     } catch (error) {
