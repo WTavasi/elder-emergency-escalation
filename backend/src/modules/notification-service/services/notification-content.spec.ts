@@ -1,5 +1,5 @@
 import { EventState, Severity } from '@prisma/client';
-import { capSms, composeNotification, SMS_LIMIT } from './notification-content';
+import { accountMessages, capSms, composeNotification, SMS_LIMIT } from './notification-content';
 
 const base = {
   severity: Severity.STANDARD,
@@ -99,5 +99,29 @@ describe('capSms', () => {
     const result = capSms('x'.repeat(200), `${'word '.repeat(40)}end`);
     expect(result.length).toBeLessThanOrEqual(SMS_LIMIT);
     expect(result.endsWith('…')).toBe(true);
+  });
+});
+
+describe('accountMessages', () => {
+  it('keeps every account message to one SMS', () => {
+    const long = 'Wanjiku Mwangi-Odhiambo Kamau';
+    for (const text of [
+      accountMessages.verificationCode('123456', 10),
+      accountMessages.alreadyRegistered(),
+      accountMessages.addedToChain(long, long),
+      accountMessages.invitedToChain(long, long),
+    ]) {
+      expect(text.length).toBeLessThanOrEqual(SMS_LIMIT);
+    }
+  });
+
+  it('puts the code first, so a notification preview shows it', () => {
+    expect(accountMessages.verificationCode('042317', 10).startsWith('042317 ')).toBe(true);
+  });
+
+  it('carries no link, because an unexpected link in an SMS looks like phishing', () => {
+    expect(accountMessages.invitedToChain('Mary Otieno', 'Grace Wanjiru')).not.toMatch(
+      /https?:|www\./,
+    );
   });
 });

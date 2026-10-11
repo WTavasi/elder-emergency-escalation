@@ -120,3 +120,43 @@ export function capSms(preferred: string, shorter: string): string {
   const lastSpace = trimmed.lastIndexOf(' ');
   return `${lastSpace > SMS_LIMIT / 2 ? trimmed.slice(0, lastSpace) : trimmed}…`;
 }
+
+/**
+ * Messages about accounts rather than emergencies: sign-up codes and being added to
+ * somebody's chain. Kept here with the emergency wording so every word the system
+ * sends to a phone is in one file.
+ *
+ * None of them carries a link. A link in an unexpected SMS is what phishing looks like,
+ * and anybody who needs the app can find it by name.
+ */
+export const accountMessages = {
+  /** The sign-up code. The code leads, so a phone's notification preview shows it. */
+  verificationCode(code: string, minutes: number): string {
+    return `${code} is your MzaziCare code. It expires in ${minutes} minutes. Do not share it with anyone.`;
+  },
+
+  /**
+   * Somebody asked for a code for a number that already has an account. Sent to that
+   * number, so the person who asked learns nothing, and the owner learns that somebody
+   * tried.
+   */
+  alreadyRegistered(): string {
+    return 'Somebody tried to create a MzaziCare account with this number, which already has one. If it was you, sign in instead. If not, you can ignore this.';
+  },
+
+  /** Added to an elder's chain, with an account already. */
+  addedToChain(inviterName: string, elderName: string): string {
+    return capSms(
+      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare emergency contacts. You will be alerted if ${firstName(elderName)} asks for help.`,
+      `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare emergency contacts.`,
+    );
+  },
+
+  /** Added to an elder's chain, with no account yet. */
+  invitedToChain(inviterName: string, elderName: string): string {
+    return capSms(
+      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare emergency contacts. Install the MzaziCare app and sign up with this number to be alerted.`,
+      `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare contacts. Sign up in the MzaziCare app with this number.`,
+    );
+  },
+};

@@ -1,4 +1,5 @@
 import {
+  Equals,
   IsEmail,
   IsIn,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Role } from '@prisma/client';
+import { E164, E164_MESSAGE } from './phone';
 
 /**
  * Self-registration is limited to caregivers and family members.
@@ -25,10 +27,12 @@ export class RegisterDto {
   @MaxLength(120)
   name: string;
 
-  @Matches(/^\+[1-9]\d{7,14}$/, {
-    message: 'phone must be in international format, for example +254712345678',
-  })
+  @Matches(E164, { message: E164_MESSAGE })
   phone: string;
+
+  /** The six-digit code sent to that phone by POST /auth/verify-phone. */
+  @Matches(/^\d{6}$/, { message: 'code must be the six digits sent by SMS' })
+  code: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'email must be a valid address' })
@@ -44,4 +48,11 @@ export class RegisterDto {
     message: 'role must be CAREGIVER or FAMILY_MEMBER. Elders are registered by a caregiver.',
   })
   role: (typeof SELF_REGISTERABLE_ROLES)[number];
+
+  /**
+   * Agreement to the privacy notice, recorded as a consent row rather than trusted as a
+   * checkbox. Must be true: there is no account without it.
+   */
+  @Equals(true, { message: 'the privacy notice must be accepted to create an account' })
+  acceptedPrivacyNotice: boolean;
 }

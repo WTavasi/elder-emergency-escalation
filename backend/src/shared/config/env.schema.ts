@@ -257,6 +257,39 @@ export class EnvSchema {
   @IsOptional()
   @IsString()
   GOOGLE_MAPS_API_KEY?: string;
+
+  /**
+   * Address search, for setting an elder's home. OpenStreetMap's public Nominatim by
+   * default, called only from this server, never from the app. Its usage policy
+   * (https://operations.osmfoundation.org/policies/nominatim/) allows one request a
+   * second across every user, asks for an identifying User-Agent with a contact, forbids
+   * search-as-you-type, and asks for results to be cached; the address search service
+   * does all four. A busier deployment should point this at its own instance.
+   */
+  @IsUrl({ require_tld: false })
+  GEOCODER_URL = 'https://nominatim.openstreetmap.org';
+
+  /** A contact for the geocoder's operators, sent in the User-Agent as its policy asks. */
+  @IsOptional()
+  @IsString()
+  GEOCODER_CONTACT?: string;
+
+  /** Comma-separated ISO country codes to search within, empty for anywhere. */
+  @Matches(/^([a-z]{2}(,[a-z]{2})*)?$/, {
+    message: 'GEOCODER_COUNTRY_CODES must look like "ke" or "ke,ug,tz", or be empty',
+  })
+  GEOCODER_COUNTRY_CODES = 'ke';
+
+  /**
+   * How long a sign-up verification code stays valid, in seconds. Ten minutes is long
+   * enough for an SMS that arrives late and short enough that a code read off somebody
+   * else's phone is soon worthless.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  @Max(3600)
+  VERIFICATION_CODE_TTL_SECONDS: number = 600;
 }
 
 /** Keys whose values must never reach a log line or an error message. */

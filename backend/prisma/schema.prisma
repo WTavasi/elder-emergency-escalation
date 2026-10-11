@@ -203,6 +203,8 @@ model User {
   auditLogs          AuditLog[]
   consentsAboutMe    ConsentRecord[]   @relation("consentSubject")
   consentsIGranted   ConsentRecord[]   @relation("consentGrantor")
+  invitationsAsElder ChainInvitation[] @relation("invitationElder")
+  invitationsSent    ChainInvitation[] @relation("invitationSender")
 
   @@index([role])
   @@map("users")
@@ -447,4 +449,31 @@ model ConsentRecord {
 
   @@index([subjectId, type])
   @@map("consent_records")
+}
+
+// ---------------------------------------------------------------------------
+// chain_invitations. EXTENSION. A place in an elder's escalation chain held for
+// somebody who has not signed up yet. A caregiver adds a family member by phone
+// number; if nobody has that number, the invitation waits here, and signing up with
+// that number turns it into a care assignment. Deleted once claimed.
+// ---------------------------------------------------------------------------
+
+model ChainInvitation {
+  id            String   @id @default(uuid()) @map("invitation_id") @db.Uuid
+  elderlyId     String   @map("elderly_id") @db.Uuid
+  phone         String   @db.VarChar(20)
+  /// What the caregiver called them, shown in the chain until they sign up.
+  name          String?  @db.VarChar(120)
+  /// The rank they will take in the chain, held for them so a sign-up as either
+  /// caregiver or family member lands in the place the caregiver chose.
+  priorityOrder Int      @map("priority_order") @db.SmallInt
+  invitedById   String   @map("invited_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  elder     User @relation("invitationElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+  invitedBy User @relation("invitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([elderlyId, phone])
+  @@index([phone])
+  @@map("chain_invitations")
 }

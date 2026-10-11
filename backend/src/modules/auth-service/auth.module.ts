@@ -1,16 +1,18 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { NotificationsModule } from '../notification-service/notifications.module';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { PasswordService } from './services/password.service';
+import { PhoneVerificationService } from './services/phone-verification.service';
 import { TokenService } from './services/token.service';
 
 @Module({
   // Registered without a secret on purpose: access and refresh tokens are signed with
   // different secrets, passed per call, so one leaked secret cannot mint the other.
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), NotificationsModule],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, TokenService],
-  exports: [PasswordService, TokenService],
+  providers: [AuthService, PasswordService, TokenService, PhoneVerificationService],
+  exports: [PasswordService, TokenService, PhoneVerificationService],
 })
 export class AuthModule {}
