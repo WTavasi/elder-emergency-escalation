@@ -71,6 +71,108 @@ class ApiClient {
     return signedIn;
   }
 
+  /// Asks for a sign-up code to be sent to a phone. The answer is the same whether or
+  /// not a code went out, so there is nothing to return.
+  Future<void> requestCode(String phone) async {
+    await _send(
+      'POST',
+      '/auth/verify-phone',
+      body: <String, dynamic>{'phone': phone},
+      authenticated: false,
+    );
+  }
+
+  /// Creates an account and signs it in, exactly as [signIn] does.
+  Future<Session> register({
+    required String name,
+    required String phone,
+    required String code,
+    required String password,
+    required Role role,
+    String? email,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/auth/register',
+      body: <String, dynamic>{
+        'name': name,
+        'phone': phone,
+        'code': code,
+        'password': password,
+        'role': role == Role.familyMember ? 'FAMILY_MEMBER' : 'CAREGIVER',
+        if (email != null && email.isNotEmpty) 'email': email,
+        'acceptedPrivacyNotice': true,
+      },
+      authenticated: false,
+    );
+
+    final Session signedIn = Session.fromJson(body);
+    session = signedIn;
+    onSessionChanged?.call(signedIn);
+    return signedIn;
+  }
+
+  /// The elders the signed-in person looks after.
+  Future<List<ElderSummary>> myElders() async {
+    final Object? body = await _sendRaw('GET', '/elders');
+    if (body is! List<dynamic>) return const <ElderSummary>[];
+    return body
+        .whereType<Map<String, dynamic>>()
+        .map(ElderSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  /// A caregiver registers an elder, whose phone has been sent a code.
+  Future<ElderSummary> createElder({
+    required String name,
+    required String phone,
+    required String code,
+    required String password,
+    required AddressMatch home,
+    required String relationship,
+    CareLevel? careLevel,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/elders',
+      body: <String, dynamic>{
+        'name': name,
+        'phone': phone,
+        'code': code,
+        'password': password,
+        'home': <String, dynamic>{
+          'latitude': home.latitude,
+          'longitude': home.longitude,
+          'label': home.label,
+        },
+        'relationship': relationship,
+        if (careLevel != null) 'careLevel': careLevel.wire,
+        'consentConfirmed': true,
+      },
+    );
+    return ElderSummary.fromJson(body);
+  }
+
+  Future<ChainView> chain(String elderId) async {
+    return ChainView.fromJson(await _send('GET', '/elders/$elderId/chain'));
+  }
+
+  /// Adds a family member by phone; their place is held if they have not signed up.
+  Future<ChainView> addToChain(String elderId, {required String phone, String? name}) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/elders/$elderId/chain',
+      body: <String, dynamic>{'phone': phone, if (name != null && name.isNotEmpty) 'name': name},
+    );
+    return ChainView.fromJson(body);
+  }
+
+  /// Searches for an address, through the API, never directly from the phone.
+  Future<AddressSearchResult> searchAddress(String query) async {
+    final String q = Uri.encodeQueryComponent(query.trim());
+    return AddressSearchResult.fromJson(await _send('GET', '/elders/address-search?q=$q'));
+  }
+
   Future<void> signOut() async {
     try {
       await _send('POST', '/auth/logout', allowRetry: false);

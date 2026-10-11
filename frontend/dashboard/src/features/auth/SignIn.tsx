@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { ApiError } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
+import { PhoneInput } from '../../shared/phone/PhoneInput';
+import { DEFAULT_COUNTRY, readPhone } from '../../shared/phone/read-phone';
 
 /**
  * Sign-in for the operations console.
@@ -11,6 +13,7 @@ import { useAuth } from '../../shared/state/AuthContext';
  */
 export function SignIn() {
   const { signIn } = useAuth();
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -18,10 +21,15 @@ export function SignIn() {
 
   async function submit(submitEvent: React.FormEvent) {
     submitEvent.preventDefault();
+    const reading = readPhone(country, phone);
+    if (reading.problem !== null) {
+      setError(reading.problem);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await signIn(phone, password);
+      await signIn(reading.e164, password);
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : 'Could not reach the server. Try again.',
@@ -54,15 +62,13 @@ export function SignIn() {
         ) : null}
 
         <div className="field" style={{ marginTop: 'var(--space-24)' }}>
-          <label htmlFor="phone">Phone number</label>
-          <input
+          <PhoneInput
             id="phone"
-            name="phone"
-            type="tel"
-            autoComplete="username"
-            required
+            label="Phone number"
+            country={country}
             value={phone}
-            onChange={(changeEvent) => setPhone(changeEvent.target.value)}
+            onCountryChange={setCountry}
+            onChange={setPhone}
           />
         </div>
 

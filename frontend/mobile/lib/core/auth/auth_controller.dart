@@ -67,6 +67,61 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Asks for a sign-up code. Returns why it could not be asked for, or null. A null
+  /// does not mean a code is on its way: the server answers the same either way.
+  Future<String?> requestCode(String phone) async {
+    try {
+      await _api.requestCode(phone);
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    } on NetworkException catch (error) {
+      return error.message;
+    }
+  }
+
+  /// Creates an account and signs straight into it.
+  Future<bool> signUp({
+    required String name,
+    required String phone,
+    required String code,
+    required String password,
+    required Role role,
+    String? email,
+  }) async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _api.register(
+        name: name.trim(),
+        phone: phone,
+        code: code.trim(),
+        password: password,
+        role: role,
+        email: email?.trim(),
+      );
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
+    } on NetworkException catch (error) {
+      _error = error.message;
+      return false;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clears a message left by a previous attempt, when the person moves screens.
+  void clearError() {
+    if (_error == null) return;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     await _api.signOut();
   }

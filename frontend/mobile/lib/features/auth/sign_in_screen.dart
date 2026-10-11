@@ -5,8 +5,10 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
+import 'sign_up_screen.dart';
 
 /// Phone number and password, which is what the API accepts.
 ///
@@ -20,7 +22,7 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final TextEditingController _phone = TextEditingController();
+  final PhoneFieldController _phone = PhoneFieldController();
   final TextEditingController _password = TextEditingController();
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
 
@@ -34,7 +36,20 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _submit() async {
     if (!(_form.currentState?.validate() ?? false)) return;
 
-    await context.read<AuthController>().signIn(phone: _phone.text, password: _password.text);
+    await context.read<AuthController>().signIn(
+      phone: _phone.reading.e164!,
+      password: _password.text,
+    );
+  }
+
+  Future<void> _createAccount() async {
+    final AuthController auth = context.read<AuthController>()..clearError();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
+    );
+    // A sign-up that succeeded has already signed in, and the app has moved on; one
+    // that was abandoned should not leave its error on this screen.
+    auth.clearError();
   }
 
   @override
@@ -76,20 +91,10 @@ class _SignInScreenState extends State<SignInScreen> {
                       Notice(message: error, isError: true),
                       const SizedBox(height: MzaziSpace.s16),
                     ],
-                    TextFormField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const <String>[AutofillHints.telephoneNumber],
-                      // No hint text. A placeholder here used to show a real seeded
-                      // account's number, which told anybody who opened the app a valid
-                      // phone number to try. The label says what the field is; an example
-                      // value is not worth disclosing an account for.
-                      decoration: const InputDecoration(labelText: 'Phone number'),
-                      validator: (String? value) => (value == null || value.trim().length < 8)
-                          ? 'Enter the phone number this account uses.'
-                          : null,
-                    ),
+                    // Kenya is chosen to begin with; the button in front of the number
+                    // changes it. Whatever way the number is typed, 0712..., 712... or
+                    // +254712..., it is sent in the one format the API accepts.
+                    PhoneField(controller: _phone),
                     const SizedBox(height: MzaziSpace.s16),
                     TextFormField(
                       controller: _password,
@@ -105,6 +110,13 @@ class _SignInScreenState extends State<SignInScreen> {
                     FilledButton(
                       onPressed: auth.isBusy ? null : () => unawaited(_submit()),
                       child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
+                    ),
+                    const SizedBox(height: MzaziSpace.s16),
+                    // For caregivers and family members. Elders are registered by their
+                    // caregiver, and the sign-up screen says so.
+                    TextButton(
+                      onPressed: auth.isBusy ? null : () => unawaited(_createAccount()),
+                      child: const Text('New here? Create an account'),
                     ),
                   ],
                 ),

@@ -466,3 +466,128 @@ enum Outcome {
   /// choosing the nearest imperfect option.
   bool get needsNote => this == Outcome.other;
 }
+
+/// How much help an elder needs day to day. A severity input, chosen at registration.
+enum CareLevel {
+  independent('INDEPENDENT', 'Manages on their own'),
+  assisted('ASSISTED', 'Needs some help'),
+  highDependency('HIGH_DEPENDENCY', 'Needs help with most things');
+
+  const CareLevel(this.wire, this.label);
+
+  final String wire;
+  final String label;
+}
+
+/// One elder the signed-in person looks after.
+class ElderSummary {
+  const ElderSummary({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.myTier,
+    required this.canEditChain,
+    this.homeLabel,
+  });
+
+  final String id;
+  final String name;
+  final String phone;
+  final String? homeLabel;
+  final int myTier;
+  final bool canEditChain;
+
+  factory ElderSummary.fromJson(Map<String, dynamic> json) => ElderSummary(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    phone: json['phone'] as String,
+    homeLabel: json['homeLabel'] as String?,
+    myTier: (json['myTier'] as num).toInt(),
+    canEditChain: json['canEditChain'] as bool? ?? false,
+  );
+}
+
+/// One place in an elder's chain: a person in it, or a place held for somebody who has
+/// not signed up yet.
+class ChainPlace {
+  const ChainPlace({
+    required this.tier,
+    required this.name,
+    required this.phone,
+    required this.isInvited,
+    this.role,
+  });
+
+  final int tier;
+  final String name;
+  final String phone;
+  final Role? role;
+  final bool isInvited;
+
+  factory ChainPlace.fromJson(Map<String, dynamic> json) {
+    final Object? role = json['role'];
+    return ChainPlace(
+      tier: (json['tier'] as num).toInt(),
+      name: json['name'] as String,
+      phone: json['phone'] as String,
+      role: role is String ? Role.parse(role) : null,
+      isInvited: json['status'] == 'invited',
+    );
+  }
+}
+
+class ChainView {
+  const ChainView({
+    required this.elderId,
+    required this.elderName,
+    required this.canEdit,
+    required this.places,
+  });
+
+  final String elderId;
+  final String elderName;
+  final bool canEdit;
+  final List<ChainPlace> places;
+
+  factory ChainView.fromJson(Map<String, dynamic> json) => ChainView(
+    elderId: json['elderId'] as String,
+    elderName: json['elderName'] as String,
+    canEdit: json['canEdit'] as bool? ?? false,
+    places: (json['entries'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(ChainPlace.fromJson)
+        .toList(growable: false),
+  );
+}
+
+/// A place an address search found.
+class AddressMatch {
+  const AddressMatch({required this.label, required this.latitude, required this.longitude});
+
+  final String label;
+  final double latitude;
+  final double longitude;
+
+  factory AddressMatch.fromJson(Map<String, dynamic> json) => AddressMatch(
+    label: json['label'] as String,
+    latitude: (json['latitude'] as num).toDouble(),
+    longitude: (json['longitude'] as num).toDouble(),
+  );
+}
+
+class AddressSearchResult {
+  const AddressSearchResult({required this.matches, required this.attribution});
+
+  final List<AddressMatch> matches;
+
+  /// Shown under the results, as OpenStreetMap's licence requires.
+  final String attribution;
+
+  factory AddressSearchResult.fromJson(Map<String, dynamic> json) => AddressSearchResult(
+    matches: (json['results'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(AddressMatch.fromJson)
+        .toList(growable: false),
+    attribution: json['attribution'] as String? ?? '',
+  );
+}

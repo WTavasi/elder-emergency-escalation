@@ -7,6 +7,7 @@ import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/sign_out_button.dart';
+import '../elders/elders_screen.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
 import 'alerts_controller.dart';
@@ -39,11 +40,25 @@ class _AlertListScreenState extends State<AlertListScreen> {
     final AlertsController alerts = context.watch<AlertsController>();
     final AuthController auth = context.read<AuthController>();
     final ThemeData theme = Theme.of(context);
+    final Role? role = auth.account?.role;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Alerts'),
         actions: <Widget>[
+          // Caregivers and family look after particular people; a responder is matched
+          // by area and has nobody of their own, so does not get this.
+          if (role == Role.caregiver || role == Role.familyMember)
+            IconButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      EldersScreen(api: widget.api, isCaregiver: role == Role.caregiver),
+                ),
+              ),
+              icon: const Icon(Icons.groups_outlined),
+              tooltip: 'People I look after',
+            ),
           IconButton(
             onPressed: alerts.refresh,
             icon: const Icon(Icons.refresh),

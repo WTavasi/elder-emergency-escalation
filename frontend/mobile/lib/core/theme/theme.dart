@@ -128,6 +128,37 @@ abstract final class MzaziTheme {
         weight: MzaziWeight.strong,
         color: text,
       ),
+      // Every style a widget asks for is defined here, including the ones Flutter's own
+      // widgets reach for (list tiles, segmented buttons, sheets). A style left out
+      // falls back to Material's default, which has no font family of its own, so it
+      // would quietly render in the platform's system font instead of ours.
+      headlineSmall: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
+        weight: MzaziWeight.heading,
+        height: 1.25,
+        color: text,
+      ),
+      titleMedium: _text(
+        family: family,
+        size: body,
+        weight: MzaziWeight.strong,
+        height: 1.4,
+        color: text,
+      ),
+      titleSmall: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        weight: MzaziWeight.strong,
+        height: 1.4,
+        color: text,
+      ),
+      labelMedium: _text(
+        family: family,
+        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        weight: MzaziWeight.strong,
+        color: text,
+      ),
       bodyLarge: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
       bodyMedium: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
       labelLarge: _text(
