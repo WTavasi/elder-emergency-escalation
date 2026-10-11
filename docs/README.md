@@ -4,6 +4,7 @@
 | --- | --- |
 | [running.md](running.md) | Starting the system from a cold laptop: a terminal, VS Code, or the Flutter app |
 | [testing.md](testing.md) | The five testing layers, and how to demonstrate the system |
+| [api-testing.md](api-testing.md) | Testing the API by hand with Postman, step by step, and from the terminal with Newman |
 | [api.md](api.md) | Every endpoint, its authorisation and its filters |
 | [decisions.md](decisions.md) | Choices that are not obvious from the code, and why |
 | [design-language.md](design-language.md) | The enforceable design constraints |
