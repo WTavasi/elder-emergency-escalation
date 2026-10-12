@@ -152,6 +152,14 @@ export const accountMessages = {
     );
   },
 
+  /** Taken out of an elder's chain by their caregiver. */
+  removedFromChain(removerName: string, elderName: string): string {
+    return capSms(
+      `${firstName(removerName)} removed you from ${elderName}'s MzaziCare emergency contacts. You will no longer be alerted for ${firstName(elderName)}.`,
+      `${firstName(removerName)} removed you from ${firstName(elderName)}'s MzaziCare emergency contacts.`,
+    );
+  },
+
   /** Added to an elder's chain, with no account yet. */
   invitedToChain(inviterName: string, elderName: string): string {
     return capSms(

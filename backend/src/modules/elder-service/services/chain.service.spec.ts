@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { PasswordService } from '../../auth-service/services/password.service';
@@ -19,12 +24,15 @@ function build() {
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
+      delete: jest.fn().mockResolvedValue({}),
     },
     chainInvitation: {
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
+      delete: jest.fn().mockResolvedValue({}),
     },
+    emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
     consentRecord: { createMany: jest.fn().mockResolvedValue({ count: 3 }) },
     escalationRule: {
       findFirst: jest.fn((args: { where: { responderRole: Role } }) =>
@@ -187,6 +195,100 @@ describe('ChainService', () => {
 
       await expect(
         service.addMember(ELDER.id, 'stranger', Role.CAREGIVER, { phone: '+254700000099' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('removeEntry', () => {
+    /** The caller is in the chain; the entry being removed is found by its id. */
+    function withEntry(
+      prisma: ReturnType<typeof build>['prisma'],
+      entry: { id: string; responder: { id: string; phone: string; role: Role } } | null,
+    ) {
+      prisma.user.findUnique.mockResolvedValue(ELDER);
+      prisma.careAssignment.findFirst.mockImplementation(
+        (args: { where: { id?: string; responderId?: string } }) =>
+          Promise.resolve(args.where.id ? entry : { id: 'assignment-1' }),
+      );
+    }
+
+    it('takes a family member out and tells them by SMS', async () => {
+      const { service, prisma, sms } = build();
+      withEntry(prisma, {
+        id: 'assignment-2',
+        responder: { id: 'family-1', phone: '+254700000030', role: Role.FAMILY_MEMBER },
+      });
+
+      await service.removeEntry(ELDER.id, 'assignment-2', 'carer-1', Role.CAREGIVER);
+
+      expect(prisma.careAssignment.delete).toHaveBeenCalledWith({ where: { id: 'assignment-2' } });
+      expect(sms.send.mock.calls[0][0]).toBe('+254700000030');
+      expect(sms.send.mock.calls[0][1]).toContain('removed you from');
+    });
+
+    it('withdraws a held place without sending anything', async () => {
+      const { service, prisma, sms } = build();
+      withEntry(prisma, null);
+      prisma.chainInvitation.findFirst.mockResolvedValue({ id: 'invitation-1' });
+
+      await service.removeEntry(ELDER.id, 'invitation-1', 'carer-1', Role.CAREGIVER);
+
+      expect(prisma.chainInvitation.delete).toHaveBeenCalledWith({
+        where: { id: 'invitation-1' },
+      });
+      expect(sms.send).not.toHaveBeenCalled();
+    });
+
+    it('waits while the elder has an emergency open', async () => {
+      const { service, prisma } = build();
+      withEntry(prisma, null);
+      prisma.emergencyEvent.count.mockResolvedValue(1);
+
+      await expect(
+        service.removeEntry(ELDER.id, 'assignment-2', 'carer-1', Role.CAREGIVER),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.careAssignment.delete).not.toHaveBeenCalled();
+    });
+
+    it('will not let a caregiver remove themselves', async () => {
+      const { service, prisma } = build();
+      withEntry(prisma, {
+        id: 'assignment-1',
+        responder: { id: 'carer-1', phone: '+254700000020', role: Role.CAREGIVER },
+      });
+
+      await expect(
+        service.removeEntry(ELDER.id, 'assignment-1', 'carer-1', Role.CAREGIVER),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('leaves emergency responders to an administrator', async () => {
+      const { service, prisma } = build();
+      withEntry(prisma, {
+        id: 'assignment-3',
+        responder: { id: 'resp-1', phone: '+254700000040', role: Role.EMERGENCY_RESPONDER },
+      });
+
+      await expect(
+        service.removeEntry(ELDER.id, 'assignment-3', 'carer-1', Role.CAREGIVER),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('says when the entry is not in this chain', async () => {
+      const { service, prisma } = build();
+      withEntry(prisma, null);
+
+      await expect(
+        service.removeEntry(ELDER.id, 'nope', 'carer-1', Role.CAREGIVER),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('lets only a caregiver remove', async () => {
+      const { service, prisma } = build();
+      withEntry(prisma, null);
+
+      await expect(
+        service.removeEntry(ELDER.id, 'x', 'family-1', Role.FAMILY_MEMBER),
       ).rejects.toThrow(ForbiddenException);
     });
   });

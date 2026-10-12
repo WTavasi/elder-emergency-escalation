@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import { AuthService, type AuthResult, type UserSummary } from '../services/auth.service';
 import {
   CurrentUser,
@@ -6,10 +6,12 @@ import {
 } from '../../../shared/decorators/current-user.decorator';
 import { Public } from '../../../shared/decorators/public.decorator';
 import { Throttle } from '../../../shared/middleware/rate-limit.guard';
+import { ChangePasswordDto } from '../validation/change-password.dto';
 import { LoginDto } from '../validation/login.dto';
 import { RefreshDto } from '../validation/refresh.dto';
 import { RegisterDto } from '../validation/register.dto';
 import { StartVerificationDto } from '../validation/start-verification.dto';
+import { UpdateProfileDto } from '../validation/update-profile.dto';
 import { PhoneVerificationService } from '../services/phone-verification.service';
 
 @Controller('auth')
@@ -72,5 +74,28 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser): Promise<UserSummary> {
     return this.auth.me(user.userId);
+  }
+
+  /** The signed-in person changing their own name or email. */
+  @Patch('me')
+  updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<UserSummary> {
+    return this.auth.updateProfile(user.userId, dto);
+  }
+
+  /**
+   * Returns fresh tokens, because changing the password ends every other session. Limited
+   * like sign-in, since it is a password guess against the current one.
+   */
+  @Throttle(10, 300)
+  @HttpCode(HttpStatus.OK)
+  @Post('change-password')
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<AuthResult> {
+    return this.auth.changePassword(user.userId, dto);
   }
 }

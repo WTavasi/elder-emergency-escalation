@@ -185,6 +185,97 @@ describe('AuthService', () => {
     });
   });
 
+  describe('profile', () => {
+    it('changes the name and lower-cases the email', async () => {
+      const prisma = buildPrisma();
+      prisma.user.update.mockImplementation((args: { data: Partial<User> }) =>
+        Promise.resolve(buildUser(args.data)),
+      );
+
+      const summary = await buildService(prisma).updateProfile('user-1', {
+        name: ' Mary W. Otieno ',
+        email: 'Mary@Example.com',
+      });
+
+      expect(prisma.user.update.mock.calls[0][0].data).toEqual({
+        name: 'Mary W. Otieno',
+        email: 'mary@example.com',
+      });
+      expect(summary.name).toBe('Mary W. Otieno');
+    });
+
+    it('removes the email when given null', async () => {
+      const prisma = buildPrisma();
+      prisma.user.update.mockResolvedValue(buildUser({ email: null }));
+
+      await buildService(prisma).updateProfile('user-1', { email: null });
+
+      expect(prisma.user.update.mock.calls[0][0].data).toEqual({ email: null });
+    });
+
+    it('says when another account has the email', async () => {
+      const prisma = buildPrisma();
+      prisma.user.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('duplicate', {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['email'] },
+        }),
+      );
+
+      await expect(
+        buildService(prisma).updateProfile('user-1', { email: 'taken@example.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('refuses a wrong current password with a 400, not a 401', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await expect(
+        buildService(prisma).changePassword('user-1', {
+          currentPassword: 'wrong',
+          newPassword: 'Another!2026',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('stores the new password and issues fresh tokens, ending other sessions', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      prisma.user.update.mockImplementation((args: { data: Partial<User> }) =>
+        Promise.resolve(buildUser(args.data)),
+      );
+
+      const result = await buildService(prisma).changePassword('user-1', {
+        currentPassword: 'Dev!2026',
+        newPassword: 'Another!2026',
+      });
+
+      const stored = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
+      expect(passwords.verify('Another!2026', stored)).toBe(true);
+      // The second update replaces the refresh-token fingerprint, which is what signs
+      // every other device out at its next refresh.
+      const saved = prisma.user.update.mock.calls[1][0].data.refreshTokenHash as string;
+      expect(saved).toBe(fingerprint(result.refreshToken));
+    });
+
+    it('refuses the same password again', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await expect(
+        buildService(prisma).changePassword('user-1', {
+          currentPassword: 'Dev!2026',
+          newPassword: 'Dev!2026',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('login', () => {
     it('issues tokens for correct credentials', async () => {
       const prisma = buildPrisma();
