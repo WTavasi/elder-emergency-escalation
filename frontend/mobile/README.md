@@ -91,6 +91,16 @@ finding the elder's home by address search, and adds family by phone number. Eve
 field has a country button, Kenya to begin with, and accepts the number however it is
 typed.
 
+**Looking after an elder.** Tapping an elder in **People I look after** opens their page:
+a call button, where they are now (with a way to record a stay elsewhere and to mark them
+back home), their home, how much help they need, and their chain in order. A caregiver
+can change the home and care level, remove a family member, or withdraw an invitation
+nobody has taken up yet; family members see the same page without those controls.
+
+**My account.** The person icon on the alert list opens it: change your name and email,
+and change your password. Changing the password signs out every other phone the account
+is signed in on.
+
 **Caregivers, family members and responders.** An Open view of the emergencies they
 are part of, and a History view grouped by day. For each one: who is being asked,
 where the elder is with a Get directions button that opens the phone's maps app,
@@ -105,7 +115,8 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | Folder | What is in it |
 | --- | --- |
 | `lib/features/auth/` | Sign-in and sign-up |
-| `lib/features/elders/` | People I look after: registering an elder, their chain, adding family |
+| `lib/features/elders/` | People I look after: registering an elder, their page and chain, adding and removing family |
+| `lib/features/profile/` | My account: name, email and password |
 | `lib/features/elder/` | The panic screen, its controller, and the panic control |
 | `lib/features/responder/` | The alert list and detail screens, their controllers, the call button and state pill |
 | `lib/core/api/` | The HTTP client and the response models |

@@ -23,6 +23,8 @@ controller with `@Roles(...)`, from `shared/decorators/`.
 | POST | `/refresh` | anyone with a refresh token | Rotates it; a reused one ends every session. 60 per five minutes |
 | POST | `/logout` | signed in | Ends every session for the account |
 | GET | `/me` | signed in | The signed-in account |
+| PATCH | `/me` | signed in | Change your name or email. A phone number is not changed here: it is how the account is found and how codes reach it |
+| POST | `/change-password` | signed in | Needs the current password. Returns fresh tokens and ends every other session. 10 per five minutes |
 
 ## Sign-up codes
 
@@ -45,8 +47,8 @@ never stored, only its SHA-256 fingerprint.
 | Path | What it is |
 | --- | --- |
 | `auth.module.ts` | NestJS wiring |
-| `controllers/auth.controller.ts` | The six endpoints |
-| `services/auth.service.ts` | Sign-up, sign-in, refresh, sign-out |
+| `controllers/auth.controller.ts` | The eight endpoints |
+| `services/auth.service.ts` | Sign-up, sign-in, refresh, sign-out, profile and password changes |
 | `services/phone-verification.service.ts` | Sending and checking sign-up codes |
 | `services/password.service.ts` | scrypt hashing and checking |
 | `services/token.service.ts` | Signing and verifying tokens |

@@ -20,6 +20,8 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/refresh` | none | Rotates the refresh token; a replay revokes every session |
 | POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
+| PATCH | `/api/v1/auth/me` | bearer | Change your own name or email (`email: null` removes it) |
+| POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
 
 Elders are registered by a caregiver rather than themselves, because the consent record
 has to name who consented on whose behalf (`POST /api/v1/elders`, below). Emergency
@@ -132,6 +134,9 @@ says the person came back rather than losing that a stay ever happened.
 | GET | `/api/v1/elders/address-search?q=` | caregiver, family, administrator | Coordinates for an address |
 | GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
 | POST | `/api/v1/elders/:id/chain` | caregiver in that chain | Add a family member by phone |
+| DELETE | `/api/v1/elders/:id/chain/:entryId` | caregiver in that chain | Remove a family member, or withdraw a held place |
+| GET | `/api/v1/elders/:id` | care chain | Name, phone, home, care level, where they are now, and whether the caller may edit |
+| PATCH | `/api/v1/elders/:id` | caregiver in that chain | Change their home or care level (`careLevel: null` means not sure) |
 
 **Registering an elder** takes `{ name, phone, code, password, home: { latitude,
 longitude, label }, relationship, careLevel?, consentConfirmed: true }`. The elder's phone
@@ -145,6 +150,16 @@ the number has a caregiver or family account, they take the place at once; if it
 account, the place is held in `chain_invitations` and taken when that number signs up.
 Either way they get an SMS saying who added them. Each rank holds one person, so a second
 family member is refused with 409 until the first is removed.
+
+**Removing someone** takes the `id` of a chain entry, and each entry says whether it is
+`removable`. A family member who had taken their place is sent an SMS saying who removed
+them; a held invitation is withdrawn without a message, since nobody was told about it
+except at the moment it was made. A caregiver cannot remove themselves or a responder
+this way, and nobody can be removed while the elder has an emergency open (409), because
+dispatch may be asking them at that moment.
+
+**A wrong current password is 400, not 401.** A 401 tells the app its session has expired
+and sends the person back to sign in, when they are signed in and only mistyped.
 
 **Address search** goes from the API to OpenStreetMap's public Nominatim, never from the
 app, within its usage policy (https://operations.osmfoundation.org/policies/nominatim/):

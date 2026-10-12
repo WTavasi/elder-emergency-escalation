@@ -1,0 +1,295 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:mzazicare_tokens/mzazicare_tokens.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/api/models.dart';
+import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/notice.dart';
+
+/// The signed-in person's own account: their details and their password.
+///
+/// The phone number is shown but not editable. It is how they sign in and the number
+/// every chain calls, so changing it needs the same SMS proof as signing up.
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Account? account = context.watch<AuthController>().account;
+    final ThemeData theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('My account')),
+      body: SafeArea(
+        child: account == null
+            ? const SizedBox.shrink()
+            : ListView(
+                padding: const EdgeInsets.all(MzaziSpace.s16),
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      CircleAvatar(radius: 28, child: Text(_initials(account.name))),
+                      const SizedBox(width: MzaziSpace.s16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(account.name, style: theme.textTheme.titleLarge),
+                            Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: MzaziSpace.s24),
+                  _DetailsForm(account: account),
+                  const SizedBox(height: MzaziSpace.s32),
+                  const _PasswordForm(),
+                ],
+              ),
+      ),
+    );
+  }
+
+  static String _initials(String name) {
+    final List<String> parts = name.trim().split(RegExp(r'\s+'));
+    final String first = parts.first.isEmpty ? '?' : parts.first[0];
+    final String last = parts.length > 1 ? parts.last[0] : '';
+    return (first + last).toUpperCase();
+  }
+
+  static String _roleLabel(Role role) => switch (role) {
+    Role.caregiver => 'Caregiver',
+    Role.familyMember => 'Family member',
+    Role.emergencyResponder => 'Emergency responder',
+    Role.administrator => 'Administrator',
+    Role.elder => 'Elder',
+  };
+}
+
+class _DetailsForm extends StatefulWidget {
+  const _DetailsForm({required this.account});
+
+  final Account account;
+
+  @override
+  State<_DetailsForm> createState() => _DetailsFormState();
+}
+
+class _DetailsFormState extends State<_DetailsForm> {
+  final GlobalKey<FormState> _form = GlobalKey<FormState>();
+  late final TextEditingController _name = TextEditingController(text: widget.account.name);
+  late final TextEditingController _email = TextEditingController(
+    text: widget.account.email ?? '',
+  );
+  bool _busy = false;
+  String? _error;
+  String? _saved;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    super.dispose();
+  }
+
+  bool get _changed =>
+      _name.text.trim() != widget.account.name ||
+      _email.text.trim() != (widget.account.email ?? '');
+
+  Future<void> _save() async {
+    if (!(_form.currentState?.validate() ?? false)) return;
+    final String email = _email.text.trim();
+    setState(() {
+      _busy = true;
+      _error = null;
+      _saved = null;
+    });
+
+    final String? problem = await context.read<AuthController>().updateProfile(
+      name: _name.text.trim() == widget.account.name ? null : _name.text.trim(),
+      email: email.isEmpty ? null : email,
+      clearEmail: email.isEmpty && widget.account.email != null,
+    );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = problem;
+      _saved = problem == null ? 'Saved.' : null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Form(
+      key: _form,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text('Your details', style: theme.textTheme.titleMedium),
+          const SizedBox(height: MzaziSpace.s12),
+          if (_error != null) ...<Widget>[
+            Notice(message: _error!, isError: true),
+            const SizedBox(height: MzaziSpace.s12),
+          ],
+          if (_saved != null) ...<Widget>[
+            Notice(message: _saved!),
+            const SizedBox(height: MzaziSpace.s12),
+          ],
+          TextFormField(
+            controller: _name,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Name'),
+            onChanged: (_) => setState(() => _saved = null),
+            validator: (String? v) =>
+                (v == null || v.trim().length < 2) ? 'Enter your name.' : null,
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          TextFormField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'Email (optional)'),
+            onChanged: (_) => setState(() => _saved = null),
+            validator: (String? v) {
+              final String email = v?.trim() ?? '';
+              if (email.isEmpty) return null;
+              return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
+                  ? null
+                  : 'That does not look like an email address.';
+            },
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Phone number',
+              helperText: 'You sign in with this number, so it cannot be changed here yet.',
+              helperMaxLines: 2,
+            ),
+            child: Text(widget.account.phone, style: theme.textTheme.bodyLarge),
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          FilledButton.icon(
+            onPressed: _busy || !_changed ? null : () => unawaited(_save()),
+            icon: const Icon(Icons.save_outlined),
+            label: Text(_busy ? 'Saving' : 'Save changes'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PasswordForm extends StatefulWidget {
+  const _PasswordForm();
+
+  @override
+  State<_PasswordForm> createState() => _PasswordFormState();
+}
+
+class _PasswordFormState extends State<_PasswordForm> {
+  final GlobalKey<FormState> _form = GlobalKey<FormState>();
+  final TextEditingController _current = TextEditingController();
+  final TextEditingController _next = TextEditingController();
+  final TextEditingController _again = TextEditingController();
+  bool _busy = false;
+  String? _error;
+  bool _done = false;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _again.dispose();
+    super.dispose();
+  }
+
+  Future<void> _change() async {
+    if (!(_form.currentState?.validate() ?? false)) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _done = false;
+    });
+
+    final String? problem = await context.read<AuthController>().changePassword(
+      current: _current.text,
+      next: _next.text,
+    );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = problem;
+      _done = problem == null;
+      if (_done) {
+        _current.clear();
+        _next.clear();
+        _again.clear();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Form(
+      key: _form,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text('Change password', style: theme.textTheme.titleMedium),
+          const SizedBox(height: MzaziSpace.s12),
+          if (_error != null) ...<Widget>[
+            Notice(message: _error!, isError: true),
+            const SizedBox(height: MzaziSpace.s12),
+          ],
+          if (_done) ...<Widget>[
+            const Notice(
+              message:
+                  'Password changed. Any other phone signed in to this account will be signed out.',
+            ),
+            const SizedBox(height: MzaziSpace.s12),
+          ],
+          TextFormField(
+            controller: _current,
+            obscureText: true,
+            autofillHints: const <String>[AutofillHints.password],
+            decoration: const InputDecoration(labelText: 'Current password'),
+            validator: (String? v) =>
+                (v == null || v.isEmpty) ? 'Enter your current password.' : null,
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          TextFormField(
+            controller: _next,
+            obscureText: true,
+            autofillHints: const <String>[AutofillHints.newPassword],
+            decoration: const InputDecoration(
+              labelText: 'New password',
+              helperText: 'At least 8 characters',
+            ),
+            validator: (String? v) =>
+                (v == null || v.length < 8) ? 'Use at least 8 characters.' : null,
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          TextFormField(
+            controller: _again,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'New password again'),
+            validator: (String? v) =>
+                v == _next.text ? null : 'The two passwords are different.',
+          ),
+          const SizedBox(height: MzaziSpace.s16),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : () => unawaited(_change()),
+            icon: const Icon(Icons.lock_reset),
+            label: Text(_busy ? 'Changing' : 'Change password'),
+          ),
+        ],
+      ),
+    );
+  }
+}

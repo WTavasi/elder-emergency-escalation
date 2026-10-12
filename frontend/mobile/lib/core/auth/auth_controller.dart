@@ -115,6 +115,30 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Saves a name or email change. Returns why it failed, or null when it saved.
+  Future<String?> updateProfile({String? name, String? email, bool clearEmail = false}) async {
+    try {
+      await _api.updateProfile(name: name, email: email, clearEmail: clearEmail);
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    } on NetworkException catch (error) {
+      return error.message;
+    }
+  }
+
+  /// Changes the password. Returns why it failed, or null when it changed.
+  Future<String?> changePassword({required String current, required String next}) async {
+    try {
+      await _api.changePassword(current: current, next: next);
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    } on NetworkException catch (error) {
+      return error.message;
+    }
+  }
+
   /// Clears a message left by a previous attempt, when the person moves screens.
   void clearError() {
     if (_error == null) return;
