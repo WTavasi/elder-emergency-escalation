@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConsentType, Prisma, Role, type User } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../../../db/prisma.service';
@@ -10,6 +16,8 @@ import { PhoneVerificationService } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { LoginDto } from '../validation/login.dto';
 import type { RegisterDto } from '../validation/register.dto';
+import type { ChangePasswordDto } from '../validation/change-password.dto';
+import type { UpdateProfileDto } from '../validation/update-profile.dto';
 
 export interface UserSummary {
   id: string;
@@ -152,6 +160,59 @@ export class AuthService {
       where: { id: userId },
       data: { refreshTokenHash: null, refreshTokenUpdatedAt: new Date() },
     });
+  }
+
+  /**
+   * The owner changing their own name or email. A taken email is a conflict, named as
+   * such: the person is signed in, so saying the address is in use discloses nothing
+   * they could not learn by trying to register with it.
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserSummary> {
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+          ...(dto.email !== undefined ? { email: dto.email?.trim().toLowerCase() ?? null } : {}),
+        },
+      });
+      return AuthService.summarise(user);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Another account already uses that email address');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Changing a password, which needs the current one.
+   *
+   * A wrong current password is a 400, not a 401: the caller is signed in, and a 401
+   * would tell the app its session had expired, sending it off to refresh tokens for a
+   * typing mistake.
+   *
+   * New tokens are issued, which replaces the stored refresh-token fingerprint, so every
+   * other device holding the old password's session is signed out at its next refresh.
+   * Their access tokens still work until they expire, at most one access lifetime.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<AuthResult> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Account no longer exists');
+
+    if (!this.passwords.verify(dto.currentPassword, user.passwordHash)) {
+      throw new BadRequestException('Your current password is not right');
+    }
+    if (dto.newPassword === dto.currentPassword) {
+      throw new BadRequestException('Choose a password different from the current one');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: this.passwords.hash(dto.newPassword) },
+    });
+    this.logger.log(`Password changed for ${redactPhone(user.phone)}; other sessions end`);
+    return this.issue(updated);
   }
 
   async me(userId: string): Promise<UserSummary> {

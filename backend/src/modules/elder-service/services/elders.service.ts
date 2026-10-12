@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { CareLevel, Prisma, Role, type User } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { SetPlaceDto } from '../validation/set-place.dto';
+import type { UpdateElderDto } from '../validation/update-elder.dto';
 
 /** What the caller is told about where an elder is staying. */
 export interface PlaceView {
@@ -11,6 +12,18 @@ export interface PlaceView {
   longitude: number | null;
   label: string | null;
   setAt: string | null;
+}
+
+/** Everything the elder's page in the app shows about them. */
+export interface ElderDetail {
+  id: string;
+  name: string;
+  phone: string;
+  careLevel: CareLevel | null;
+  home: { latitude: number; longitude: number; label: string | null } | null;
+  place: PlaceView;
+  /** Only a caregiver in the chain may change the elder's details. */
+  canEdit: boolean;
 }
 
 /**
@@ -27,6 +40,45 @@ export class EldersService {
   private readonly logger = new Logger(EldersService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /** The elder's details, for anybody in their chain or an administrator. */
+  async detail(elderId: string, actorId: string, actorRole: Role): Promise<ElderDetail> {
+    const elder = await this.requireVisibleElder(elderId, actorId, actorRole);
+    return EldersService.toDetail(elder, actorRole === Role.CAREGIVER);
+  }
+
+  /**
+   * A caregiver changing the elder's care level or registered home. Moving the home is
+   * logged without the coordinates, for the same reason a stay is.
+   */
+  async update(
+    elderId: string,
+    actorId: string,
+    actorRole: Role,
+    dto: UpdateElderDto,
+  ): Promise<ElderDetail> {
+    await this.requireVisibleElder(elderId, actorId, actorRole);
+    if (actorRole !== Role.CAREGIVER) {
+      throw new ForbiddenException('Only a caregiver can change these details');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: elderId },
+      data: {
+        ...(dto.careLevel !== undefined ? { careLevel: dto.careLevel } : {}),
+        ...(dto.home
+          ? {
+              homeLatitude: new Prisma.Decimal(dto.home.latitude),
+              homeLongitude: new Prisma.Decimal(dto.home.longitude),
+              homeAddressLabel: dto.home.label,
+            }
+          : {}),
+      },
+    });
+
+    if (dto.home) this.logger.log(`Home changed for elder ${elderId} by ${actorId}`);
+    return EldersService.toDetail(updated, true);
+  }
 
   async place(elderId: string, actorId: string, actorRole: Role): Promise<PlaceView> {
     const elder = await this.requireVisibleElder(elderId, actorId, actorRole);
@@ -98,6 +150,25 @@ export class EldersService {
     }
 
     return elder;
+  }
+
+  private static toDetail(elder: User, canEdit: boolean): ElderDetail {
+    const hasHome = elder.homeLatitude !== null && elder.homeLongitude !== null;
+    return {
+      id: elder.id,
+      name: elder.name,
+      phone: elder.phone,
+      careLevel: elder.careLevel,
+      home: hasHome
+        ? {
+            latitude: Number(elder.homeLatitude),
+            longitude: Number(elder.homeLongitude),
+            label: elder.homeAddressLabel,
+          }
+        : null,
+      place: EldersService.toView(elder),
+      canEdit,
+    };
   }
 
   private static toView(elder: {

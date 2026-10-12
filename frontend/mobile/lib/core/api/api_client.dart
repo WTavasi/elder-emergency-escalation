@@ -173,6 +173,87 @@ class ApiClient {
     return AddressSearchResult.fromJson(await _send('GET', '/elders/address-search?q=$q'));
   }
 
+  /// Changes the signed-in person's name or email. Pass [clearEmail] to remove it.
+  Future<Account> updateProfile({String? name, String? email, bool clearEmail = false}) async {
+    final Map<String, dynamic> body = await _send(
+      'PATCH',
+      '/auth/me',
+      body: <String, dynamic>{
+        if (name != null) 'name': name,
+        if (clearEmail) 'email': null else if (email != null) 'email': email,
+      },
+    );
+    final Account account = Account.fromJson(body);
+    final Session? current = session;
+    if (current != null) {
+      session = current.withAccount(account);
+      onSessionChanged?.call(session);
+    }
+    return account;
+  }
+
+  /// Changes the password and takes the fresh tokens the server returns, which end every
+  /// other session on the account.
+  Future<void> changePassword({required String current, required String next}) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/auth/change-password',
+      body: <String, dynamic>{'currentPassword': current, 'newPassword': next},
+    );
+    final Session renewed = Session.fromJson(body);
+    session = renewed;
+    onSessionChanged?.call(renewed);
+  }
+
+  Future<ElderDetail> elder(String id) async =>
+      ElderDetail.fromJson(await _send('GET', '/elders/$id'));
+
+  /// A caregiver changing an elder's home or care level. [clearCareLevel] sets "not sure".
+  Future<ElderDetail> updateElder(
+    String id, {
+    AddressMatch? home,
+    CareLevel? careLevel,
+    bool clearCareLevel = false,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'PATCH',
+      '/elders/$id',
+      body: <String, dynamic>{
+        if (home != null)
+          'home': <String, dynamic>{
+            'latitude': home.latitude,
+            'longitude': home.longitude,
+            'label': home.label,
+          },
+        if (clearCareLevel) 'careLevel': null else if (careLevel != null) 'careLevel': careLevel.wire,
+      },
+    );
+    return ElderDetail.fromJson(body);
+  }
+
+  /// Records that the elder is staying somewhere other than home.
+  Future<void> setPlace(String elderId, AddressMatch place) async {
+    await _send(
+      'PUT',
+      '/elders/$elderId/place',
+      body: <String, dynamic>{
+        'latitude': place.latitude,
+        'longitude': place.longitude,
+        'label': place.label,
+      },
+    );
+  }
+
+  /// Records that the elder is back home.
+  Future<void> clearPlace(String elderId) async {
+    await _send('DELETE', '/elders/$elderId/place');
+  }
+
+  /// Takes a person, or a held place, out of an elder's chain.
+  Future<ChainView> removeFromChain(String elderId, String entryId) async {
+    return ChainView.fromJson(await _send('DELETE', '/elders/$elderId/chain/$entryId'));
+  }
+
   Future<void> signOut() async {
     try {
       await _send('POST', '/auth/logout', allowRetry: false);
@@ -374,6 +455,9 @@ class ApiClient {
     return switch (method) {
       'GET' => _http.get(url, headers: headers).timeout(timeout),
       'POST' => _http.post(url, headers: headers, body: encoded).timeout(timeout),
+      'PATCH' => _http.patch(url, headers: headers, body: encoded).timeout(timeout),
+      'PUT' => _http.put(url, headers: headers, body: encoded).timeout(timeout),
+      'DELETE' => _http.delete(url, headers: headers).timeout(timeout),
       _ => throw ArgumentError.value(method, 'method', 'unsupported'),
     };
   }

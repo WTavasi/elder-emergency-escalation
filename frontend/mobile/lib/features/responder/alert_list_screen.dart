@@ -8,6 +8,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/sign_out_button.dart';
 import '../elders/elders_screen.dart';
+import '../profile/profile_screen.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
 import 'alerts_controller.dart';
@@ -63,6 +64,13 @@ class _AlertListScreenState extends State<AlertListScreen> {
             onPressed: alerts.refresh,
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(
+              context,
+            ).push<void>(MaterialPageRoute<void>(builder: (_) => const ProfileScreen())),
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'My account',
           ),
           SignOutButton(onPressed: auth.signOut),
         ],

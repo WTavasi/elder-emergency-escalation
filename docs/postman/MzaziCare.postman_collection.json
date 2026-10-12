@@ -1385,9 +1385,130 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('answers 201', () => pm.response.to.have.status(201));",
-                  "pm.test('their place is in the chain', () => {",
+                  "const entries = pm.response.json().entries;",
+                  "const held = entries.find((e) => e.phone === pm.environment.get('inviteePhone'));",
+                  "pm.test('their place is in the chain', () => pm.expect(held).to.be.an('object'));",
+                  "if (held) pm.environment.set('inviteeEntryId', held.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6b. Looking after an elder",
+      "description": "Uses the elder registered in 6. Run after it.",
+      "item": [
+        {
+          "name": "The elder's details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{newElderId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a caregiver may edit', () => pm.expect(pm.response.json().canEdit).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change the care level",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{newElderId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"careLevel\": \"HIGH_DEPENDENCY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "careLevel null means 'not sure'. A home can be changed the same way: { \"home\": { latitude, longitude, label } }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saved', () => pm.expect(pm.response.json().careLevel).to.eql('HIGH_DEPENDENCY'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Withdraw the held family place",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain/{{inviteeEntryId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Refused with 409 while the elder has an emergency open, and with 400 for the caregiver's own place or a responder's."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the place is gone', () => {",
                   "  const entries = pm.response.json().entries;",
-                  "  pm.expect(entries.some((e) => e.phone === pm.environment.get('inviteePhone'))).to.be.true;",
+                  "  pm.expect(entries.some((e) => e.phone === pm.environment.get('inviteePhone'))).to.be.false;",
                   "});"
                 ]
               }
@@ -1583,6 +1704,180 @@
               "script": {
                 "type": "text/javascript",
                 "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8b. My account",
+      "description": "Uses the account made in 5, so the seeded accounts keep their password. The last request changes the password back.",
+      "item": [
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/me"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add an email address",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test.caregiver@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saved, in lower case', () => pm.expect(pm.response.json().email).to.eql('test.caregiver@example.com'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change the password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{password}}-new\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Returns fresh tokens. Every other session for the account ends at its next refresh."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('newToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change it back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}-new\",\n  \"newPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('newToken', pm.response.json().accessToken);"
+                ]
               }
             }
           ]
@@ -1977,6 +2272,50 @@
               "script": {
                 "type": "text/javascript",
                 "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A wrong current password is a 400, not a 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"not-the-password\",\n  \"newPassword\": \"Another!2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "A 401 would tell the app its session expired. The caller is signed in; they mistyped."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
               }
             }
           ]

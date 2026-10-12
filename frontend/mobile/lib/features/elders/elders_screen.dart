@@ -7,7 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/widgets/notice.dart';
 import 'add_elder_screen.dart';
-import 'chain_screen.dart';
+import 'elder_screen.dart';
 
 /// The elders the signed-in person looks after, and for a caregiver, adding one.
 ///
@@ -59,7 +59,7 @@ class _EldersScreenState extends State<EldersScreen> {
   Future<void> _open(ElderSummary elder) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => ChainScreen(api: widget.api, elderId: elder.id, elderName: elder.name),
+        builder: (_) => ElderScreen(api: widget.api, elderId: elder.id, elderName: elder.name),
       ),
     );
     await _load();

@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ConsentType, Prisma, Role } from '@prisma/client';
+import { ConsentType, EventState, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { tierForRole } from '../../../shared/utils/chain';
@@ -32,12 +32,16 @@ export interface ElderSummary {
 
 /** One place in an elder's chain, filled or held for somebody. */
 export interface ChainEntry {
+  /** The care assignment's id, or the invitation's while the place is only held. */
+  id: string;
   tier: number;
   name: string;
   phone: string;
   role: Role | null;
   /** Invited means the place is held until that number signs up. */
   status: 'member' | 'invited';
+  /** Whether the caller may take this place out of the chain. */
+  removable: boolean;
 }
 
 export interface ChainView {
@@ -49,6 +53,14 @@ export interface ChainView {
 
 /** Roles that can hold a place in a chain added from the app. */
 const ADDABLE_ROLES: Role[] = [Role.CAREGIVER, Role.FAMILY_MEMBER];
+
+/** States in which an emergency is still being handled. */
+const OPEN_STATES: EventState[] = [
+  EventState.TRIGGERED,
+  EventState.NOTIFIED,
+  EventState.ACKNOWLEDGED,
+  EventState.ESCALATED,
+];
 
 /**
  * Elders and the people who look after them, as a caregiver sets them up.
@@ -167,8 +179,9 @@ export class ChainService {
         where: { elderlyId: elderId },
         orderBy: { priorityOrder: 'asc' },
         select: {
+          id: true,
           priorityOrder: true,
-          responder: { select: { name: true, phone: true, role: true } },
+          responder: { select: { id: true, name: true, phone: true, role: true } },
         },
       }),
       this.prisma.chainInvitation.findMany({
@@ -177,24 +190,32 @@ export class ChainService {
       }),
     ]);
 
+    const canEdit = role === Role.CAREGIVER;
     const entries: ChainEntry[] = [
       ...assignments.map((assignment) => ({
+        id: assignment.id,
         tier: assignment.priorityOrder,
         name: assignment.responder.name,
         phone: assignment.responder.phone,
         role: assignment.responder.role,
         status: 'member' as const,
+        removable:
+          canEdit &&
+          assignment.responder.id !== userId &&
+          ADDABLE_ROLES.includes(assignment.responder.role),
       })),
       ...invitations.map((invitation) => ({
+        id: invitation.id,
         tier: invitation.priorityOrder,
         name: invitation.name ?? 'Invited',
         phone: invitation.phone,
         role: null,
         status: 'invited' as const,
+        removable: canEdit,
       })),
     ].sort((a, b) => a.tier - b.tier);
 
-    return { elderId, elderName: elder.name, canEdit: role === Role.CAREGIVER, entries };
+    return { elderId, elderName: elder.name, canEdit, entries };
   }
 
   /**
@@ -258,6 +279,73 @@ export class ChainService {
       this.logger.log(`Place in the chain of elder ${elderId} held for ${redactPhone(dto.phone)}`);
     }
 
+    return this.chain(elderId, userId, role);
+  }
+
+  /**
+   * Takes a person, or a held place, out of an elder's chain.
+   *
+   * Refused while the elder has an emergency open: taking somebody out of a chain that
+   * is being worked through would change who is asked in the middle of it. Refused for
+   * the caller's own place, so a caregiver cannot leave an elder with nobody at tier one
+   * by accident, and for emergency responders, who are matched by area and managed by an
+   * administrator. Somebody removed is told by SMS, as they were told when added.
+   */
+  async removeEntry(
+    elderId: string,
+    entryId: string,
+    userId: string,
+    role: Role,
+  ): Promise<ChainView> {
+    const elder = await this.requireInChain(elderId, userId, role);
+    if (role !== Role.CAREGIVER) {
+      throw new ForbiddenException('Only a caregiver can change who is in the chain');
+    }
+
+    const open = await this.prisma.emergencyEvent.count({
+      where: { elderlyId: elderId, state: { in: OPEN_STATES } },
+    });
+    if (open > 0) {
+      throw new ConflictException(
+        `${elder.name} has an emergency open. Change the chain once it is closed.`,
+      );
+    }
+
+    const assignment = await this.prisma.careAssignment.findFirst({
+      where: { id: entryId, elderlyId: elderId },
+      select: { id: true, responder: { select: { id: true, phone: true, role: true } } },
+    });
+
+    if (assignment) {
+      if (assignment.responder.id === userId) {
+        throw new BadRequestException('You cannot remove yourself from the chain');
+      }
+      if (!ADDABLE_ROLES.includes(assignment.responder.role)) {
+        throw new BadRequestException('Emergency responders are managed by an administrator');
+      }
+      await this.prisma.careAssignment.delete({ where: { id: assignment.id } });
+
+      const remover = await this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { name: true },
+      });
+      await this.sms.send(
+        assignment.responder.phone,
+        accountMessages.removedFromChain(remover.name, elder.name),
+      );
+      this.logger.log(`Assignment ${assignment.id} removed from elder ${elderId}`);
+      return this.chain(elderId, userId, role);
+    }
+
+    const invitation = await this.prisma.chainInvitation.findFirst({
+      where: { id: entryId, elderlyId: elderId },
+      select: { id: true },
+    });
+    if (!invitation) throw new NotFoundException('That place is not in this chain');
+
+    // A held place was never taken, so there is nobody to tell.
+    await this.prisma.chainInvitation.delete({ where: { id: invitation.id } });
+    this.logger.log(`Invitation ${invitation.id} withdrawn for elder ${elderId}`);
     return this.chain(elderId, userId, role);
   }
 

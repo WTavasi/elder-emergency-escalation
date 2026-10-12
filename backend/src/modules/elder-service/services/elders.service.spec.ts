@@ -130,3 +130,64 @@ describe('EldersService', () => {
     });
   });
 });
+
+describe('EldersService, details and editing', () => {
+  const elder = {
+    ...elderAtHome,
+    name: 'Grace Wanjiru',
+    phone: '+254700000010',
+    careLevel: null,
+    homeLatitude: -1.2833,
+    homeLongitude: 36.7833,
+    homeAddressLabel: 'Kilimani, Nairobi',
+  };
+
+  const prismaWith = () => {
+    const prisma = buildPrisma();
+    prisma.user.findUnique.mockResolvedValue(elder);
+    prisma.user.update.mockImplementation((args: { data: Record<string, unknown> }) =>
+      Promise.resolve({ ...elder, ...args.data }),
+    );
+    return prisma;
+  };
+
+  it('shows the home and lets a caregiver edit, but not a family member', async () => {
+    const service = build(prismaWith());
+
+    const forCaregiver = await service.detail('elder-1', 'caregiver-1', Role.CAREGIVER);
+    expect(forCaregiver.home).toEqual({
+      latitude: -1.2833,
+      longitude: 36.7833,
+      label: 'Kilimani, Nairobi',
+    });
+    expect(forCaregiver.place.isAtHome).toBe(true);
+    expect(forCaregiver.canEdit).toBe(true);
+
+    const forFamily = await service.detail('elder-1', 'family-1', Role.FAMILY_MEMBER);
+    expect(forFamily.canEdit).toBe(false);
+  });
+
+  it('moves the registered home and changes the care level', async () => {
+    const prisma = prismaWith();
+    const detail = await build(prisma).update('elder-1', 'caregiver-1', Role.CAREGIVER, {
+      careLevel: 'HIGH_DEPENDENCY',
+      home: { latitude: -1.3, longitude: 36.8, label: 'South B, Nairobi' },
+    });
+
+    expect(detail.careLevel).toBe('HIGH_DEPENDENCY');
+    expect(detail.home?.label).toBe('South B, Nairobi');
+    expect(Number(prisma.user.update.mock.calls[0][0].data.homeLatitude)).toBe(-1.3);
+  });
+
+  it('clears the care level back to not sure with null', async () => {
+    const prisma = prismaWith();
+    await build(prisma).update('elder-1', 'caregiver-1', Role.CAREGIVER, { careLevel: null });
+    expect(prisma.user.update.mock.calls[0][0].data).toEqual({ careLevel: null });
+  });
+
+  it('refuses edits from a family member', async () => {
+    await expect(
+      build(prismaWith()).update('elder-1', 'family-1', Role.FAMILY_MEMBER, { careLevel: null }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+});

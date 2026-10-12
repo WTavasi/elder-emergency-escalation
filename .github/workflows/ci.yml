@@ -116,6 +116,45 @@ jobs:
           path: frontend/dashboard/dist/
           if-no-files-found: error
 
+  mobile:
+    name: Mobile analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The app reads its colours, type and spacing from a Dart file the token build
+      # generates. It is not committed, so it is generated here first. The build script
+      # uses Node's own modules only, so no npm install is needed for it.
+      - name: Generate design tokens
+        run: node frontend/design-tokens/src/build.mjs
+
+      # Pinned to the version the app is developed against, so an analyzer rule added
+      # in a later Flutter cannot fail this job without a change in the repository.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.4
+          cache: true
+
+      - name: Get packages
+        working-directory: frontend/mobile
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: frontend/mobile
+        run: flutter analyze
+
+      # The accessibility floors live in these tests: the panic control's size, every
+      # touch target, every state labelled in words. Until this job existed, a change
+      # could break them and still reach main.
+      - name: Tests
+        working-directory: frontend/mobile
+        run: flutter test
+
   integration:
     name: Escalation end to end
     runs-on: ubuntu-latest

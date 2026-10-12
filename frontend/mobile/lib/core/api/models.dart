@@ -95,6 +95,7 @@ class Account {
     required this.name,
     required this.phone,
     required this.role,
+    this.email,
     this.home,
   });
 
@@ -102,6 +103,9 @@ class Account {
   final String name;
   final String phone;
   final Role role;
+
+  /// Optional; most elders have none.
+  final String? email;
 
   /// The elder's registered home. Null for every other role.
   final GeoPoint? home;
@@ -111,6 +115,7 @@ class Account {
     name: json['name'] as String,
     phone: json['phone'] as String,
     role: Role.parse(json['role'] as String),
+    email: json['email'] as String?,
     home: GeoPoint.fromJson(json['home'] as Map<String, dynamic>?),
   );
 
@@ -118,6 +123,7 @@ class Account {
     'id': id,
     'name': name,
     'phone': phone,
+    'email': email,
     'role': switch (role) {
       Role.elder => 'ELDER',
       Role.caregiver => 'CAREGIVER',
@@ -144,6 +150,10 @@ class Session {
 
   Session withTokens(String access, String refresh) =>
       Session(account: account, accessToken: access, refreshToken: refresh);
+
+  /// The same session with the account's details replaced, after a profile edit.
+  Session withAccount(Account updated) =>
+      Session(account: updated, accessToken: accessToken, refreshToken: refreshToken);
 
   factory Session.fromJson(Map<String, dynamic> json) => Session(
     account: Account.fromJson(json['user'] as Map<String, dynamic>),
@@ -511,27 +521,36 @@ class ElderSummary {
 /// not signed up yet.
 class ChainPlace {
   const ChainPlace({
+    required this.id,
     required this.tier,
     required this.name,
     required this.phone,
     required this.isInvited,
+    this.removable = false,
     this.role,
   });
 
+  /// The care assignment's id, or the invitation's while the place is only held.
+  final String id;
   final int tier;
   final String name;
   final String phone;
   final Role? role;
   final bool isInvited;
 
+  /// Whether the signed-in caregiver may take this place out of the chain.
+  final bool removable;
+
   factory ChainPlace.fromJson(Map<String, dynamic> json) {
     final Object? role = json['role'];
     return ChainPlace(
+      id: json['id'] as String,
       tier: (json['tier'] as num).toInt(),
       name: json['name'] as String,
       phone: json['phone'] as String,
       role: role is String ? Role.parse(role) : null,
       isInvited: json['status'] == 'invited',
+      removable: json['removable'] as bool? ?? false,
     );
   }
 }
@@ -590,4 +609,66 @@ class AddressSearchResult {
         .toList(growable: false),
     attribution: json['attribution'] as String? ?? '',
   );
+}
+
+/// Where an elder is right now: at home, or staying somewhere their circle recorded.
+class PlaceView {
+  const PlaceView({required this.isAtHome, this.latitude, this.longitude, this.label});
+
+  final bool isAtHome;
+  final double? latitude;
+  final double? longitude;
+  final String? label;
+
+  factory PlaceView.fromJson(Map<String, dynamic> json) => PlaceView(
+    isAtHome: json['isAtHome'] as bool? ?? true,
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
+    label: json['label'] as String?,
+  );
+}
+
+/// One elder, as their page in the app shows them.
+class ElderDetail {
+  const ElderDetail({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.place,
+    required this.canEdit,
+    this.careLevel,
+    this.home,
+  });
+
+  final String id;
+  final String name;
+  final String phone;
+  final CareLevel? careLevel;
+
+  /// The registered home, which alerts are sent to unless a stay is recorded.
+  final AddressMatch? home;
+  final PlaceView place;
+  final bool canEdit;
+
+  factory ElderDetail.fromJson(Map<String, dynamic> json) {
+    final Object? home = json['home'];
+    final Object? level = json['careLevel'];
+    return ElderDetail(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      phone: json['phone'] as String,
+      careLevel: level is String
+          ? CareLevel.values.where((CareLevel c) => c.wire == level).firstOrNull
+          : null,
+      home: home is Map<String, dynamic>
+          ? AddressMatch(
+              label: home['label'] as String? ?? '',
+              latitude: (home['latitude'] as num).toDouble(),
+              longitude: (home['longitude'] as num).toDouble(),
+            )
+          : null,
+      place: PlaceView.fromJson(json['place'] as Map<String, dynamic>? ?? const <String, dynamic>{}),
+      canEdit: json['canEdit'] as bool? ?? false,
+    );
+  }
 }

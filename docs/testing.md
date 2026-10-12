@@ -244,16 +244,18 @@ alert carry a human place name. Nothing about the request changed between the tw
 
 ## Continuous integration
 
-Every push to `main` and every pull request runs four jobs on GitHub Actions: the
+Every push to `main` and every pull request runs five jobs on GitHub Actions: the
 contrast gate, the API lint, typecheck, tests and build, the dashboard tests and
-production build, and the escalation integration suite against real services.
+production build, the mobile app's `flutter analyze` and `flutter test`, and the
+escalation integration suite against real services.
 
 This matters for more than tidiness. The production build is verified on a clean
 machine that nobody has configured by hand, so it cannot come to depend on something
 only one laptop has.
 
-**Layer 2 is not in there.** No job runs `flutter analyze` or `flutter test`, so nothing
-stops a broken app from reaching `main`, and something already did: the accessibility
-floor described above was failing on `main` for a fortnight because the only thing that
-would have caught it was a command somebody had to remember to type. Until a fifth job
-exists, Layer 2 is a manual discipline rather than a guarantee.
+**Layer 2 joined late.** Until the fifth job was added, nothing ran the Flutter checks,
+and the accessibility floor described above was failing on `main` for a fortnight
+because the only thing that would have caught it was a command somebody had to remember
+to type. The mobile job builds the design tokens first, because the app reads them as a
+generated Dart package that is not committed, and pins Flutter to the version the app is
+developed on.

@@ -22,6 +22,9 @@ finding the coordinates of a home address, and recording a stay away from home.
 | GET | `/address-search?q=` | caregiver, family, administrator | Coordinates for an address. 20 per five minutes |
 | GET | `/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
 | POST | `/:id/chain` | caregiver in that chain | Add a family member by phone. 20 an hour |
+| DELETE | `/:id/chain/:entryId` | caregiver in that chain | Remove a family member or withdraw a held place. Not while an emergency is open |
+| GET | `/:id` | care chain | Their details, where they are, and whether the caller may edit |
+| PATCH | `/:id` | caregiver in that chain | Change their home or care level |
 | GET | `/:id/place` | care circle, administrator | At home, or where |
 | PUT | `/:id/place` | care circle, administrator | Record a stay away from home |
 | DELETE | `/:id/place` | care circle, administrator | Back home |
@@ -35,6 +38,10 @@ role belongs at comes from the escalation rules, so caregivers are tier one and 
 tier two because the rules say so. A caregiver registering an elder takes tier one; adding
 family fills tier two, at once for somebody with an account, or held in
 `chain_invitations` until that number signs up.
+
+Only a caregiver removes people, and never themselves or a responder. Nobody is removed
+while the elder has an emergency open, because dispatch may be asking that person at that
+moment; it is refused with 409 and can be done once the emergency is closed.
 
 ## Address search
 
@@ -54,10 +61,10 @@ columns on `users` for a stay.
 | Path | What it is |
 | --- | --- |
 | `elders.module.ts` | NestJS wiring |
-| `controllers/elders.controller.ts` | All eight endpoints |
-| `services/chain.service.ts` | Registering elders, the chain, adding family |
+| `controllers/elders.controller.ts` | All eleven endpoints |
+| `services/chain.service.ts` | Registering elders, the chain, adding and removing family |
 | `services/address-search.service.ts` | The geocoder, its rate slot and cache |
-| `services/elders.service.ts` | Stays away from home |
+| `services/elders.service.ts` | An elder's details, their home and care level, and stays away from home |
 | `validation/` | The request shapes |
 
 ## Depends on

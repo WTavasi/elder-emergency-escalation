@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -19,10 +20,11 @@ import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 import { AddChainMemberDto } from '../validation/add-chain-member.dto';
 import { AddressSearchDto } from '../validation/address-search.dto';
 import { CreateElderDto } from '../validation/create-elder.dto';
+import { UpdateElderDto } from '../validation/update-elder.dto';
 import { AddressSearchService, type AddressSearchResult } from '../services/address-search.service';
 import { ChainService, type ChainView, type ElderSummary } from '../services/chain.service';
 import { SetPlaceDto } from '../validation/set-place.dto';
-import { EldersService, type PlaceView } from '../services/elders.service';
+import { EldersService, type ElderDetail, type PlaceView } from '../services/elders.service';
 
 /**
  * Where an elder is staying.
@@ -69,6 +71,27 @@ export class EldersController {
     return this.addresses.search(query.q);
   }
 
+  /** One elder: details, home and where they are now. */
+  @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR)
+  @Get(':id')
+  detail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ElderDetail> {
+    return this.elders.detail(id, user.userId, user.role);
+  }
+
+  /** A caregiver changing the elder's care level or registered home. */
+  @Roles(Role.CAREGIVER)
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateElderDto,
+  ): Promise<ElderDetail> {
+    return this.elders.update(id, user.userId, user.role, dto);
+  }
+
   @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR)
   @Get(':id/chain')
   chain(
@@ -76,6 +99,17 @@ export class EldersController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ChainView> {
     return this.chains.chain(id, user.userId, user.role);
+  }
+
+  /** Takes a person, or a held place, out of the chain. */
+  @Roles(Role.CAREGIVER)
+  @Delete(':id/chain/:entryId')
+  removeFromChain(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('entryId', ParseUUIDPipe) entryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ChainView> {
+    return this.chains.removeEntry(id, entryId, user.userId, user.role);
   }
 
   /** Adds a family member by phone, now or when that number signs up. */
