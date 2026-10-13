@@ -109,7 +109,18 @@ a {
   min-height: 100vh;
 }
 
+/*
+  The sidebar stays put while the page scrolls. Without this a long page, History above
+  all, carried the navigation and the account away with it, so the sidebar looked
+  different on every screen depending on how much that screen held. Its own scroll is
+  for a window too short for the sidebar itself.
+*/
 .sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-24);
@@ -199,6 +210,9 @@ a {
     grid-template-columns: 1fr;
   }
   .sidebar {
+    position: static;
+    height: auto;
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--line);
   }
@@ -562,10 +576,12 @@ select {
   width: min(400px, 100%);
 }
 
-.signin__handle {
+/* The full width of the card. Two classes, so it outranks .segmented, declared later. */
+.segmented.signin__handle {
   display: flex;
+  width: 100%;
 }
-.signin__handle button {
+.segmented.signin__handle button {
   flex: 1;
 }
 
