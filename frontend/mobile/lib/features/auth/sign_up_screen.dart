@@ -326,18 +326,18 @@ class _WhatWeKeep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return const Card(
       child: ExpansionTile(
-        leading: const Icon(Icons.privacy_tip_outlined),
-        title: const Text('What MzaziCare keeps about you'),
-        childrenPadding: const EdgeInsets.fromLTRB(
+        leading: Icon(Icons.privacy_tip_outlined),
+        title: Text('What MzaziCare keeps about you'),
+        childrenPadding: EdgeInsets.fromLTRB(
           MzaziSpace.s16,
           0,
           MzaziSpace.s16,
           MzaziSpace.s16,
         ),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
+        children: <Widget>[
           Text(
             'Your name, phone number, email if you give one, and a scrambled form of your '
             'password that cannot be turned back into it.\n\n'

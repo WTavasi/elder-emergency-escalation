@@ -179,8 +179,8 @@ class ApiClient {
       'PATCH',
       '/auth/me',
       body: <String, dynamic>{
-        if (name != null) 'name': name,
-        if (clearEmail) 'email': null else if (email != null) 'email': email,
+        'name': ?name,
+        if (clearEmail) 'email': null else 'email': ?email,
       },
     );
     final Account account = Account.fromJson(body);
