@@ -136,6 +136,14 @@ export const accountMessages = {
   },
 
   /**
+   * The password reset code. Says what it is for, so a code nobody asked for reads as a
+   * warning rather than a puzzle, and says the password is unchanged, so nobody panics.
+   */
+  resetCode(code: string, minutes: number): string {
+    return `${code} is your MzaziCare password reset code. It expires in ${minutes} minutes. If you did not ask for it, ignore this: your password has not changed.`;
+  },
+
+  /**
    * Somebody asked for a code for a number that already has an account. Sent to that
    * number, so the person who asked learns nothing, and the owner learns that somebody
    * tried.

@@ -27,11 +27,13 @@ class MzaziCareApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthController auth = context.watch<AuthController>();
 
-    // The elder scale until we know otherwise. A caregiver seeing one oversized frame
+    // The elder's sizes until we know otherwise. A caregiver seeing one oversized frame
     // for an instant is harmless; an elder seeing a 16pt screen is not.
-    final AppAudience audience = auth.account?.role == Role.elder || auth.account == null
-        ? AppAudience.elder
-        : AppAudience.standard;
+    final AppAudience audience = switch (auth.account?.role) {
+      null => AppAudience.welcome,
+      Role.elder => AppAudience.elder,
+      _ => AppAudience.standard,
+    };
 
     return MaterialApp(
       title: 'MzaziCare',

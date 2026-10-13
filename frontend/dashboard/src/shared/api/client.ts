@@ -5,6 +5,7 @@ import type {
   EventState,
   Session,
   Severity,
+  SignInProviders,
 } from './types';
 
 /**
@@ -188,6 +189,34 @@ export const api = {
     setSession(session);
     return session;
   },
+
+  /** The same sign-in by the email address on the account instead of the phone. */
+  async signInWithEmail(email: string, password: string): Promise<Session> {
+    const session = await request<Session>(
+      '/auth/login',
+      { method: 'POST', body: JSON.stringify({ email, password }) },
+      false,
+    );
+    setSession(session);
+    return session;
+  },
+
+  /**
+   * Hands the ID token from Google's button to the API, which checks it with Google's
+   * keys and signs in the administrator whose account has that address.
+   */
+  async signInWithGoogle(idToken: string): Promise<Session> {
+    const session = await request<Session>(
+      '/auth/google',
+      { method: 'POST', body: JSON.stringify({ idToken }) },
+      false,
+    );
+    setSession(session);
+    return session;
+  },
+
+  /** Which sign-in methods the server offers beyond a password. */
+  providers: (): Promise<SignInProviders> => request<SignInProviders>('/auth/providers', {}, false),
 
   async signOut(): Promise<void> {
     try {

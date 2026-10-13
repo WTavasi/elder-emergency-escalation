@@ -6,7 +6,9 @@
     <!-- An operator console for named people's emergencies. Nothing here should be
          indexed, previewed or cached by anything outside the deployment. -->
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="referrer" content="no-referrer" />
+    <!-- The origin alone, never the path, so no record id leaves in a Referer header;
+         Google's sign-in button needs the origin to check it is on an allowed site. -->
+    <meta name="referrer" content="strict-origin" />
     <title>MzaziCare Operations</title>
   </head>
   <body>

@@ -88,6 +88,44 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('signs in by email with the address, not a phone, in the body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json(session));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api, getSession } = await import('./client');
+    await api.signInWithEmail('ops@example.com', 'secret');
+
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/auth/login');
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string)).toEqual({
+      email: 'ops@example.com',
+      password: 'secret',
+    });
+    expect(getSession()?.accessToken).toBe('access-1');
+  });
+
+  it("passes Google's token to the API untouched, and keeps the session it returns", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json(session));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api, getSession } = await import('./client');
+    await api.signInWithGoogle('header.payload.signature');
+
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/auth/google');
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string)).toEqual({
+      idToken: 'header.payload.signature',
+    });
+    expect(getSession()?.user.role).toBe('ADMINISTRATOR');
+  });
+
+  it('asks the server which sign-in methods it offers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ google: null }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api } = await import('./client');
+    await expect(api.providers()).resolves.toEqual({ google: null });
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/auth/providers');
+  });
+
   it('builds a query string only from the filters that were set', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json([]));
     vi.stubGlobal('fetch', fetchMock);

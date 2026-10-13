@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/care_rings.dart';
 import '../../core/widgets/notice.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
@@ -115,15 +117,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create an account')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(MzaziSpace.s24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+    // The caregiver's type, not the larger sign-in type. Nobody here is an elder: elders
+    // are registered by their caregiver, never through this screen, so the larger sizes
+    // the screens before sign-in keep for them would only make a long form longer.
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    return Theme(
+      data: dark ? MzaziTheme.dark(AppAudience.standard) : MzaziTheme.light(AppAudience.standard),
+      child: Builder(
+        builder: (BuildContext context) => Scaffold(
+          appBar: AppBar(title: const Text('Create an account')),
+          body: CareRings(
+            // From the bottom corner, so the rings are not hidden behind the app bar.
+            origin: Alignment.bottomRight,
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(MzaziSpace.s16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(MzaziSpace.s24),
+                        child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -326,7 +346,9 @@ class _WhatWeKeep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Flat, because it sits inside the form's card: a border is enough to set it apart.
     return const Card(
+      elevation: MzaziElevation.flat,
       child: ExpansionTile(
         leading: Icon(Icons.privacy_tip_outlined),
         title: Text('What MzaziCare keeps about you'),

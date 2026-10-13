@@ -19,7 +19,11 @@ controller with `@Roles(...)`, from `shared/decorators/`.
 | --- | --- | --- | --- |
 | POST | `/verify-phone` | anyone | Send a six-digit code by SMS. Always 202. 10 an hour per address |
 | POST | `/register` | anyone with a code | Caregivers and family members only. 5 an hour |
-| POST | `/login` | anyone | Phone and password. 20 per five minutes |
+| POST | `/login` | anyone | Phone or email, and password. 20 per five minutes |
+| POST | `/forgot-password` | anyone | Send a reset code to a number with an account. Always 202. 10 an hour per address |
+| POST | `/reset-password` | anyone with a code | New password; signs in and ends other sessions. 10 per five minutes |
+| GET | `/providers` | anyone | Whether Google sign-in is set up, for the console |
+| POST | `/google` | anyone with a Google ID token | Administrators whose account has that address. 20 per five minutes |
 | POST | `/refresh` | anyone with a refresh token | Rotates it; a reused one ends every session. 60 per five minutes |
 | POST | `/logout` | signed in | Ends every session for the account |
 | GET | `/me` | signed in | The signed-in account |
@@ -35,6 +39,20 @@ tried" instead of a code, and the endpoint answers the same either way, so it ca
 used to find out who is registered. `elder-service` uses the same codes when a caregiver
 registers an elder.
 
+Reset codes work the same way the other way round: sent only to a number that has an
+account, and nothing to one that does not, with the same answer either way. They are
+stored under their own key, so a sign-up code cannot reset a password or a reset code
+create an account, and they share the cooldown and hourly limit with sign-up codes,
+because those protect the phone and the SMS bill.
+
+## Google
+
+`services/google-identity.service.ts` checks an ID token from Google's button against
+Google's published keys, for `GOOGLE_CLIENT_ID`, from Google's issuer, and for a
+verified address, with no Google library: Node turns the published keys into public keys
+and `@nestjs/jwt` checks the signature. The address must be an existing administrator's
+email. Nothing is created.
+
 ## Data it writes
 
 `users` (the account, the password hash and refresh-token fingerprint), the account's own
@@ -47,9 +65,10 @@ never stored, only its SHA-256 fingerprint.
 | Path | What it is |
 | --- | --- |
 | `auth.module.ts` | NestJS wiring |
-| `controllers/auth.controller.ts` | The eight endpoints |
-| `services/auth.service.ts` | Sign-up, sign-in, refresh, sign-out, profile and password changes |
-| `services/phone-verification.service.ts` | Sending and checking sign-up codes |
+| `controllers/auth.controller.ts` | The twelve endpoints |
+| `services/auth.service.ts` | Sign-up, sign-in, refresh, sign-out, profile and password changes, resets, Google |
+| `services/google-identity.service.ts` | Checking a Google ID token and its keys |
+| `services/phone-verification.service.ts` | Sending and checking sign-up and reset codes |
 | `services/password.service.ts` | scrypt hashing and checking |
 | `services/token.service.ts` | Signing and verifying tokens |
 | `guards/jwt-auth.guard.ts` | Every request needs a valid token unless marked `@Public()` |

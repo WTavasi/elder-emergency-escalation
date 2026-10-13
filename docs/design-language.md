@@ -18,6 +18,13 @@ Semantic hues are limited to three besides the emergency red: amber for waiting,
 for owned, green for closed. Blue is also the focus-ring colour. Escalation tiers get a
 number and a role name, never a colour of their own.
 
+One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
+slightly deeper one, draws the rings behind the screens before sign-in, on the app and
+the console alike. They carry no meaning and are in no contrast pair, which is only
+acceptable because nothing that has to be read is ever placed on them: the forms sit on
+cards. They are kept out of every screen after sign-in, where the red has to mean an
+emergency and nothing else.
+
 ## State appearance
 
 | State | Appearance | Meaning |
@@ -90,10 +97,19 @@ One family per audience, and it is a legibility decision rather than a stylistic
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
 
+Before anybody has signed in, the app cannot know whose phone it is, so the sign-in and
+reset screens take the elder's face and sizes with regular-weight body text, and bold only
+for headings and buttons. Bold throughout begins once the account is known to be an
+elder's. Sign-up uses the caregiver's type, because elders are registered by their
+caregiver and never sign up themselves.
+
 Fonts are bundled into the app from `frontend/mobile/assets/fonts/` and self-hosted by the
 dashboard from `frontend/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
-matters for more than principle: the console reads an elder's name and address, so it
-makes no third-party request at all, and the API's content security policy would deny one.
+matters for more than principle: the console reads an elder's name and address, so once
+signed in it makes no third-party request at all. The one exception is before sign-in,
+when Google sign-in is set up: the sign-in page fetches Google's button, and the console
+reloads after signing in so the page that shows anybody's details never carries it
+(`docs/running.md`, Google sign-in on the console).
 The licence text ships inside the app as an asset and is registered with Flutter's licence
 page, because bundling a font is distributing it and the Open Font Licence requires the
 licence to travel with it.

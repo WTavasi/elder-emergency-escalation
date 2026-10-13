@@ -91,6 +91,17 @@ finding the elder's home by address search, and adds family by phone number. Eve
 field has a country button, Kenya to begin with, and accepts the number however it is
 typed.
 
+**A forgotten password.** **Forgot your password?** on the sign-in screen sends a code to
+the phone on the account and sets a new password with it, then signs straight in. The
+number already typed on the sign-in screen is carried over.
+
+**Before sign-in.** The sign-in and reset screens use the elder's type sizes, because an
+elder may be the one signing in, but regular-weight body text: bold everywhere is kept
+for an account known to be an elder's (`AppAudience.welcome` in the theme). Sign-up uses
+the caregiver's type, since elders never sign up themselves. All three draw the same
+background, rings spreading from one corner (`lib/core/widgets/care_rings.dart`), with
+everything that has to be read on a card above it.
+
 **Looking after an elder.** Tapping an elder in **People I look after** opens their page:
 a call button, where they are now (with a way to record a stay elsewhere and to mark them
 back home), their home, how much help they need, and their chain in order. A caregiver
@@ -114,7 +125,7 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 
 | Folder | What is in it |
 | --- | --- |
-| `lib/features/auth/` | Sign-in and sign-up |
+| `lib/features/auth/` | Sign-in, sign-up and a forgotten password |
 | `lib/features/elders/` | People I look after: registering an elder, their page and chain, adding and removing family |
 | `lib/features/profile/` | My account: name, email and password |
 | `lib/features/elder/` | The panic screen, its controller, and the panic control |
@@ -123,7 +134,7 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | `lib/core/phone/` | The phone field, its country list and reading a typed number |
 | `lib/core/auth/` | Who is signed in, and where the session is kept |
 | `lib/core/theme/` | The theme, built from the design tokens |
-| `lib/core/widgets/` | Shared pieces: the notice banner and the sign-out button |
+| `lib/core/widgets/` | Shared pieces: the notice banner, the sign-out button and the sign-in background |
 
 `main.dart` starts the app and registers the font licences; `app.dart` chooses the
 screen for the signed-in role. Tests are in `test/`, one file per controller or screen.

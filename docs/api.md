@@ -16,7 +16,11 @@ the REST Client extension and a **Send Request** link appears above each one.
 | GET | `/health` | none | Postgres and Redis checked separately; 503 if either is down |
 | POST | `/api/v1/auth/verify-phone` | none | Sends a six-digit sign-up code by SMS. Always 202, sent or not |
 | POST | `/api/v1/auth/register` | none | Sign-up for caregivers and family members, with the code |
-| POST | `/api/v1/auth/login` | none | Phone and password, returns both tokens |
+| POST | `/api/v1/auth/login` | none | `{ phone, password }` or `{ email, password }`, returns both tokens |
+| POST | `/api/v1/auth/forgot-password` | none | Sends a six-digit reset code to a number with an account. Always 202 |
+| POST | `/api/v1/auth/reset-password` | none | `{ phone, code, newPassword }`; signs in and ends every other session |
+| GET | `/api/v1/auth/providers` | none | `{ google: { clientId } \| null }`, for the console's sign-in screen |
+| POST | `/api/v1/auth/google` | none | `{ idToken }` from Google's button; administrators only |
 | POST | `/api/v1/auth/refresh` | none | Rotates the refresh token; a replay revokes every session |
 | POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
@@ -40,7 +44,24 @@ Signing up also records the privacy consent, and turns any chain place held for 
 number into a care assignment.
 
 A wrong password and an unknown phone number produce the same message through the same
-code path, so the API cannot be used to discover who is registered.
+code path, so the API cannot be used to discover who is registered. The same holds for an
+email address. Given both a phone and an email, the phone is used.
+
+**A forgotten password takes two requests**, the same shape as sign-up. `forgot-password`
+with `{ phone }` sends a reset code to a number that has an account and sends nothing to
+one that does not, answering 202 either way. `reset-password` with the code and a new
+password sets it, issues fresh tokens and so ends any other session at its next refresh.
+Reset codes and sign-up codes are kept under separate keys, so one can never be used as
+the other; they share the per-number cooldown and hourly limit. The app offers this; the
+console does not, because an administrator account is managed by another administrator.
+
+**Google sign-in is for the console, and for administrators only.** The console shows
+Google's button when `GOOGLE_CLIENT_ID` is set. The ID token it returns is checked here
+against Google's published keys (cached as Google's headers say), for this client ID,
+from Google's issuer, unexpired, and for a verified address. The address then has to be
+the email on an existing administrator account: nothing is ever created by it, and any
+other role is refused, because every other account belongs in the app, where the phone
+number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 
 ## Emergencies
 

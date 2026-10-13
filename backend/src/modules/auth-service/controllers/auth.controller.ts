@@ -7,9 +7,11 @@ import {
 import { Public } from '../../../shared/decorators/public.decorator';
 import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 import { ChangePasswordDto } from '../validation/change-password.dto';
+import { GoogleSignInDto } from '../validation/google-sign-in.dto';
 import { LoginDto } from '../validation/login.dto';
 import { RefreshDto } from '../validation/refresh.dto';
 import { RegisterDto } from '../validation/register.dto';
+import { ResetPasswordDto } from '../validation/reset-password.dto';
 import { StartVerificationDto } from '../validation/start-verification.dto';
 import { UpdateProfileDto } from '../validation/update-profile.dto';
 import { PhoneVerificationService } from '../services/phone-verification.service';
@@ -63,6 +65,46 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshDto): Promise<AuthResult> {
     return this.auth.refresh(dto.refreshToken);
+  }
+
+  /**
+   * Sends a password reset code to a phone with an account. Always 202 with nothing in
+   * the body, like verify-phone, so it cannot be used to learn who is registered.
+   */
+  @Public()
+  @Throttle(10, 3600)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: StartVerificationDto): Promise<void> {
+    await this.auth.forgotPassword(dto.phone);
+  }
+
+  /**
+   * A new password with the code, returning tokens so the person is signed straight in.
+   * Each code allows five guesses on its own; this limit is per address on top of that.
+   */
+  @Public()
+  @Throttle(10, 300)
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<AuthResult> {
+    return this.auth.resetPassword(dto);
+  }
+
+  /** Whether the console should offer Google, and with which client ID. */
+  @Public()
+  @Get('providers')
+  providers(): { google: { clientId: string } | null } {
+    return this.auth.providers();
+  }
+
+  /** Administrators only, with an account that already has the Google address. */
+  @Public()
+  @Throttle(20, 300)
+  @HttpCode(HttpStatus.OK)
+  @Post('google')
+  google(@Body() dto: GoogleSignInDto): Promise<AuthResult> {
+    return this.auth.signInWithGoogle(dto.idToken);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)

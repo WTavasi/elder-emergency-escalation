@@ -102,6 +102,22 @@ void main() {
       }
     });
 
+    test('keeps the elder sizes before sign-in, without making every word bold', () {
+      // Anybody can be on the sign-in screen, an elder included, so the sizes are the
+      // elder's. Bold body text is kept for an account known to be an elder's.
+      final ThemeData welcome = MzaziTheme.light(AppAudience.welcome);
+      final ThemeData elder = MzaziTheme.light(AppAudience.elder);
+
+      expect(welcome.textTheme.bodyLarge?.fontSize, elder.textTheme.bodyLarge?.fontSize);
+      expect(
+        welcome.textTheme.bodyLarge?.fontSize,
+        greaterThanOrEqualTo(MzaziA11y.elderMinBodySize),
+      );
+      expect(MzaziTheme.touchTarget(AppAudience.welcome), MzaziA11y.elderMinTouchTarget);
+      expect(welcome.textTheme.bodyLarge?.fontWeight, MzaziWeight.body);
+      expect(elder.textTheme.bodyLarge?.fontWeight, MzaziWeight.elderBody);
+    });
+
     test('gives an elder larger text than a caregiver, which is the point of the split', () {
       expect(
         MzaziTheme.light(AppAudience.elder).textTheme.bodyLarge!.fontSize,

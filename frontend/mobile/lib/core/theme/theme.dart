@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
-/// The two audiences this app serves, which need different type and touch sizes.
+/// The audiences this app serves, which need different type and touch sizes.
 ///
 /// Not a preference and not a setting. An elder-facing screen is built to the elder
 /// floors because of who is using it, and a caregiver's alert list would be unusable
 /// at 22pt body text with 72dp rows. The scale follows the role, and the role comes
 /// from the account.
-enum AppAudience { elder, standard }
+///
+/// [welcome] is for the screens before anybody is signed in, where the person could be
+/// anyone, an elder included. It keeps the elder's sizes and face, so nobody meets a
+/// screen too small to read, but body text is regular weight: bold everywhere is a
+/// decision for somebody known to need it, and on a form full of explanation it makes
+/// everything shout equally, which reads as nothing standing out.
+enum AppAudience {
+  elder,
+  welcome,
+  standard;
+
+  /// The elder's type sizes, face and touch targets.
+  bool get isLarge => this != AppAudience.standard;
+}
 
 /// Builds the app's themes from the generated tokens.
 ///
@@ -71,14 +84,14 @@ abstract final class MzaziTheme {
   );
 
   static double bodySize(AppAudience audience) =>
-      audience == AppAudience.elder ? MzaziTypeElder.body : MzaziTypeStandard.body;
+      audience.isLarge ? MzaziTypeElder.body : MzaziTypeStandard.body;
 
-  static double touchTarget(AppAudience audience) => audience == AppAudience.elder
+  static double touchTarget(AppAudience audience) => audience.isLarge
       ? MzaziA11y.elderMinTouchTarget
       : MzaziA11y.standardMinTouchTarget;
 
   static double cardRadius(AppAudience audience) =>
-      audience == AppAudience.elder ? MzaziRadius.elderCard : MzaziRadius.card;
+      audience.isLarge ? MzaziRadius.elderCard : MzaziRadius.card;
 
   static ThemeData _build({
     required AppAudience audience,
@@ -93,7 +106,7 @@ abstract final class MzaziTheme {
     required Color onEmergency,
     required Color focus,
   }) {
-    final bool elder = audience == AppAudience.elder;
+    final bool elder = audience.isLarge;
     final double body = bodySize(audience);
     final double target = touchTarget(audience);
 
@@ -104,8 +117,11 @@ abstract final class MzaziTheme {
     final String family = elder ? MzaziFont.elder : MzaziFont.sans;
 
     // The elder path is bold throughout, which is a legibility decision rather than a
-    // stylistic one and therefore lives in tokens.json.
-    final FontWeight bodyWeight = elder ? MzaziWeight.elderBody : MzaziWeight.body;
+    // stylistic one and therefore lives in tokens.json. Only once the account is known
+    // to be an elder's: see [AppAudience.welcome].
+    final FontWeight bodyWeight = audience == AppAudience.elder
+        ? MzaziWeight.elderBody
+        : MzaziWeight.body;
 
     final TextTheme textTheme = TextTheme(
       displayLarge: _text(

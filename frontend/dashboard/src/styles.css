@@ -522,14 +522,73 @@ select {
 }
 
 .signin {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: var(--space-24);
 }
 
+/*
+  Rings spreading from the top-left corner, the way a call for help goes out to the
+  people around somebody: the same background the app's sign-in carries. A circle
+  centred on the corner, clipped round, filled with alternating bands. Decoration only,
+  in the decorative token pair, and nothing that has to be read sits on it.
+*/
+.signin::before {
+  --reach: 62vmax;
+  --step: calc(var(--reach) / 7);
+  content: '';
+  position: absolute;
+  top: calc(var(--reach) * -1);
+  left: calc(var(--reach) * -1);
+  width: calc(var(--reach) * 2);
+  height: calc(var(--reach) * 2);
+  border-radius: 50%;
+  border: 1.5px solid var(--decor-ring);
+  background: repeating-radial-gradient(
+    circle at center,
+    var(--decor-wash) 0 calc(var(--step) - 1.5px),
+    var(--decor-ring) calc(var(--step) - 1.5px) var(--step),
+    var(--bg) var(--step) calc(var(--step) * 2 - 1.5px),
+    var(--decor-ring) calc(var(--step) * 2 - 1.5px) calc(var(--step) * 2)
+  );
+  pointer-events: none;
+}
+
 .signin__card {
+  position: relative;
   width: min(400px, 100%);
+}
+
+.signin__handle {
+  display: flex;
+}
+.signin__handle button {
+  flex: 1;
+}
+
+/* A rule either side of the word, between the password and Google. */
+.signin__or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin: var(--space-16) 0;
+  color: var(--text-faint);
+  font-size: var(--font-size-small);
+}
+.signin__or::before,
+.signin__or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.signin__google {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
 }
 
 .detail-grid {

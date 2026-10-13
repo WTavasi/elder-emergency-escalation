@@ -64,6 +64,11 @@ function fakeRedis() {
 
 const PHONE = '+254712345678';
 
+/** The code inside a reset SMS. */
+const resetCodeFrom = (sms: { send: jest.Mock }): string =>
+  /^(\d{6}) is your MzaziCare password reset code/.exec(sms.send.mock.calls[0][1] as string)?.[1] ??
+  '';
+
 function build(existingAccount = false) {
   const redis = fakeRedis();
   const prisma = {
@@ -141,6 +146,47 @@ describe('PhoneVerificationService', () => {
       await service.start(PHONE);
     }
     expect(sms.send).toHaveBeenCalledTimes(MAX_SENDS_PER_HOUR);
+  });
+
+  describe('reset codes', () => {
+    it('sends a reset code to a number with an account', async () => {
+      const { service, redis, sms } = build(true);
+      await service.start(PHONE, 'reset');
+
+      const code = resetCodeFrom(sms);
+      expect(code).toMatch(/^\d{6}$/);
+      expect((sms.send.mock.calls[0][1] as string).length).toBeLessThanOrEqual(160);
+      expect(redis.hashes.has(`reset:code:${PHONE}`)).toBe(true);
+      await expect(service.consume(PHONE, code, 'reset')).resolves.toBeUndefined();
+    });
+
+    it('sends nothing to a number with no account', async () => {
+      const { service, redis, sms } = build(false);
+      await service.start(PHONE, 'reset');
+      expect(sms.send).not.toHaveBeenCalled();
+      expect(redis.hashes.size).toBe(0);
+    });
+
+    it('never lets a reset code stand in for a sign-up code, or the reverse', async () => {
+      const reset = build(true);
+      await reset.service.start(PHONE, 'reset');
+      await expect(reset.service.consume(PHONE, resetCodeFrom(reset.sms))).rejects.toThrow(
+        BadRequestException,
+      );
+
+      const signup = build(false);
+      await signup.service.start(PHONE);
+      await expect(signup.service.consume(PHONE, codeFrom(signup.sms), 'reset')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('shares the cooldown with sign-up codes', async () => {
+      const { service, sms } = build(true);
+      await service.start(PHONE, 'reset');
+      await service.start(PHONE, 'reset');
+      expect(sms.send).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('gives the same answer for a number that was never sent a code', async () => {

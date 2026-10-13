@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { NotificationsModule } from '../notification-service/notifications.module';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
+import { GoogleIdentityService } from './services/google-identity.service';
 import { PasswordService } from './services/password.service';
 import { PhoneVerificationService } from './services/phone-verification.service';
 import { TokenService } from './services/token.service';
@@ -12,7 +13,13 @@ import { TokenService } from './services/token.service';
   // different secrets, passed per call, so one leaked secret cannot mint the other.
   imports: [JwtModule.register({}), NotificationsModule],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, TokenService, PhoneVerificationService],
+  providers: [
+    AuthService,
+    PasswordService,
+    TokenService,
+    PhoneVerificationService,
+    GoogleIdentityService,
+  ],
   exports: [PasswordService, TokenService, PhoneVerificationService],
 })
 export class AuthModule {}

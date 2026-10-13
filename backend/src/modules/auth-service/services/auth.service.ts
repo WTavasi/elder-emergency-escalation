@@ -12,10 +12,12 @@ import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { claimInvitations } from '../../../shared/utils/chain';
 import { redactPhone } from '../../../shared/utils/redaction';
 import { PasswordService } from './password.service';
-import { PhoneVerificationService } from './phone-verification.service';
+import { GoogleIdentityService } from './google-identity.service';
+import { PhoneVerificationService, WRONG_CODE } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { LoginDto } from '../validation/login.dto';
 import type { RegisterDto } from '../validation/register.dto';
+import type { ResetPasswordDto } from '../validation/reset-password.dto';
 import type { ChangePasswordDto } from '../validation/change-password.dto';
 import type { UpdateProfileDto } from '../validation/update-profile.dto';
 
@@ -54,6 +56,7 @@ export class AuthService {
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
     private readonly verification: PhoneVerificationService,
+    private readonly google: GoogleIdentityService,
   ) {}
 
   /**
@@ -72,7 +75,7 @@ export class AuthService {
           data: {
             name: dto.name,
             phone: dto.phone,
-            email: dto.email ?? null,
+            email: dto.email?.trim().toLowerCase() ?? null,
             role: dto.role,
             passwordHash: this.passwords.hash(dto.password),
           },
@@ -108,12 +111,17 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResult> {
-    const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const byPhone = dto.phone !== undefined;
+    const user = await this.prisma.user.findUnique({
+      where: byPhone ? { phone: dto.phone } : { email: dto.email!.trim().toLowerCase() },
+    });
 
     // One message and one code path for "no such account" and "wrong password", so the
     // API cannot be used to discover who is registered.
     if (!user || !this.passwords.verify(dto.password, user.passwordHash)) {
-      throw new UnauthorizedException('Phone number or password is incorrect');
+      throw new UnauthorizedException(
+        byPhone ? 'Phone number or password is incorrect' : 'Email or password is incorrect',
+      );
     }
 
     // Transparent upgrade if the cost parameters were raised since this hash was made.
@@ -213,6 +221,62 @@ export class AuthService {
     });
     this.logger.log(`Password changed for ${redactPhone(user.phone)}; other sessions end`);
     return this.issue(updated);
+  }
+
+  /**
+   * Sends a password reset code to a number with an account, and nothing to one
+   * without. The caller is told the same either way.
+   */
+  async forgotPassword(phone: string): Promise<void> {
+    await this.verification.start(phone, 'reset');
+  }
+
+  /**
+   * Sets a new password for whoever holds the phone, and signs them in.
+   *
+   * The code is the whole proof, exactly as at sign-up: whoever can read the SMS owns
+   * the account. Issuing new tokens replaces the stored refresh fingerprint, so a
+   * session somebody else was holding with the old password ends at its next refresh.
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<AuthResult> {
+    await this.verification.consume(dto.phone, dto.code, 'reset');
+
+    const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    // A reset code is only ever sent to a number with an account. One deleted since is
+    // answered like any other code that no longer works.
+    if (!user) throw new BadRequestException(WRONG_CODE);
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: this.passwords.hash(dto.newPassword) },
+    });
+    this.logger.log(`Password reset by code for ${redactPhone(user.phone)}; other sessions end`);
+    return this.issue(updated);
+  }
+
+  /**
+   * Signs an administrator in with Google, for the console.
+   *
+   * Google proves an email address; the account has to exist already with that address
+   * and be an administrator's. Nothing is created here, and no other role can use it,
+   * because every other account belongs in the app, where the phone is the handle.
+   */
+  async signInWithGoogle(idToken: string): Promise<AuthResult> {
+    const email = await this.google.verify(idToken);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || user.role !== Role.ADMINISTRATOR) {
+      throw new UnauthorizedException(
+        'No administrator account uses this Google address. Sign in with your phone number or email.',
+      );
+    }
+    this.logger.log(`Administrator ${redactPhone(user.phone)} signed in with Google`);
+    return this.issue(user);
+  }
+
+  /** Which sign-in methods beyond a password this server offers, for the console. */
+  providers(): { google: { clientId: string } | null } {
+    const clientId = this.google.clientId;
+    return { google: clientId ? { clientId } : null };
   }
 
   async me(userId: string): Promise<UserSummary> {
