@@ -223,29 +223,38 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
         </div>
       ) : null}
 
-      <table className="visually-hidden">
-        <caption>
-          {series === 'raised' ? 'Emergencies raised' : 'Median time to an answer'}, by day
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Day</th>
-            <th scope="col">Raised</th>
-            <th scope="col">Answered</th>
-            <th scope="col">Median time to an answer</th>
-          </tr>
-        </thead>
-        <tbody>
-          {points.map((point) => (
-            <tr key={point.date}>
-              <td>{point.date}</td>
-              <td>{point.raised}</td>
-              <td>{point.acknowledged}</td>
-              <td>{point.medianSeconds === null ? 'none' : formatDuration(point.medianSeconds)}</td>
+      {/*
+        Hidden in a wrapper, not on the table itself: a table ignores the height and
+        overflow that hide it, so a hidden table kept its full height off-screen, made the
+        page taller than its layout, and cut short the sidebar's sticking.
+      */}
+      <div className="visually-hidden">
+        <table>
+          <caption>
+            {series === 'raised' ? 'Emergencies raised' : 'Median time to an answer'}, by day
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col">Raised</th>
+              <th scope="col">Answered</th>
+              <th scope="col">Median time to an answer</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {points.map((point) => (
+              <tr key={point.date}>
+                <td>{point.date}</td>
+                <td>{point.raised}</td>
+                <td>{point.acknowledged}</td>
+                <td>
+                  {point.medianSeconds === null ? 'none' : formatDuration(point.medianSeconds)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

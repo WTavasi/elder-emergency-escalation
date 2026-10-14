@@ -1487,6 +1487,34 @@ select {
 .modal__box--wide {
   width: min(560px, 100%);
 }
+
+/* The side panel: the right edge, the full height, sliding in. */
+.modal--side {
+  place-items: stretch end;
+  padding: 0;
+}
+.modal--side .modal__box {
+  width: min(480px, 100%);
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  border-width: 0 0 0 1px;
+  animation: sheet-in var(--motion-sheet) ease-out;
+}
+.modal--side .modal__body {
+  flex: 1;
+}
+@keyframes sheet-in {
+  from {
+    transform: translateX(var(--space-32));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal--side .modal__box {
+    animation: none;
+  }
+}
 .modal__head {
   display: flex;
   align-items: center;

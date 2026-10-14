@@ -15,12 +15,18 @@ export function Modal({
   footer,
   onClose,
   wide = false,
+  side = false,
 }: {
   title: string;
   children: ReactNode;
   footer: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  /**
+   * A panel along the right edge, full height, instead of a box in the middle: for
+   * detail that sits beside the page rather than interrupting it.
+   */
+  side?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -66,7 +72,7 @@ export function Modal({
   }, []);
 
   return (
-    <div className="modal">
+    <div className={`modal${side ? ' modal--side' : ''}`}>
       <div className="modal__scrim" aria-hidden="true" onClick={onClose} />
       <div
         ref={box}
