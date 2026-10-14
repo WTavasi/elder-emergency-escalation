@@ -84,7 +84,6 @@ export function Reporting() {
       <div className="page-head">
         <div>
           <h1>Reporting</h1>
-          <p>Measured from the audit trail and the delivery log.</p>
         </div>
         {/*
           One segmented control rather than three buttons. The chosen window used to be

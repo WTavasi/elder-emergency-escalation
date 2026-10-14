@@ -107,7 +107,7 @@ They were briefly the same file, which is how the published database port and
 
 ## Retention is enforced, not just configured
 
-The privacy notice and the console's data handling page both tell people how long their
+The privacy notice and the console's privacy panel both tell people how long their
 data is kept. For a while the windows existed as configuration and nothing acted on
 them, which made a published promise the system could not keep.
 

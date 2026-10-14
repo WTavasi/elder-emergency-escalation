@@ -568,6 +568,12 @@ tbody tr:hover td {
 }
 
 /* Figures right-aligned so their places line up; states and bands centred. */
+.th__note {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 th.num,
 td.num {
   text-align: right;
@@ -1551,4 +1557,87 @@ legend {
 }
 .button--primary .icon {
   margin-right: 0;
+}
+
+.pager__note {
+  display: block;
+  font-size: var(--font-size-micro);
+  color: var(--text-faint);
+}
+
+/* A heading with a small marker beside it. */
+.title-with-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* A quiet label with an explanation that opens on hover or keyboard focus. */
+.tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--surface-sunk);
+  color: var(--text-soft);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-micro);
+  font-weight: 600;
+  line-height: 1.8;
+  cursor: help;
+}
+.tip {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  left: 0;
+  z-index: 10;
+  width: max-content;
+  max-width: 320px;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-input);
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 400;
+  line-height: 1.4;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--motion-state) ease;
+}
+.tag:hover .tip,
+.tag:focus-visible .tip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* A button that reads as a link, for an action that opens something rather than doing it. */
+.link-button {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--focus);
+  font-weight: 400;
+  text-decoration: underline;
+}
+.link-button:hover:not(:disabled) {
+  background: none;
+}
+
+.prose h3 {
+  margin: var(--space-16) 0 var(--space-4);
+  font-size: var(--font-size-small);
+}
+.prose h3:first-child {
+  margin-top: 0;
+}
+.prose p,
+.prose ul {
+  margin: 0 0 var(--space-8);
+  font-size: var(--font-size-small);
+}
+.prose ul {
+  padding-left: var(--space-16);
 }

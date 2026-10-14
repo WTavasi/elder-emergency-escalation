@@ -4,6 +4,7 @@ import type { SignInProviders } from '../../shared/api/types';
 import { useAuth } from '../../shared/state/AuthContext';
 import { PhoneInput } from '../../shared/phone/PhoneInput';
 import { DEFAULT_COUNTRY, readPhone } from '../../shared/phone/read-phone';
+import { PrivacyPanel } from '../privacy/PrivacyPanel';
 import { GoogleButton, googleScriptLoaded } from './GoogleButton';
 
 type Handle = 'phone' | 'email';
@@ -32,6 +33,7 @@ export function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [providers, setProviders] = useState<SignInProviders | null>(null);
+  const [privacy, setPrivacy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +189,15 @@ export function SignIn() {
           An administrator account can see every elder&apos;s emergency record. Sign out when you
           leave this machine.
         </p>
+        <button
+          type="button"
+          className="link-button micro"
+          onClick={() => setPrivacy(true)}
+          style={{ marginTop: 'var(--space-8)' }}
+        >
+          Privacy and data
+        </button>
+        {privacy ? <PrivacyPanel signedIn={false} onClose={() => setPrivacy(false)} /> : null}
       </form>
     </main>
   );

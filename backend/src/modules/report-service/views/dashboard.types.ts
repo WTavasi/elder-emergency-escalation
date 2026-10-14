@@ -39,6 +39,19 @@ export interface ChannelReliability {
   successRatePercent: number | null;
 }
 
+/**
+ * How long records are kept, as the server enforces it, so the console can state the
+ * real figures rather than a promise written into its own text.
+ */
+export interface DataPolicy {
+  retention: {
+    /** False when the sweep is switched off, in which case nothing is deleted. */
+    enabled: boolean;
+    closedEmergencyDays: number;
+    auditLogDays: number;
+  };
+}
+
 /** One day of the window, in the deployment's own time zone. */
 export interface DailyPoint {
   /** YYYY-MM-DD. */

@@ -6,6 +6,7 @@ import type {
   ChannelReliability,
   DailyPoint,
   DashboardOverview,
+  DataPolicy,
   EscalationProfile,
   LiveCounts,
   ResponseTimes,
@@ -99,6 +100,17 @@ export class DashboardService {
         escalationRatePercent: previousEscalation.escalationRatePercent,
       },
       daily,
+    };
+  }
+
+  /** The retention settings the sweep runs with, read from the same configuration. */
+  policy(): DataPolicy {
+    return {
+      retention: {
+        enabled: this.config.get<boolean>('RETENTION_ENABLED', true),
+        closedEmergencyDays: this.config.get<number>('RETENTION_RESOLVED_EVENT_DAYS', 365),
+        auditLogDays: this.config.get<number>('RETENTION_AUDIT_LOG_DAYS', 365),
+      },
     };
   }
 

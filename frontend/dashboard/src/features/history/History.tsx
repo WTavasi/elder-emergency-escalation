@@ -5,6 +5,7 @@ import { Icon } from '../../shared/components/Icon';
 import { AlertRow, Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
+import { retentionSentence } from '../privacy/PrivacyPanel';
 
 const STATES: EventState[] = [
   'TRIGGERED',
@@ -107,6 +108,10 @@ export function History() {
     reload,
   } = useLoader(fetcher, 'Could not load the emergency history.');
 
+  // How long these records are kept, from the server's own settings: the short layer of
+  // the privacy notice, in the place the records are. Silent if it cannot be read.
+  const { data: policy } = useLoader(api.policy, 'Could not load the retention policy.');
+
   const total = result?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const first = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -146,7 +151,6 @@ export function History() {
       <div className="page-head">
         <div>
           <h1>Emergency history</h1>
-          <p>Every emergency on record, newest first.</p>
         </div>
         <button
           type="button"
@@ -311,6 +315,7 @@ export function History() {
           pages={pages}
           onPage={setPage}
           noun="emergencies"
+          note={policy ? retentionSentence(policy).split('. ')[0] + '.' : undefined}
         />
       </div>
     </>

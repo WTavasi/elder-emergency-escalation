@@ -155,10 +155,6 @@ export function Users() {
       <div className="page-head">
         <div>
           <h1>Users</h1>
-          <p>
-            Every account. Responders and administrators are added here; caregivers and family sign
-            themselves up.
-          </p>
         </div>
         <button
           type="button"

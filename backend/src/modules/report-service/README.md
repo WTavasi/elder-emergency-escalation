@@ -16,6 +16,7 @@ reliably each channel delivers.
 | Method | Path | Who | What |
 | --- | --- | --- | --- |
 | GET | `/overview?days=` | administrator | Every figure the reporting screen shows |
+| GET | `/policy` | administrator | How long records are kept, as the retention sweep enforces it |
 
 Response times come with a median, a mean and a sample size, because a mean over a
 handful of emergencies is not a finding on its own.

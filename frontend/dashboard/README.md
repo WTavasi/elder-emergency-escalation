@@ -55,8 +55,9 @@ Each screen is a folder under `src/features/`; anything two screens share is und
 | `src/features/board/` | Open emergencies, with the countdowns |
 | `src/features/event-detail/` | One emergency: its chain and what has happened |
 | `src/features/history/` | The searchable record |
-| `src/features/reporting/` | Response times, escalation depth, delivery reliability |
-| `src/features/data-handling/` | What the console shows, stores and does not collect |
+| `src/features/reporting/` | Response times, escalation depth, delivery reliability, trends |
+| `src/features/users/` | Every account: adding staff, editing, deactivating |
+| `src/features/privacy/` | The privacy and data panel |
 | `src/shared/phone/` | The phone field with its country list, and reading a typed number |
 | `src/shared/api/` | The HTTP client, the socket, and the response types |
 | `src/shared/state/` | Who is signed in, and the live list of open emergencies |
@@ -72,12 +73,22 @@ stylesheet. Tests sit beside the file they test.
 - **Open emergencies.** Everything still live, ordered by whoever has been waiting
   longest without an answer, with the time left on the current tier counting down.
   Updated by the socket, refreshed over HTTP when the socket drops.
-- **History.** The searchable record, filtered by state, severity and date. Every
-  filter is applied by the API, so records nobody asked to see never reach the page.
-- **Reporting.** Response times as a median as well as a mean, how far emergencies
-  travelled down the chain, and per-channel delivery reliability.
-- **Data handling.** What the console shows, what this browser stores and what is
-  not collected.
+- **History.** The searchable record, a page at a time, by elder name, state, severity
+  and date, with a CSV export. Every filter is applied by the API, so records nobody
+  asked to see never reach the page.
+- **Reporting.** Each figure for the period with how it moved against the period before,
+  a daily chart, how far emergencies travelled down the chain, and per-channel delivery
+  reliability.
+- **Users.** Every account, with adding responders and administrators, editing, and
+  deactivating or reactivating, one at a time or as a selection.
+
+## Privacy, in layers
+
+There is no privacy page in the navigation. The statement is one link away from
+everywhere, as **Privacy and data** under the sign-in form and in the account menu, and
+the short versions sit where the data is: a **View only** marker on an emergency saying
+the care chain acts and an administrator reads, and a line under History giving the
+retention period the server actually enforces (`GET /api/v1/dashboard/policy`).
 
 ## Design
 

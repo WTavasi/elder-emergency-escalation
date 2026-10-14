@@ -222,6 +222,7 @@ export function Pager({
   pages,
   onPage,
   noun,
+  note,
 }: {
   first: number;
   last: number;
@@ -230,6 +231,8 @@ export function Pager({
   pages: number;
   onPage: (page: number) => void;
   noun: string;
+  /** One more fact about the whole table, such as how long its records are kept. */
+  note?: string;
 }) {
   const count = new Intl.NumberFormat();
   return (
@@ -244,6 +247,7 @@ export function Pager({
             <span className="mono">{count.format(total)}</span> {noun}
           </>
         )}
+        {note ? <span className="pager__note">{note}</span> : null}
       </p>
       <div className="pager__controls">
         <span className="micro">

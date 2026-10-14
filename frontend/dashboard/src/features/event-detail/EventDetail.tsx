@@ -121,7 +121,20 @@ export function EventDetail() {
     <>
       <div className="page-head">
         <div>
-          <h1>{alert.elder.name}</h1>
+          <h1 className="title-with-tag">
+            {alert.elder.name}
+            {/*
+              The short layer of the privacy notice, where the missing buttons would be:
+              an administrator reads, the care chain acts.
+            */}
+            <span className="tag" tabIndex={0} aria-describedby="view-only-tip">
+              View only
+              <span role="tooltip" id="view-only-tip" className="tip">
+                Taking on, declining and closing an emergency belong to the people in this
+                elder&apos;s care chain. The server refuses them from an administrator account.
+              </span>
+            </span>
+          </h1>
           <p>
             Raised {formatClock(alert.triggeredAt)}
             {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}

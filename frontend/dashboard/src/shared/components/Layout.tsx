@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { CrumbProvider, useCurrentCrumb } from '../state/Breadcrumb';
 import { useOpenAlerts } from '../state/OpenAlerts';
+import { PrivacyPanel } from '../../features/privacy/PrivacyPanel';
 import { humanise } from '../utils/format';
 import { Icon, type IconName } from './Icon';
 
@@ -11,7 +12,6 @@ const SECTIONS: { to: string; label: string; icon: IconName }[] = [
   { to: '/history', label: 'History', icon: 'history' },
   { to: '/reporting', label: 'Reporting', icon: 'reporting' },
   { to: '/users', label: 'Users', icon: 'people' },
-  { to: '/data-handling', label: 'Data handling', icon: 'privacy' },
 ];
 
 const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
@@ -209,6 +209,7 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
 function AccountMenu() {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -249,12 +250,24 @@ function AccountMenu() {
       </button>
       {open ? (
         <div className="menu menu--right" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setPrivacy(true);
+            }}
+          >
+            <Icon name="privacy" size={18} />
+            Privacy and data
+          </button>
           <button type="button" role="menuitem" onClick={() => void signOut()}>
             <Icon name="logout" size={18} />
             Sign out
           </button>
         </div>
       ) : null}
+      {privacy ? <PrivacyPanel signedIn onClose={() => setPrivacy(false)} /> : null}
     </div>
   );
 }

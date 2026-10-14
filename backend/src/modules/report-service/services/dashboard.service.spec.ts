@@ -33,6 +33,19 @@ const build = (prisma: PrismaMock, target = 300): DashboardService =>
   );
 
 describe('DashboardService', () => {
+  it('states the retention windows the sweep runs with', () => {
+    const service = new DashboardService(
+      buildPrisma() as unknown as PrismaService,
+      {
+        get: (key: string, fallback: unknown) =>
+          ({ RETENTION_RESOLVED_EVENT_DAYS: 180, RETENTION_ENABLED: true })[key] ?? fallback,
+      } as unknown as ConfigService,
+    );
+    expect(service.policy()).toEqual({
+      retention: { enabled: true, closedEmergencyDays: 180, auditLogDays: 365 },
+    });
+  });
+
   describe('trends', () => {
     it('has one point per day of the window, the quiet days included', async () => {
       const overview = await build(buildPrisma()).overview(7);

@@ -4,6 +4,7 @@ import type {
   AlertPage,
   AlertSummary,
   DashboardOverview,
+  DataPolicy,
   EventState,
   NewUser,
   Session,
@@ -288,6 +289,9 @@ export const api = {
   /** Coordinates for an address, through the API's rate-limited geocoder. */
   searchAddress: (q: string): Promise<{ results: AddressMatch[]; attribution: string }> =>
     request(`/elders/address-search?q=${encodeURIComponent(q)}`),
+
+  /** How long records are kept, from the server's own retention settings. */
+  policy: (): Promise<DataPolicy> => request<DataPolicy>('/dashboard/policy'),
 
   overview: (days = 30): Promise<DashboardOverview> =>
     request<DashboardOverview>(`/dashboard/overview?days=${days}`),

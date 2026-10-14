@@ -112,6 +112,10 @@ export interface EmergencySnapshot {
   deadlineAt: string | null;
 }
 
+export interface DataPolicy {
+  retention: { enabled: boolean; closedEmergencyDays: number; auditLogDays: number };
+}
+
 export interface DailyPoint {
   date: string;
   raised: number;
