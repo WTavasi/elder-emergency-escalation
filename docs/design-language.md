@@ -72,6 +72,24 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   screen cannot forget. Text buttons are ink and underlined, never red, because red here
   means an emergency.
 
+## Layout, in the console
+
+Dense, because it is read at a desk by somebody looking across many records at once.
+
+- **A frame that stays put.** The sidebar narrows to icons on a desktop and becomes a
+  drawer on a phone; the header holds the breadcrumb and the account menu, and nothing
+  else. No bell and no global search: the open count is already on the first section,
+  and History and Users each search their own records.
+- **Tables are tools.** A toolbar of filters and an export on top, a pager fixed to the
+  bottom saying how much of the whole is shown, figures right-aligned in the monospaced
+  face, states and bands centred. Users has a selection for bulk actions and a row menu;
+  History has neither, because the console is read-only over emergencies.
+- **Controls are 36 points where a mouse is used** and the full touch target where a
+  finger is, chosen by the browser's own pointer media query.
+- **Primary actions are ink**, not a brand colour. Red stays the emergency's alone; a
+  worsening trend on the reporting screen is the one other place the warning red appears,
+  and always with an arrow and a signed figure beside it.
+
 Tracking and line weights are tokens like everything else: `type.tracking` tightens
 large type and opens small capitals, `stroke` holds the hairline, the waiting rule and
 the focus ring.

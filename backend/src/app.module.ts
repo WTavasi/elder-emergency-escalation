@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { AdminModule } from './modules/admin-service/admin.module';
 import { AlertsModule } from './modules/emergency-service/alerts.module';
 import { DashboardModule } from './modules/report-service/dashboard.module';
 import { EldersModule } from './modules/elder-service/elders.module';
@@ -35,6 +36,7 @@ import { validateEnv } from './shared/config/env.schema';
     AlertsModule,
     EldersModule,
     DashboardModule,
+    AdminModule,
     HealthModule,
     RetentionModule,
   ],

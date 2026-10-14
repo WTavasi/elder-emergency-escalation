@@ -519,6 +519,30 @@ describe('AlertsService', () => {
       expect(where.elderlyId.in).toEqual(['caregiver-1', 'elder-1', 'elder-2']);
     });
 
+    it("matches part of the elder's name, without regard to case", async () => {
+      const prisma = buildPrisma();
+      await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, { q: '  grace ' });
+
+      const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
+        elder: { name: { contains: string; mode: string } };
+      };
+      expect(where.elder.name).toEqual({ contains: 'grace', mode: 'insensitive' });
+    });
+
+    it('skips to a numbered page, and counts with the same filter', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.count.mockResolvedValue(312);
+      const filters = { offset: 50, limit: 50, onlyOpen: true };
+
+      await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, filters);
+      const total = await build(prisma).countForUser('admin-1', Role.ADMINISTRATOR, filters);
+
+      const page = prisma.emergencyEvent.findMany.mock.calls[0][0];
+      expect(page.skip).toBe(50);
+      expect(total).toBe(312);
+      expect(prisma.emergencyEvent.count.mock.calls.at(-1)[0].where).toEqual(page.where);
+    });
+
     it('filters to open emergencies when asked', async () => {
       const prisma = buildPrisma();
       await build(prisma).findForUser('caregiver-1', Role.CAREGIVER, { onlyOpen: true });

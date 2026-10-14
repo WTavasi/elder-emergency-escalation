@@ -152,6 +152,16 @@ export const accountMessages = {
     return 'Somebody tried to create a MzaziCare account with this number, which already has one. If it was you, sign in instead. If not, you can ignore this.';
   },
 
+  /**
+   * A staff account made by an administrator. No password and no link: the first
+   * password comes from the administrator in person.
+   */
+  staffAccountCreated(role: 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR'): string {
+    return role === 'ADMINISTRATOR'
+      ? 'A MzaziCare administrator account has been made for this number. Sign in to the MzaziCare console with the password your administrator gives you.'
+      : 'A MzaziCare emergency responder account has been made for this number. Sign in to the MzaziCare app with the password your administrator gives you.';
+  },
+
   /** Added to an elder's chain, with an account already. */
   addedToChain(inviterName: string, elderName: string): string {
     return capSms(

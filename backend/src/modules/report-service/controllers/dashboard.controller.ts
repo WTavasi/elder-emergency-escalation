@@ -2,7 +2,7 @@ import { Controller, Get, ParseIntPipe, Query, DefaultValuePipe } from '@nestjs/
 import { Role } from '@prisma/client';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { DashboardService } from '../services/dashboard.service';
-import type { DashboardOverview } from '../views/dashboard.types';
+import type { DashboardOverview, DataPolicy } from '../views/dashboard.types';
 
 /**
  * Aggregate figures across every elder, so administrator only.
@@ -21,5 +21,11 @@ export class DashboardController {
     @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
   ): Promise<DashboardOverview> {
     return this.dashboard.overview(Math.min(Math.max(days, 1), 365));
+  }
+
+  /** How long records are kept, for the console's privacy panel and the history. */
+  @Get('policy')
+  policy(): DataPolicy {
+    return this.dashboard.policy();
   }
 }

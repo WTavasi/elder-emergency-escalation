@@ -112,6 +112,17 @@ export interface EmergencySnapshot {
   deadlineAt: string | null;
 }
 
+export interface DataPolicy {
+  retention: { enabled: boolean; closedEmergencyDays: number; auditLogDays: number };
+}
+
+export interface DailyPoint {
+  date: string;
+  raised: number;
+  acknowledged: number;
+  medianSeconds: number | null;
+}
+
 export interface DashboardOverview {
   generatedAt: string;
   windowDays: number;
@@ -141,6 +152,70 @@ export interface DashboardOverview {
     failed: number;
     successRatePercent: number | null;
   }[];
+  raised: number;
+  previous: {
+    raised: number;
+    responseTimes: DashboardOverview['responseTimes'];
+    escalationRatePercent: number | null;
+  };
+  daily: DailyPoint[];
+}
+
+/** One account in the Users table, from GET /admin/users. */
+export interface UserRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  role: Role;
+  createdAt: string;
+  deactivatedAt: string | null;
+  coverage: Coverage | null;
+  chainPlaces: number;
+}
+
+export interface Coverage {
+  areaName: string;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+}
+
+export interface UserPage {
+  items: UserRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface UserQuery {
+  q?: string;
+  role?: Role;
+  status?: 'active' | 'deactivated';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface NewUser {
+  name: string;
+  phone: string;
+  email?: string;
+  role: 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR';
+  password: string;
+  coverage?: Coverage;
+}
+
+/** One match from the address search, used for a responder's area. */
+export interface AddressMatch {
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
+/** A page of the history, with how many match in all. */
+export interface AlertPage {
+  items: AlertSummary[];
+  total: number;
 }
 
 export interface UserSummary {

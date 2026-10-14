@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import { Role, type EmergencyEvent } from '@prisma/client';
 import type { AlertDetail, AlertSummary } from '../views/alert-views';
@@ -68,11 +69,13 @@ export class AlertsController {
    * without either of them naming a scope the API would then have to police.
    */
   @Get()
-  list(
+  async list(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListAlertsDto,
+    // Only the one method used, so no HTTP framework types are needed for it.
+    @Res({ passthrough: true }) response: { setHeader(name: string, value: string): unknown },
   ): Promise<AlertSummary[]> {
-    return this.alerts.findForUser(user.userId, user.role, {
+    const filters = {
       onlyOpen: query.open,
       states: query.state,
       severities: query.severity,
@@ -81,7 +84,18 @@ export class AlertsController {
       to: query.to,
       limit: query.limit,
       cursor: query.cursor,
-    });
+      q: query.q,
+      offset: query.offset,
+    };
+    const [rows, total] = await Promise.all([
+      this.alerts.findForUser(user.userId, user.role, filters),
+      this.alerts.countForUser(user.userId, user.role, filters),
+    ]);
+    // The total travels in a header so the body stays the plain list the app already
+    // reads; a client that wants numbered pages reads the header, and one that does not
+    // never notices it.
+    response.setHeader('X-Total-Count', String(total));
+    return rows;
   }
 
   /** One emergency with its chain, its audit trail and every delivery attempt. */

@@ -82,7 +82,7 @@ function build(existingAccount = false) {
     sms as unknown as DirectSmsService,
     config,
   );
-  return { service, redis, sms };
+  return { service, redis, sms, prisma };
 }
 
 /** The code inside the SMS the service sent, which is the only place it appears. */
@@ -158,6 +158,13 @@ describe('PhoneVerificationService', () => {
       expect((sms.send.mock.calls[0][1] as string).length).toBeLessThanOrEqual(160);
       expect(redis.hashes.has(`reset:code:${PHONE}`)).toBe(true);
       await expect(service.consume(PHONE, code, 'reset')).resolves.toBeUndefined();
+    });
+
+    it('sends nothing to a deactivated account', async () => {
+      const { service, prisma, sms } = build(true);
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', deactivatedAt: new Date() });
+      await service.start(PHONE, 'reset');
+      expect(sms.send).not.toHaveBeenCalled();
     });
 
     it('sends nothing to a number with no account', async () => {

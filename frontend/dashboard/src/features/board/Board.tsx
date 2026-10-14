@@ -17,7 +17,6 @@ export function Board() {
       <div className="page-head">
         <div>
           <h1>Open emergencies</h1>
-          <p>Every elder on the platform. Times are shown in {localTimezone()}.</p>
         </div>
         <div className="row">
           <ConnectionStatus state={connection} />
@@ -58,12 +57,24 @@ export function Board() {
                   <span className="visually-hidden">Waiting for an answer</span>
                 </th>
                 <th scope="col">Elder</th>
-                <th scope="col">State</th>
-                <th scope="col">Severity</th>
-                <th scope="col">Tier</th>
+                <th scope="col" className="center">
+                  State
+                </th>
+                <th scope="col" className="center">
+                  Severity
+                </th>
+                <th scope="col" className="num">
+                  Tier
+                </th>
                 <th scope="col">Answered by</th>
-                <th scope="col">Time left</th>
-                <th scope="col">Raised</th>
+                <th scope="col" className="num">
+                  Time left
+                </th>
+                {/* The time zone on the column it applies to, rather than in a line of text
+                    above the table. */}
+                <th scope="col" className="num" title={`Times in ${localTimezone()}`}>
+                  Raised <span className="th__note">{localTimezone()}</span>
+                </th>
               </tr>
             </thead>
             <tbody>

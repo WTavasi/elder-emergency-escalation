@@ -33,6 +33,69 @@ const build = (prisma: PrismaMock, target = 300): DashboardService =>
   );
 
 describe('DashboardService', () => {
+  it('states the retention windows the sweep runs with', () => {
+    const service = new DashboardService(
+      buildPrisma() as unknown as PrismaService,
+      {
+        get: (key: string, fallback: unknown) =>
+          ({ RETENTION_RESOLVED_EVENT_DAYS: 180, RETENTION_ENABLED: true })[key] ?? fallback,
+      } as unknown as ConfigService,
+    );
+    expect(service.policy()).toEqual({
+      retention: { enabled: true, closedEmergencyDays: 180, auditLogDays: 365 },
+    });
+  });
+
+  describe('trends', () => {
+    it('has one point per day of the window, the quiet days included', async () => {
+      const overview = await build(buildPrisma()).overview(7);
+      expect(overview.daily).toHaveLength(7);
+      expect(overview.daily.every((day) => day.raised === 0)).toBe(true);
+      expect(overview.daily[6].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it("counts a day's emergencies and their median wait", async () => {
+      const prisma = buildPrisma();
+      const now = Date.now();
+      const rows = [
+        { triggeredAt: new Date(now - 1000), acknowledgedAt: new Date(now - 1000 + 30_000) },
+        { triggeredAt: new Date(now - 2000), acknowledgedAt: new Date(now - 2000 + 90_000) },
+        { triggeredAt: new Date(now - 3000), acknowledgedAt: null },
+      ];
+      // As the database would: the response-time query asks only for answered ones.
+      prisma.emergencyEvent.findMany.mockImplementation(
+        (args: { where: { acknowledgedAt?: unknown } }) =>
+          Promise.resolve(
+            args.where.acknowledgedAt ? rows.filter((row) => row.acknowledgedAt) : rows,
+          ),
+      );
+
+      const today = (await build(prisma).overview(7)).daily.at(-1)!;
+
+      expect(today.raised).toBe(3);
+      expect(today.acknowledged).toBe(2);
+      expect(today.medianSeconds).toBe(60);
+    });
+
+    it('compares against the window before, ending where this one starts', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.count.mockResolvedValue(4);
+
+      const overview = await build(prisma).overview(30);
+
+      expect(overview.previous.raised).toBe(4);
+      const ranges = prisma.emergencyEvent.count.mock.calls
+        .map(
+          (call: [{ where: { triggeredAt?: { gte: Date; lt?: Date } } }]) =>
+            call[0].where.triggeredAt,
+        )
+        .filter((range: unknown) => range && (range as { lt?: Date }).lt);
+      expect(ranges.length).toBeGreaterThan(0);
+      const range = ranges[0] as { gte: Date; lt: Date };
+      expect(Math.round((range.lt.getTime() - range.gte.getTime()) / 86_400_000)).toBe(30);
+    });
+  });
+
   describe('response times', () => {
     it('reports nothing rather than zero when no emergency has been acknowledged', async () => {
       const overview = await build(buildPrisma()).overview();

@@ -1,11 +1,18 @@
 import type {
+  AddressMatch,
   AlertDetail,
+  AlertPage,
   AlertSummary,
   DashboardOverview,
+  DataPolicy,
   EventState,
+  NewUser,
   Session,
   Severity,
   SignInProviders,
+  UserPage,
+  UserQuery,
+  UserRow,
 } from './types';
 
 /**
@@ -105,6 +112,15 @@ function messageFrom(body: unknown, fallback: string): string {
  * rather than leaving a console that silently shows nothing.
  */
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  return (await requestWithHeaders<T>(path, init, retry)).body;
+}
+
+/** The same, keeping the response headers, for the one endpoint that puts a count there. */
+async function requestWithHeaders<T>(
+  path: string,
+  init: RequestInit = {},
+  retry = true,
+): Promise<{ body: T; headers: Headers }> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body) headers.set('Content-Type', 'application/json');
@@ -114,7 +130,7 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
 
   if (response.status === 401 && retry && current) {
     const renewed = await refreshSession();
-    if (renewed) return request<T>(path, init, false);
+    if (renewed) return requestWithHeaders<T>(path, init, false);
   }
 
   const body = await parse(response);
@@ -123,7 +139,7 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
     throw new ApiError(response.status, messageFrom(body, `Request failed (${response.status})`));
   }
 
-  return body as T;
+  return { body: body as T, headers: response.headers };
 }
 
 /** Collapses concurrent refreshes, so one expired token cannot rotate twice. */
@@ -165,6 +181,10 @@ export interface AlertQuery {
   from?: string;
   to?: string;
   limit?: number;
+  /** Part of the elder's name. */
+  q?: string;
+  /** Rows to skip, for numbered pages. */
+  offset?: number;
 }
 
 function toQueryString(query: AlertQuery): string {
@@ -175,6 +195,8 @@ function toQueryString(query: AlertQuery): string {
   if (query.from) params.set('from', query.from);
   if (query.to) params.set('to', query.to);
   if (query.limit) params.set('limit', String(query.limit));
+  if (query.q?.trim()) params.set('q', query.q.trim());
+  if (query.offset) params.set('offset', String(query.offset));
   const encoded = params.toString();
   return encoded ? `?${encoded}` : '';
 }
@@ -229,7 +251,47 @@ export const api = {
   alerts: (query: AlertQuery = {}): Promise<AlertSummary[]> =>
     request<AlertSummary[]>(`/alerts${toQueryString(query)}`),
 
+  /** A page of the history, with the total the filters match from X-Total-Count. */
+  async alertPage(query: AlertQuery = {}): Promise<AlertPage> {
+    const { body, headers } = await requestWithHeaders<AlertSummary[]>(
+      `/alerts${toQueryString(query)}`,
+    );
+    const total = Number(headers.get('X-Total-Count'));
+    return { items: body, total: Number.isFinite(total) && total > 0 ? total : body.length };
+  },
+
   alert: (id: string): Promise<AlertDetail> => request<AlertDetail>(`/alerts/${id}`),
+
+  users: {
+    list: (query: UserQuery = {}): Promise<UserPage> => {
+      const params = new URLSearchParams();
+      if (query.q?.trim()) params.set('q', query.q.trim());
+      if (query.role) params.set('role', query.role);
+      if (query.status) params.set('status', query.status);
+      if (query.page) params.set('page', String(query.page));
+      if (query.pageSize) params.set('pageSize', String(query.pageSize));
+      const encoded = params.toString();
+      return request<UserPage>(`/admin/users${encoded ? `?${encoded}` : ''}`);
+    },
+    create: (user: NewUser): Promise<UserRow> =>
+      request<UserRow>('/admin/users', { method: 'POST', body: JSON.stringify(user) }),
+    update: (
+      id: string,
+      changes: { name?: string; email?: string | null; coverage?: NewUser['coverage'] },
+    ): Promise<UserRow> =>
+      request<UserRow>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }),
+    deactivate: (ids: string[]): Promise<{ updated: number }> =>
+      request('/admin/users/deactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
+    reactivate: (ids: string[]): Promise<{ updated: number }> =>
+      request('/admin/users/reactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
+  },
+
+  /** Coordinates for an address, through the API's rate-limited geocoder. */
+  searchAddress: (q: string): Promise<{ results: AddressMatch[]; attribution: string }> =>
+    request(`/elders/address-search?q=${encodeURIComponent(q)}`),
+
+  /** How long records are kept, from the server's own retention settings. */
+  policy: (): Promise<DataPolicy> => request<DataPolicy>('/dashboard/policy'),
 
   overview: (days = 30): Promise<DashboardOverview> =>
     request<DashboardOverview>(`/dashboard/overview?days=${days}`),

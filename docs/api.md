@@ -70,7 +70,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
-| GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of |
+| GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name; `offset` pages; the total is in `X-Total-Count` |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
@@ -197,7 +197,26 @@ busier deployment should set `GEOCODER_URL` to its own Nominatim.
 
 `?days=30` sets the window, from 1 to 365. Returns live counts, response times as a
 median as well as a mean with the sample size, how far emergencies travelled down the
-chain, and per-channel delivery reliability.
+chain, and per-channel delivery reliability. Also `raised` (emergencies in the window),
+`previous` (raised, response times and the escalation rate for the window before, of the
+same length) and `daily` (one point per day, with the days nothing happened included).
+
+## Accounts
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/admin/users` | administrator | `{ items, total, page, pageSize }`. Filters: `q` (name, phone or email), `role`, `status` (`active` or `deactivated`) |
+| POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }` |
+| PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage? }` |
+| POST | `/api/v1/admin/users/deactivate` | administrator | `{ ids }` |
+| POST | `/api/v1/admin/users/reactivate` | administrator | `{ ids }` |
+
+**Accounts are deactivated, never deleted**, because each is named in emergency history.
+A deactivated account cannot sign in (by password, Google or a reset; the message says so
+only after the password is right), its sessions end within an access-token lifetime, and
+dispatch passes over it as if its place in a chain were empty. Deactivating is refused for
+your own account, for anybody handling an open emergency, and for the last active
+administrator. Details: `backend/src/modules/admin-service/README.md`.
 
 This one is restricted by role rather than by care relationship, because it has no
 scope of its own: it reports across everybody. A caregiver is refused.

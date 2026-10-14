@@ -6,7 +6,7 @@ import { Board } from './features/board/Board';
 import { EventDetail } from './features/event-detail/EventDetail';
 import { History } from './features/history/History';
 import { Reporting } from './features/reporting/Reporting';
-import { DataHandling } from './features/data-handling/DataHandling';
+import { Users } from './features/users/Users';
 import { OpenAlertsProvider } from './shared/state/OpenAlerts';
 
 /**
@@ -47,7 +47,7 @@ export function App() {
           <Route path="emergencies/:id" element={<EventDetail />} />
           <Route path="history" element={<History />} />
           <Route path="reporting" element={<Reporting />} />
-          <Route path="data-handling" element={<DataHandling />} />
+          <Route path="users" element={<Users />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

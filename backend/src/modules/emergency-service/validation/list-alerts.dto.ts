@@ -6,8 +6,10 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
+  IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { EventState, Severity } from '@prisma/client';
@@ -65,6 +67,20 @@ export class ListAlertsDto {
   @Min(1)
   @Max(200)
   limit?: number;
+
+  /** Part of an elder's name. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  q?: string;
+
+  /** Rows to skip, for numbered pages. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  offset?: number;
 
   /** Id of the last row of the previous page. */
   @IsOptional()

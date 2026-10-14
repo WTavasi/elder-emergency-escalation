@@ -1,12 +1,14 @@
-import { useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
+import { useCrumb } from '../../shared/state/Breadcrumb';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
 import type { AlertDetail, ChainMember } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
+import { Modal } from '../../shared/components/Modal';
 import {
   Countdown,
   ErrorNotice,
@@ -45,7 +47,7 @@ function stepFor(
  * the page said which mattered; the banner leads with what an operator acts on (state,
  * severity, who owns it, time left) and the rest becomes a line of detail beneath it.
  */
-function StatusBanner({ alert }: { alert: AlertDetail }) {
+function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () => void }) {
   const open = OPEN_STATES.includes(alert.state);
   const waiting = open && !alert.acknowledgedBy;
   const tone = waiting ? 'waiting' : open ? 'owned' : 'closed';
@@ -57,6 +59,15 @@ function StatusBanner({ alert }: { alert: AlertDetail }) {
           <StatePill state={alert.state} />
           <SeverityLabel severity={alert.severity} score={alert.severityScore} />
           <span className="muted">Tier {alert.currentTier}</span>
+          {/*
+            The breakdown opens in a panel at the side of the page rather than unfolding
+            inside it, so reading it never pushes the timeline or the chain out of place.
+          */}
+          {alert.severityFactors?.factors.length ? (
+            <button type="button" className="link-button micro" onClick={onExplain}>
+              Why this severity?
+            </button>
+          ) : null}
         </div>
         <p className="banner__owner">
           <Icon name="person" />
@@ -108,6 +119,11 @@ export function EventDetail() {
   );
   useRealtime(session?.accessToken ?? null, onUpdate);
 
+  // The header's breadcrumb names the elder, and is the way back to the board.
+  useCrumb(alert?.elder.name ?? null);
+
+  const [explaining, setExplaining] = useState(false);
+
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !alert) return <Skeleton rows={5} />;
 
@@ -117,10 +133,20 @@ export function EventDetail() {
     <>
       <div className="page-head">
         <div>
-          <p className="micro">
-            <Link to="/">Open emergencies</Link>
-          </p>
-          <h1>{alert.elder.name}</h1>
+          <h1 className="title-with-tag">
+            {alert.elder.name}
+            {/*
+              The short layer of the privacy notice, where the missing buttons would be:
+              an administrator reads, the care chain acts.
+            */}
+            <span className="tag" tabIndex={0} aria-describedby="view-only-tip">
+              View only
+              <span role="tooltip" id="view-only-tip" className="tip">
+                Taking on, declining and closing an emergency belong to the people in this
+                elder&apos;s care chain. The server refuses them from an administrator account.
+              </span>
+            </span>
+          </h1>
           <p>
             Raised {formatClock(alert.triggeredAt)}
             {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
@@ -128,7 +154,7 @@ export function EventDetail() {
         </div>
       </div>
 
-      <StatusBanner alert={alert} />
+      <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
       <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
         {alert.responseSeconds === null
           ? 'Not answered yet'
@@ -167,68 +193,6 @@ export function EventDetail() {
         </section>
 
         <div className="stack">
-          {/*
-            Closed by default. An operator opening an emergency wants the timeline and
-            who was told, not a weights table. The breakdown is kept one click away
-            rather than removed, because the severity policy is a weighted rule
-            precisely so that an escalation can be explained afterwards, and an
-            explanation nobody can reach is not one. A native details element is used
-            rather than a toggle built by hand: it is keyboard operable and announces
-            its own expanded state without any of that having to be written or tested.
-          */}
-          <section className="card" aria-labelledby="severity-heading">
-            {factors.length === 0 ? (
-              <div className="stack">
-                <h2 id="severity-heading">Why this severity</h2>
-                <p className="muted">No severity breakdown was recorded for this emergency.</p>
-              </div>
-            ) : (
-              <details className="disclosure">
-                <summary className="disclosure__summary">
-                  <h2 id="severity-heading">Why this severity</h2>
-                  <span className="micro">
-                    {factors.length} factors, scoring {alert.severityScore}
-                  </span>
-                </summary>
-                <div className="disclosure__body">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th scope="col">Factor</th>
-                        <th scope="col">Weight</th>
-                        <th scope="col">Value</th>
-                        <th scope="col">Points</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {factors.map((factor) => (
-                        <tr key={factor.key}>
-                          <td>
-                            {humanise(factor.key)}
-                            {factor.detail ? <div className="micro">{factor.detail}</div> : null}
-                          </td>
-                          <td className="mono">{factor.weight}</td>
-                          <td className="mono">{factor.value}</td>
-                          <td className="mono">{factor.contribution}</td>
-                        </tr>
-                      ))}
-                      <tr>
-                        <td>
-                          <strong>Score</strong>
-                        </td>
-                        <td />
-                        <td />
-                        <td className="mono">
-                          <strong>{alert.severityScore}</strong>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </details>
-            )}
-          </section>
-
           <section className="card stack" aria-labelledby="chain-heading">
             <h2 id="chain-heading">Escalation chain</h2>
             <p className="muted micro">The order this elder&apos;s contacts are tried in.</p>
@@ -303,6 +267,64 @@ export function EventDetail() {
           </div>
         )}
       </section>
+
+      {explaining ? (
+        <Modal
+          side
+          title="Why this severity"
+          onClose={() => setExplaining(false)}
+          footer={
+            <button type="button" onClick={() => setExplaining(false)}>
+              Close
+            </button>
+          }
+        >
+          <p className="muted micro" style={{ marginTop: 0 }}>
+            The score is the sum of each factor&apos;s weight times its value. The weights are the
+            severity policy, set in the database, so a decision can be explained afterwards rather
+            than taken on trust.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Factor</th>
+                <th scope="col" className="num">
+                  Weight
+                </th>
+                <th scope="col" className="num">
+                  Value
+                </th>
+                <th scope="col" className="num">
+                  Points
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {factors.map((factor) => (
+                <tr key={factor.key}>
+                  <td>
+                    {humanise(factor.key)}
+                    {factor.detail ? <div className="micro">{factor.detail}</div> : null}
+                  </td>
+                  <td className="mono num">{factor.weight}</td>
+                  <td className="mono num">{factor.value}</td>
+                  <td className="mono num">{factor.contribution}</td>
+                </tr>
+              ))}
+              <tr>
+                <td>
+                  <strong>Score</strong>
+                </td>
+                <td />
+                <td />
+                <td className="mono num">
+                  <strong>{alert.severityScore}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Modal>
+      ) : null}
     </>
   );
 }
