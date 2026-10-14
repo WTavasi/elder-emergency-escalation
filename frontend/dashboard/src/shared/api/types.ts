@@ -151,6 +151,11 @@ export interface UserSummary {
   role: Role;
 }
 
+/** From GET /auth/providers. Google is null when the server has no client ID. */
+export interface SignInProviders {
+  google: { clientId: string } | null;
+}
+
 export interface Session {
   user: UserSummary;
   accessToken: string;

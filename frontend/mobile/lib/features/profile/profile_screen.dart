@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/page_title.dart';
+import '../../core/widgets/section_label.dart';
 
 /// The signed-in person's own account: their details and their password.
 ///
@@ -21,43 +23,44 @@ class ProfileScreen extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My account')),
       body: SafeArea(
+        bottom: false,
         child: account == null
             ? const SizedBox.shrink()
             : ListView(
-                padding: const EdgeInsets.all(MzaziSpace.s16),
+                padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      CircleAvatar(radius: 28, child: Text(_initials(account.name))),
-                      const SizedBox(width: MzaziSpace.s16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(account.name, style: theme.textTheme.titleLarge),
-                            Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
-                          ],
+                  const PageTitle('My account'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        // Name and role as type, with no avatar circle: the app stores no
+                        // photo, and initials in a circle are a placeholder for one.
+                        Text(account.name, style: theme.textTheme.titleLarge),
+                        Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
+                        const SizedBox(height: MzaziSpace.s32),
+                        _DetailsForm(account: account),
+                        const SizedBox(height: MzaziSpace.s32),
+                        const _PasswordForm(),
+                        const SizedBox(height: MzaziSpace.s32),
+                        const SectionLabel('This phone'),
+                        const SizedBox(height: MzaziSpace.s16),
+                        // Here rather than in a top bar, at the bottom of the account page,
+                        // where nobody presses it by accident on the way to something else.
+                        OutlinedButton.icon(
+                          onPressed: () => unawaited(context.read<AuthController>().signOut()),
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Sign out'),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: MzaziSpace.s24),
-                  _DetailsForm(account: account),
-                  const SizedBox(height: MzaziSpace.s32),
-                  const _PasswordForm(),
                 ],
               ),
       ),
     );
-  }
-
-  static String _initials(String name) {
-    final List<String> parts = name.trim().split(RegExp(r'\s+'));
-    final String first = parts.first.isEmpty ? '?' : parts.first[0];
-    final String last = parts.length > 1 ? parts.last[0] : '';
-    return (first + last).toUpperCase();
   }
 
   static String _roleLabel(Role role) => switch (role) {
@@ -130,8 +133,8 @@ class _DetailsFormState extends State<_DetailsForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Your details', style: theme.textTheme.titleMedium),
-          const SizedBox(height: MzaziSpace.s12),
+          const SectionLabel('Your details'),
+          const SizedBox(height: MzaziSpace.s16),
           if (_error != null) ...<Widget>[
             Notice(message: _error!, isError: true),
             const SizedBox(height: MzaziSpace.s12),
@@ -234,15 +237,13 @@ class _PasswordFormState extends State<_PasswordForm> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
     return Form(
       key: _form,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Change password', style: theme.textTheme.titleMedium),
-          const SizedBox(height: MzaziSpace.s12),
+          const SectionLabel('Change password'),
+          const SizedBox(height: MzaziSpace.s16),
           if (_error != null) ...<Widget>[
             Notice(message: _error!, isError: true),
             const SizedBox(height: MzaziSpace.s12),

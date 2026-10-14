@@ -6,6 +6,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/page_title.dart';
 import 'add_elder_screen.dart';
 import 'elder_screen.dart';
 
@@ -67,73 +68,117 @@ class _EldersScreenState extends State<EldersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final List<ElderSummary>? elders = _elders;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('People I look after')),
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(
-            padding: const EdgeInsets.all(MzaziSpace.s16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: MzaziSpace.s24),
             children: <Widget>[
-              if (_error != null) ...<Widget>[
-                Notice(message: _error!, isError: true),
-                const SizedBox(height: MzaziSpace.s16),
-              ],
+              PageTitle(
+                'People',
+                subtitle: widget.isCaregiver
+                    ? 'The people you look after'
+                    : 'The people you are family to',
+              ),
+              const Divider(),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(MzaziSpace.s16),
+                  child: Notice(message: _error!, isError: true),
+                ),
               if (elders == null && _error == null)
                 const Padding(
-                  padding: EdgeInsets.all(MzaziSpace.s24),
+                  padding: EdgeInsets.all(MzaziSpace.s32),
                   child: Center(child: CircularProgressIndicator()),
                 )
               else if (elders != null && elders.isEmpty)
                 _Empty(isCaregiver: widget.isCaregiver)
               else if (elders != null)
-                for (final ElderSummary elder in elders)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: MzaziSpace.s12),
-                    child: Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: MzaziSpace.s16,
-                          vertical: MzaziSpace.s8,
-                        ),
-                        leading: CircleAvatar(child: Text(_initials(elder.name))),
-                        title: Text(elder.name, style: theme.textTheme.titleMedium),
-                        subtitle: Text(
-                          <String>[
-                            if (elder.homeLabel != null) elder.homeLabel!,
-                            'You are asked at tier ${elder.myTier}',
-                          ].join('\n'),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        isThreeLine: elder.homeLabel != null,
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => unawaited(_open(elder)),
-                      ),
-                    ),
+                for (final ElderSummary elder in elders) ...<Widget>[
+                  _ElderRow(elder: elder, onOpen: () => unawaited(_open(elder))),
+                  const Divider(indent: MzaziSpace.s16),
+                ],
+              if (widget.isCaregiver)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    MzaziSpace.s16,
+                    MzaziSpace.s24,
+                    MzaziSpace.s16,
+                    0,
                   ),
-              if (widget.isCaregiver) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s16),
-                FilledButton.icon(
-                  onPressed: () => unawaited(_add()),
-                  icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Register somebody I look after'),
+                  child: FilledButton.icon(
+                    onPressed: () => unawaited(_add()),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Register somebody I look after'),
+                  ),
                 ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  static String _initials(String name) {
-    final List<String> parts = name.trim().split(RegExp(r'\s+'));
-    final String first = parts.first.isEmpty ? '?' : parts.first[0];
-    final String last = parts.length > 1 ? parts.last[0] : '';
-    return (first + last).toUpperCase();
+/// One person: name and home on the left, the rank you are asked at on the right, set
+/// as a figure so the column of them can be read down the list.
+class _ElderRow extends StatelessWidget {
+  const _ElderRow({required this.elder, required this.onOpen});
+
+  final ElderSummary elder;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onOpen,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          MzaziSpace.s16,
+          MzaziSpace.s16,
+          MzaziSpace.s8,
+          MzaziSpace.s16,
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(elder.name, style: theme.textTheme.titleMedium),
+                  if (elder.homeLabel != null)
+                    Text(elder.homeLabel!, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const SizedBox(width: MzaziSpace.s12),
+            Semantics(
+              label: 'You are asked at tier ${elder.myTier}',
+              excludeSemantics: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Text('TIER', style: theme.textTheme.labelSmall),
+                  Text(
+                    '${elder.myTier}',
+                    style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: MzaziSpace.s4),
+            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -147,18 +192,18 @@ class _Empty extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s24),
+      padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(Icons.groups_outlined, size: 40, color: theme.textTheme.bodySmall?.color),
-          const SizedBox(height: MzaziSpace.s12),
           Text('Nobody yet', style: theme.textTheme.titleLarge),
           const SizedBox(height: MzaziSpace.s8),
           Text(
             isCaregiver
-                ? 'Register the person you look after. You will be first to be asked when they need help.'
-                : 'A caregiver adds you to the person you are family to. Once they have, that person appears here.',
-            textAlign: TextAlign.center,
+                ? 'Register the person you look after. You will be first to be asked when they '
+                      'need help.'
+                : 'A caregiver adds you to the person you are family to. Once they have, that '
+                      'person appears here.',
             style: theme.textTheme.bodyLarge,
           ),
         ],

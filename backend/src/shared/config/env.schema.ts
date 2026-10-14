@@ -7,6 +7,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  ValidateIf,
   IsString,
   IsUrl,
   Max,
@@ -268,6 +269,18 @@ export class EnvSchema {
    */
   @IsUrl({ require_tld: false })
   GEOCODER_URL = 'https://nominatim.openstreetmap.org';
+
+  /**
+   * The OAuth client ID for Google sign-in on the console, from Google Cloud Console
+   * (APIs & Services, Credentials, a Web application client). Not a secret: the console
+   * shows it to every browser. Unset, the console offers no Google button.
+   */
+  // Checked only when given, so an empty `GOOGLE_CLIENT_ID=` line means "not set up".
+  @ValidateIf((env: EnvSchema) => Boolean(env.GOOGLE_CLIENT_ID))
+  @Matches(/^[\w-]+\.apps\.googleusercontent\.com$/, {
+    message: 'GOOGLE_CLIENT_ID must end in .apps.googleusercontent.com',
+  })
+  GOOGLE_CLIENT_ID?: string;
 
   /** A contact for the geocoder's operators, sent in the User-Agent as its policy asks. */
   @IsOptional()

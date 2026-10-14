@@ -37,6 +37,32 @@
               }
             }
           ]
+        },
+        {
+          "name": "Which sign-in methods are offered",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/providers"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "google is null unless GOOGLE_CLIENT_ID is set in backend/.env."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says whether Google is set up', () => pm.expect(pm.response.json()).to.have.property('google'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -250,6 +276,46 @@
                   "pm.environment.set('adminToken', body.accessToken);",
                   "pm.environment.set('adminRefresh', body.refreshToken);",
                   "pm.test('signed in as ADMINISTRATOR', () => pm.expect(body.user.role).to.eql('ADMINISTRATOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrator, by email instead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Any account with an email address can sign in with it instead of the phone number. The console offers this; the app does not."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the same account', () => pm.expect(pm.response.json().user.role).to.eql('ADMINISTRATOR'));"
                 ]
               }
             }
@@ -1885,6 +1951,90 @@
       ]
     },
     {
+      "name": "8c. Forgotten password",
+      "description": "Uses the account made in 5. Like signing up, it needs the code from the terminal running the API (a line ending 'password reset code'). Put it in the environment's `resetCode` variable before the second request. The new password is the same as the old one, so nothing else changes.",
+      "item": [
+        {
+          "name": "Send a reset code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/forgot-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{newPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Always 202. A number with no account is sent nothing, and the answer is the same, so this cannot be used to learn who is registered."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set a new password with the code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/reset-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{newPhone}}\",\n  \"code\": \"{{resetCode}}\",\n  \"newPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Signs in, and ends every other session on the account at its next refresh."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('newToken', pm.response.json().accessToken);",
+                  "pm.test('signed straight in', () => pm.expect(pm.response.json().accessToken).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "9. Things that must be refused",
       "description": "Each of these should fail. A pass here means the protection works.",
       "item": [
@@ -2316,6 +2466,81 @@
               "script": {
                 "type": "text/javascript",
                 "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A reset with a code nobody sent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/reset-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{caregiverPhone}}\",\n  \"code\": \"123456\",\n  \"newPassword\": \"Another!2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "The same words as a wrong or expired code, so a guesser learns nothing about the number."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Google with a made-up token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/google"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"made.up.token-that-google-never-signed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refused: 401, or 404 when Google is not set up', () => pm.expect(pm.response.code).to.be.oneOf([401, 404]));"
+                ]
               }
             }
           ]

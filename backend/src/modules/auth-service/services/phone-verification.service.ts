@@ -14,7 +14,14 @@ export const MAX_SENDS_PER_HOUR = 5;
 /** The shortest gap between two codes to one number. */
 export const RESEND_COOLDOWN_SECONDS = 30;
 
-const WRONG_CODE = 'That code is wrong or has expired. Ask for a new one.';
+export const WRONG_CODE = 'That code is wrong or has expired. Ask for a new one.';
+
+/**
+ * What a code is for. A sign-up code goes only to a number with no account, and a
+ * reset code only to a number with one, so the two never stand in for each other: each
+ * is stored under its own key and checked against that key alone.
+ */
+export type CodePurpose = 'signup' | 'reset';
 
 /**
  * Proving that whoever is signing up holds the phone number they typed.
@@ -44,8 +51,13 @@ export class PhoneVerificationService {
     private readonly config: ConfigService,
   ) {}
 
-  /** Sends a code, or quietly does nothing. Never says which. */
-  async start(phone: string): Promise<void> {
+  /**
+   * Sends a code, or quietly does nothing. Never says which.
+   *
+   * The cooldown and the hourly limit are shared by both purposes, because they protect
+   * the phone and the SMS bill, and neither cares what the code was for.
+   */
+  async start(phone: string, purpose: CodePurpose = 'signup'): Promise<void> {
     const cooldownKey = `verify:cooldown:${phone}`;
     const countKey = `verify:count:${phone}`;
 
@@ -71,24 +83,35 @@ export class PhoneVerificationService {
       where: { phone },
       select: { id: true },
     });
-    if (existing) {
+    if (purpose === 'signup' && existing) {
       await this.sms.send(phone, accountMessages.alreadyRegistered());
       return;
     }
+    // Nobody to reset. Nothing is sent: the number belongs to somebody with no account,
+    // who did not ask and has nothing to protect, and a message would only cost money.
+    if (purpose === 'reset' && !existing) return;
 
     const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
     const ttl = this.ttlSeconds();
     await this.redis.client
       .multi()
-      .hset(PhoneVerificationService.codeKey(phone), {
+      .hset(PhoneVerificationService.codeKey(phone, purpose), {
         hash: PhoneVerificationService.hash(phone, code),
         attempts: '0',
       })
-      .expire(PhoneVerificationService.codeKey(phone), ttl)
+      .expire(PhoneVerificationService.codeKey(phone, purpose), ttl)
       .exec();
 
-    await this.sms.send(phone, accountMessages.verificationCode(code, Math.round(ttl / 60)));
-    this.logger.log(`Sign-up code sent to ${redactPhone(phone)}`);
+    const minutes = Math.round(ttl / 60);
+    await this.sms.send(
+      phone,
+      purpose === 'reset'
+        ? accountMessages.resetCode(code, minutes)
+        : accountMessages.verificationCode(code, minutes),
+    );
+    this.logger.log(
+      `${purpose === 'reset' ? 'Password reset' : 'Sign-up'} code sent to ${redactPhone(phone)}`,
+    );
   }
 
   /**
@@ -96,8 +119,8 @@ export class PhoneVerificationService {
    * one and a number that was never sent one, because telling them apart would tell a
    * guesser which numbers are worth guessing at.
    */
-  async consume(phone: string, code: string): Promise<void> {
-    const key = PhoneVerificationService.codeKey(phone);
+  async consume(phone: string, code: string, purpose: CodePurpose = 'signup'): Promise<void> {
+    const key = PhoneVerificationService.codeKey(phone, purpose);
     const stored = await this.redis.client.hget(key, 'hash');
     if (!stored) throw new BadRequestException(WRONG_CODE);
 
@@ -121,8 +144,8 @@ export class PhoneVerificationService {
     return this.config.get<number>('VERIFICATION_CODE_TTL_SECONDS', 600);
   }
 
-  private static codeKey(phone: string): string {
-    return `verify:code:${phone}`;
+  private static codeKey(phone: string, purpose: CodePurpose): string {
+    return purpose === 'reset' ? `reset:code:${phone}` : `verify:code:${phone}`;
   }
 
   /** Salted with the number, so the same code for two numbers never hashes alike. */

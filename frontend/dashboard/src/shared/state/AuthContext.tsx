@@ -6,6 +6,8 @@ import type { Session } from '../api/types';
 interface AuthValue {
   session: Session | null;
   signIn: (phone: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -24,12 +26,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(await api.signIn(phone, password));
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    setSession(await api.signInWithEmail(email, password));
+  }, []);
+
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    setSession(await api.signInWithGoogle(idToken));
+  }, []);
+
   const signOut = useCallback(async () => {
     await api.signOut();
     setSession(null);
   }, []);
 
-  const value = useMemo(() => ({ session, signIn, signOut }), [session, signIn, signOut]);
+  const value = useMemo(
+    () => ({ session, signIn, signInWithEmail, signInWithGoogle, signOut }),
+    [session, signIn, signInWithEmail, signInWithGoogle, signOut],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

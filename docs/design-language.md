@@ -18,19 +18,63 @@ Semantic hues are limited to three besides the emergency red: amber for waiting,
 for owned, green for closed. Blue is also the focus-ring colour. Escalation tiers get a
 number and a role name, never a colour of their own.
 
+One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
+slightly deeper one, draws the rings behind the screens before sign-in, on the app and
+the console alike. They carry no meaning and are in no contrast pair, which is only
+acceptable because nothing that has to be read is ever placed on them: the forms sit on
+cards. They are kept out of every screen after sign-in, where the red has to mean an
+emergency and nothing else.
+
+Two roles exist only to pass contrast where the brand colours cannot. `danger` is the
+red for text and thin marks: the brand red in light mode, a lighter red in dark mode,
+where the brand red is 2:1 against the background. Error text, the waiting rule and the
+"waiting" state are all written in it. `control` is the outline of a field, at 3:1 or
+better against the page in both modes, as WCAG 1.4.11 asks of a control's boundary; the
+hairline colour it replaced was 1.3:1. Both are in the contrast gate.
+
 ## State appearance
 
-| State | Appearance | Meaning |
-| --- | --- | --- |
-| `TRIGGERED` | filled red pill, glyph and word | created, nobody notified yet |
-| `NOTIFIED` | amber pill | dispatched, ack timer running |
-| `ACKNOWLEDGED` | blue pill | someone owns it |
-| `ESCALATED` | outlined red pill | a tier timed out |
-| `RESOLVED` | green pill | closed with an outcome |
-| `CANCELLED` | neutral pill | withdrawn inside the grace window |
+| State | Console | App | Meaning |
+| --- | --- | --- | --- |
+| `TRIGGERED` | filled red pill | glyph and "Waiting" in red | created, nobody notified yet |
+| `NOTIFIED` | amber pill | glyph and "Waiting" in red | dispatched, ack timer running |
+| `ACKNOWLEDGED` | blue pill | glyph and "Being handled" in blue | someone owns it |
+| `ESCALATED` | outlined red pill | glyph and "Escalated" in red | a tier timed out |
+| `RESOLVED` | green pill | glyph and "Closed" in green | closed with an outcome |
+| `CANCELLED` | neutral pill | glyph and "Withdrawn" in grey | withdrawn inside the grace window |
 
-Filled red means nobody has seen it. Outlined red means the system acted on it. Colour
-never carries state alone: every pill also carries a glyph and a word.
+The console keeps its pills, which sit in table cells. The app writes the state inline,
+a glyph and a word in the state's ink, because a capsule inside a row inside a card was
+most of what made its lists look generated. To a caregiver, triggered and notified are
+the same thing: nobody has answered yet. Colour never carries state alone: every state
+also carries a glyph and a word.
+
+## Layout, in the app
+
+Swiss and utilitarian: the type and the spacing do the work boxes used to.
+
+- **No cards.** Lists run edge to edge, one row per item, divided by hairlines. Sections
+  start with a small-capitals label over a hairline (`SectionLabel`). Messages are a rule
+  down the left and the words beside it, not a filled box.
+- **One big thing per screen.** Each screen opens with its title at headline size, tight
+  and left-aligned (`PageTitle`, or the elder's name on a detail screen), so the eye lands
+  in the same place every time.
+- **Red means a person is needed.** An emergency nobody has answered gets a 4-point red
+  rule down its left edge in the list, and the waiting count in red under the title.
+  Nothing decorative is red after sign-in.
+- **Figures in the monospaced face**: ages, ranks in a chain, phone numbers, the
+  countdown. They line up down a column and do not jitter as they change.
+- **The thumb decides placement.** The places a person goes most are along the bottom
+  (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
+  screen. The top bar carries a back arrow and nothing else.
+- **Every control is a full touch target.** Text buttons, icon buttons and tabs are
+  48 points in the standard scale and 72 in the elder scale, set in the theme so a new
+  screen cannot forget. Text buttons are ink and underlined, never red, because red here
+  means an emergency.
+
+Tracking and line weights are tokens like everything else: `type.tracking` tightens
+large type and opens small capitals, `stroke` holds the hairline, the waiting rule and
+the focus ring.
 
 The app follows this as of 1 October 2026 and the console as of 6 October 2026. Both use
 the same words: Waiting, Being handled, Escalated, Closed, Withdrawn. The console's
@@ -90,10 +134,19 @@ One family per audience, and it is a legibility decision rather than a stylistic
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
 
+Before anybody has signed in, the app cannot know whose phone it is, so the sign-in and
+reset screens take the elder's face and sizes with regular-weight body text, and bold only
+for headings and buttons. Bold throughout begins once the account is known to be an
+elder's. Sign-up uses the caregiver's type, because elders are registered by their
+caregiver and never sign up themselves.
+
 Fonts are bundled into the app from `frontend/mobile/assets/fonts/` and self-hosted by the
 dashboard from `frontend/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
-matters for more than principle: the console reads an elder's name and address, so it
-makes no third-party request at all, and the API's content security policy would deny one.
+matters for more than principle: the console reads an elder's name and address, so once
+signed in it makes no third-party request at all. The one exception is before sign-in,
+when Google sign-in is set up: the sign-in page fetches Google's button, and the console
+reloads after signing in so the page that shows anybody's details never carries it
+(`docs/running.md`, Google sign-in on the console).
 The licence text ships inside the app as an asset and is registered with Flutter's licence
 page, because bundling a font is distributing it and the Open Font Licence requires the
 licence to travel with it.

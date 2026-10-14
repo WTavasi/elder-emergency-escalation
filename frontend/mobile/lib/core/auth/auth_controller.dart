@@ -115,6 +115,44 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Asks for a password reset code. Returns why it could not be asked for, or null.
+  /// As with sign-up, a null does not mean a code is on its way.
+  Future<String?> requestPasswordReset(String phone) async {
+    try {
+      await _api.requestPasswordReset(phone);
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    } on NetworkException catch (error) {
+      return error.message;
+    }
+  }
+
+  /// Sets a new password with the code and signs straight in.
+  Future<bool> resetPassword({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _api.resetPassword(phone: phone, code: code.trim(), newPassword: newPassword);
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
+    } on NetworkException catch (error) {
+      _error = error.message;
+      return false;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
   /// Saves a name or email change. Returns why it failed, or null when it saved.
   Future<String?> updateProfile({String? name, String? email, bool clearEmail = false}) async {
     try {

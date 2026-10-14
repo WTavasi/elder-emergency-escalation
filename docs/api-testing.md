@@ -135,6 +135,10 @@ environment to another number, for example `+254712345677`.
 The same number can only be sent one code every 30 seconds, so if nothing appears in the
 terminal, wait half a minute and send again.
 
+To try a forgotten password, run folder **8c. Forgotten password** the same way: send the
+first request, copy the code from the line ending `password reset code` into the
+`resetCode` variable, then send the second.
+
 ---
 
 ## Part 6. Elders and their chains
@@ -168,14 +172,16 @@ which **Add a family member** in folder 6 works again.
 | **7. Where an elder is staying** | Records Grace as staying elsewhere, then back home |
 | **8. Reporting** | The administrator's figures, and a filtered history |
 | **8b. My account** | Adds an email to the account from Part 5, changes its password, then changes it back |
+| **8c. Forgotten password** | A reset code for the account from Part 5, then a new password with it. Needs the code typed in, as in Part 5 |
 | **9. Things that must be refused** | Each request here should fail, and passes when it does |
 
 Folder 9 is worth running in a demonstration. It shows that a request with no token is
 refused, that a wrong password and an unknown number get exactly the same answer, that
 asking for a code for a registered number reveals nothing, that the administrator cannot
 take on an emergency, that a caregiver cannot read the reporting figures, that an elder
-cannot move herself, that a client cannot set its own severity, and that a mistyped
-current password is not mistaken for an expired session.
+cannot move herself, that a client cannot set its own severity, that a mistyped
+current password is not mistaken for an expired session, that a reset code nobody was
+sent does not work, and that a made-up Google token is refused.
 
 ---
 
@@ -199,7 +205,7 @@ npx newman run docs/postman/MzaziCare.postman_collection.json \
 ```
 
 The first time, `npx` asks to install Newman; answer `y`. Folders 5 and 6 are left out
-because they need a code typed in by hand, and 6b and 8b with them, because they use the
+because they need a code typed in by hand, and 6b, 8b and 8c with them, because they use the
 account and elder made there.
 
 At the end it prints a table. Every row in the **failed** column should be 0.

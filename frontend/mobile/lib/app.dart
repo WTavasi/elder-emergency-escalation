@@ -9,7 +9,7 @@ import 'core/widgets/sign_out_button.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/elder/alert_controller.dart';
 import 'features/elder/elder_home_screen.dart';
-import 'features/responder/alert_list_screen.dart';
+import 'features/home/home_shell.dart';
 import 'features/responder/alerts_controller.dart';
 
 /// The app.
@@ -27,11 +27,13 @@ class MzaziCareApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthController auth = context.watch<AuthController>();
 
-    // The elder scale until we know otherwise. A caregiver seeing one oversized frame
+    // The elder's sizes until we know otherwise. A caregiver seeing one oversized frame
     // for an instant is harmless; an elder seeing a 16pt screen is not.
-    final AppAudience audience = auth.account?.role == Role.elder || auth.account == null
-        ? AppAudience.elder
-        : AppAudience.standard;
+    final AppAudience audience = switch (auth.account?.role) {
+      null => AppAudience.welcome,
+      Role.elder => AppAudience.elder,
+      _ => AppAudience.standard,
+    };
 
     return MaterialApp(
       title: 'MzaziCare',
@@ -75,7 +77,7 @@ class _Home extends StatelessWidget {
       Role.emergencyResponder => ChangeNotifierProvider<AlertsController>(
         key: ValueKey<String>(auth.account!.id),
         create: (_) => AlertsController(api: api),
-        child: AlertListScreen(api: api),
+        child: HomeShell(api: api, role: auth.account!.role),
       ),
       _ => const _ConsoleOnly(),
     };

@@ -82,6 +82,36 @@ class ApiClient {
     );
   }
 
+  /// Asks for a password reset code. Like [requestCode], the answer is the same whether
+  /// or not the number has an account, so there is nothing to return.
+  Future<void> requestPasswordReset(String phone) async {
+    await _send(
+      'POST',
+      '/auth/forgot-password',
+      body: <String, dynamic>{'phone': phone},
+      authenticated: false,
+    );
+  }
+
+  /// Sets a new password with the code, and signs in, exactly as [signIn] does.
+  Future<Session> resetPassword({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/auth/reset-password',
+      body: <String, dynamic>{'phone': phone, 'code': code, 'newPassword': newPassword},
+      authenticated: false,
+    );
+
+    final Session signedIn = Session.fromJson(body);
+    session = signedIn;
+    onSessionChanged?.call(signedIn);
+    return signedIn;
+  }
+
   /// Creates an account and signs it in, exactly as [signIn] does.
   Future<Session> register({
     required String name,

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
@@ -115,15 +116,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create an account')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(MzaziSpace.s24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+    // The caregiver's type, not the larger sign-in type. Nobody here is an elder: elders
+    // are registered by their caregiver, never through this screen, so the larger sizes
+    // the screens before sign-in keep for them would only make a long form longer.
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    return Theme(
+      data: dark ? MzaziTheme.dark(AppAudience.standard) : MzaziTheme.light(AppAudience.standard),
+      child: Builder(
+        builder: (BuildContext context) => Scaffold(
+          appBar: AppBar(title: const Text('Create an account')),
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  MzaziSpace.s16,
+                  MzaziSpace.s8,
+                  MzaziSpace.s16,
+                  MzaziSpace.s32,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+                ),
+              ),
             ),
           ),
         ),
@@ -234,7 +249,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             subtitle: _showPrivacyError && !_accepted
                 ? Text(
                     'You need to agree before an account can be made.',
-                    style: TextStyle(color: theme.colorScheme.error),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                   )
                 : null,
             onChanged: (bool? value) => setState(() => _accepted = value ?? false),
@@ -326,29 +341,24 @@ class _WhatWeKeep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Card(
-      child: ExpansionTile(
-        leading: Icon(Icons.privacy_tip_outlined),
-        title: Text('What MzaziCare keeps about you'),
-        childrenPadding: EdgeInsets.fromLTRB(
-          MzaziSpace.s16,
-          0,
-          MzaziSpace.s16,
-          MzaziSpace.s16,
+    // No card: the theme sets a hairline above and below, which is enough to mark it as
+    // something that opens.
+    return const ExpansionTile(
+      leading: Icon(Icons.privacy_tip_outlined),
+      title: Text('What MzaziCare keeps about you'),
+      childrenPadding: EdgeInsets.only(bottom: MzaziSpace.s16),
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Your name, phone number, email if you give one, and a scrambled form of your '
+          'password that cannot be turned back into it.\n\n'
+          'The emergencies you are asked to help with, and what you did about each one. '
+          'Closed emergencies are deleted after a year.\n\n'
+          'Your phone number is shared only with the people in the same care circle, '
+          'so they can call you during an emergency.\n\n'
+          'MzaziCare never reads your phone\'s location.',
         ),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Your name, phone number, email if you give one, and a scrambled form of your '
-            'password that cannot be turned back into it.\n\n'
-            'The emergencies you are asked to help with, and what you did about each one. '
-            'Closed emergencies are deleted after a year.\n\n'
-            'Your phone number is shared only with the people in the same care circle, '
-            'so they can call you during an emergency.\n\n'
-            'MzaziCare never reads your phone\'s location.',
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

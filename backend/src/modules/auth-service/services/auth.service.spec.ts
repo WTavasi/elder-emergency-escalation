@@ -5,7 +5,8 @@ import type { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
-import type { PhoneVerificationService } from './phone-verification.service';
+import type { GoogleIdentityService } from './google-identity.service';
+import { WRONG_CODE, type PhoneVerificationService } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { PrismaService } from '../../../db/prisma.service';
 
@@ -75,14 +76,30 @@ const buildPrisma = (): PrismaMock => {
   return prisma;
 };
 
-const buildVerification = () => ({ consume: jest.fn().mockResolvedValue(undefined) });
+const buildVerification = () => ({
+  consume: jest.fn().mockResolvedValue(undefined),
+  start: jest.fn().mockResolvedValue(undefined),
+});
 
-const buildService = (prisma: PrismaMock, verification = buildVerification()): AuthService =>
+const buildGoogle = (
+  email = 'admin@example.com',
+  clientId: string | null = 'id.apps.googleusercontent.com',
+) => ({
+  verify: jest.fn().mockResolvedValue(email),
+  clientId,
+});
+
+const buildService = (
+  prisma: PrismaMock,
+  verification = buildVerification(),
+  google = buildGoogle(),
+): AuthService =>
   new AuthService(
     prisma as unknown as PrismaService,
     passwords,
     tokens,
     verification as unknown as PhoneVerificationService,
+    google as unknown as GoogleIdentityService,
   );
 
 const signUp = {
@@ -307,6 +324,35 @@ describe('AuthService', () => {
       );
     });
 
+    it('finds the account by email, in any case, when no phone is given', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await buildService(prisma).login({ email: ' Mary@Example.com ', password: 'Dev!2026' });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mary@example.com' },
+      });
+    });
+
+    it('gives one answer for an unknown email and a wrong password', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(null);
+      await expect(
+        buildService(prisma).login({ email: 'nobody@example.com', password: 'x' }),
+      ).rejects.toThrow('Email or password is incorrect');
+    });
+
+    it('uses the phone when given both, so two handles cannot widen a guess', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      await buildService(prisma).login({
+        phone: '+254700000020',
+        email: 'other@example.com',
+        password: 'Dev!2026',
+      });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { phone: '+254700000020' } });
+    });
+
     it('upgrades a hash that used weaker parameters', async () => {
       const prisma = buildPrisma();
       // Only N is lowered; r and p must keep their real values or scrypt runs out of memory.
@@ -321,6 +367,94 @@ describe('AuthService', () => {
         (call: [{ data: Record<string, unknown> }]) => 'passwordHash' in call[0].data,
       );
       expect(rehash).toBeDefined();
+    });
+  });
+
+  describe('forgotten password', () => {
+    it('asks for a reset code rather than a sign-up code', async () => {
+      const verification = buildVerification();
+      await buildService(buildPrisma(), verification).forgotPassword('+254700000020');
+      expect(verification.start).toHaveBeenCalledWith('+254700000020', 'reset');
+    });
+
+    it('checks the code as a reset code, stores the new password and signs in', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      prisma.user.update.mockImplementation((args: { data: Partial<User> }) =>
+        Promise.resolve(buildUser(args.data)),
+      );
+
+      const result = await buildService(prisma, verification).resetPassword({
+        phone: '+254700000020',
+        code: '123456',
+        newPassword: 'Brand-new-2026',
+      });
+
+      expect(verification.consume).toHaveBeenCalledWith('+254700000020', '123456', 'reset');
+      const stored = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
+      expect(passwords.verify('Brand-new-2026', stored)).toBe(true);
+      // A new refresh fingerprint is what ends the sessions held with the old password.
+      const rotated = prisma.user.update.mock.calls.find(
+        (call: [{ data: Record<string, unknown> }]) => 'refreshTokenHash' in call[0].data,
+      );
+      expect(rotated?.[0].data.refreshTokenHash).toBe(fingerprint(result.refreshToken));
+    });
+
+    it('changes nothing when the code is wrong', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      verification.consume.mockRejectedValue(new BadRequestException(WRONG_CODE));
+
+      await expect(
+        buildService(prisma, verification).resetPassword({
+          phone: '+254700000020',
+          code: '000000',
+          newPassword: 'Brand-new-2026',
+        }),
+      ).rejects.toThrow(WRONG_CODE);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Google, for administrators', () => {
+    it('signs in an administrator whose account has the address', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({ role: Role.ADMINISTRATOR, email: 'admin@example.com' }),
+      );
+
+      const result = await buildService(prisma).signInWithGoogle('token');
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'admin@example.com' },
+      });
+      expect(result.user.role).toBe(Role.ADMINISTRATOR);
+    });
+
+    it('refuses an address that is on no account, and creates none', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(null);
+      await expect(buildService(prisma).signInWithGoogle('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses an account that is not an administrator', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser({ email: 'admin@example.com' }));
+      await expect(buildService(prisma).signInWithGoogle('token')).rejects.toThrow(
+        'No administrator account uses this Google address',
+      );
+    });
+
+    it('tells the console whether to show the button', () => {
+      expect(buildService(buildPrisma()).providers()).toEqual({
+        google: { clientId: 'id.apps.googleusercontent.com' },
+      });
+      expect(
+        buildService(buildPrisma(), buildVerification(), buildGoogle('a@b.c', null)).providers(),
+      ).toEqual({ google: null });
     });
   });
 

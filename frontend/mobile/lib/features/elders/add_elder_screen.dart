@@ -245,7 +245,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
             subtitle: _showChecks && !_consent
                 ? Text(
                     'This has to be agreed before they can be registered.',
-                    style: TextStyle(color: theme.colorScheme.error),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                   )
                 : null,
             onChanged: (bool? value) => setState(() => _consent = value ?? false),
