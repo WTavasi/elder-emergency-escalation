@@ -9,7 +9,7 @@ import 'core/widgets/sign_out_button.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/elder/alert_controller.dart';
 import 'features/elder/elder_home_screen.dart';
-import 'features/responder/alert_list_screen.dart';
+import 'features/home/home_shell.dart';
 import 'features/responder/alerts_controller.dart';
 
 /// The app.
@@ -77,7 +77,7 @@ class _Home extends StatelessWidget {
       Role.emergencyResponder => ChangeNotifierProvider<AlertsController>(
         key: ValueKey<String>(auth.account!.id),
         create: (_) => AlertsController(api: api),
-        child: AlertListScreen(api: api),
+        child: HomeShell(api: api, role: auth.account!.role),
       ),
       _ => const _ConsoleOnly(),
     };

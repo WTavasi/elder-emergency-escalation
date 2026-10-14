@@ -117,13 +117,13 @@ class _AddressPickerState extends State<AddressPicker> {
         ),
         if (_error != null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
-          Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+          Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
         ],
         if (widget.showMissing && widget.chosen == null && _error == null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Text(
             'Search for the place and choose it from the list.',
-            style: TextStyle(color: theme.colorScheme.error),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
           ),
         ],
         if (result != null && result.matches.isNotEmpty) ...<Widget>[

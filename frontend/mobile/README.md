@@ -98,22 +98,23 @@ number already typed on the sign-in screen is carried over.
 **Before sign-in.** The sign-in and reset screens use the elder's type sizes, because an
 elder may be the one signing in, but regular-weight body text: bold everywhere is kept
 for an account known to be an elder's (`AppAudience.welcome` in the theme). Sign-up uses
-the caregiver's type, since elders never sign up themselves. All three draw the same
-background, rings spreading from one corner (`lib/core/widgets/care_rings.dart`), with
-everything that has to be read on a card above it.
+the caregiver's type, since elders never sign up themselves. The sign-in screen alone
+draws rings spreading from one corner behind it (`lib/core/widgets/care_rings.dart`);
+its fields are filled, so nothing that has to be read sits on them.
 
-**Looking after an elder.** Tapping an elder in **People I look after** opens their page:
+**Looking after an elder.** Tapping an elder in the **People** tab opens their page:
 a call button, where they are now (with a way to record a stay elsewhere and to mark them
 back home), their home, how much help they need, and their chain in order. A caregiver
 can change the home and care level, remove a family member, or withdraw an invitation
 nobody has taken up yet; family members see the same page without those controls.
 
-**My account.** The person icon on the alert list opens it: change your name and email,
-and change your password. Changing the password signs out every other phone the account
-is signed in on.
+**My account.** The **Me** tab: change your name and email, change your password, and
+sign out. Changing the password signs out every other phone the account is signed in on.
 
-**Caregivers, family members and responders.** An Open view of the emergencies they
-are part of, and a History view grouped by day. For each one: who is being asked,
+**Caregivers, family members and responders.** A bar along the bottom with **Alerts**,
+**People** (caregivers and family only) and **Me**, the Alerts tab carrying the number
+nobody has answered. Alerts has an Open view of the emergencies they are part of, and a
+History view grouped by day; pull down to refresh. For each one: who is being asked,
 where the elder is with a Get directions button that opens the phone's maps app,
 calling the elder or a responder, and taking it on, declining or closing it with an
 outcome.
@@ -127,7 +128,8 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | --- | --- |
 | `lib/features/auth/` | Sign-in, sign-up and a forgotten password |
 | `lib/features/elders/` | People I look after: registering an elder, their page and chain, adding and removing family |
-| `lib/features/profile/` | My account: name, email and password |
+| `lib/features/home/` | The bottom bar and the tabs it switches between |
+| `lib/features/profile/` | My account: name, email, password and signing out |
 | `lib/features/elder/` | The panic screen, its controller, and the panic control |
 | `lib/features/responder/` | The alert list and detail screens, their controllers, the call button and state pill |
 | `lib/core/api/` | The HTTP client and the response models |

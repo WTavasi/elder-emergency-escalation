@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/country.dart';
 import '../../core/phone/phone_field.dart';
-import '../../core/widgets/care_rings.dart';
 import '../../core/widgets/notice.dart';
 import 'sign_up_screen.dart' show resendSeconds;
 
@@ -114,22 +113,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Reset your password')),
-      body: CareRings(
-        // From the bottom corner, so the rings are not hidden behind the app bar.
-        origin: Alignment.bottomRight,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(MzaziSpace.s24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(MzaziSpace.s24),
-                    child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
-                  ),
-                ),
-              ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              MzaziSpace.s16,
+              MzaziSpace.s8,
+              MzaziSpace.s16,
+              MzaziSpace.s32,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
             ),
           ),
         ),

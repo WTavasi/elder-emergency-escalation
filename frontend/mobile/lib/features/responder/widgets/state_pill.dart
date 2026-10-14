@@ -3,12 +3,17 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../../core/api/models.dart';
 
-/// The state of an emergency, as a pill.
+/// The state of an emergency: a glyph and a word, in the state's ink.
 ///
-/// The three colours per state come from the same token file the console reads, so an
-/// escalated emergency is the same red in both places. Colour is never the only signal:
-/// every pill carries a glyph and a word, because a pill a colour-blind reader cannot
-/// distinguish is decoration.
+/// It was a pill, a tinted capsule with a border. Three nested rounded shapes per row
+/// of the alert list was most of what made the list look generated, and the capsule
+/// added nothing the word and the colour do not already say. The name is kept because
+/// it is what the rest of the code and the console call it.
+///
+/// Colour is never the only signal: every state carries a glyph and a word, because a
+/// state a colour-blind reader cannot distinguish is decoration. The inks are the
+/// foreground colours from the token file, each checked against the page by the gate;
+/// "Waiting" uses the text-safe red rather than the pill's white-on-red.
 class StatePill extends StatelessWidget {
   const StatePill({required this.state, super.key});
 
@@ -17,30 +22,33 @@ class StatePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    final _PillColours colours = _coloursFor(state, isDark);
+    final Color ink = inkFor(state, theme);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s12, vertical: MzaziSpace.s4),
-      decoration: BoxDecoration(
-        color: colours.background,
-        border: Border.all(color: colours.border),
-        borderRadius: BorderRadius.circular(MzaziRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          // No semantic label on the glyph. The word beside it already says the state, and
-          // a screen reader announcing both would read every pill twice.
-          Icon(glyph(state), size: 16, color: colours.foreground),
-          const SizedBox(width: MzaziSpace.s4),
-          Text(
-            label(state),
-            style: theme.textTheme.labelLarge?.copyWith(color: colours.foreground),
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        // No semantic label on the glyph. The word beside it already says the state, and
+        // a screen reader announcing both would read every state twice.
+        Icon(glyph(state), size: 18, color: ink),
+        const SizedBox(width: MzaziSpace.s4),
+        Text(label(state), style: theme.textTheme.labelLarge?.copyWith(color: ink)),
+      ],
     );
+  }
+
+  /// The ink a state is written in, for anything else that wants to match it.
+  static Color inkFor(EventState state, ThemeData theme) {
+    final bool dark = theme.brightness == Brightness.dark;
+    return switch (state) {
+      // Nobody has answered, or it had to move on: the red that means a person is needed.
+      EventState.triggered || EventState.notified || EventState.escalated =>
+        dark ? MzaziColorsDark.danger : MzaziColorsLight.danger,
+      EventState.acknowledged =>
+        dark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg,
+      EventState.resolved =>
+        dark ? MzaziColorsDark.pillResolvedFg : MzaziColorsLight.pillResolvedFg,
+      EventState.cancelled => theme.colorScheme.onSurfaceVariant,
+    };
   }
 
   /// A shape for each state, so the pill still reads for somebody who cannot tell the
@@ -67,89 +75,6 @@ class StatePill extends StatelessWidget {
     EventState.resolved => 'Closed',
     EventState.cancelled => 'Withdrawn',
   };
-
-  static _PillColours _coloursFor(EventState state, bool isDark) => switch (state) {
-    EventState.triggered =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillTriggeredBg,
-              MzaziColorsDark.pillTriggeredFg,
-              MzaziColorsDark.pillTriggeredBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillTriggeredBg,
-              MzaziColorsLight.pillTriggeredFg,
-              MzaziColorsLight.pillTriggeredBd,
-            ),
-    EventState.notified =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillNotifiedBg,
-              MzaziColorsDark.pillNotifiedFg,
-              MzaziColorsDark.pillNotifiedBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillNotifiedBg,
-              MzaziColorsLight.pillNotifiedFg,
-              MzaziColorsLight.pillNotifiedBd,
-            ),
-    EventState.acknowledged =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillAcknowledgedBg,
-              MzaziColorsDark.pillAcknowledgedFg,
-              MzaziColorsDark.pillAcknowledgedBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillAcknowledgedBg,
-              MzaziColorsLight.pillAcknowledgedFg,
-              MzaziColorsLight.pillAcknowledgedBd,
-            ),
-    EventState.escalated =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillEscalatedBg,
-              MzaziColorsDark.pillEscalatedFg,
-              MzaziColorsDark.pillEscalatedBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillEscalatedBg,
-              MzaziColorsLight.pillEscalatedFg,
-              MzaziColorsLight.pillEscalatedBd,
-            ),
-    EventState.resolved =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillResolvedBg,
-              MzaziColorsDark.pillResolvedFg,
-              MzaziColorsDark.pillResolvedBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillResolvedBg,
-              MzaziColorsLight.pillResolvedFg,
-              MzaziColorsLight.pillResolvedBd,
-            ),
-    EventState.cancelled =>
-      isDark
-          ? const _PillColours(
-              MzaziColorsDark.pillCancelledBg,
-              MzaziColorsDark.pillCancelledFg,
-              MzaziColorsDark.pillCancelledBd,
-            )
-          : const _PillColours(
-              MzaziColorsLight.pillCancelledBg,
-              MzaziColorsLight.pillCancelledFg,
-              MzaziColorsLight.pillCancelledBd,
-            ),
-  };
-}
-
-class _PillColours {
-  const _PillColours(this.background, this.foreground, this.border);
-
-  final Color background;
-  final Color foreground;
-  final Color border;
 }
 
 /// How long ago, in the shortest form that is still accurate.

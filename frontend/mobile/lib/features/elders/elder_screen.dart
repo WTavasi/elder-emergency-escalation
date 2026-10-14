@@ -7,6 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/section_label.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
 
@@ -179,123 +180,124 @@ class _ElderScreenState extends State<ElderScreen> {
     final ChainView? chain = _chain;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.elderName)),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            padding: const EdgeInsets.all(MzaziSpace.s16),
-            children: <Widget>[
-              if (_error != null) ...<Widget>[
-                Notice(message: _error!, isError: true),
-                const SizedBox(height: MzaziSpace.s16),
+      appBar: AppBar(),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            MzaziSpace.s16,
+            0,
+            MzaziSpace.s16,
+            MzaziSpace.s32,
+          ),
+          children: <Widget>[
+            Semantics(
+              header: true,
+              child: Text(widget.elderName, style: theme.textTheme.headlineLarge),
+            ),
+            if (_error != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s16),
+              Notice(message: _error!, isError: true),
+            ],
+            if (elder == null || chain == null)
+              _error == null
+                  ? const Padding(
+                      padding: EdgeInsets.all(MzaziSpace.s32),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : const SizedBox.shrink()
+            else ...<Widget>[
+              Text(
+                elder.phone,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontFamily: MzaziFont.mono,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: MzaziSpace.s16),
+              SizedBox(
+                width: double.infinity,
+                child: CallButton(name: elder.name, phone: elder.phone),
+              ),
+              const SizedBox(height: MzaziSpace.s32),
+              const SectionLabel('Where they are now'),
+              _Fact(
+                elder.place.isAtHome
+                    ? 'At home'
+                    : 'Staying at ${elder.place.label ?? 'a recorded place'}',
+              ),
+              // Anybody in the chain may say where she is, so this is not behind canEdit.
+              if (elder.place.isAtHome)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => unawaited(_recordStay()),
+                  icon: const Icon(Icons.luggage_outlined),
+                  label: const Text('They are staying somewhere else'),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => unawaited(_act(() => widget.api.clearPlace(widget.elderId))),
+                  icon: const Icon(Icons.home_outlined),
+                  label: const Text('They are back home'),
+                ),
+              const SizedBox(height: MzaziSpace.s32),
+              // The value first and the change beside the label, the way a settings page
+              // on either platform puts an editable fact.
+              SectionLabel(
+                'Home',
+                trailing: elder.canEdit
+                    ? TextButton(
+                        onPressed: _busy ? null : () => unawaited(_changeHome()),
+                        child: const Text('Change their home'),
+                      )
+                    : null,
+              ),
+              _Fact(elder.home?.label ?? 'No home recorded'),
+              const SizedBox(height: MzaziSpace.s16),
+              SectionLabel(
+                'How much help they need',
+                trailing: elder.canEdit
+                    ? TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => unawaited(_changeCareLevel(elder.careLevel)),
+                        child: const Text('Change'),
+                      )
+                    : null,
+              ),
+              _Fact(elder.careLevel?.label ?? 'Not sure'),
+              const SizedBox(height: MzaziSpace.s16),
+              const SectionLabel('Who is asked, in order'),
+              const SizedBox(height: MzaziSpace.s12),
+              Text(
+                'When ${widget.elderName} asks for help, the first person is asked. If nobody '
+                'answers in time, the next is asked. An emergency responder near the alert '
+                'comes last, chosen by area.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: MzaziSpace.s8),
+              for (final ChainPlace place in chain.places) ...<Widget>[
+                _ChainRow(
+                  place: place,
+                  label: _placeLabel(place),
+                  onRemove: place.removable && !_busy ? () => unawaited(_remove(place)) : null,
+                ),
+                const Divider(),
               ],
-              if (elder == null || chain == null)
-                _error == null
-                    ? const Center(child: CircularProgressIndicator())
-                    : const SizedBox.shrink()
-              else ...<Widget>[
-                SizedBox(
-                  width: double.infinity,
-                  child: CallButton(name: elder.name, phone: elder.phone),
-                ),
-                const SizedBox(height: MzaziSpace.s24),
-                _Section(
-                  title: 'Where they are now',
-                  icon: elder.place.isAtHome ? Icons.home_outlined : Icons.luggage_outlined,
-                  body: elder.place.isAtHome
-                      ? 'At home'
-                      : 'Staying at ${elder.place.label ?? 'a recorded place'}',
-                  action: elder.place.isAtHome
-                      ? OutlinedButton.icon(
-                          onPressed: _busy ? null : () => unawaited(_recordStay()),
-                          icon: const Icon(Icons.luggage_outlined),
-                          label: const Text('They are staying somewhere else'),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => unawaited(
-                                  _act(() => widget.api.clearPlace(widget.elderId)),
-                                ),
-                          icon: const Icon(Icons.home_outlined),
-                          label: const Text('They are back home'),
-                        ),
-                ),
-                _Section(
-                  title: 'Home',
-                  icon: Icons.place_outlined,
-                  body: elder.home?.label ?? 'No home recorded',
-                  action: elder.canEdit
-                      ? OutlinedButton.icon(
-                          onPressed: _busy ? null : () => unawaited(_changeHome()),
-                          icon: const Icon(Icons.edit_location_alt_outlined),
-                          label: const Text('Change their home'),
-                        )
-                      : null,
-                ),
-                _Section(
-                  title: 'How much help they need',
-                  icon: Icons.accessibility_new,
-                  body: elder.careLevel?.label ?? 'Not sure',
-                  action: elder.canEdit
-                      ? OutlinedButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => unawaited(_changeCareLevel(elder.careLevel)),
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Change'),
-                        )
-                      : null,
-                ),
+              if (chain.canEdit) ...<Widget>[
                 const SizedBox(height: MzaziSpace.s8),
-                Text('Who is asked, in order', style: theme.textTheme.titleLarge),
-                const SizedBox(height: MzaziSpace.s8),
-                Text(
-                  'When ${widget.elderName} asks for help, the first person is asked. If nobody '
-                  'answers in time, the next is asked. An emergency responder near the alert '
-                  'comes last, chosen by area.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: MzaziSpace.s16),
-                for (final ChainPlace place in chain.places)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: MzaziSpace.s12),
-                    child: ListTile(
-                      leading: CircleAvatar(child: Text('${place.tier}')),
-                      title: Text(place.name, style: theme.textTheme.titleMedium),
-                      subtitle: Text(
-                        '${_placeLabel(place)}\n${place.phone}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      isThreeLine: true,
-                      trailing: place.removable
-                          ? IconButton(
-                              onPressed: _busy ? null : () => unawaited(_remove(place)),
-                              icon: const Icon(Icons.person_remove_outlined),
-                              tooltip: place.isInvited
-                                  ? 'Withdraw the invitation'
-                                  : 'Remove ${place.name}',
-                            )
-                          : place.isInvited
-                          ? const Tooltip(
-                              message: 'Waiting for them to sign up',
-                              child: Icon(Icons.hourglass_top),
-                            )
-                          : null,
-                    ),
-                  ),
-                if (chain.canEdit) ...<Widget>[
-                  const SizedBox(height: MzaziSpace.s8),
-                  OutlinedButton.icon(
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
                     onPressed: _busy ? null : () => unawaited(_addFamily()),
                     icon: const Icon(Icons.person_add_alt_1_outlined),
                     label: const Text('Add a family member'),
                   ),
-                ],
+                ),
               ],
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -312,34 +314,73 @@ class _ElderScreenState extends State<ElderScreen> {
   }
 }
 
-/// A heading, one line saying how things are, and the action that changes it.
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.icon, required this.body, this.action});
+/// One fact under a section label, at reading size.
+class _Fact extends StatelessWidget {
+  const _Fact(this.text);
 
-  final String title;
-  final IconData icon;
-  final String body;
-  final Widget? action;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
+    child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+  );
+}
+
+/// One place in the chain: the rank as a large figure, then who, then what they are and
+/// their number. The remove control, where there is one, is a full touch target.
+class _ChainRow extends StatelessWidget {
+  const _ChainRow({required this.place, required this.label, this.onRemove});
+
+  final ChainPlace place;
+  final String label;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: MzaziSpace.s24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: MzaziSpace.s8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Icon(icon, size: 20, color: theme.textTheme.bodyLarge?.color),
-              const SizedBox(width: MzaziSpace.s8),
-              Expanded(child: Text(body, style: theme.textTheme.bodyLarge)),
-            ],
+          SizedBox(
+            width: MzaziSpace.s32,
+            child: Text(
+              '${place.tier}',
+              style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
+              semanticsLabel: 'Tier ${place.tier}',
+            ),
           ),
-          if (action != null) ...<Widget>[const SizedBox(height: MzaziSpace.s12), action!],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(place.name, style: theme.textTheme.titleMedium),
+                Text(label, style: theme.textTheme.bodySmall),
+                Text(
+                  place.phone,
+                  style: theme.textTheme.bodySmall?.copyWith(fontFamily: MzaziFont.mono),
+                ),
+              ],
+            ),
+          ),
+          if (place.removable)
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.person_remove_outlined),
+              tooltip: place.isInvited ? 'Withdraw the invitation' : 'Remove ${place.name}',
+            )
+          else if (place.isInvited)
+            Padding(
+              padding: const EdgeInsets.all(MzaziSpace.s12),
+              child: Icon(
+                Icons.hourglass_top,
+                color: theme.colorScheme.onSurfaceVariant,
+                semanticLabel: 'Waiting for them to sign up',
+              ),
+            ),
         ],
       ),
     );

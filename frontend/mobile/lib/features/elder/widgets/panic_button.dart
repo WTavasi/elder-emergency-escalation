@@ -48,9 +48,12 @@ class PanicButton extends StatelessWidget {
               minHeight: diameter,
               maxHeight: diameter,
               child: Material(
+                // Disabled is grey with dark ink, not the red faded to half. Half-red with
+                // white ink was 2.9:1, and looked like a button that had broken rather
+                // than one that is busy.
                 color: enabled
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.primary.withValues(alpha: 0.5),
+                    : theme.colorScheme.surfaceContainerHighest,
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
@@ -62,7 +65,9 @@ class PanicButton extends StatelessWidget {
                         label,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.displayLarge?.copyWith(
-                          color: theme.colorScheme.onPrimary,
+                          color: enabled
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),

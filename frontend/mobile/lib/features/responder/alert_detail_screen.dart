@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/section_label.dart';
 import 'alert_detail_controller.dart';
 import 'widgets/call_button.dart';
 import 'widgets/directions_button.dart';
@@ -51,14 +52,26 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     final ThemeData theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(alert.elderName)),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: controller.refresh,
-          child: ListView(
-            padding: const EdgeInsets.all(MzaziSpace.s16),
-            children: <Widget>[
-              _StatusBanner(alert: alert),
+      // A back arrow and nothing else. The name is set large in the page instead, where
+      // the eye lands first.
+      appBar: AppBar(),
+      body: RefreshIndicator(
+        onRefresh: controller.refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            MzaziSpace.s16,
+            0,
+            MzaziSpace.s16,
+            MzaziSpace.s32,
+          ),
+          children: <Widget>[
+            _Header(alert: alert),
+            if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              const SectionLabel('Where'),
+              const SizedBox(height: MzaziSpace.s12),
+              if (alert.addressLabel != null)
+                Text(alert.addressLabel!, style: theme.textTheme.bodyLarge),
               if (alert.state.isOpen && alert.hasPlace) ...<Widget>[
                 const SizedBox(height: MzaziSpace.s12),
                 SizedBox(
@@ -71,102 +84,115 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   ),
                 ),
               ],
+            ],
+            if (controller.actionError != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              Notice(message: controller.actionError!, isError: true),
+            ],
+            if (controller.confirmation != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              Notice(message: controller.confirmation!),
+            ],
+            if (!alert.state.isOpen) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              Text(
+                'This emergency is closed. Nothing more to do.',
+                style: theme.textTheme.bodyLarge,
+              ),
+            ],
+            const SizedBox(height: MzaziSpace.s32),
+            if (detail == null && controller.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (detail != null) ...<Widget>[
+              _WhatHappened(entries: detail.timeline, chain: detail.chain),
+              const SizedBox(height: MzaziSpace.s32),
+              // No rank is "asked now" once it is over.
+              _Chain(
+                members: detail.chain,
+                currentTier: alert.state.isOpen ? alert.currentTier : 0,
+              ),
+            ],
+            if (controller.loadError != null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
-
-              if (controller.actionError != null) ...<Widget>[
-                Notice(message: controller.actionError!, isError: true),
-                const SizedBox(height: MzaziSpace.s16),
-              ],
-              if (controller.confirmation != null) ...<Widget>[
-                Notice(message: controller.confirmation!),
-                const SizedBox(height: MzaziSpace.s16),
-              ],
-
-              _Actions(
+              Text(
+                'Could not refresh: ${controller.loadError}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+      // The decision sits at the bottom of the screen, where the thumb already is, and
+      // stays there while the trail above scrolls. It used to be halfway down the page.
+      bottomNavigationBar: alert.state.isOpen
+          ? _ActionBar(
+              child: _Actions(
                 controller: controller,
                 alert: alert,
                 canOpen: widget.canOpen,
                 open: widget.open,
               ),
-              const SizedBox(height: MzaziSpace.s24),
+            )
+          : null,
+    );
+  }
+}
 
-              if (detail == null && controller.isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (detail != null) ...<Widget>[
-                _WhatHappened(entries: detail.timeline, chain: detail.chain),
-                const SizedBox(height: MzaziSpace.s24),
-                _Chain(members: detail.chain, currentTier: alert.currentTier),
-              ],
+/// The bar the actions sit in: a hairline above, the page colour behind, clear of the
+/// home indicator.
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.child});
 
-              if (controller.loadError != null) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s16),
-                Text(
-                  'Could not refresh: ${controller.loadError}',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ],
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            MzaziSpace.s16,
+            MzaziSpace.s12,
+            MzaziSpace.s16,
+            MzaziSpace.s12,
           ),
+          child: child,
         ),
       ),
     );
   }
 }
 
-/// What state this emergency is in, as one bordered block at the top of the screen.
+/// Who, then the state and the band on one line, then what has happened so far.
 ///
-/// The left edge says who it is waiting on, with the same meanings as the pills: red
-/// while nobody has answered, blue once somebody owns it, green once it is closed. The
-/// edge is never the only signal; the pill, the glyphs and the sentence below say the
-/// same thing in words.
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.alert});
+/// It used to be a bordered box with a coloured strip down one side. The name at
+/// headline size does the work the box was doing: there is no doubt which emergency
+/// this screen is about, or what matters most on it.
+class _Header extends StatelessWidget {
+  const _Header({required this.alert});
 
   final AlertSummary alert;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    final bool waiting = alert.state.isOpen && !alert.isAnswered;
-    final Color edge = waiting
-        ? MzaziColorsLight.emergencyEdge
-        : alert.state.isOpen
-        ? (isDark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg)
-        : (isDark ? MzaziColorsDark.pillResolvedFg : MzaziColorsLight.pillResolvedFg);
 
-    // Flutter cannot round the corners of a border whose sides differ in colour, so the
-    // coloured edge is a strip inside a uniformly bordered, clipped box instead.
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(MzaziRadius.card),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Container(width: 6, color: edge),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(MzaziSpace.s16),
-                child: _content(theme),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _content(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Semantics(
+          header: true,
+          child: Text(alert.elderName, style: theme.textTheme.headlineLarge),
+        ),
+        const SizedBox(height: MzaziSpace.s12),
         Wrap(
-          spacing: MzaziSpace.s8,
+          spacing: MzaziSpace.s16,
           runSpacing: MzaziSpace.s8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
@@ -177,22 +203,17 @@ class _StatusBanner extends StatelessWidget {
         const SizedBox(height: MzaziSpace.s12),
         Text(
           'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
-          style: theme.textTheme.bodyLarge,
+          style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
-        if (alert.addressLabel != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s4),
-          _IconLine(icon: Icons.place_outlined, text: alert.addressLabel!),
-        ],
         if (alert.ownerName != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s8),
-          _IconLine(
-            icon: Icons.person_outline,
-            text: '${alert.ownerName} is responding.',
-            style: theme.textTheme.bodyLarge?.weighted(FontWeight.w600),
+          const SizedBox(height: MzaziSpace.s4),
+          Text(
+            '${alert.ownerName} is responding.',
+            style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
           ),
         ],
         if (alert.outcome != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s8),
+          const SizedBox(height: MzaziSpace.s4),
           Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
           if (alert.outcomeNote != null) ...<Widget>[
             const SizedBox(height: MzaziSpace.s4),
@@ -213,31 +234,6 @@ class _StatusBanner extends StatelessWidget {
   }
 }
 
-/// A line of text with a small icon before it, for the place and the owner.
-class _IconLine extends StatelessWidget {
-  const _IconLine({required this.icon, required this.text, this.style});
-
-  final IconData icon;
-  final String text;
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextStyle? resolved = style ?? Theme.of(context).textTheme.bodyMedium;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Icon(icon, size: 18, color: resolved?.color),
-        ),
-        const SizedBox(width: MzaziSpace.s8),
-        Expanded(child: Text(text, style: resolved)),
-      ],
-    );
-  }
-}
-
 /// The four things a person can do, filtered to the ones that make sense now.
 ///
 /// Whether this particular account was asked at this tier is not shown in the
@@ -255,65 +251,70 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!alert.state.isOpen) {
-      return Text(
-        'This emergency is closed. Nothing more to do.',
-        style: Theme.of(context).textTheme.bodyLarge,
-      );
-    }
+    // Shown only while the emergency is open; a closed one says so in the page instead.
+    if (!alert.state.isOpen) return const SizedBox.shrink();
 
     final bool busy = controller.isWorking;
     final String? phone = alert.elderPhone;
 
     if (!alert.isAnswered) {
+      // The commitment full width on top, the two other answers side by side under it,
+      // so the bar stays two rows tall on a small phone. Ringing her is here because it
+      // is the most natural first move of all, and it is never disabled while an action
+      // is in flight: nothing about a call can interfere with an acknowledgement.
       return Column(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           SizedBox(
             width: double.infinity,
-            height: MzaziA11y.standardMinTouchTarget,
             child: FilledButton.icon(
               onPressed: busy ? null : controller.acknowledge,
               icon: const Icon(Icons.directions_run),
               label: const Text('I am on my way'),
             ),
           ),
-          const SizedBox(height: MzaziSpace.s12),
-          SizedBox(
-            width: double.infinity,
-            height: MzaziA11y.standardMinTouchTarget,
-            child: OutlinedButton.icon(
-              onPressed: busy ? null : () => _confirmDecline(context),
-              icon: const Icon(Icons.do_not_disturb_on_outlined),
-              label: const Text('I cannot come'),
+          const SizedBox(height: MzaziSpace.s8),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: busy ? null : () => _confirmDecline(context),
+                    icon: const Icon(Icons.do_not_disturb_on_outlined),
+                    label: const Text('I cannot come', textAlign: TextAlign.center),
+                  ),
+                ),
+                if (phone != null) ...<Widget>[
+                  const SizedBox(width: MzaziSpace.s8),
+                  Expanded(
+                    child: CallButton(
+                      name: alert.elderName,
+                      phone: phone,
+                      canOpen: canOpen,
+                      open: open,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          // Here as well as beside the responder button, because ringing her before
-          // deciding whether to set off is the most natural first move of all. Never
-          // disabled while an action is in flight: nothing about a call can interfere
-          // with an acknowledgement, and being unable to ring somebody is never right.
-          if (phone != null) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s12),
-            SizedBox(
-              width: double.infinity,
-              child: CallButton(name: alert.elderName, phone: phone, canOpen: canOpen, open: open),
-            ),
-          ],
         ],
       );
     }
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         SizedBox(
           width: double.infinity,
-          height: MzaziA11y.standardMinTouchTarget,
           child: FilledButton.icon(
             onPressed: busy ? null : () => _chooseOutcome(context),
             icon: const Icon(Icons.check_circle_outline),
             label: const Text('Close this emergency'),
           ),
         ),
-        const SizedBox(height: MzaziSpace.s12),
+        const SizedBox(height: MzaziSpace.s8),
         // Side by side, as asked. IntrinsicHeight and stretch keep the pair the same
         // height when one label wraps to two lines, which "Call an emergency responder"
         // will in half a phone's width. No fixed 48-point box here: it would clip the
@@ -333,7 +334,7 @@ class _Actions extends StatelessWidget {
                     open: open,
                   ),
                 ),
-                const SizedBox(width: MzaziSpace.s12),
+                const SizedBox(width: MzaziSpace.s8),
               ],
               Expanded(
                 // A different icon from Call Grace on purpose. Both labels start with
@@ -586,6 +587,11 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
   );
 }
 
+/// The trail, as sentences down a hairline, newest last.
+///
+/// It had a circled icon per entry. The icons repeated what each sentence said, in a
+/// shape that had to be learned, so they were decoration. A line down the left still
+/// makes it read as a sequence.
 class _WhatHappened extends StatelessWidget {
   const _WhatHappened({required this.entries, required this.chain});
 
@@ -598,62 +604,41 @@ class _WhatHappened extends StatelessWidget {
     final List<TimelineEntry> shown = entries.where(_isWorthShowing).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('What has happened', style: theme.textTheme.titleMedium),
-        const SizedBox(height: MzaziSpace.s12),
+        const SectionLabel('What has happened'),
+        const SizedBox(height: MzaziSpace.s16),
         if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
         else
-          for (int index = 0; index < shown.length; index++)
-            // A glyph on a line down the left, so the trail reads as a sequence at a
-            // glance. The glyphs are the ones the buttons and pills already use, so
-            // "is on the way" shows the same running figure as "I am on my way".
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  SizedBox(
-                    width: 32,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.focus),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                for (final TimelineEntry entry in shown)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      MzaziSpace.s16,
+                      MzaziSpace.s4,
+                      0,
+                      MzaziSpace.s12,
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: theme.dividerColor, width: 2),
-                          ),
-                          child: Icon(
-                            _glyph(shown[index].action),
-                            size: 18,
-                            color: theme.textTheme.bodyLarge?.color,
-                          ),
-                        ),
-                        if (index < shown.length - 1)
-                          Expanded(child: Container(width: 2, color: theme.dividerColor)),
+                        Text(_sentence(entry), style: theme.textTheme.bodyLarge),
+                        Text(_when(entry.secondsFromTrigger), style: theme.textTheme.bodySmall),
                       ],
                     ),
                   ),
-                  const SizedBox(width: MzaziSpace.s12),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: MzaziSpace.s16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(_sentence(shown[index]), style: theme.textTheme.bodyLarge),
-                          Text(
-                            _when(shown[index].secondsFromTrigger),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
+          ),
       ],
     );
   }
@@ -663,21 +648,6 @@ class _WhatHappened extends StatelessWidget {
   /// visible as the alert still waiting.
   static bool _isWorthShowing(TimelineEntry entry) =>
       entry.action != 'SEVERITY_EVALUATED' && entry.action != 'NOTIFICATION_FAILED';
-
-  /// Unlabelled on purpose: the sentence beside it says what happened, and a screen
-  /// reader announcing both would read every entry twice.
-  static IconData _glyph(String action) => switch (action) {
-    'EVENT_CREATED' => Icons.notifications_active_outlined,
-    'TIER_DISPATCHED' => Icons.send_outlined,
-    'ESCALATED' => Icons.arrow_upward,
-    'ACKNOWLEDGED' => Icons.directions_run,
-    'DECLINED' => Icons.do_not_disturb_on_outlined,
-    'RESPONDER_REQUESTED' => Icons.local_hospital_outlined,
-    'RESOLVED' => Icons.check_circle_outline,
-    'CANCELLED' => Icons.undo,
-    'REOPENED' => Icons.replay,
-    _ => Icons.circle_outlined,
-  };
 
   String _sentence(TimelineEntry entry) {
     final String who = entry.actorName ?? 'Somebody';
@@ -747,6 +717,8 @@ class _WhatHappened extends StatelessWidget {
   }
 }
 
+/// Who is asked, by rank: the number large in the monospaced face, then the name. The
+/// rank being asked now is marked in red, with the words saying so.
 class _Chain extends StatelessWidget {
   const _Chain({required this.members, required this.currentTier});
 
@@ -758,33 +730,41 @@ class _Chain extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('Who is being asked', style: theme.textTheme.titleMedium),
-        const SizedBox(height: MzaziSpace.s12),
+        const SectionLabel('Who is being asked'),
         if (members.isEmpty)
-          Text('Nobody is configured for this elder.', style: theme.textTheme.bodyMedium)
+          Padding(
+            padding: const EdgeInsets.only(top: MzaziSpace.s16),
+            child: Text('Nobody is configured for this elder.', style: theme.textTheme.bodyMedium),
+          )
         else
-          for (final ChainMember member in members)
+          for (final ChainMember member in members) ...<Widget>[
             Padding(
-              padding: const EdgeInsets.only(bottom: MzaziSpace.s8),
+              padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
                 children: <Widget>[
                   SizedBox(
-                    width: 56,
-                    child: Text('Tier ${member.priorityOrder}', style: theme.textTheme.bodySmall),
-                  ),
-                  Expanded(
+                    width: MzaziSpace.s32,
                     child: Text(
-                      member.name,
-                      style: member.priorityOrder == currentTier
-                          ? theme.textTheme.bodyMedium?.weighted(FontWeight.w700)
-                          : theme.textTheme.bodyMedium,
+                      '${member.priorityOrder}',
+                      style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
+                      semanticsLabel: 'Tier ${member.priorityOrder}',
                     ),
                   ),
+                  Expanded(child: Text(member.name, style: theme.textTheme.bodyLarge)),
+                  if (member.priorityOrder == currentTier)
+                    Text(
+                      'Asked now',
+                      style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
+                    ),
                 ],
               ),
             ),
+            const Divider(),
+          ],
       ],
     );
   }

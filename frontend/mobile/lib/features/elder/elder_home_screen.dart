@@ -155,7 +155,11 @@ class _Cancellable extends StatelessWidget {
             '${alerts.secondsLeft}',
             style: theme.textTheme.displayLarge?.copyWith(
               fontFamily: MzaziFont.mono,
-              color: MzaziColorsLight.timer,
+              // The theme's own timer colour. It was the light one in both modes, which
+              // put the number an elder reads under pressure at 2.3:1 in dark mode.
+              color: theme.brightness == Brightness.dark
+                  ? MzaziColorsDark.timer
+                  : MzaziColorsLight.timer,
             ),
             semanticsLabel: '${alerts.secondsLeft} seconds left to stop this',
           ),
