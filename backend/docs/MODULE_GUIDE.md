@@ -27,6 +27,7 @@ so the folders match and the code inside them follows NestJS.
 | Retries and the SMS fallback | `notification-service/workers/notifications.processor.ts` |
 | Live updates to the console | `realtime-service/` |
 | The reporting figures | `report-service/services/dashboard.service.ts` |
+| Accounts: listing, adding staff, deactivating | `admin-service/services/user-admin.service.ts` |
 | How long data is kept | `retention-service/workers/retention.service.ts` |
 | The health check | `health-service/` |
 | An environment variable | `shared/config/env.schema.ts` |
@@ -76,6 +77,8 @@ Tests sit beside the file they test as `<name>.spec.ts`. The end-to-end suite is
   `realtime-service`.
 - `realtime-service` uses `auth-service` to check tokens.
 - `auth-service` uses `notification-service` to send sign-up codes.
+- `admin-service` uses `auth-service` (password hashing) and `notification-service` (the
+  "an account was made for you" SMS).
 - `elder-service` uses `auth-service` (passwords and phone codes) and
   `notification-service` (the "you were added" SMS) when a caregiver registers an elder
   or adds family.

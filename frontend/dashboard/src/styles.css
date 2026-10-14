@@ -48,6 +48,20 @@ html {
   color-scheme: light dark;
 }
 
+/*
+  How tall a button or field is. A full touch target where fingers are used, and a
+  denser 36 points where a mouse is: the console is used at a desk to read a lot at
+  once, and 24 points is WCAG 2.5.8's floor for a pointer.
+*/
+:root {
+  --control-height: var(--min-touch-target);
+}
+@media (pointer: fine) {
+  :root {
+    --control-height: calc(var(--space-32) + var(--space-4));
+  }
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -104,16 +118,19 @@ a {
 /* ------------------------------------------------------------------ layout -- */
 
 .shell {
+  --sidebar-width: 232px;
   display: grid;
-  grid-template-columns: 248px 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
+}
+.shell--collapsed {
+  --sidebar-width: 64px;
 }
 
 /*
   The sidebar stays put while the page scrolls. Without this a long page, History above
-  all, carried the navigation and the account away with it, so the sidebar looked
-  different on every screen depending on how much that screen held. Its own scroll is
-  for a window too short for the sidebar itself.
+  all, carried the navigation away with it. Its own scroll is for a window too short for
+  the sidebar itself.
 */
 .sidebar {
   position: sticky;
@@ -123,21 +140,31 @@ a {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-24);
-  padding: var(--space-24) var(--space-16);
+  gap: var(--space-16);
+  padding: var(--space-16) var(--space-12);
   background: var(--surface);
   border-right: 1px solid var(--line);
+}
+
+.sidebar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--min-touch-target);
+  padding: 0 var(--space-4);
 }
 
 .sidebar__brand {
   font-family: var(--font-display);
   font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-heading);
   letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
 }
 
-.sidebar__role {
-  color: var(--text-faint);
-  font-size: var(--font-size-small);
+.sidebar .sidebar__close {
+  display: none;
 }
 
 .nav {
@@ -151,17 +178,24 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  min-height: var(--min-touch-target);
+  min-height: 40px;
   padding: 0 var(--space-12);
   border-radius: var(--radius-input);
   color: var(--text-soft);
+  font-size: var(--font-size-small);
   text-decoration: none;
+}
+
+.nav a:hover {
+  background: var(--surface-sunk);
+  color: var(--text);
 }
 
 .nav a[aria-current='page'] {
   background: var(--surface-sunk);
   color: var(--text);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--text);
 }
 
 .nav__label {
@@ -172,6 +206,7 @@ a {
 }
 
 .nav a .icon {
+  flex: none;
   color: var(--text-faint);
 }
 
@@ -181,21 +216,107 @@ a {
 
 .nav__count {
   font-family: var(--font-mono);
+  font-size: var(--font-size-micro);
+  color: var(--text-soft);
+}
+
+.sidebar__collapse {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 40px;
+  padding: 0 var(--space-12);
+  border: none;
+  background: none;
+  color: var(--text-soft);
   font-size: var(--font-size-small);
 }
 
-.main {
-  padding: var(--space-24) var(--space-32);
+/* Narrowed to icons: the words go, the names stay as tooltips and for screen readers. */
+.shell--collapsed .nav__text,
+.shell--collapsed .nav__count {
+  display: none;
+}
+.shell--collapsed .nav a,
+.shell--collapsed .sidebar__collapse,
+.shell--collapsed .sidebar__top {
+  justify-content: center;
+  padding: 0;
+}
+
+.frame {
   display: flex;
   flex-direction: column;
-  gap: var(--space-24);
+  min-width: 0;
+}
+
+/* The header stays at the top of the page as it scrolls. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 56px;
+  padding: 0 var(--space-24);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar .topbar__menu {
+  display: none;
+}
+
+.crumbs {
+  flex: 1;
+  min-width: 0;
+}
+.crumbs ol {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-small);
+}
+.crumbs li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crumbs li + li::before {
+  content: '/';
+  margin-right: var(--space-8);
+  color: var(--text-faint);
+}
+.crumbs a {
+  color: var(--text-soft);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.crumbs [aria-current='page'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.main {
+  padding: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
   min-width: 0;
 }
 
 .page-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-12);
 }
@@ -203,21 +324,71 @@ a {
 .page-head p {
   margin: var(--space-4) 0 0;
   color: var(--text-soft);
+  font-size: var(--font-size-small);
 }
 
+.scrim {
+  display: none;
+}
+
+/* A phone: the sidebar becomes a drawer behind the menu button. */
 @media (max-width: 860px) {
-  .shell {
-    grid-template-columns: 1fr;
+  .shell,
+  .shell--collapsed {
+    --sidebar-width: 272px;
+    grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
-    position: static;
-    height: auto;
-    overflow-y: visible;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    transition: transform var(--motion-sheet) ease;
+  }
+  .sidebar--open {
+    transform: none;
+  }
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    background: color-mix(in srgb, var(--text) 40%, transparent);
+  }
+  .sidebar .sidebar__close,
+  .topbar .topbar__menu {
+    display: inline-grid;
+  }
+  .sidebar__collapse {
+    display: none;
+  }
+  .nav a {
+    min-height: var(--min-touch-target);
+  }
+  .shell--collapsed .nav__text,
+  .shell--collapsed .nav__count {
+    display: inline;
+  }
+  .shell--collapsed .nav a,
+  .shell--collapsed .sidebar__top {
+    justify-content: space-between;
+    padding: 0 var(--space-12);
+  }
+  .topbar {
+    padding: 0 var(--space-8);
+  }
+  .topbar .account__who {
+    display: none;
   }
   .main {
     padding: var(--space-16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
   }
 }
 
@@ -386,9 +557,25 @@ th {
 }
 
 td {
-  padding: var(--space-12);
+  padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--line-soft);
   vertical-align: top;
+}
+
+tbody tr[aria-selected='true'] td,
+tbody tr:hover td {
+  background: color-mix(in srgb, var(--surface-sunk) 50%, transparent);
+}
+
+/* Figures right-aligned so their places line up; states and bands centred. */
+th.num,
+td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+th.center,
+td.center {
+  text-align: center;
 }
 
 tbody tr:last-child td {
@@ -407,7 +594,7 @@ tbody tr:last-child td {
 }
 
 button {
-  min-height: var(--min-touch-target);
+  min-height: var(--control-height);
   padding: 0 var(--space-16);
   border-radius: var(--radius-input);
   border: 1px solid var(--line);
@@ -447,9 +634,11 @@ label {
 input,
 select {
   width: 100%;
-  min-height: var(--min-touch-target);
+  min-height: var(--control-height);
   padding: 0 var(--space-12);
-  border: 1px solid var(--line);
+  /* The control colour, 3:1 against the page as WCAG 1.4.11 asks of a field's edge. The
+     hairline colour it used was 1.3:1, so an empty field was close to invisible. */
+  border: 1px solid var(--control);
   border-radius: var(--radius-input);
   background: var(--surface);
   color: var(--text);
@@ -491,16 +680,116 @@ select {
   gap: var(--space-12);
 }
 
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .metric__value {
   font-family: var(--font-mono);
-  font-size: var(--font-size-display);
+  font-size: var(--font-size-h1);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .metric__label {
   color: var(--text-soft);
   font-size: var(--font-size-small);
+}
+
+.metric__note {
+  margin-top: var(--space-4);
+  color: var(--text-faint);
+  font-size: var(--font-size-micro);
+}
+
+/* How a figure moved: green the right way, the warning red the wrong way, ink when
+   neither way is better. The arrow and the signed number say it without the colour. */
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-size-micro);
+  color: var(--text-soft);
+}
+.trend--good {
+  color: var(--pill-resolved-fg);
+}
+.trend--bad {
+  color: var(--danger);
+}
+.trend--none {
+  color: var(--text-faint);
+}
+
+.chart {
+  position: relative;
+  color: var(--text);
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+.chart svg:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+.chart__grid {
+  stroke: var(--line);
+  stroke-dasharray: 3 4;
+}
+.chart__axis {
+  fill: var(--text-faint);
+  font-size: var(--font-size-micro);
+  font-family: var(--font-mono);
+}
+.chart__line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart__line--gap {
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+  opacity: 0.6;
+}
+.chart__dot {
+  fill: currentColor;
+}
+.chart__point {
+  fill: var(--surface);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.chart__cursor {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+}
+/* The figure for one day: dark, compact, above the line. */
+.chart__tip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-input);
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--font-size-micro);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 20%, transparent);
+}
+.chart__tip-value {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+}
+.chart__tip-detail,
+.chart__tip-date {
+  opacity: 0.8;
 }
 
 .timeline {
@@ -712,41 +1001,87 @@ select {
   box-shadow: inset 0 -3px 0 var(--text);
 }
 
-/* The account at the foot of the sidebar. */
+/* Who is signed in, top right, opening a small menu. */
 .account {
-  margin-top: auto;
+  position: relative;
+}
+.account__button {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
+  gap: var(--space-8);
+  min-height: 40px;
+  padding: 0 var(--space-8);
+  border-color: transparent;
+  background: none;
+}
+.account__button:hover:not(:disabled) {
+  background: var(--surface-sunk);
 }
 .account__mark {
   flex: none;
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--surface-sunk);
   border: 1px solid var(--line);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-micro);
   font-weight: 600;
 }
 .account__who {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
-  flex: 1;
+  line-height: 1.2;
 }
 .account__name {
   font-size: var(--font-size-small);
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .account__role {
   font-size: var(--font-size-micro);
   color: var(--text-faint);
+}
+.account__role::first-letter {
+  text-transform: uppercase;
+}
+
+/* A small list of actions under a button: the account menu, a row's menu. */
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  z-index: 10;
+  min-width: 180px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
+}
+.menu--right {
+  right: 0;
+}
+.menu--fixed {
+  position: fixed;
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-12);
+  border: none;
+  background: none;
+  font-size: var(--font-size-small);
+  text-align: left;
+}
+.menu button:hover:not(:disabled),
+.menu button:focus-visible {
+  background: var(--surface-sunk);
 }
 
 .wordmark {
@@ -944,4 +1279,276 @@ select {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ------------------------------------------------------------- data grids -- */
+
+/* A table with its toolbar on top and its pager underneath, in one card. */
+.grid {
+  padding: 0;
+  /* Clip rather than hidden: hidden would make the card a scroll container, and the
+     pager could no longer stick to the bottom of the window. */
+  overflow: clip;
+}
+
+.grid__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border-bottom: 1px solid var(--line);
+}
+.grid__toolbar select,
+.grid__toolbar input[type='date'] {
+  width: auto;
+}
+
+.grid__dates {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+@media (max-width: 860px) {
+  .grid__toolbar > select,
+  .search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .grid__dates {
+    width: 100%;
+  }
+  .grid__dates input[type='date'] {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.grid__body {
+  overflow-x: auto;
+}
+.grid__body > .notice {
+  margin: var(--space-12);
+}
+
+.grid__selection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--surface-sunk);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--font-size-small);
+}
+
+/* A search field with its magnifier inside, at the front. */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  max-width: 320px;
+  margin: 0;
+  font-weight: 400;
+}
+.search .icon {
+  position: absolute;
+  left: var(--space-8);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.search input {
+  padding-left: var(--space-32);
+}
+
+.pager {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  font-size: var(--font-size-small);
+}
+.pager__range {
+  margin: 0;
+  color: var(--text-soft);
+}
+.pager__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.button--with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.button--quiet {
+  border-color: transparent;
+  background: none;
+  color: var(--text-soft);
+}
+
+/* A checkbox column: wide enough to hit, no wider. */
+.select-cell {
+  width: var(--space-32);
+  padding-right: 0;
+}
+.select-cell input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--text);
+}
+
+/* Muted tint and darker ink for an account's status, never a bright pill. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-micro);
+  font-weight: 600;
+  line-height: 1.8;
+}
+.status--active {
+  background: var(--pill-resolved-bg);
+  color: var(--pill-resolved-fg);
+}
+.status--deactivated {
+  background: var(--pill-cancelled-bg);
+  color: var(--pill-cancelled-fg);
+}
+
+/* The row's own menu, hidden until the row is pointed at or the button has focus. */
+.row-menu {
+  position: relative;
+  display: inline-block;
+}
+.row-menu > button {
+  width: var(--control-height);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-color: transparent;
+  background: none;
+}
+@media (hover: hover) {
+  tbody tr .row-menu > button {
+    opacity: 0;
+  }
+  tbody tr:hover .row-menu > button,
+  .row-menu > button:focus-visible,
+  .row-menu > button[aria-expanded='true'] {
+    opacity: 1;
+  }
+}
+
+/* ----------------------------------------------------------------- dialogs -- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16);
+}
+.modal__scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--text) 40%, transparent);
+}
+.modal__box {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: calc(100vh - var(--space-32));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sheet);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--text) 20%, transparent);
+}
+.modal__box--wide {
+  width: min(560px, 100%);
+}
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-24);
+  border-bottom: 1px solid var(--line);
+}
+.modal__head h2 {
+  font-size: var(--font-size-body);
+}
+.modal__body {
+  padding: var(--space-16) var(--space-24);
+  overflow-y: auto;
+}
+.modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-24);
+  border-top: 1px solid var(--line);
+}
+.field__hint {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-micro);
+  color: var(--text-faint);
+}
+.choices {
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+}
+.choices li + li {
+  border-top: 1px solid var(--line-soft);
+}
+.choices label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  font-weight: 400;
+  cursor: pointer;
+}
+.choices input {
+  width: auto;
+  min-height: 0;
+  accent-color: var(--text);
+}
+
+.label,
+legend {
+  display: block;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+.fieldset {
+  margin: 0 0 var(--space-16);
+  padding: var(--space-12);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+}
+.fieldset legend {
+  padding: 0 var(--space-4);
+}
+.button--primary .icon {
+  margin-right: 0;
 }

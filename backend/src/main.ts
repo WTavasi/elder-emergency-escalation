@@ -50,6 +50,8 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: [config.getOrThrow<string>('ADMIN_ORIGIN')],
     credentials: true,
+    // The history's "of 312": a cross-origin page only sees the headers named here.
+    exposedHeaders: ['X-Total-Count'],
   });
 
   // Runs onModuleDestroy on SIGTERM, so Prisma and Redis close cleanly when Render

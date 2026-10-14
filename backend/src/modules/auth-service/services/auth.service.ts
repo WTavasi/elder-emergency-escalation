@@ -47,6 +47,9 @@ export interface AuthResult {
   refreshToken: string;
 }
 
+/** Said only to somebody who got the password right, so it reveals nothing to a guesser. */
+export const DEACTIVATED = 'This account has been deactivated. Ask an administrator.';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -124,6 +127,9 @@ export class AuthService {
       );
     }
 
+    // Only after the password is right, so this says nothing to somebody guessing.
+    if (user.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
+
     // Transparent upgrade if the cost parameters were raised since this hash was made.
     if (this.passwords.needsRehash(user.passwordHash)) {
       await this.prisma.user.update({
@@ -146,6 +152,10 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<AuthResult> {
     const payload = await this.tokens.verifyRefresh(refreshToken);
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+
+    // Deactivating clears the fingerprint as well, so this is belt and braces, but it
+    // lets the app say why rather than only that the session ended.
+    if (user?.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
 
     if (!user?.refreshTokenHash) {
       throw new UnauthorizedException('Session has ended. Please sign in again.');
@@ -242,9 +252,9 @@ export class AuthService {
     await this.verification.consume(dto.phone, dto.code, 'reset');
 
     const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
-    // A reset code is only ever sent to a number with an account. One deleted since is
-    // answered like any other code that no longer works.
-    if (!user) throw new BadRequestException(WRONG_CODE);
+    // A reset code is only ever sent to an active account. One deleted or deactivated
+    // since is answered like any other code that no longer works.
+    if (!user || user.deactivatedAt) throw new BadRequestException(WRONG_CODE);
 
     const updated = await this.prisma.user.update({
       where: { id: user.id },
@@ -264,6 +274,7 @@ export class AuthService {
   async signInWithGoogle(idToken: string): Promise<AuthResult> {
     const email = await this.google.verify(idToken);
     const user = await this.prisma.user.findUnique({ where: { email } });
+    if (user?.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
     if (!user || user.role !== Role.ADMINISTRATOR) {
       throw new UnauthorizedException(
         'No administrator account uses this Google address. Sign in with your phone number or email.',

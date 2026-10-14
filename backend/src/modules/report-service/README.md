@@ -20,6 +20,10 @@ reliably each channel delivers.
 Response times come with a median, a mean and a sample size, because a mean over a
 handful of emergencies is not a finding on its own.
 
+Each overview also carries `previous`, the same figures for the window before this one
+and of the same length, so the console can say how a figure moved, and `daily`, one
+point per day of the window with the quiet days included, counted in Nairobi time.
+
 ## Files
 
 | Path | What it is |

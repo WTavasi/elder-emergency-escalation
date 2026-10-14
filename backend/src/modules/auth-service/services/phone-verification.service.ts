@@ -81,7 +81,7 @@ export class PhoneVerificationService {
 
     const existing = await this.prisma.user.findUnique({
       where: { phone },
-      select: { id: true },
+      select: { id: true, deactivatedAt: true },
     });
     if (purpose === 'signup' && existing) {
       await this.sms.send(phone, accountMessages.alreadyRegistered());
@@ -89,7 +89,8 @@ export class PhoneVerificationService {
     }
     // Nobody to reset. Nothing is sent: the number belongs to somebody with no account,
     // who did not ask and has nothing to protect, and a message would only cost money.
-    if (purpose === 'reset' && !existing) return;
+    // A deactivated account is treated as none: its password cannot be reset into use.
+    if (purpose === 'reset' && (!existing || existing.deactivatedAt)) return;
 
     const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
     const ttl = this.ttlSeconds();

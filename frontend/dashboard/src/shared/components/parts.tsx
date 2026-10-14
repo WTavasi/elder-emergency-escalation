@@ -176,13 +176,13 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
         <Link to={`/emergencies/${alert.eventId}`}>{alert.elder.name}</Link>
         <div className="micro">{alert.addressLabel ?? 'Location captured, no address'}</div>
       </td>
-      <td>
+      <td className="center">
         <StatePill state={alert.state} />
       </td>
-      <td>
+      <td className="center">
         <SeverityLabel severity={alert.severity} score={alert.severityScore} />
       </td>
-      <td className="mono">{alert.currentTier}</td>
+      <td className="mono num">{alert.currentTier}</td>
       <td>
         {alert.acknowledgedBy ? (
           <>
@@ -195,18 +195,79 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
           <span className="muted">nobody yet</span>
         )}
       </td>
-      <td>
+      <td className="num">
         {live ? (
           <Countdown deadlineAt={alert.deadlineAt} />
+        ) : alert.responseSeconds === null ? (
+          <span className="muted">not answered</span>
         ) : (
-          <span className="mono">
-            {alert.responseSeconds === null
-              ? 'not answered'
-              : formatDuration(alert.responseSeconds)}
-          </span>
+          <span className="mono">{formatDuration(alert.responseSeconds)}</span>
         )}
       </td>
-      <td className="mono">{formatClock(alert.triggeredAt)}</td>
+      <td className="mono num">{formatClock(alert.triggeredAt)}</td>
     </tr>
+  );
+}
+
+/**
+ * The foot of a table: how much of the whole is on screen, and the way to the rest.
+ * Announced politely when it changes, so a screen reader hears the new range after
+ * Next without having to go looking for it.
+ */
+export function Pager({
+  first,
+  last,
+  total,
+  page,
+  pages,
+  onPage,
+  noun,
+}: {
+  first: number;
+  last: number;
+  total: number;
+  page: number;
+  pages: number;
+  onPage: (page: number) => void;
+  noun: string;
+}) {
+  const count = new Intl.NumberFormat();
+  return (
+    <div className="pager">
+      <p className="pager__range" aria-live="polite">
+        {total === 0 ? (
+          `No ${noun}`
+        ) : (
+          <>
+            Showing <span className="mono">{count.format(first)}</span>&ndash;
+            <span className="mono">{count.format(last)}</span> of{' '}
+            <span className="mono">{count.format(total)}</span> {noun}
+          </>
+        )}
+      </p>
+      <div className="pager__controls">
+        <span className="micro">
+          Page {page} of {pages}
+        </span>
+        <button
+          type="button"
+          className="button--with-icon"
+          onClick={() => onPage(page - 1)}
+          disabled={page <= 1}
+        >
+          <Icon name="chevronLeft" size={18} />
+          Previous
+        </button>
+        <button
+          type="button"
+          className="button--with-icon"
+          onClick={() => onPage(page + 1)}
+          disabled={page >= pages}
+        >
+          Next
+          <Icon name="chevronRight" size={18} />
+        </button>
+      </div>
+    </div>
   );
 }

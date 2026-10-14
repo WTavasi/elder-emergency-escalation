@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
+import { useCrumb } from '../../shared/state/Breadcrumb';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
 import type { AlertDetail, ChainMember } from '../../shared/api/types';
@@ -108,6 +109,9 @@ export function EventDetail() {
   );
   useRealtime(session?.accessToken ?? null, onUpdate);
 
+  // The header's breadcrumb names the elder, and is the way back to the board.
+  useCrumb(alert?.elder.name ?? null);
+
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !alert) return <Skeleton rows={5} />;
 
@@ -117,9 +121,6 @@ export function EventDetail() {
     <>
       <div className="page-head">
         <div>
-          <p className="micro">
-            <Link to="/">Open emergencies</Link>
-          </p>
           <h1>{alert.elder.name}</h1>
           <p>
             Raised {formatClock(alert.triggeredAt)}

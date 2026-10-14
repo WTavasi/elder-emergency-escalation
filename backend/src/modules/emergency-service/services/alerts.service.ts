@@ -55,6 +55,10 @@ export interface AlertFilters {
   to?: Date;
   limit?: number;
   cursor?: string;
+  /** Part of the elder's name, matched without regard to case. */
+  q?: string;
+  /** Rows to skip, for numbered pages. Ignored when a cursor is given. */
+  offset?: number;
 }
 
 /**
@@ -455,32 +459,55 @@ export class AlertsService {
     role: Role,
     filters: AlertFilters = {},
   ): Promise<AlertSummary[]> {
-    const scope = await this.scopeFor(userId, role);
+    const where = await this.whereFor(userId, role, filters);
     const limit = Math.min(Math.max(filters.limit ?? 50, 1), 200);
 
     const rows = await this.prisma.emergencyEvent.findMany({
-      where: {
-        ...scope,
-        ...(filters.onlyOpen ? { state: { in: OPEN_STATES } } : {}),
-        ...(filters.states?.length ? { state: { in: filters.states } } : {}),
-        ...(filters.severities?.length ? { severity: { in: filters.severities } } : {}),
-        ...(filters.elderId ? { elderlyId: filters.elderId } : {}),
-        ...(filters.from || filters.to
-          ? {
-              triggeredAt: {
-                ...(filters.from ? { gte: filters.from } : {}),
-                ...(filters.to ? { lte: filters.to } : {}),
-              },
-            }
-          : {}),
-      },
+      where,
       orderBy: { triggeredAt: 'desc' },
       include: SUMMARY_INCLUDE,
       take: limit,
-      ...(filters.cursor ? { skip: 1, cursor: { id: filters.cursor } } : {}),
+      ...(filters.cursor
+        ? { skip: 1, cursor: { id: filters.cursor } }
+        : filters.offset
+          ? { skip: filters.offset }
+          : {}),
     });
 
     return rows.map(toSummary);
+  }
+
+  /**
+   * How many emergencies the same filters match in all, for "Showing 1-50 of 312".
+   * Counted with the same scope and filters as the page, so the two cannot disagree.
+   */
+  async countForUser(userId: string, role: Role, filters: AlertFilters = {}): Promise<number> {
+    return this.prisma.emergencyEvent.count({ where: await this.whereFor(userId, role, filters) });
+  }
+
+  private async whereFor(
+    userId: string,
+    role: Role,
+    filters: AlertFilters,
+  ): Promise<Prisma.EmergencyEventWhereInput> {
+    const scope = await this.scopeFor(userId, role);
+    const q = filters.q?.trim();
+    return {
+      ...scope,
+      ...(filters.onlyOpen ? { state: { in: OPEN_STATES } } : {}),
+      ...(filters.states?.length ? { state: { in: filters.states } } : {}),
+      ...(filters.severities?.length ? { severity: { in: filters.severities } } : {}),
+      ...(filters.elderId ? { elderlyId: filters.elderId } : {}),
+      ...(q ? { elder: { name: { contains: q, mode: 'insensitive' as const } } } : {}),
+      ...(filters.from || filters.to
+        ? {
+            triggeredAt: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
+        : {}),
+    };
   }
 
   /** The events an administrator may see, expressed as a Prisma filter. */

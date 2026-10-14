@@ -1,10 +1,62 @@
 import { useCallback, useState } from 'react';
 import { api } from '../../shared/api/client';
-import { ErrorNotice, Skeleton } from '../../shared/components/parts';
+import { Icon } from '../../shared/components/Icon';
+import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { formatDuration, humanise } from '../../shared/utils/format';
+import { TrendChart, type Series } from './TrendChart';
 
 const WINDOWS = [7, 30, 90];
+
+/** Which way is good for a figure: fewer minutes waiting is, more emergencies is neither. */
+type Better = 'higher' | 'lower' | 'neither';
+
+/**
+ * How a figure moved against the window before, as an arrow and a few words.
+ *
+ * Counts and durations move by a percentage of what they were; figures that are already
+ * percentages move by points, because "+50%" on a rate that went from 2% to 3% says
+ * something quite different from what happened. Green when it moved the right way, the
+ * warning red when it moved the wrong way, ink when neither way is better. With nothing
+ * to compare against, it says so rather than inventing a change from zero.
+ */
+function Trend({
+  now,
+  before,
+  better,
+  points = false,
+  windowDays,
+}: {
+  now: number | null;
+  before: number | null;
+  better: Better;
+  points?: boolean;
+  windowDays: number;
+}) {
+  const versus = `vs previous ${windowDays} days`;
+  if (now === null || before === null || (!points && before === 0)) {
+    return <span className="trend trend--none">No earlier figure to compare</span>;
+  }
+
+  const change = points ? now - before : ((now - before) / before) * 100;
+  const rounded = Math.round(change * 10) / 10;
+  if (rounded === 0) return <span className="trend trend--flat">No change {versus}</span>;
+
+  const up = rounded > 0;
+  const tone = better === 'neither' ? 'flat' : (better === 'higher') === up ? 'good' : 'bad';
+  const amount = points
+    ? `${up ? '+' : ''}${rounded} ${Math.abs(rounded) === 1 ? 'point' : 'points'}`
+    : `${up ? '+' : ''}${rounded}%`;
+
+  return (
+    <span className={`trend trend--${tone}`}>
+      <Icon name={up ? 'trendingUp' : 'trendingDown'} size={16} />
+      <span>
+        <span className="mono">{amount}</span> {versus}
+      </span>
+    </span>
+  );
+}
 
 /**
  * The evaluation figures, computed from the record rather than from a counter.
@@ -15,6 +67,7 @@ const WINDOWS = [7, 30, 90];
  */
 export function Reporting() {
   const [days, setDays] = useState(30);
+  const [series, setSeries] = useState<Series>('raised');
 
   const fetcher = useCallback(() => api.overview(days), [days]);
   const {
@@ -60,57 +113,124 @@ export function Reporting() {
           <section aria-labelledby="live-heading" className="stack">
             <h2 id="live-heading">Right now</h2>
             <div className="metrics">
-              <div className="card">
-                <div className="metric__value">{overview.live.open}</div>
+              <div className="card metric">
                 <div className="metric__label">Emergencies open</div>
+                <div className="metric__value">{overview.live.open}</div>
               </div>
-              <div className="card">
-                <div className="metric__value">{overview.live.unacknowledged}</div>
+              <div className="card metric">
                 <div className="metric__label">Waiting for somebody to answer</div>
+                <div className="metric__value">{overview.live.unacknowledged}</div>
               </div>
               {Object.entries(overview.live.bySeverity).map(([band, count]) => (
-                <div className="card" key={band}>
-                  <div className="metric__value">{count}</div>
+                <div className="card metric" key={band}>
                   <div className="metric__label">Open and {band.toLowerCase()}</div>
+                  <div className="metric__value">{count}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section aria-labelledby="response-heading" className="stack">
-            <h2 id="response-heading">Response time</h2>
+          <section aria-labelledby="window-heading" className="stack">
+            <h2 id="window-heading">The last {days} days</h2>
             <div className="metrics">
-              <div className="card">
+              <div className="card metric">
+                <div className="metric__label">Emergencies raised</div>
+                <div className="metric__value">{overview.raised}</div>
+                <Trend
+                  now={overview.raised}
+                  before={overview.previous.raised}
+                  better="neither"
+                  windowDays={days}
+                />
+              </div>
+              <div className="card metric">
+                <div className="metric__label">Median time to an answer</div>
                 <div className="metric__value">
                   {overview.responseTimes.medianSeconds === null
                     ? 'none'
                     : formatDuration(overview.responseTimes.medianSeconds)}
                 </div>
-                <div className="metric__label">Median time to acknowledgement</div>
-              </div>
-              <div className="card">
-                <div className="metric__value">
+                <Trend
+                  now={overview.responseTimes.medianSeconds}
+                  before={overview.previous.responseTimes.medianSeconds}
+                  better="lower"
+                  windowDays={days}
+                />
+                <div className="metric__note">
+                  From <span className="mono">{overview.responseTimes.sampleSize}</span> answered.
+                  Mean{' '}
                   {overview.responseTimes.meanSeconds === null
                     ? 'none'
                     : formatDuration(overview.responseTimes.meanSeconds)}
+                  , which one long wait distorts.
                 </div>
-                <div className="metric__label">Mean, which one long wait distorts</div>
               </div>
-              <div className="card">
+              <div className="card metric">
+                <div className="metric__label">
+                  Answered within {formatDuration(overview.responseTimes.targetSeconds)}
+                </div>
                 <div className="metric__value">
                   {overview.responseTimes.withinTargetPercent === null
                     ? 'none'
                     : `${overview.responseTimes.withinTargetPercent}%`}
                 </div>
-                <div className="metric__label">
-                  Answered within {formatDuration(overview.responseTimes.targetSeconds)}
+                <Trend
+                  now={overview.responseTimes.withinTargetPercent}
+                  before={overview.previous.responseTimes.withinTargetPercent}
+                  better="higher"
+                  points
+                  windowDays={days}
+                />
+              </div>
+              <div className="card metric">
+                <div className="metric__label">Climbed past tier one</div>
+                <div className="metric__value">
+                  {overview.escalation.escalationRatePercent === null
+                    ? 'none'
+                    : `${overview.escalation.escalationRatePercent}%`}
+                </div>
+                <Trend
+                  now={overview.escalation.escalationRatePercent}
+                  before={overview.previous.escalationRatePercent}
+                  better="lower"
+                  points
+                  windowDays={days}
+                />
+                <div className="metric__note">
+                  <span className="mono">{overview.escalation.escalatedCount}</span> of{' '}
+                  <span className="mono">{overview.escalation.total}</span> closed.
                 </div>
               </div>
-              <div className="card">
-                <div className="metric__value">{overview.responseTimes.sampleSize}</div>
-                <div className="metric__label">Acknowledged emergencies in this window</div>
+            </div>
+          </section>
+
+          <section aria-labelledby="daily-heading" className="card stack">
+            <div className="page-head">
+              <h2 id="daily-heading">Day by day</h2>
+              <div className="segmented" role="group" aria-label="What the chart shows">
+                <button
+                  type="button"
+                  aria-pressed={series === 'raised'}
+                  onClick={() => setSeries('raised')}
+                >
+                  Emergencies raised
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={series === 'median'}
+                  onClick={() => setSeries('median')}
+                >
+                  Median time to an answer
+                </button>
               </div>
             </div>
+            {overview.daily.every((day) => day.raised === 0) ? (
+              <Empty icon="reporting" title="Nothing to draw">
+                No emergency was raised in the last {days} days.
+              </Empty>
+            ) : (
+              <TrendChart points={overview.daily} series={series} />
+            )}
           </section>
 
           <section aria-labelledby="chain-heading" className="stack">

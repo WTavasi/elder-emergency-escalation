@@ -39,6 +39,27 @@ export interface ChannelReliability {
   successRatePercent: number | null;
 }
 
+/** One day of the window, in the deployment's own time zone. */
+export interface DailyPoint {
+  /** YYYY-MM-DD. */
+  date: string;
+  raised: number;
+  acknowledged: number;
+  /** Median seconds to acknowledgement for that day's emergencies, null when none were. */
+  medianSeconds: number | null;
+}
+
+/**
+ * The same figures for the window before this one, of the same length, so each can be
+ * shown with how it moved. Only the ones where a change means something: the live counts
+ * are a snapshot and have no "before".
+ */
+export interface PreviousWindow {
+  raised: number;
+  responseTimes: ResponseTimes;
+  escalationRatePercent: number | null;
+}
+
 export interface DashboardOverview {
   generatedAt: string;
   windowDays: number;
@@ -46,4 +67,8 @@ export interface DashboardOverview {
   responseTimes: ResponseTimes;
   escalation: EscalationProfile;
   channels: ChannelReliability[];
+  /** Emergencies raised in the window. */
+  raised: number;
+  previous: PreviousWindow;
+  daily: DailyPoint[];
 }

@@ -160,6 +160,12 @@ model User {
   pushToken          String?   @map("push_token") @db.VarChar(255)
   pushTokenUpdatedAt DateTime? @map("push_token_updated_at") @db.Timestamptz(3)
 
+  /// EXTENSION. When an administrator deactivated the account, null while it is active.
+  /// A deactivated account cannot sign in and is never sent an emergency. Deactivated
+  /// rather than deleted, because the account is named in emergency history that has to
+  /// stay readable: who raised it, who answered it.
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+
   // --- elder-only columns, null for every other role ---
   /// EXTENSION. Severity input. See CareLevel.
   careLevel        CareLevel? @map("care_level")

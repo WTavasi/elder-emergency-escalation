@@ -511,7 +511,13 @@ export class EscalationService {
     }
 
     const assignments = await this.prisma.careAssignment.findMany({
-      where: { elderlyId: event.elderlyId, priorityOrder: rule.tierOrder },
+      // A deactivated account is skipped, so its rank is passed over as if empty and
+      // the emergency moves on rather than waiting on somebody who cannot sign in.
+      where: {
+        elderlyId: event.elderlyId,
+        priorityOrder: rule.tierOrder,
+        responder: { deactivatedAt: null },
+      },
       select: { responderId: true },
     });
 
@@ -522,6 +528,7 @@ export class EscalationService {
     const responders = await this.prisma.user.findMany({
       where: {
         role: Role.EMERGENCY_RESPONDER,
+        deactivatedAt: null,
         coverageLatitude: { not: null },
         coverageLongitude: { not: null },
         coverageRadiusKm: { not: null },

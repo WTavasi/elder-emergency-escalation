@@ -117,6 +117,45 @@ describe('api client', () => {
     expect(getSession()?.user.role).toBe('ADMINISTRATOR');
   });
 
+  it('reads the total for numbered pages from the X-Total-Count header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ...json([{ eventId: 'e1' }]),
+      headers: new Headers({ 'X-Total-Count': '312' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api } = await import('./client');
+    const page = await api.alertPage({ q: ' grace ', limit: 50, offset: 50 });
+
+    expect(page.total).toBe(312);
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/alerts?limit=50&q=grace&offset=50');
+  });
+
+  it('asks for a page of accounts with only the filters that were set', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(json({ items: [], total: 0, page: 2, pageSize: 25 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api } = await import('./client');
+    await api.users.list({ role: 'EMERGENCY_RESPONDER', status: 'active', page: 2, pageSize: 25 });
+
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      '/api/v1/admin/users?role=EMERGENCY_RESPONDER&status=active&page=2&pageSize=25',
+    );
+  });
+
+  it('deactivates a selection in one request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ updated: 2 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api } = await import('./client');
+    await api.users.deactivate(['u1', 'u2']);
+
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/admin/users/deactivate');
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string)).toEqual({ ids: ['u1', 'u2'] });
+  });
+
   it('asks the server which sign-in methods it offers', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json({ google: null }));
     vi.stubGlobal('fetch', fetchMock);

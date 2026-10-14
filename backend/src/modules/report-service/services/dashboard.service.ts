@@ -4,6 +4,7 @@ import { EventState, NotificationStatus } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import type {
   ChannelReliability,
+  DailyPoint,
   DashboardOverview,
   EscalationProfile,
   LiveCounts,
@@ -21,6 +22,26 @@ const OPEN_STATES: EventState[] = [
 /** States an emergency can finish in. */
 const CLOSED_STATES: EventState[] = [EventState.RESOLVED, EventState.CANCELLED];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Days are counted in the deployment's own time zone, so an emergency at 01:00 in
+ * Nairobi falls on the day a caregiver would say it happened, not the UTC day before.
+ */
+const REPORT_TIME_ZONE = 'Africa/Nairobi';
+const dayKey = new Intl.DateTimeFormat('en-CA', {
+  timeZone: REPORT_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function medianOf(sorted: number[]): number | null {
+  if (sorted.length === 0) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
 /**
  * The numbers behind the administrator's overview, and behind Chapter 5.
  *
@@ -37,23 +58,89 @@ export class DashboardService {
   ) {}
 
   async overview(windowDays = 30): Promise<DashboardOverview> {
-    const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const since = new Date(now - windowDays * DAY_MS);
+    // The window before this one, the same length, ending where this one starts.
+    const before = new Date(now - 2 * windowDays * DAY_MS);
 
-    const [live, responseTimes, escalation, channels] = await Promise.all([
+    const [
+      live,
+      responseTimes,
+      escalation,
+      channels,
+      raised,
+      daily,
+      previousTimes,
+      previousEscalation,
+      previousRaised,
+    ] = await Promise.all([
       this.liveCounts(),
       this.responseTimes(since),
       this.escalationProfile(since),
       this.channelReliability(since),
+      this.raisedBetween(since),
+      this.daily(since, windowDays),
+      this.responseTimes(before, since),
+      this.escalationProfile(before, since),
+      this.raisedBetween(before, since),
     ]);
 
     return {
-      generatedAt: new Date().toISOString(),
+      generatedAt: new Date(now).toISOString(),
       windowDays,
       live,
       responseTimes,
       escalation,
       channels,
+      raised,
+      previous: {
+        raised: previousRaised,
+        responseTimes: previousTimes,
+        escalationRatePercent: previousEscalation.escalationRatePercent,
+      },
+      daily,
     };
+  }
+
+  private raisedBetween(from: Date, until?: Date): Promise<number> {
+    return this.prisma.emergencyEvent.count({
+      where: { triggeredAt: { gte: from, ...(until ? { lt: until } : {}) } },
+    });
+  }
+
+  /**
+   * One point per day of the window, including the days nothing happened, which is most
+   * of them and is the point: a chart that skips empty days draws a busy system.
+   */
+  private async daily(since: Date, windowDays: number): Promise<DailyPoint[]> {
+    const rows = await this.prisma.emergencyEvent.findMany({
+      where: { triggeredAt: { gte: since } },
+      select: { triggeredAt: true, acknowledgedAt: true },
+    });
+
+    const days = new Map<string, { raised: number; waits: number[] }>();
+    for (let offset = windowDays - 1; offset >= 0; offset--) {
+      days.set(dayKey.format(new Date(Date.now() - offset * DAY_MS)), { raised: 0, waits: [] });
+    }
+
+    for (const row of rows) {
+      const day = days.get(dayKey.format(row.triggeredAt));
+      if (!day) continue;
+      day.raised += 1;
+      if (row.acknowledgedAt) {
+        day.waits.push((row.acknowledgedAt.getTime() - row.triggeredAt.getTime()) / 1000);
+      }
+    }
+
+    return [...days.entries()].map(([date, day]) => {
+      const median = medianOf(day.waits.sort((a, b) => a - b));
+      return {
+        date,
+        raised: day.raised,
+        acknowledged: day.waits.length,
+        medianSeconds: median === null ? null : Math.round(median),
+      };
+    });
   }
 
   private async liveCounts(): Promise<LiveCounts> {
@@ -83,11 +170,14 @@ export class DashboardService {
     };
   }
 
-  private async responseTimes(since: Date): Promise<ResponseTimes> {
+  private async responseTimes(since: Date, until?: Date): Promise<ResponseTimes> {
     const targetSeconds = this.config.get<number>('RESPONSE_TARGET_SECONDS', 300);
 
     const rows = await this.prisma.emergencyEvent.findMany({
-      where: { triggeredAt: { gte: since }, acknowledgedAt: { not: null } },
+      where: {
+        triggeredAt: { gte: since, ...(until ? { lt: until } : {}) },
+        acknowledgedAt: { not: null },
+      },
       select: { triggeredAt: true, acknowledgedAt: true },
     });
 
@@ -105,9 +195,7 @@ export class DashboardService {
       .map((row) => (row.acknowledgedAt!.getTime() - row.triggeredAt.getTime()) / 1000)
       .sort((a, b) => a - b);
 
-    const middle = Math.floor(seconds.length / 2);
-    const median =
-      seconds.length % 2 === 0 ? (seconds[middle - 1] + seconds[middle]) / 2 : seconds[middle];
+    const median = medianOf(seconds) ?? 0;
 
     const withinTarget = seconds.filter((value) => value <= targetSeconds).length;
 
@@ -120,24 +208,25 @@ export class DashboardService {
     };
   }
 
-  private async escalationProfile(since: Date): Promise<EscalationProfile> {
+  private async escalationProfile(since: Date, until?: Date): Promise<EscalationProfile> {
+    const range = { gte: since, ...(until ? { lt: until } : {}) };
     // The tier an emergency was answered at is the tier it was sitting on when it was
     // acknowledged, which is the column itself: acknowledgement stops the chain, so it
     // is never advanced afterwards.
     const [answered, total, escalatedCount] = await Promise.all([
       this.prisma.emergencyEvent.groupBy({
         by: ['currentTier'],
-        where: { triggeredAt: { gte: since }, acknowledgedAt: { not: null } },
+        where: { triggeredAt: range, acknowledgedAt: { not: null } },
         _count: { _all: true },
       }),
       this.prisma.emergencyEvent.count({
-        where: { triggeredAt: { gte: since }, state: { in: CLOSED_STATES } },
+        where: { triggeredAt: range, state: { in: CLOSED_STATES } },
       }),
       // An emergency counts as escalated if it ever left tier one, which the audit
       // trail records even when it was afterwards acknowledged and resolved.
       this.prisma.auditLog
         .findMany({
-          where: { action: 'ESCALATED', occurredAt: { gte: since } },
+          where: { action: 'ESCALATED', occurredAt: range },
           select: { eventId: true },
           distinct: ['eventId'],
         })

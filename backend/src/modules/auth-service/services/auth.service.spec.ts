@@ -353,6 +353,18 @@ describe('AuthService', () => {
       expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { phone: '+254700000020' } });
     });
 
+    it('refuses a deactivated account, but only once the password is right', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser({ deactivatedAt: new Date() }));
+
+      await expect(
+        buildService(prisma).login({ phone: '+254700000020', password: 'wrong-password' }),
+      ).rejects.toThrow('Phone number or password is incorrect');
+      await expect(
+        buildService(prisma).login({ phone: '+254700000020', password: 'Dev!2026' }),
+      ).rejects.toThrow('This account has been deactivated');
+    });
+
     it('upgrades a hash that used weaker parameters', async () => {
       const prisma = buildPrisma();
       // Only N is lowered; r and p must keep their real values or scrypt runs out of memory.
@@ -438,6 +450,16 @@ describe('AuthService', () => {
         UnauthorizedException,
       );
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a deactivated administrator', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({ role: Role.ADMINISTRATOR, deactivatedAt: new Date() }),
+      );
+      await expect(buildService(prisma).signInWithGoogle('token')).rejects.toThrow(
+        'This account has been deactivated',
+      );
     });
 
     it('refuses an account that is not an administrator', async () => {
