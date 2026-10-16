@@ -213,8 +213,8 @@ same length) and `daily` (one point per day, with the days nothing happened incl
 
 **Accounts are deactivated, never deleted**, because each is named in emergency history.
 A deactivated account cannot sign in (by password, Google or a reset; the message says so
-only after the password is right), its sessions end within an access-token lifetime, and
-dispatch passes over it as if its place in a chain were empty. Deactivating is refused for
+only after the password is right), its sessions end at once, including any open live
+connection to the console, and dispatch passes over it as if its place in a chain were empty. Deactivating is refused for
 your own account, for anybody handling an open emergency, and for the last active
 administrator. Details: `backend/src/modules/admin-service/README.md`.
 

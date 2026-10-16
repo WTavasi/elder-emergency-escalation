@@ -3,6 +3,8 @@ import { Prisma, Role } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { PasswordService } from '../../auth-service/services/password.service';
 import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
+import type { AccessRevocationService } from '../../auth-service/services/access-revocation.service';
+import type { RealtimePublisher } from '../../realtime-service/services/realtime.publisher';
 import { UserAdminService } from './user-admin.service';
 
 const ADMIN = '00000000-0000-4000-8000-000000000001';
@@ -41,12 +43,19 @@ function build() {
   };
   const passwords = { hash: jest.fn((plain: string) => `hashed:${plain}`) };
   const sms = { send: jest.fn().mockResolvedValue(true) };
+  const revocations = {
+    revoke: jest.fn().mockResolvedValue(undefined),
+    restore: jest.fn().mockResolvedValue(undefined),
+  };
+  const realtime = { emergencyUpdated: jest.fn(), disconnectUsers: jest.fn() };
   const service = new UserAdminService(
     prisma as unknown as PrismaService,
     passwords as unknown as PasswordService,
     sms as unknown as DirectSmsService,
+    revocations as unknown as AccessRevocationService,
+    realtime as unknown as RealtimePublisher,
   );
-  return { service, prisma, sms };
+  return { service, prisma, sms, revocations, realtime };
 }
 
 const responder = {
@@ -129,6 +138,21 @@ describe('UserAdminService', () => {
   });
 
   describe('deactivating', () => {
+    it('ends every session straight away: tokens revoked, live connections closed', async () => {
+      const { service, revocations, realtime } = build();
+
+      await service.deactivate([CAREGIVER], ADMIN);
+
+      expect(revocations.revoke).toHaveBeenCalledWith([CAREGIVER]);
+      expect(realtime.disconnectUsers).toHaveBeenCalledWith([CAREGIVER]);
+    });
+
+    it('revokes nothing when it refuses', async () => {
+      const { service, revocations } = build();
+      await expect(service.deactivate([ADMIN], ADMIN)).rejects.toThrow();
+      expect(revocations.revoke).not.toHaveBeenCalled();
+    });
+
     it('stops the account signing in and being sent anything', async () => {
       const { service, prisma } = build();
 
@@ -164,10 +188,11 @@ describe('UserAdminService', () => {
       await expect(service.deactivate([OTHER_ADMIN], ADMIN)).rejects.toThrow(ConflictException);
     });
 
-    it('brings an account back', async () => {
-      const { service, prisma } = build();
+    it('brings an account back, and lifts the revocation at once', async () => {
+      const { service, prisma, revocations } = build();
       await service.reactivate([CAREGIVER], ADMIN);
       expect(prisma.user.updateMany.mock.calls[0][0].data).toEqual({ deactivatedAt: null });
+      expect(revocations.restore).toHaveBeenCalledWith([CAREGIVER]);
     });
   });
 

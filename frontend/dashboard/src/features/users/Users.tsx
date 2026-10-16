@@ -440,8 +440,8 @@ function DeactivateDialog({
       }
     >
       <p style={{ marginTop: 0 }}>
-        {one ? 'They' : 'These accounts'} will be signed out within fifteen minutes, will not be
-        able to sign in, and will not be sent any emergency. Their history stays. You can reactivate{' '}
+        {one ? 'They' : 'These accounts'} will be signed out straight away, will not be able to sign
+        in, and will not be sent any emergency. Their history stays. You can reactivate{' '}
         {one ? 'the account' : 'them'} at any time.
       </p>
       {inChains.length > 0 ? (

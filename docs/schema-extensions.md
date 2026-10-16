@@ -5,7 +5,7 @@ building the escalation engine, the severity policy and the consent requirement 
 more than the six entities drawn there. Every difference is listed below so Chapter 4 can
 be brought back into agreement with the code rather than quietly diverging from it.
 
-Two new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
+Three new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
 removed, and no relationship in it changed.
 
 ## New tables
@@ -61,6 +61,7 @@ actually be notified.
 | `users` | `current_latitude`, `current_longitude`, `current_place_label`, `current_place_set_at`, `current_place_set_by_id` | Where an elder is staying when it is not their registered home. A deliberate alternative to reading the device's location: an occasional fact recorded by a person in the care circle rather than a continuous trail inferred from a phone. Null means at home, which is the normal case. The away-from-home factor measures against `home_latitude` and `home_longitude`, which never move |
 | `users` | `coverage_area_name`, `coverage_latitude`, `coverage_longitude`, `coverage_radius_km` | The physical form of `coverage_area` from Figure 4.4. A named area plus a circle, matched by Haversine distance, which avoids adding PostGIS for one query |
 | `users` | `timezone`, `updated_at` | Time-of-day factor is evaluated in the elder's own timezone |
+| `users` | `deactivated_at` | An administrator closes an account without deleting it, because every account is named in emergency history that has to stay readable. Null means active. A deactivated account cannot sign in, its sessions end at once, and dispatch passes over its place in a chain. A timestamp rather than a boolean, so the record also says when access ended |
 | `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Declared cover, the caregiver-availability severity factor. Declared availability, never verified presence, and the column names say so |
 | `emergency_events` | `severity`, `severity_score`, `severity_factors` | The band, the score, and the factor values that produced it, so every escalation decision stays explainable |
 | `emergency_events` | `current_tier_deadline_at` | The durable copy of the Redis timer. Redis publishes an expiry once and never again, so without a recorded deadline a restart at the wrong moment would leave an emergency waiting on a timer that no longer exists |
@@ -89,10 +90,15 @@ longitude pairs, with an optional human-readable address label on the alert.
 
 ## Suggested Chapter 4 revisions
 
-1. Add `severity_factors` and `consent_records` to Figure 4.4, both without foreign keys
-   in the first case and with two foreign keys to `users` in the second.
+1. Add `severity_factors`, `consent_records` and `chain_invitations` to Figure 4.4:
+   `severity_factors` without foreign keys, `consent_records` with two foreign keys to
+   `users`, and `chain_invitations` with foreign keys to `users` for the elder and the
+   person who sent the invitation.
 2. Add a sentence to the `users` narrative noting that `care_level` and the home location
    columns are elder-only, in the same way `coverage_area` is responder-only. That is the
    same flattening argument already made, extended to two more fields.
 3. Section 4.4.1 gains the enum definitions, the split location columns, and the index
    table above.
+4. Add `deactivated_at` (nullable timestamp) to the `users` entity in Figure 4.4, with a
+   sentence in the narrative explaining that accounts are deactivated rather than deleted
+   so emergency history keeps every name it refers to.
