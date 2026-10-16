@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import type { ExecutionContext } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AccessRevocationService } from '../services/access-revocation.service';
 import { TokenService } from '../services/token.service';
 
 const secrets: Record<string, string> = {
@@ -30,10 +31,13 @@ const contextFor = (request: FakeRequest): ExecutionContext =>
     switchToHttp: () => ({ getRequest: () => request }),
   }) as unknown as ExecutionContext;
 
-const buildGuard = (isPublic: boolean): JwtAuthGuard => {
+const buildGuard = (isPublic: boolean, revoked = false): JwtAuthGuard => {
   const reflector = new Reflector();
   jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(isPublic);
-  return new JwtAuthGuard(tokens, reflector);
+  const revocations = {
+    isRevoked: jest.fn().mockResolvedValue(revoked),
+  } as unknown as AccessRevocationService;
+  return new JwtAuthGuard(tokens, reflector, revocations);
 };
 
 describe('JwtAuthGuard', () => {
@@ -47,6 +51,16 @@ describe('JwtAuthGuard', () => {
 
     await expect(buildGuard(false).canActivate(contextFor(request))).resolves.toBe(true);
     expect(request.user).toEqual({ userId: 'user-1', role: Role.EMERGENCY_RESPONDER });
+  });
+
+  it('refuses a deactivated account at once, though its token is still in date', async () => {
+    const token = await tokens.signAccess('user-1', Role.CAREGIVER);
+    const request: FakeRequest = { headers: { authorization: `Bearer ${token}` } };
+
+    await expect(buildGuard(false, true).canActivate(contextFor(request))).rejects.toThrow(
+      'This account has been deactivated',
+    );
+    expect(request.user).toBeUndefined();
   });
 
   it('refuses a missing or malformed authorization header', async () => {

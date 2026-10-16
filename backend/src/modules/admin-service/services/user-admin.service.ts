@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,9 +9,14 @@ import {
 import { EventState, Prisma, Role, type User } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { redactPhone } from '../../../shared/utils/redaction';
+import { AccessRevocationService } from '../../auth-service/services/access-revocation.service';
 import { PasswordService } from '../../auth-service/services/password.service';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { accountMessages } from '../../notification-service/services/notification-content';
+import {
+  REALTIME_PUBLISHER,
+  type RealtimePublisher,
+} from '../../realtime-service/services/realtime.publisher';
 import type {
   CoverageDto,
   CreateUserDto,
@@ -115,6 +121,8 @@ export class UserAdminService {
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
     private readonly sms: DirectSmsService,
+    private readonly revocations: AccessRevocationService,
+    @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
   ) {}
 
   async list(query: ListUsersDto): Promise<UserPage> {
@@ -213,8 +221,9 @@ export class UserAdminService {
    * account, for anybody handling an open emergency, and for whatever would leave no
    * active administrator: each of those would leave something nobody can fix.
    *
-   * The refresh fingerprint is cleared, so every session ends at its next refresh,
-   * within one access-token lifetime.
+   * Every session ends straight away: the refresh fingerprint is cleared so no new
+   * token can be had, the access tokens already issued are revoked, and any live
+   * connection the console or app holds is closed.
    */
   async deactivate(ids: string[], actorId: string): Promise<{ updated: number }> {
     const unique = [...new Set(ids)];
@@ -256,15 +265,21 @@ export class UserAdminService {
       where: { id: { in: unique }, deactivatedAt: null },
       data: { deactivatedAt: new Date(), refreshTokenHash: null, pushToken: null },
     });
+    await this.revocations.revoke(unique);
+    this.realtime.disconnectUsers(unique);
     this.logger.log(`${actorId} deactivated ${result.count} account(s)`);
     return { updated: result.count };
   }
 
   async reactivate(ids: string[], actorId: string): Promise<{ updated: number }> {
+    const unique = [...new Set(ids)];
     const result = await this.prisma.user.updateMany({
-      where: { id: { in: [...new Set(ids)] }, deactivatedAt: { not: null } },
+      where: { id: { in: unique }, deactivatedAt: { not: null } },
       data: { deactivatedAt: null },
     });
+    // Lifted at once, so somebody brought back can sign in again straight away rather
+    // than being refused for whatever is left of the mark.
+    await this.revocations.restore(unique);
     this.logger.log(`${actorId} reactivated ${result.count} account(s)`);
     return { updated: result.count };
   }

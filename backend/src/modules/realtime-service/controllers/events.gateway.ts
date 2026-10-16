@@ -8,12 +8,15 @@ import {
 import { Role, type EmergencyEvent } from '@prisma/client';
 import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../../db/prisma.service';
+import { AccessRevocationService } from '../../auth-service/services/access-revocation.service';
 import { TokenService } from '../../auth-service/services/token.service';
 import { toSnapshot, type RealtimePublisher } from '../services/realtime.publisher';
 
 /** Everyone watching one elder. Administrators watch all of them. */
 export const elderRoom = (elderlyId: string): string => `elder:${elderlyId}`;
 export const ADMIN_ROOM = 'administrators';
+/** One account's own connections, so they can all be closed at once. */
+export const userRoom = (userId: string): string => `user:${userId}`;
 
 /**
  * Live updates for responder screens and the dashboard.
@@ -41,6 +44,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect, 
   constructor(
     private readonly tokens: TokenService,
     private readonly prisma: PrismaService,
+    private readonly revocations: AccessRevocationService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -49,9 +53,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect, 
       if (!token) throw new Error('no token supplied');
 
       const payload = await this.tokens.verifyAccess(token);
+      if (await this.revocations.isRevoked(payload.sub)) throw new Error('account deactivated');
       const rooms = await this.roomsFor(payload.sub, payload.role);
 
-      await client.join(rooms);
+      await client.join([...rooms, userRoom(payload.sub)]);
       client.data.userId = payload.sub;
 
       this.logger.log(`Socket ${client.id} joined ${rooms.length} room(s)`);
@@ -78,6 +83,20 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect, 
 
     const snapshot = toSnapshot(event);
     this.server.to([elderRoom(event.elderlyId), ADMIN_ROOM]).emit('emergency.updated', snapshot);
+  }
+
+  /**
+   * Closes the live connections of deactivated accounts, so a console or app already
+   * open stops receiving emergencies at once rather than at its next reconnect. Told
+   * why first, in the same words a refused connection gets.
+   */
+  disconnectUsers(userIds: string[]): void {
+    if (!this.server || userIds.length === 0) return;
+    const rooms = userIds.map(userRoom);
+    this.server
+      .to(rooms)
+      .emit('unauthorized', { message: 'Sign in again to receive live updates' });
+    this.server.in(rooms).disconnectSockets(true);
   }
 
   /** Accepts the token from the handshake auth object, or from a query parameter. */

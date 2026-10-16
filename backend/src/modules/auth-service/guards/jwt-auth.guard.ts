@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../../shared/decorators/public.decorator';
+import { AccessRevocationService } from '../services/access-revocation.service';
+import { DEACTIVATED } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 
 interface RequestWithAuth {
@@ -13,15 +15,16 @@ interface RequestWithAuth {
  * to add a guard is a likely mistake; forgetting to add @Public() is a visible one.
  *
  * The access token is trusted without a database lookup, which keeps the alert path
- * free of an extra query. The cost is that a revoked account stays usable until its
- * access token expires, which is why the access lifetime is short and revocation
- * works on the refresh token.
+ * free of an extra query. A deactivated account is the exception, caught by one Redis
+ * lookup instead (see AccessRevocationService), so it stops working the moment it is
+ * deactivated rather than when its token expires.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly tokens: TokenService,
     private readonly reflector: Reflector,
+    private readonly revocations: AccessRevocationService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,6 +43,9 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const payload = await this.tokens.verifyAccess(raw.slice('Bearer '.length).trim());
+    if (await this.revocations.isRevoked(payload.sub)) {
+      throw new UnauthorizedException(DEACTIVATED);
+    }
     request.user = { userId: payload.sub, role: payload.role };
     return true;
   }

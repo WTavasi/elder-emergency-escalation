@@ -23,6 +23,8 @@ export interface EmergencySnapshot {
 
 export interface RealtimePublisher {
   emergencyUpdated(event: EmergencyEvent): void;
+  /** Closes every live connection these accounts hold, when they are deactivated. */
+  disconnectUsers(userIds: string[]): void;
 }
 
 export const REALTIME_PUBLISHER = Symbol('REALTIME_PUBLISHER');
@@ -53,5 +55,9 @@ export function toSnapshot(event: EmergencyEvent): EmergencySnapshot {
 export class NoopRealtimePublisher implements RealtimePublisher {
   emergencyUpdated(): void {
     // Nothing is listening.
+  }
+
+  disconnectUsers(): void {
+    // Nobody is connected.
   }
 }

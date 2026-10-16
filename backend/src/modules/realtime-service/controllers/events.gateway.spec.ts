@@ -1,6 +1,7 @@
 import { Role, Severity, EventState } from '@prisma/client';
 import type { Server, Socket } from 'socket.io';
-import { ADMIN_ROOM, elderRoom, EventsGateway } from './events.gateway';
+import { ADMIN_ROOM, elderRoom, EventsGateway, userRoom } from './events.gateway';
+import type { AccessRevocationService } from '../../auth-service/services/access-revocation.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { TokenService } from '../../auth-service/services/token.service';
 
@@ -17,13 +18,18 @@ const buildSocket = (handshake: Record<string, unknown>) =>
 const buildGateway = (
   verify: jest.Mock,
   assignments: Array<{ elderlyId: string }> = [],
+  revoked = false,
 ): EventsGateway & { server: Server } => {
   const tokens = { verifyAccess: verify } as unknown as TokenService;
   const prisma = {
     careAssignment: { findMany: jest.fn().mockResolvedValue(assignments) },
   } as unknown as PrismaService;
 
-  return new EventsGateway(tokens, prisma) as EventsGateway & { server: Server };
+  const revocations = {
+    isRevoked: jest.fn().mockResolvedValue(revoked),
+  } as unknown as AccessRevocationService;
+
+  return new EventsGateway(tokens, prisma, revocations) as EventsGateway & { server: Server };
 };
 
 const event = (overrides: Record<string, unknown> = {}) =>
@@ -66,7 +72,11 @@ describe('EventsGateway', () => {
 
       await gateway.handleConnection(client);
 
-      expect(client.join).toHaveBeenCalledWith([elderRoom('elder-1'), elderRoom('elder-2')]);
+      expect(client.join).toHaveBeenCalledWith([
+        elderRoom('elder-1'),
+        elderRoom('elder-2'),
+        userRoom('caregiver-1'),
+      ]);
       expect(client.disconnect).not.toHaveBeenCalled();
     });
 
@@ -75,7 +85,7 @@ describe('EventsGateway', () => {
       const client = buildSocket({ auth: { token: 'good' } });
 
       await buildGateway(verify).handleConnection(client);
-      expect(client.join).toHaveBeenCalledWith([elderRoom('elder-1')]);
+      expect(client.join).toHaveBeenCalledWith([elderRoom('elder-1'), userRoom('elder-1')]);
     });
 
     it('puts an administrator in the administrators room', async () => {
@@ -83,7 +93,17 @@ describe('EventsGateway', () => {
       const client = buildSocket({ auth: { token: 'good' } });
 
       await buildGateway(verify).handleConnection(client);
-      expect(client.join).toHaveBeenCalledWith([ADMIN_ROOM]);
+      expect(client.join).toHaveBeenCalledWith([ADMIN_ROOM, userRoom('admin-1')]);
+    });
+
+    it('refuses a deactivated account, even with a token that is still in date', async () => {
+      const verify = jest.fn().mockResolvedValue({ sub: 'carer-9', role: Role.CAREGIVER });
+      const client = buildSocket({ auth: { token: 'good' } });
+
+      await buildGateway(verify, [{ elderlyId: 'elder-1' }], true).handleConnection(client);
+
+      expect(client.join).not.toHaveBeenCalled();
+      expect(client.disconnect).toHaveBeenCalledWith(true);
     });
 
     it('disconnects a socket with no token rather than leaving it attached', async () => {
@@ -106,6 +126,27 @@ describe('EventsGateway', () => {
       expect(client.disconnect).toHaveBeenCalledWith(true);
       const [, payload] = client.emit.mock.calls[0] as [string, { message: string }];
       expect(payload.message).not.toMatch(/expired|invalid token/i);
+    });
+  });
+
+  describe('deactivation', () => {
+    it('closes every connection the accounts hold, telling them first', () => {
+      const gateway = buildGateway(jest.fn());
+      const emit = jest.fn();
+      const disconnectSockets = jest.fn();
+      gateway.server = {
+        to: jest.fn().mockReturnValue({ emit }),
+        in: jest.fn().mockReturnValue({ disconnectSockets }),
+      } as unknown as Server;
+
+      gateway.disconnectUsers(['u1', 'u2']);
+
+      expect((gateway.server.to as jest.Mock).mock.calls[0][0]).toEqual([
+        userRoom('u1'),
+        userRoom('u2'),
+      ]);
+      expect(emit).toHaveBeenCalledWith('unauthorized', expect.anything());
+      expect(disconnectSockets).toHaveBeenCalledWith(true);
     });
   });
 

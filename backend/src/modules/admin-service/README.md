@@ -31,12 +31,14 @@ the person who answered it, and that history has to stay readable. So nothing is
 A deactivated account (`users.deactivated_at` set):
 
 - cannot sign in, by password, by Google, or by resetting its password;
-- has its refresh fingerprint cleared, so every session ends within one access-token
-  lifetime;
+- loses every session straight away: its refresh fingerprint is cleared, its access
+  tokens are refused from the next request (a short-lived Redis marker,
+  `revoked:access:{userId}`, outlives any token issued before it), and any open live
+  connection is closed;
 - is never sent an emergency: dispatch skips its place in a chain and moves to the next,
   and responder matching leaves it out.
 
-Bringing it back clears the column. The person signs in again with their old password.
+Bringing it back clears the column and the Redis marker. The person signs in again with their old password.
 
 ## Staff accounts
 
