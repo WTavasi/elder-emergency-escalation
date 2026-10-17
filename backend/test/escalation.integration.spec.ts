@@ -305,4 +305,49 @@ describe('escalation, end to end', () => {
     expect(stored.state).toBe(EventState.CANCELLED);
     expect(stored.currentTier).toBe(1);
   });
+
+  it('passes over a deactivated chain member and goes straight to the next rank', async () => {
+    // The caregiver holds rank one. Deactivating them leaves that rank empty, and an
+    // empty rank escalates at once rather than waiting out its window for somebody who
+    // can no longer sign in. Set on the column directly, because the column is what
+    // dispatch reads; the console's deactivate action is covered by its own tests.
+    await prisma.user.update({
+      where: { id: ids.caregiver },
+      data: { deactivatedAt: new Date() },
+    });
+
+    try {
+      const event = await alerts.create(ids.elder as string, {});
+
+      await waitFor(
+        'the emergency to reach the family member at tier two',
+        async () =>
+          (await prisma.notification.count({
+            where: { eventId: event.id, tier: 2, recipientId: ids.family },
+          })) > 0,
+      );
+
+      const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+      expect(stored.state).toBe(EventState.ESCALATED);
+      expect(stored.currentTier).toBe(2);
+
+      // Nothing at all for the deactivated caregiver, on any channel or tier: not a
+      // push, not the SMS fallback, and nothing at tier one, whose only member they are.
+      const toCaregiver = await prisma.notification.count({
+        where: { eventId: event.id, recipientId: ids.caregiver },
+      });
+      expect(toCaregiver).toBe(0);
+      const atTierOne = await prisma.notification.count({
+        where: { eventId: event.id, tier: 1 },
+      });
+      expect(atTierOne).toBe(0);
+    } finally {
+      // Restored whatever happens, so a failure here cannot leave the account
+      // deactivated for anything that runs after it.
+      await prisma.user.update({
+        where: { id: ids.caregiver },
+        data: { deactivatedAt: null },
+      });
+    }
+  });
 });
