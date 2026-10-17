@@ -26,16 +26,8 @@ import {
 } from '../../realtime-service/services/realtime.publisher';
 import { SeverityService } from './severity.service';
 import type { SeverityAssessment } from '../models/severity.types';
-import type { CoverWindow } from '../../../shared/utils/time';
 import type { CreateAlertDto } from '../validation/create-alert.dto';
 import type { AlertDetail, AlertSummary } from '../views/alert-views';
-
-/** The columns of a care assignment that the severity policy reads. */
-interface CoverSource {
-  coverDaysOfWeek: number[];
-  coverStartMinute: number | null;
-  coverEndMinute: number | null;
-}
 
 /** States in which an emergency is still live. */
 const OPEN_STATES: EventState[] = [
@@ -138,10 +130,7 @@ export class AlertsService {
   async create(elderId: string, dto: CreateAlertDto): Promise<EmergencyEvent> {
     const at = new Date();
 
-    const elder = await this.prisma.user.findUnique({
-      where: { id: elderId },
-      include: { assignmentsAsElder: true },
-    });
+    const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
     if (!elder) throw new NotFoundException('Account no longer exists');
     if (elder.role !== Role.ELDER) {
@@ -160,7 +149,6 @@ export class AlertsService {
           : null,
       timezone: elder.timezone,
       at,
-      coverWindows: AlertsService.toCoverWindows(elder.assignmentsAsElder),
       recentEventCount,
       cancelWindowElapsed: false,
     });
@@ -313,10 +301,7 @@ export class AlertsService {
     }
 
     const at = new Date();
-    const elder = await this.prisma.user.findUnique({
-      where: { id: event.elderlyId },
-      include: { assignmentsAsElder: true },
-    });
+    const elder = await this.prisma.user.findUnique({ where: { id: event.elderlyId } });
     if (!elder) throw new NotFoundException('Emergency not found');
 
     const assessment = await this.severity.evaluate({
@@ -331,7 +316,6 @@ export class AlertsService {
           : null,
       timezone: elder.timezone,
       at,
-      coverWindows: AlertsService.toCoverWindows(elder.assignmentsAsElder),
       recentEventCount: await this.countRecentEvents(event.elderlyId, at),
       cancelWindowElapsed: true,
     });
@@ -608,14 +592,6 @@ export class AlertsService {
       longitude: dto.longitude ?? 0,
       addressLabel: dto.addressLabel ?? null,
     };
-  }
-
-  private static toCoverWindows(assignments: CoverSource[]): CoverWindow[] {
-    return assignments.map((assignment) => ({
-      daysOfWeek: assignment.coverDaysOfWeek,
-      startMinute: assignment.coverStartMinute,
-      endMinute: assignment.coverEndMinute,
-    }));
   }
 
   private static auditDetail(assessment: SeverityAssessment): Prisma.InputJsonValue {

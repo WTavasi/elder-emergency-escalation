@@ -5,13 +5,29 @@ or reversed on purpose rather than drifted away from by accident.
 
 ## The severity policy is a weighted rule, not machine learning
 
-Six factors with weights held in the database, summing to 100, banded at 35 and 60.
+Five factors with weights held in the database, summing to 100, banded at 35 and 60.
 
 An escalation decision has to be explainable after the fact, to a family member and
 potentially to a regulator. A model that scores an emergency at 0.82 cannot answer "why
 did it call the ambulance". This can: the factor values and their contributions are
 stored on the event, and the dashboard renders them as a table that adds up to the
 score. The weights are configuration, so the policy can be tuned without a deployment.
+
+## Caregiver cover was dropped as a severity factor
+
+There were six factors at first. The sixth scored an alert higher when no caregiver had
+declared cover hours covering that moment. Nothing in the product lets a caregiver
+declare those hours, so for every elder registered through the app the factor scored in
+full: a flat 10 points that measured nothing, enough to lift every unconfirmed daytime
+alert from an independent elder out of the standard band.
+
+It was dropped rather than built because the chain already handles an unavailable
+caregiver: if they do not answer, the alert escalates. Declared hours are not presence
+either, so the factor partly counted the same thing twice. Its weight went to time of
+day (15 to 20) and away from home (10 to 15). The three cover columns on
+`care_assignments` are kept, unread, so the factor can return with a screen for
+declaring cover and without a migration. The seed switches the old row off rather than
+deleting it, so the factors stored on past events still name a row that exists.
 
 ## Escalation timing is event-driven, not polled
 

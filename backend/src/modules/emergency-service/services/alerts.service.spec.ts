@@ -50,14 +50,6 @@ const elder = {
   currentLongitude: null,
   currentPlaceLabel: null,
   timezone: 'Africa/Nairobi',
-  assignmentsAsElder: [
-    {
-      coverDaysOfWeek: [1, 2, 3, 4, 5],
-      coverStartMinute: 480,
-      coverEndMinute: 1020,
-      priorityOrder: 1,
-    },
-  ],
 };
 
 const event = (overrides: Record<string, unknown> = {}) => ({
