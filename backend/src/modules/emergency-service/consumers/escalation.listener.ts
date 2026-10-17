@@ -1,17 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { EventState } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { RedisService } from '../../../shared/redis/redis.service';
+import { AWAITING_STATES } from '../../../shared/utils/event-lifecycle';
 import { EscalationService } from '../services/escalation.service';
 import { EscalationTimerService } from '../services/escalation-timer.service';
 import { parseTimerKey } from '../services/escalation.keys';
-
-/** States that can still have a live acknowledgement window. */
-const AWAITING_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ESCALATED,
-];
 
 /**
  * Turns Redis key expiry into escalation.

@@ -6,7 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ConsentType, EventState, Prisma, Role } from '@prisma/client';
+import { ConsentType, Prisma, Role } from '@prisma/client';
+import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { tierForRole } from '../../../shared/utils/chain';
@@ -53,14 +54,6 @@ export interface ChainView {
 
 /** Roles that can hold a place in a chain added from the app. */
 const ADDABLE_ROLES: Role[] = [Role.CAREGIVER, Role.FAMILY_MEMBER];
-
-/** States in which an emergency is still being handled. */
-const OPEN_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ACKNOWLEDGED,
-  EventState.ESCALATED,
-];
 
 /**
  * Elders and the people who look after them, as a caregiver sets them up.

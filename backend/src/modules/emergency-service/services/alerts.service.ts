@@ -17,6 +17,12 @@ import {
   type Severity,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import {
+  INITIAL_STATE,
+  OPEN_STATES,
+  assertTransition,
+  transitionEvent,
+} from '../../../shared/utils/event-lifecycle';
 import { EscalationService } from './escalation.service';
 import { EscalationTimerService } from './escalation-timer.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
@@ -26,24 +32,8 @@ import {
 } from '../../realtime-service/services/realtime.publisher';
 import { SeverityService } from './severity.service';
 import type { SeverityAssessment } from '../models/severity.types';
-import type { CoverWindow } from '../../../shared/utils/time';
 import type { CreateAlertDto } from '../validation/create-alert.dto';
 import type { AlertDetail, AlertSummary } from '../views/alert-views';
-
-/** The columns of a care assignment that the severity policy reads. */
-interface CoverSource {
-  coverDaysOfWeek: number[];
-  coverStartMinute: number | null;
-  coverEndMinute: number | null;
-}
-
-/** States in which an emergency is still live. */
-const OPEN_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ACKNOWLEDGED,
-  EventState.ESCALATED,
-];
 
 /** Narrowing applied to the history view. Every field is optional. */
 export interface AlertFilters {
@@ -110,9 +100,6 @@ function toSummary(row: SummaryRow): AlertSummary {
   };
 }
 
-/** Before anyone has taken ownership, so still cancellable by the elder. */
-const UNOWNED_STATES: EventState[] = [EventState.TRIGGERED, EventState.NOTIFIED];
-
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
@@ -138,10 +125,7 @@ export class AlertsService {
   async create(elderId: string, dto: CreateAlertDto): Promise<EmergencyEvent> {
     const at = new Date();
 
-    const elder = await this.prisma.user.findUnique({
-      where: { id: elderId },
-      include: { assignmentsAsElder: true },
-    });
+    const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
     if (!elder) throw new NotFoundException('Account no longer exists');
     if (elder.role !== Role.ELDER) {
@@ -160,7 +144,6 @@ export class AlertsService {
           : null,
       timezone: elder.timezone,
       at,
-      coverWindows: AlertsService.toCoverWindows(elder.assignmentsAsElder),
       recentEventCount,
       cancelWindowElapsed: false,
     });
@@ -172,7 +155,7 @@ export class AlertsService {
           alertLatitude: new Prisma.Decimal(where.latitude),
           alertLongitude: new Prisma.Decimal(where.longitude),
           alertAddressLabel: where.addressLabel,
-          state: EventState.TRIGGERED,
+          state: INITIAL_STATE,
           currentTier: 1,
           severity: assessment.band,
           severityScore: assessment.score,
@@ -187,7 +170,7 @@ export class AlertsService {
             eventId: created.id,
             actorId: elderId,
             action: AuditAction.EVENT_CREATED,
-            newState: EventState.TRIGGERED,
+            newState: INITIAL_STATE,
             occurredAt: at,
           },
           {
@@ -234,11 +217,14 @@ export class AlertsService {
     if (event.state === EventState.CANCELLED) {
       throw new ConflictException('This alert was already cancelled');
     }
-    if (!UNOWNED_STATES.includes(event.state)) {
+    // Ownership, not state, is what ends the right to cancel. An alert whose first tier
+    // was empty is already ESCALATED inside the window, and nobody has taken it on.
+    if (event.acknowledgedBy || event.state === EventState.ACKNOWLEDGED) {
       throw new ConflictException(
         'Someone is already responding to this alert. Speak to them rather than cancelling.',
       );
     }
+    assertTransition(event.state, EventState.CANCELLED);
 
     const graceWindow = this.config.get<number>('CANCEL_GRACE_WINDOW', 10);
     const elapsedSeconds = (Date.now() - event.triggeredAt.getTime()) / 1000;
@@ -252,15 +238,19 @@ export class AlertsService {
     await this.timers.cancelAll(eventId);
 
     const cancelled = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.emergencyEvent.update({
-        where: { id: eventId },
-        data: {
-          state: EventState.CANCELLED,
+      // Conditional on nobody owning it yet, checked by the write itself: a caregiver
+      // acknowledging in the same instant wins, and the elder is told so.
+      const updated = await transitionEvent(
+        tx,
+        event,
+        EventState.CANCELLED,
+        {
           currentTierDeadlineAt: null,
           outcome: EventOutcome.CANCELLED_BY_ELDER,
           resolvedAt: now,
         },
-      });
+        { acknowledgedBy: null },
+      );
 
       await tx.auditLog.create({
         data: {
@@ -300,6 +290,7 @@ export class AlertsService {
     if (event.state !== EventState.CANCELLED) {
       throw new ConflictException('Only a cancelled alert can be reopened');
     }
+    assertTransition(event.state, INITIAL_STATE);
 
     const isElder = event.elderlyId === userId;
     const assignment = isElder
@@ -313,10 +304,7 @@ export class AlertsService {
     }
 
     const at = new Date();
-    const elder = await this.prisma.user.findUnique({
-      where: { id: event.elderlyId },
-      include: { assignmentsAsElder: true },
-    });
+    const elder = await this.prisma.user.findUnique({ where: { id: event.elderlyId } });
     if (!elder) throw new NotFoundException('Emergency not found');
 
     const assessment = await this.severity.evaluate({
@@ -331,7 +319,6 @@ export class AlertsService {
           : null,
       timezone: elder.timezone,
       at,
-      coverWindows: AlertsService.toCoverWindows(elder.assignmentsAsElder),
       recentEventCount: await this.countRecentEvents(event.elderlyId, at),
       cancelWindowElapsed: true,
     });
@@ -340,20 +327,18 @@ export class AlertsService {
     const tier = assignment?.priorityOrder ?? 1;
 
     const reopened = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.emergencyEvent.update({
-        where: { id: eventId },
-        data: {
-          state: EventState.TRIGGERED,
-          currentTier: tier,
-          currentTierDeadlineAt: null,
-          outcome: null,
-          resolvedAt: null,
-          acknowledgedBy: null,
-          acknowledgedAt: null,
-          severity: band,
-          severityScore: Math.max(event.severityScore, assessment.score),
-          severityFactors: assessment as unknown as Prisma.InputJsonValue,
-        },
+      // Two people in the chain reopening at once would otherwise restart it twice.
+      // The guarded write lets the first through and tells the second it moved on.
+      const updated = await transitionEvent(tx, event, INITIAL_STATE, {
+        currentTier: tier,
+        currentTierDeadlineAt: null,
+        outcome: null,
+        resolvedAt: null,
+        acknowledgedBy: null,
+        acknowledgedAt: null,
+        severity: band,
+        severityScore: Math.max(event.severityScore, assessment.score),
+        severityFactors: assessment as unknown as Prisma.InputJsonValue,
       });
 
       await tx.auditLog.create({
@@ -362,7 +347,7 @@ export class AlertsService {
           actorId: userId,
           action: AuditAction.REOPENED,
           previousState: EventState.CANCELLED,
-          newState: EventState.TRIGGERED,
+          newState: INITIAL_STATE,
           detail: {
             restartedAtTier: tier,
             reason: reason ?? null,
@@ -608,14 +593,6 @@ export class AlertsService {
       longitude: dto.longitude ?? 0,
       addressLabel: dto.addressLabel ?? null,
     };
-  }
-
-  private static toCoverWindows(assignments: CoverSource[]): CoverWindow[] {
-    return assignments.map((assignment) => ({
-      daysOfWeek: assignment.coverDaysOfWeek,
-      startMinute: assignment.coverStartMinute,
-      endMinute: assignment.coverEndMinute,
-    }));
   }
 
   private static auditDetail(assessment: SeverityAssessment): Prisma.InputJsonValue {

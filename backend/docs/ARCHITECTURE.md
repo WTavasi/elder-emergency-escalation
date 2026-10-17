@@ -58,7 +58,71 @@ listener missed, so the suite would pass whether the primary mechanism worked or
 Acknowledging, resolving, cancelling and requesting a responder all clear the pending
 timers first, so a stale expiry cannot promote an emergency somebody is already handling.
 Expiries that arrive late are ignored rather than treated as errors, because a timer
-firing just after an acknowledgement is normal.
+firing just after an acknowledgement is normal. Clearing timers is not the only guard:
+an expiry already in flight when somebody acknowledges is stopped by the lifecycle's
+guarded write, described next.
+
+## The emergency lifecycle
+
+Which state an emergency can move to from which is written down once, in
+`src/shared/utils/event-lifecycle.ts`, and every service that changes an emergency's
+state goes through it. Operations still check their own preconditions (who may act,
+whether the cancel window is open, whether somebody already owns it), but none of them
+decides on its own which moves exist.
+
+| From | May become |
+| --- | --- |
+| TRIGGERED | NOTIFIED, ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
+| NOTIFIED | NOTIFIED, ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
+| ESCALATED | ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
+| ACKNOWLEDGED | ESCALATED, RESOLVED |
+| RESOLVED | nothing |
+| CANCELLED | TRIGGERED |
+
+```mermaid
+stateDiagram-v2
+    [*] --> TRIGGERED : panic press
+    TRIGGERED --> NOTIFIED : tier one dispatched
+    TRIGGERED --> ESCALATED : tier one empty, or responder requested
+    NOTIFIED --> NOTIFIED : parallel tier dispatched
+    NOTIFIED --> ESCALATED : window expired, all declined, or responder requested
+    ESCALATED --> ESCALATED : next tier dispatched
+    TRIGGERED --> ACKNOWLEDGED : accepted
+    NOTIFIED --> ACKNOWLEDGED : accepted
+    ESCALATED --> ACKNOWLEDGED : accepted
+    ACKNOWLEDGED --> ESCALATED : owner calls in a responder
+    TRIGGERED --> CANCELLED : elder cancels inside the window
+    NOTIFIED --> CANCELLED : elder cancels inside the window
+    ESCALATED --> CANCELLED : elder cancels inside the window
+    CANCELLED --> TRIGGERED : reopened by the care chain
+    TRIGGERED --> RESOLVED : closed with an outcome
+    NOTIFIED --> RESOLVED : closed with an outcome
+    ESCALATED --> RESOLVED : closed with an outcome
+    ACKNOWLEDGED --> RESOLVED : closed with an outcome
+    RESOLVED --> [*] : deleted after retention
+    CANCELLED --> [*] : deleted after retention
+```
+
+A state listed under itself is a real move: a second tier sent in parallel, or a further
+rung. There is no state for a chain that ran out. An emergency nobody acknowledges
+stays open at the responder tier, recorded as escalated with an `exhausted` flag, and
+stays visible to administrators until somebody closes it.
+
+Each change is checked twice. Against the table, using the state as it was read, which
+refuses a move that is never legal with a message a person can act on. Then by the
+write itself, whose WHERE clause requires the row still to be in a state the move can
+come from, so the database applies the check and the change as one statement. That
+second check is what closes the races between reading and writing:
+
+- a window expiring in the same instant somebody acknowledges, where the timer's write
+  also requires nobody to own the emergency, so it matches nothing and stands down
+  without notifying anyone or arming another timer;
+- the elder cancelling as a caregiver acknowledges, where the caregiver wins and the
+  elder is told the alert changed;
+- two people in the chain reopening at once, where the chain restarts once.
+
+Acknowledgement keeps its own conditional write, which predates the table (NFR-04), but
+takes the states it may claim from it.
 
 ## How notifications are delivered
 

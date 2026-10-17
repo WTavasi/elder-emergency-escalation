@@ -227,10 +227,10 @@ model CareAssignment {
   priorityOrder Int      @map("priority_order") @db.SmallInt
   assignedAt    DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
 
-  /// EXTENSION. Declared cover, not verified presence. Entered by the caregiver when
-  /// the assignment is created and used only as a severity input. Days are 0 for
-  /// Sunday through 6 for Saturday; minutes are counted from local midnight in the
-  /// elder's timezone. Null means no declared cover.
+  /// EXTENSION. Reserved for declared cover hours, not verified presence. Not read in
+  /// this build: the caregiver-cover severity factor was dropped because nothing lets
+  /// a caregiver declare them (docs/decisions.md). Days are 0 for Sunday through 6 for
+  /// Saturday; minutes are counted from local midnight in the elder's timezone.
   coverDaysOfWeek  Int[] @default([]) @map("cover_days_of_week")
   coverStartMinute Int?  @map("cover_start_minute") @db.SmallInt
   coverEndMinute   Int?  @map("cover_end_minute") @db.SmallInt

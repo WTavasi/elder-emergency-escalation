@@ -19,7 +19,7 @@ console (`realtime-service`), or the elder's own record (`elder-service`).
 | Method | Path | Who | What |
 | --- | --- | --- | --- |
 | POST | `/` | elder | Raise an emergency. Empty body; the server decides where it is |
-| POST | `/:id/cancel` | elder | Withdraw inside the grace window |
+| POST | `/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/:id/reopen` | care chain | Restart a withdrawn alert nobody could confirm |
 | GET | `/` | signed in | The emergencies the caller is part of |
 | GET | `/:id` | participants | One emergency, with its chain and what has happened |
@@ -36,6 +36,11 @@ dispatch also records a deadline in the database, so a restart cannot lose one, 
 `workers/escalation-sweep.service.ts` reconciles those deadlines on an interval in case
 expiry events never arrive. The full account is in
 [`../../../docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md).
+
+Every state change goes through `shared/utils/event-lifecycle.ts`, the one table of
+which state may become which. Its writes are conditional on the row still being in a
+state the move can come from, so a timer that fires as somebody acknowledges, or two
+people reopening at once, cannot overwrite each other.
 
 ## Data it writes
 

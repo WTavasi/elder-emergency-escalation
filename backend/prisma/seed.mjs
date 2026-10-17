@@ -254,6 +254,13 @@ const escalationRules = [
 /* ------------------------------------------------------------------ *
  * Severity policy. Weights sum to 100. Bands come from the environment:
  * ELEVATED at 35 and above, CRITICAL at 60 and above.
+ *
+ * Five factors. A sixth, caregiver_outside_cover, was dropped: nothing in the
+ * product lets a caregiver declare cover hours, so for every real elder it scored
+ * in full and added a flat 10 points that measured nothing. Its weight went to
+ * time of day and away from home. Any copy of it in an existing database is
+ * switched off below rather than deleted, so a past event's stored factors still
+ * name a row that exists.
  * ------------------------------------------------------------------ */
 
 const severityFactors = [
@@ -273,21 +280,14 @@ const severityFactors = [
   },
   {
     key: 'time_of_day',
-    weight: 15,
+    weight: 20,
     label: 'Alert raised at night',
     description:
       'Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.',
   },
   {
-    key: 'caregiver_outside_cover',
-    weight: 10,
-    label: 'No caregiver inside a declared cover window',
-    description:
-      'Scores full when no care assignment declares cover at the moment of the alert. Declared availability, not verified presence.',
-  },
-  {
     key: 'away_from_home',
-    weight: 10,
+    weight: 15,
     label: 'Alert raised away from the registered home',
     description:
       'Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.',
@@ -325,13 +325,7 @@ async function main() {
     {
       elder: '+254700000010',
       contacts: [
-        {
-          phone: '+254700000020',
-          priorityOrder: 1,
-          coverDaysOfWeek: [1, 2, 3, 4, 5],
-          coverStartMinute: 8 * 60,
-          coverEndMinute: 17 * 60,
-        },
+        { phone: '+254700000020', priorityOrder: 1 },
         { phone: '+254700000030', priorityOrder: 2 },
         { phone: '+254700000040', priorityOrder: 3 },
       ],
@@ -339,13 +333,7 @@ async function main() {
     {
       elder: '+254700000011',
       contacts: [
-        {
-          phone: '+254700000021',
-          priorityOrder: 1,
-          coverDaysOfWeek: [1, 2, 3, 4, 5, 6],
-          coverStartMinute: 7 * 60,
-          coverEndMinute: 19 * 60,
-        },
+        { phone: '+254700000021', priorityOrder: 1 },
         { phone: '+254700000031', priorityOrder: 2 },
         { phone: '+254700000041', priorityOrder: 3 },
       ],
@@ -360,9 +348,11 @@ async function main() {
         elderlyId: elder.id,
         responderId: responder.id,
         priorityOrder: contact.priorityOrder,
-        coverDaysOfWeek: contact.coverDaysOfWeek ?? [],
-        coverStartMinute: contact.coverStartMinute ?? null,
-        coverEndMinute: contact.coverEndMinute ?? null,
+        // Cleared, not merely left out, so a database seeded before the cover factor
+        // was dropped does not keep showing hours nothing reads.
+        coverDaysOfWeek: [],
+        coverStartMinute: null,
+        coverEndMinute: null,
       };
       await prisma.careAssignment.upsert({
         where: { no_duplicate_contact: { elderlyId: elder.id, responderId: responder.id } },
@@ -391,6 +381,11 @@ async function main() {
       create: factor,
     });
   }
+  const retired = await prisma.severityFactor.updateMany({
+    where: { key: { notIn: severityFactors.map((factor) => factor.key) }, enabled: true },
+    data: { enabled: false },
+  });
+  if (retired.count > 0) console.log(`  severity  ${retired.count} retired factor(s) switched off`);
   const totalWeight = severityFactors.reduce((sum, f) => sum + f.weight, 0);
   console.log(`  severity  ${severityFactors.length} factors, weights summing to ${totalWeight}`);
 

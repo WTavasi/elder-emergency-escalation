@@ -5,6 +5,7 @@ import {
   EventOutcome,
   EventState,
   NotificationStatus,
+  Prisma,
   Role,
   Severity,
 } from '@prisma/client';
@@ -514,6 +515,52 @@ describe('EscalationService', () => {
       // A column that is sometimes '' and sometimes null is two ways to say the same
       // thing, and every later query would have to know about both.
       expect(update.data.outcomeNote).toBeNull();
+    });
+  });
+
+  describe('lifecycle guards', () => {
+    const stale = () =>
+      new Prisma.PrismaClientKnownRequestError('No record', {
+        code: 'P2025',
+        clientVersion: 'test',
+      });
+
+    it('stands down when an acknowledgement lands between a timeout reading and writing', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const notifications = buildNotifications();
+      prisma.emergencyEvent.update.mockRejectedValue(stale());
+
+      await build(prisma, timers, notifications).dispatchTier('event-1', 2, 'escalation');
+
+      // A timer may only act on an emergency nobody owns, and the write says so.
+      expect(prisma.emergencyEvent.update.mock.calls[0][0].where).toMatchObject({
+        acknowledgedBy: null,
+      });
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+      expect(timers.arm).not.toHaveBeenCalled();
+    });
+
+    it('lets the owner call in a responder on an emergency they have taken on', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ACKNOWLEDGED, acknowledgedBy: 'caregiver-1' }),
+      );
+
+      await build(prisma).dispatchTier('event-1', 3, 'manual');
+
+      const write = prisma.emergencyEvent.update.mock.calls[0][0];
+      expect(write.data.state).toBe(EventState.ESCALATED);
+      expect(write.where).not.toHaveProperty('acknowledgedBy');
+    });
+
+    it('keeps an escalated emergency escalated when a parallel tier goes out with it', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.ESCALATED }));
+
+      await build(prisma).dispatchTier('event-1', 2, 'initial');
+
+      expect(prisma.emergencyEvent.update.mock.calls[0][0].data.state).toBe(EventState.ESCALATED);
     });
   });
 

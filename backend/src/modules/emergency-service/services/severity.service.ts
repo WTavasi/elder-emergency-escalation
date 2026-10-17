@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { CareLevel, Severity } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { distanceInMetres } from '../../../shared/utils/geo';
-import { isInsideCoverWindow, isNight, localParts } from '../../../shared/utils/time';
+import { isNight, localParts } from '../../../shared/utils/time';
 import type { FactorOutcome, SeverityAssessment, SeverityContext } from '../models/severity.types';
 
 /**
@@ -94,8 +94,6 @@ export class SeverityService {
         };
       case 'time_of_day':
         return this.timeOfDay(context);
-      case 'caregiver_outside_cover':
-        return this.caregiverCover(context);
       case 'away_from_home':
         return this.awayFromHome(context);
       case 'recent_activity':
@@ -132,20 +130,6 @@ export class SeverityService {
     return {
       value: night ? 1 : 0,
       detail: `${String(local.hour).padStart(2, '0')}:${String(local.minutesOfDay % 60).padStart(2, '0')} local, ${night ? 'night' : 'daytime'}`,
-    };
-  }
-
-  private caregiverCover(context: SeverityContext): { value: number; detail: string } {
-    if (context.coverWindows.length === 0) {
-      return { value: 1, detail: 'no cover declared by any caregiver' };
-    }
-
-    const local = localParts(context.at, context.timezone);
-    const covered = context.coverWindows.some((window) => isInsideCoverWindow(window, local));
-
-    return {
-      value: covered ? 0 : 1,
-      detail: covered ? 'inside a declared cover window' : 'outside every declared cover window',
     };
   }
 

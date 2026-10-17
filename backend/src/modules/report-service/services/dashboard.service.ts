@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventState, NotificationStatus } from '@prisma/client';
+import { NotificationStatus } from '@prisma/client';
+import { CLOSED_STATES, OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import type {
   ChannelReliability,
@@ -11,17 +12,6 @@ import type {
   LiveCounts,
   ResponseTimes,
 } from '../views/dashboard.types';
-
-/** States in which an emergency is still live. */
-const OPEN_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ACKNOWLEDGED,
-  EventState.ESCALATED,
-];
-
-/** States an emergency can finish in. */
-const CLOSED_STATES: EventState[] = [EventState.RESOLVED, EventState.CANCELLED];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

@@ -118,7 +118,7 @@ The script narrates the whole lifecycle. Each step prints what happened and then
 3. Shortens the tier-one window to five seconds by updating `escalation_rules`, and
    restores the original values in a `finally` block so a crash cannot leave the
    database altered. This is itself a demonstration: the timeouts are configuration.
-4. Raises the alert and prints the six severity factors with their weights, measured
+4. Raises the alert and prints the five severity factors with their weights, measured
    values and contributions, and the resulting score and band.
 5. Shows tier one dispatched immediately, with a millisecond timing.
 6. Waits out the five seconds and shows the state move to `ESCALATED`.

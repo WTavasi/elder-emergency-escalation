@@ -12,9 +12,10 @@ removed, and no relationship in it changed.
 
 ### `severity_factors`
 
-The weighted severity policy, one row per factor, editable by an administrator. Six rows:
-care level 30, no cancel in the grace window 30, time of day 15, caregiver outside cover
-10, away from home 10, recent activity 5.
+The weighted severity policy, one row per factor, editable by an administrator. Five
+enabled rows: care level 30, no cancel in the grace window 30, time of day 20, away from
+home 15, recent activity 5. A sixth, caregiver outside cover, is kept switched off (see
+`docs/decisions.md`).
 
 Justification for the report: severity has to come from somewhere defensible. Holding the
 weights as data rather than code means the policy can be shown as a table, changed without
@@ -62,7 +63,7 @@ actually be notified.
 | `users` | `coverage_area_name`, `coverage_latitude`, `coverage_longitude`, `coverage_radius_km` | The physical form of `coverage_area` from Figure 4.4. A named area plus a circle, matched by Haversine distance, which avoids adding PostGIS for one query |
 | `users` | `timezone`, `updated_at` | Time-of-day factor is evaluated in the elder's own timezone |
 | `users` | `deactivated_at` | An administrator closes an account without deleting it, because every account is named in emergency history that has to stay readable. Null means active. A deactivated account cannot sign in, its sessions end at once, and dispatch passes over its place in a chain. A timestamp rather than a boolean, so the record also says when access ended |
-| `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Declared cover, the caregiver-availability severity factor. Declared availability, never verified presence, and the column names say so |
+| `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Reserved for declared cover hours. Not read in this build: the caregiver-cover severity factor was dropped because nothing lets a caregiver declare them. Kept so the factor can return without a migration |
 | `emergency_events` | `severity`, `severity_score`, `severity_factors` | The band, the score, and the factor values that produced it, so every escalation decision stays explainable |
 | `emergency_events` | `current_tier_deadline_at` | The durable copy of the Redis timer. Redis publishes an expiry once and never again, so without a recorded deadline a restart at the wrong moment would leave an emergency waiting on a timer that no longer exists |
 | `emergency_events` | `acknowledged_at`, `responder_requested_at` | Acknowledgement time is needed for the response-time measurements in Chapter 5. The request timestamp records a manual responder request superseding the automatic chain |

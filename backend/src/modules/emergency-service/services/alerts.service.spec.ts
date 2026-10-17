@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AuditAction, CareLevel, EventState, Role, Severity } from '@prisma/client';
+import { AuditAction, CareLevel, EventState, Prisma, Role, Severity } from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../../../db/prisma.service';
@@ -50,14 +50,6 @@ const elder = {
   currentLongitude: null,
   currentPlaceLabel: null,
   timezone: 'Africa/Nairobi',
-  assignmentsAsElder: [
-    {
-      coverDaysOfWeek: [1, 2, 3, 4, 5],
-      coverStartMinute: 480,
-      coverEndMinute: 1020,
-      priorityOrder: 1,
-    },
-  ],
 };
 
 const event = (overrides: Record<string, unknown> = {}) => ({
@@ -391,6 +383,35 @@ describe('AlertsService', () => {
       prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.CANCELLED }));
       await expect(build(prisma).cancel(event().id, 'elder-1')).rejects.toThrow(ConflictException);
     });
+
+    it('still cancels inside the window when an empty first tier has already escalated it', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, acknowledgedBy: null }),
+      );
+
+      const cancelled = await build(prisma).cancel(event().id, 'elder-1');
+
+      expect(cancelled.state).toBe(EventState.CANCELLED);
+      // Conditional on nobody owning it, checked by the write itself.
+      expect(prisma.emergencyEvent.update.mock.calls[0][0].where).toMatchObject({
+        acknowledgedBy: null,
+      });
+    });
+
+    it('loses to a caregiver who acknowledges in the same instant', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ acknowledgedBy: null }));
+      prisma.emergencyEvent.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('No record', {
+          code: 'P2025',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(build(prisma).cancel(event().id, 'elder-1')).rejects.toThrow(/changed/);
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('reopen', () => {
@@ -425,6 +446,25 @@ describe('AlertsService', () => {
       expect(entry.actorId).toBe('caregiver-1');
       expect(entry.previousState).toBe(EventState.CANCELLED);
       expect((entry.detail as { reason: string }).reason).toBe('no answer on two calls');
+    });
+
+    it('restarts the chain once when two people reopen it at the same moment', async () => {
+      const prisma = buildPrisma();
+      const escalation = buildEscalation();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(cancelled());
+      prisma.careAssignment.findFirst.mockResolvedValue({ priorityOrder: 1 });
+      // The other reopen committed first, so this write finds the row no longer cancelled.
+      prisma.emergencyEvent.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('No record', {
+          code: 'P2025',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(
+        build(prisma, buildSeverity(), escalation).reopen(cancelled().id, 'caregiver-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(escalation.dispatchTier).not.toHaveBeenCalled();
     });
 
     it('re-scores with the cancel window treated as elapsed, and never lowers the band', async () => {

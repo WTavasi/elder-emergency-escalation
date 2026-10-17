@@ -1,5 +1,4 @@
 import type { CareLevel, Severity } from '@prisma/client';
-import type { CoverWindow } from '../../../shared/utils/time';
 import type { Coordinates } from '../../../shared/utils/geo';
 
 /** Everything the policy needs, gathered before scoring so the scoring itself is pure. */
@@ -9,7 +8,6 @@ export interface SeverityContext {
   homeLocation: Coordinates | null;
   timezone: string;
   at: Date;
-  coverWindows: CoverWindow[];
   /** Prior alerts in the recent window, or still open. */
   recentEventCount: number;
   /** True once the cancel window has passed without the elder cancelling. */

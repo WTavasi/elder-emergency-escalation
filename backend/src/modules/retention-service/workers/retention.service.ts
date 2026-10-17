@@ -1,10 +1,7 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventState } from '@prisma/client';
+import { CLOSED_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
-
-/** States an emergency can finish in. Only a finished one is ever a candidate. */
-const CLOSED_STATES: EventState[] = [EventState.RESOLVED, EventState.CANCELLED];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

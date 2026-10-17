@@ -142,13 +142,6 @@ async function showChain(elder) {
     { header: 'TIER', value: (a) => a.priorityOrder },
     { header: 'CONTACT', value: (a) => a.responder.name },
     { header: 'ROLE', value: (a) => a.responder.role },
-    {
-      header: 'DECLARED COVER',
-      value: (a) =>
-        a.coverStartMinute === null
-          ? 'none'
-          : `days ${a.coverDaysOfWeek.join(',')} ${String(Math.floor(a.coverStartMinute / 60)).padStart(2, '0')}:00-${String(Math.floor(a.coverEndMinute / 60)).padStart(2, '0')}:00`,
-    },
   ]);
   proves('escalation order is data about this person, not a hard-coded sequence');
 }

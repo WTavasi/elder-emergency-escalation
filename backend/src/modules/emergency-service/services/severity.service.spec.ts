@@ -7,9 +7,8 @@ import type { SeverityContext } from '../models/severity.types';
 const POLICY = [
   { key: 'care_level', label: 'Care level', weight: 30 },
   { key: 'no_cancel_in_grace_window', label: 'No cancel', weight: 30 },
-  { key: 'time_of_day', label: 'Night', weight: 15 },
-  { key: 'caregiver_outside_cover', label: 'No cover', weight: 10 },
-  { key: 'away_from_home', label: 'Away from home', weight: 10 },
+  { key: 'time_of_day', label: 'Night', weight: 20 },
+  { key: 'away_from_home', label: 'Away from home', weight: 15 },
   { key: 'recent_activity', label: 'Recent activity', weight: 5 },
 ];
 
@@ -35,7 +34,7 @@ const buildService = (
   return { service: new SeverityService(prisma, config), findMany };
 };
 
-/** Calm baseline: independent elder, at home, weekday afternoon, covered, no history. */
+/** Calm baseline: independent elder, at home, weekday afternoon, no history. */
 const calm = (overrides: Partial<SeverityContext> = {}): SeverityContext => ({
   careLevel: CareLevel.INDEPENDENT,
   alertLocation: home,
@@ -43,7 +42,6 @@ const calm = (overrides: Partial<SeverityContext> = {}): SeverityContext => ({
   timezone: 'Africa/Nairobi',
   // 11:00 UTC is 14:00 in Nairobi, a Monday.
   at: new Date('2026-09-14T11:00:00Z'),
-  coverWindows: [{ daysOfWeek: [1, 2, 3, 4, 5], startMinute: 8 * 60, endMinute: 17 * 60 }],
   recentEventCount: 0,
   cancelWindowElapsed: false,
   ...overrides,
@@ -61,7 +59,7 @@ describe('SeverityService', () => {
 
     expect(assessment.score).toBe(0);
     expect(assessment.band).toBe(Severity.STANDARD);
-    expect(assessment.factors).toHaveLength(6);
+    expect(assessment.factors).toHaveLength(5);
   });
 
   it('scores the worst case at 100 and lands in the critical band', async () => {
@@ -72,7 +70,6 @@ describe('SeverityService', () => {
         cancelWindowElapsed: true,
         // 23:30 UTC is 02:30 in Nairobi.
         at: new Date('2026-09-14T23:30:00Z'),
-        coverWindows: [],
         alertLocation: { latitude: -1.268, longitude: 36.811 },
         recentEventCount: 2,
       }),
@@ -117,26 +114,10 @@ describe('SeverityService', () => {
       const { service } = buildService();
       // 20:00 UTC is 23:00 in Nairobi: night locally, daytime in UTC.
       const night = await service.evaluate(calm({ at: new Date('2026-09-14T20:00:00Z') }));
-      expect(contributionOf(night, 'time_of_day')).toBe(15);
+      expect(contributionOf(night, 'time_of_day')).toBe(20);
 
       const day = await service.evaluate(calm({ at: new Date('2026-09-14T06:00:00Z') }));
       expect(contributionOf(day, 'time_of_day')).toBe(0);
-    });
-  });
-
-  describe('caregiver cover', () => {
-    it('scores nothing while a caregiver has declared cover', async () => {
-      const { service } = buildService();
-      expect(contributionOf(await service.evaluate(calm()), 'caregiver_outside_cover')).toBe(0);
-    });
-
-    it('scores in full outside every declared window, and when none is declared', async () => {
-      const { service } = buildService();
-      const sunday = await service.evaluate(calm({ at: new Date('2026-09-13T11:00:00Z') }));
-      expect(contributionOf(sunday, 'caregiver_outside_cover')).toBe(10);
-
-      const noWindows = await service.evaluate(calm({ coverWindows: [] }));
-      expect(contributionOf(noWindows, 'caregiver_outside_cover')).toBe(10);
     });
   });
 
@@ -151,7 +132,7 @@ describe('SeverityService', () => {
       const far = { latitude: -1.268, longitude: 36.811 };
       expect(
         contributionOf(await service.evaluate(calm({ alertLocation: far })), 'away_from_home'),
-      ).toBe(10);
+      ).toBe(15);
     });
 
     it('scores nothing when no home address is on file, rather than assuming the worst', async () => {
