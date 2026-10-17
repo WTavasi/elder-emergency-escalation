@@ -20,19 +20,20 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { isWithinMetres } from '../../../shared/utils/geo';
+import {
+  AWAITING_STATES,
+  OPEN_STATES,
+  StaleTransitionError,
+  assertTransition,
+  sourcesOf,
+  transitionEvent,
+} from '../../../shared/utils/event-lifecycle';
 import { EscalationTimerService } from './escalation-timer.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
   REALTIME_PUBLISHER,
   type RealtimePublisher,
 } from '../../realtime-service/services/realtime.publisher';
-
-const OPEN_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ACKNOWLEDGED,
-  EventState.ESCALATED,
-];
 
 /** Guards the parallel-dispatch walk against a cycle in misconfigured rules. */
 const MAX_TIERS = 10;
@@ -97,57 +98,30 @@ export class EscalationService {
       ? [NotificationChannel.PUSH, NotificationChannel.SMS]
       : [NotificationChannel.PUSH];
 
-    const dispatched = await this.prisma.$transaction(async (tx) => {
-      const created = await Promise.all(
-        recipients.flatMap((recipientId) =>
-          channels.map((channel) =>
-            tx.notification.create({
-              data: {
-                eventId,
-                recipientId,
-                channel,
-                status: NotificationStatus.QUEUED,
-                tier,
-                createdAt: now,
-              },
-              select: { id: true },
-            }),
-          ),
-        ),
-      );
+    // ESCALATED is sticky: once a tier has timed out, the event stays marked as
+    // escalated, which is what the outlined red state means on every screen. So a tier
+    // sent alongside an escalated one in parallel does not set it back to NOTIFIED.
+    const target =
+      reason === 'initial' && event.state !== EventState.ESCALATED
+        ? EventState.NOTIFIED
+        : EventState.ESCALATED;
 
-      const updated = await tx.emergencyEvent.update({
-        where: { id: eventId },
-        data: {
-          // ESCALATED is sticky: once a tier has timed out, the event stays marked as
-          // escalated, which is what the outlined red state means on every screen.
-          state: reason === 'initial' ? EventState.NOTIFIED : EventState.ESCALATED,
-          currentTier: tier,
-          currentTierDeadlineAt: deadline,
-        },
+    let dispatched: { updated: EmergencyEvent; notificationIds: string[] };
+    try {
+      dispatched = await this.dispatchInTransaction(event, tier, reason, rule, recipients, {
+        target,
+        channels,
+        now,
+        deadline,
       });
-
-      await tx.auditLog.create({
-        data: {
-          eventId,
-          actorId: null,
-          action: AuditAction.TIER_DISPATCHED,
-          previousState: event.state,
-          newState: reason === 'initial' ? EventState.NOTIFIED : EventState.ESCALATED,
-          detail: {
-            tier,
-            reason,
-            responderRole: rule.responderRole,
-            recipients: recipients.length,
-            channels,
-            timeoutSeconds: rule.timeoutSeconds,
-          } as unknown as Prisma.InputJsonValue,
-          occurredAt: now,
-        },
-      });
-
-      return { updated, notificationIds: created.map((notification) => notification.id) };
-    });
+    } catch (error) {
+      if (!(error instanceof StaleTransitionError)) throw error;
+      // Somebody acknowledged, resolved or cancelled between this dispatch reading the
+      // event and writing it. The transaction rolled back, so nobody is notified and no
+      // timer is armed: the emergency is exactly as the other action left it.
+      this.logger.log(`Event ${eventId} moved on before tier ${tier} went out; standing down`);
+      return;
+    }
 
     // Screens update the moment the chain moves, rather than on their next poll.
     this.realtime.emergencyUpdated(dispatched.updated);
@@ -173,6 +147,76 @@ export class EscalationService {
     }
   }
 
+  /** The durable half of a dispatch: notification rows, the state change and its audit entry. */
+  private dispatchInTransaction(
+    event: EmergencyEvent,
+    tier: number,
+    reason: DispatchReason,
+    rule: EscalationRule,
+    recipients: string[],
+    plan: {
+      target: EventState;
+      channels: NotificationChannel[];
+      now: Date;
+      deadline: Date | null;
+    },
+  ): Promise<{ updated: EmergencyEvent; notificationIds: string[] }> {
+    const eventId = event.id;
+    const { target, channels, now, deadline } = plan;
+
+    return this.prisma.$transaction(async (tx) => {
+      const created = await Promise.all(
+        recipients.flatMap((recipientId) =>
+          channels.map((channel) =>
+            tx.notification.create({
+              data: {
+                eventId,
+                recipientId,
+                channel,
+                status: NotificationStatus.QUEUED,
+                tier,
+                createdAt: now,
+              },
+              select: { id: true },
+            }),
+          ),
+        ),
+      );
+
+      // A manual request is the owner calling in a responder, so it may find the event
+      // acknowledged. A timer or a decline acting on an acknowledged event has lost a
+      // race, and the extra condition makes its write match nothing.
+      const updated = await transitionEvent(
+        tx,
+        event,
+        target,
+        { currentTier: tier, currentTierDeadlineAt: deadline },
+        reason === 'manual' ? {} : { acknowledgedBy: null },
+      );
+
+      await tx.auditLog.create({
+        data: {
+          eventId,
+          actorId: null,
+          action: AuditAction.TIER_DISPATCHED,
+          previousState: event.state,
+          newState: target,
+          detail: {
+            tier,
+            reason,
+            responderRole: rule.responderRole,
+            recipients: recipients.length,
+            channels,
+            timeoutSeconds: rule.timeoutSeconds,
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: now,
+        },
+      });
+
+      return { updated, notificationIds: created.map((notification) => notification.id) };
+    });
+  }
+
   /**
    * A tier's acknowledgement window expired.
    *
@@ -183,8 +227,7 @@ export class EscalationService {
   async onTierTimeout(eventId: string, tier: number): Promise<void> {
     const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
 
-    if (!event || !OPEN_STATES.includes(event.state)) return;
-    if (event.state === EventState.ACKNOWLEDGED) return;
+    if (!event || !AWAITING_STATES.includes(event.state)) return;
     if (event.currentTier !== tier) return;
 
     await this.escalate(event, tier);
@@ -201,6 +244,7 @@ export class EscalationService {
     if (event.acknowledgedBy) {
       throw new ConflictException('Someone is already responding to this emergency');
     }
+    assertTransition(event.state, EventState.ACKNOWLEDGED);
     await this.requireParticipant(event, userId);
 
     const now = new Date();
@@ -213,9 +257,14 @@ export class EscalationService {
       // Ownership is therefore claimed by a conditional write: the database applies
       // the WHERE and the SET atomically, so exactly one of the two updates can match
       // a row. Zero affected rows means somebody else got there first, which is a
-      // conflict rather than a failure, and the loser is told so.
+      // conflict rather than a failure, and the loser is told so. The states it may
+      // find the row in come from the lifecycle table, like every other transition.
       const claim = await tx.emergencyEvent.updateMany({
-        where: { id: eventId, acknowledgedBy: null, state: { in: OPEN_STATES } },
+        where: {
+          id: eventId,
+          acknowledgedBy: null,
+          state: { in: sourcesOf(EventState.ACKNOWLEDGED) },
+        },
         data: {
           state: EventState.ACKNOWLEDGED,
           acknowledgedBy: userId,
@@ -366,18 +415,14 @@ export class EscalationService {
     await this.timers.cancelAll(eventId);
 
     const resolved = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.emergencyEvent.update({
-        where: { id: eventId },
-        data: {
-          state: EventState.RESOLVED,
-          outcome,
-          // Trimmed, and an empty string becomes null rather than an empty note. A
-          // column that is sometimes '' and sometimes null is two ways to say the same
-          // thing, and every later query has to know about both.
-          outcomeNote: note?.trim() ? note.trim() : null,
-          resolvedAt: now,
-          currentTierDeadlineAt: null,
-        },
+      const updated = await transitionEvent(tx, event, EventState.RESOLVED, {
+        outcome,
+        // Trimmed, and an empty string becomes null rather than an empty note. A
+        // column that is sometimes '' and sometimes null is two ways to say the same
+        // thing, and every later query has to know about both.
+        outcomeNote: note?.trim() ? note.trim() : null,
+        resolvedAt: now,
+        currentTierDeadlineAt: null,
       });
 
       await tx.auditLog.create({

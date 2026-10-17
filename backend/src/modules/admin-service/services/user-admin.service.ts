@@ -6,7 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { EventState, Prisma, Role, type User } from '@prisma/client';
+import { Prisma, Role, type User } from '@prisma/client';
+import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { redactPhone } from '../../../shared/utils/redaction';
 import { AccessRevocationService } from '../../auth-service/services/access-revocation.service';
@@ -23,13 +24,6 @@ import type {
   ListUsersDto,
   UpdateUserDto,
 } from '../validation/user-admin.dto';
-
-const OPEN_STATES: EventState[] = [
-  EventState.TRIGGERED,
-  EventState.NOTIFIED,
-  EventState.ACKNOWLEDGED,
-  EventState.ESCALATED,
-];
 
 /** One account as the console's table shows it. Never a password hash or a token. */
 export interface UserRow {

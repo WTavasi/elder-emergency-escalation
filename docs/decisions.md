@@ -29,6 +29,19 @@ day (15 to 20) and away from home (10 to 15). The three cover columns on
 declaring cover and without a migration. The seed switches the old row off rather than
 deleting it, so the factors stored on past events still name a row that exists.
 
+## An escalated alert can still be cancelled inside the window
+
+The cancel window is ten seconds from the press. An alert whose first tier is empty, for
+example because the caregiver was deactivated or the family member never signed up,
+escalates at once, inside that window. Cancelling used to be allowed only before
+escalation, so an elder who pressed by mistake lost the right to withdraw it because
+the first person in their chain was missing, and was told somebody was already
+responding when nobody was.
+
+What ends the right to cancel is now ownership rather than state: an alert can be
+cancelled inside the window from triggered, notified or escalated, as long as nobody
+has taken it on. Everybody who was told about it is told it was withdrawn, as before.
+
 ## Escalation timing is event-driven, not polled
 
 An acknowledgement window is a Redis key with a TTL, and expiry drives promotion. A

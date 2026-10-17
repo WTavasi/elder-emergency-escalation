@@ -68,7 +68,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
-| POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window |
+| POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name; `offset` pages; the total is in `X-Total-Count` |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
