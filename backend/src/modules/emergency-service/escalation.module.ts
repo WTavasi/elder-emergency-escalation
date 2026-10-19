@@ -5,9 +5,10 @@ import { EscalationService } from './services/escalation.service';
 import { EscalationSweepService } from './workers/escalation-sweep.service';
 import { EscalationTimerService } from './services/escalation-timer.service';
 import { NotificationsModule } from '../notification-service/notifications.module';
+import { SeverityModule } from './severity.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, SeverityModule],
   controllers: [EscalationController],
   providers: [
     EscalationService,

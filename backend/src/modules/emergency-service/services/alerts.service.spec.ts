@@ -124,8 +124,12 @@ const buildEscalation = () =>
   };
 
 const buildTimers = () =>
-  ({ cancelAll: jest.fn().mockResolvedValue(1) }) as unknown as EscalationTimerService & {
+  ({
+    cancelAll: jest.fn().mockResolvedValue(1),
+    armSeverityReview: jest.fn().mockResolvedValue(undefined),
+  }) as unknown as EscalationTimerService & {
     cancelAll: jest.Mock;
+    armSeverityReview: jest.Mock;
   };
 
 const buildNotifications = () =>
@@ -152,6 +156,28 @@ const build = (
 
 describe('AlertsService', () => {
   describe('create', () => {
+    it('arms the severity review for when the cancel window closes', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const created = await build(prisma, buildSeverity(), buildEscalation(), timers).create(
+        'elder-1',
+        {},
+      );
+      expect(timers.armSeverityReview).toHaveBeenCalledWith(created.id, 10);
+    });
+
+    it('still raises the alert if the review cannot be armed, leaving it to the sweep', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const escalation = buildEscalation();
+      timers.armSeverityReview.mockRejectedValue(new Error('redis down'));
+
+      await expect(
+        build(prisma, buildSeverity(), escalation, timers).create('elder-1', {}),
+      ).resolves.toBeDefined();
+      expect(escalation.dispatchTier).toHaveBeenCalled();
+    });
+
     it('records the alert with the severity band and score the policy returned', async () => {
       const prisma = buildPrisma();
       const created = await build(prisma).create('elder-1', { latitude: -1.28, longitude: 36.78 });
@@ -480,6 +506,26 @@ describe('AlertsService', () => {
       );
       // The stored score was 20 and the new assessment scores 45, so the higher wins.
       expect(updated.severityScore).toBe(45);
+    });
+
+    it('does not count the alert being reopened as its own recent history', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(cancelled());
+      prisma.careAssignment.findFirst.mockResolvedValue({ priorityOrder: 1 });
+
+      await build(prisma).reopen(cancelled().id, 'caregiver-1');
+
+      const where = prisma.emergencyEvent.count.mock.calls[0][0].where as { id: unknown };
+      expect(where.id).toEqual({ not: cancelled().id });
+    });
+
+    it('marks the severity as reviewed, since it was scored with the window closed', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(cancelled());
+      prisma.careAssignment.findFirst.mockResolvedValue({ priorityOrder: 1 });
+
+      const updated = await build(prisma).reopen(cancelled().id, 'caregiver-1');
+      expect(updated.severityReviewedAt).toBeInstanceOf(Date);
     });
 
     it('restarts the chain at the reopening tier', async () => {

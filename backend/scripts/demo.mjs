@@ -244,6 +244,23 @@ async function run() {
   );
   proves('a Redis key expiry drove this, with no polling and no request from any client');
 
+  heading('The cancel window closes without a cancel, so severity is scored again');
+  const reviewed = await waitFor('the severity review', async () => {
+    const current = await prisma.emergencyEvent.findUnique({ where: { id: event.id } });
+    return current.severityReviewedAt ? current : null;
+  });
+  const promoted = reviewed.value.severity !== event.severity;
+  say(
+    `Reviewed ${bold(`${Math.round((reviewed.value.severityReviewedAt - new Date(event.triggeredAt)) / 1000)}s`)} after the alert: ` +
+      `${bold(event.severity)} at ${bold(event.severityScore)} became ${bold(reviewed.value.severity)} at ${bold(reviewed.value.severityScore)}`,
+  );
+  if (promoted) {
+    say(
+      'The higher band now applies to the rest of the chain: shorter windows, and SMS alongside push where its rules say so',
+    );
+  }
+  proves('"did not cancel" counts once it is known, and severity can rise but never fall');
+
   heading('The family member takes responsibility');
   const family = await prisma.user.findFirst({
     where: { role: 'FAMILY_MEMBER' },

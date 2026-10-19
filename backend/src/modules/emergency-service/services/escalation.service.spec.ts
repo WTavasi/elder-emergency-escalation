@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { EscalationService } from './escalation.service';
 import type { EscalationTimerService } from './escalation-timer.service';
+import type { SeverityService } from './severity.service';
+import type { ConfigService } from '@nestjs/config';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { NotificationsService } from '../../notification-service/services/notifications.service';
 import { NoopRealtimePublisher } from '../../realtime-service/services/realtime.publisher';
@@ -34,6 +36,11 @@ const CRITICAL_RULES = [
   rule(3, Role.EMERGENCY_RESPONDER, null),
 ];
 
+const CRITICAL_RULES_WITH_SMS = CRITICAL_RULES.map((candidate) => ({
+  ...candidate,
+  smsFallbackImmediate: candidate.tierOrder < 3,
+}));
+
 const home = { latitude: -1.2833, longitude: 36.7833 };
 
 const event = (overrides: Record<string, unknown> = {}) => ({
@@ -53,8 +60,10 @@ interface PrismaMock {
   emergencyEvent: {
     findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
+    findMany: jest.Mock;
     update: jest.Mock;
     updateMany: jest.Mock;
+    count: jest.Mock;
   };
   escalationRule: { findMany: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
@@ -64,6 +73,7 @@ interface PrismaMock {
     updateMany: jest.Mock;
     findFirst: jest.Mock;
     findMany: jest.Mock;
+    count: jest.Mock;
   };
   auditLog: { create: jest.Mock };
   $transaction: jest.Mock;
@@ -89,6 +99,8 @@ const buildPrisma = (): PrismaMock => {
         return Promise.resolve({ count: 1 });
       }),
       findUniqueOrThrow: jest.fn().mockImplementation(() => Promise.resolve(claimed ?? event())),
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
     },
     escalationRule: { findMany: jest.fn().mockResolvedValue(STANDARD_RULES) },
     careAssignment: {
@@ -103,6 +115,7 @@ const buildPrisma = (): PrismaMock => {
         .mockImplementation(() => Promise.resolve({ id: `notification-${created++}` })),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       findFirst: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0),
     },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn(),
@@ -123,16 +136,32 @@ const buildNotifications = () =>
     enqueue: jest.Mock;
   };
 
+const buildSeverity = (band: Severity = Severity.STANDARD, score = 30) =>
+  ({
+    evaluate: jest.fn().mockResolvedValue({ score, band, factors: [] }),
+    highestOf: jest.fn((a: Severity, b: Severity) => {
+      const order = [Severity.STANDARD, Severity.ELEVATED, Severity.CRITICAL];
+      return order.indexOf(a) >= order.indexOf(b) ? a : b;
+    }),
+  }) as unknown as SeverityService & { evaluate: jest.Mock };
+
+const config = {
+  get: (_key: string, fallback: unknown) => fallback,
+} as unknown as ConfigService;
+
 const build = (
   prisma: PrismaMock,
   timers = buildTimers(),
   notifications = buildNotifications(),
+  severity = buildSeverity(),
 ): EscalationService =>
   new EscalationService(
     prisma as unknown as PrismaService,
     timers,
     notifications,
     new NoopRealtimePublisher(),
+    severity,
+    config,
   );
 
 /** Every (recipient, tier, channel) the service decided to notify. */
@@ -515,6 +544,166 @@ describe('EscalationService', () => {
       // A column that is sometimes '' and sometimes null is two ways to say the same
       // thing, and every later query would have to know about both.
       expect(update.data.outcomeNote).toBeNull();
+    });
+  });
+
+  describe('reviewSeverity', () => {
+    const elder = {
+      id: 'elder-1',
+      careLevel: 'ASSISTED',
+      homeLatitude: home.latitude,
+      homeLongitude: home.longitude,
+      timezone: 'Africa/Nairobi',
+    };
+    // Raised ten seconds ago, tier one asked then with a 120 second window.
+    const raised = (overrides: Record<string, unknown> = {}) =>
+      event({
+        state: EventState.NOTIFIED,
+        severity: Severity.STANDARD,
+        severityScore: 15,
+        severityReviewedAt: null,
+        currentTierDeadlineAt: new Date(Date.now() + 110_000),
+        elder,
+        ...overrides,
+      });
+
+    it('scores again with "did not cancel" counted, once, and records why', async () => {
+      const prisma = buildPrisma();
+      const severity = buildSeverity(Severity.ELEVATED, 45);
+      prisma.emergencyEvent.findUnique.mockResolvedValue(raised());
+      prisma.escalationRule.findMany.mockResolvedValue(STANDARD_RULES);
+
+      await build(prisma, buildTimers(), buildNotifications(), severity).reviewSeverity('event-1');
+
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({ cancelWindowElapsed: true }),
+      );
+      // Its own alert is not its own recent history.
+      expect(prisma.emergencyEvent.count.mock.calls[0][0].where.id).toEqual({ not: 'event-1' });
+
+      const claim = prisma.emergencyEvent.updateMany.mock.calls[0][0];
+      expect(claim.where).toMatchObject({ id: 'event-1', severityReviewedAt: null });
+      expect(claim.data).toMatchObject({ severity: Severity.ELEVATED, severityScore: 45 });
+
+      const audit = prisma.auditLog.create.mock.calls[0][0].data;
+      expect(audit.action).toBe(AuditAction.SEVERITY_EVALUATED);
+      expect(audit.detail).toMatchObject({
+        stage: 'cancel_window_closed',
+        severityBefore: Severity.STANDARD,
+        severityAfter: Severity.ELEVATED,
+      });
+    });
+
+    it('does nothing for an emergency already reviewed, or no longer open', async () => {
+      const severity = buildSeverity();
+      for (const state of [
+        raised({ severityReviewedAt: new Date() }),
+        raised({ state: EventState.CANCELLED }),
+      ]) {
+        const prisma = buildPrisma();
+        prisma.emergencyEvent.findUnique.mockResolvedValue(state);
+        await build(prisma, buildTimers(), buildNotifications(), severity).reviewSeverity(
+          'event-1',
+        );
+        expect(prisma.emergencyEvent.updateMany).not.toHaveBeenCalled();
+      }
+      expect(severity.evaluate).not.toHaveBeenCalled();
+    });
+
+    it('stands down when a cancel or the other reviewer got there first', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(raised());
+      prisma.emergencyEvent.updateMany.mockResolvedValue({ count: 0 });
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(Severity.CRITICAL, 75),
+      ).reviewSeverity('event-1');
+
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('brings a promotion to critical forward without restarting the chain', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const notifications = buildNotifications();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(raised());
+      prisma.emergencyEvent.findUniqueOrThrow.mockResolvedValue(
+        raised({ severity: Severity.CRITICAL }),
+      );
+      prisma.escalationRule.findMany.mockImplementation((args: { where: { severity: Severity } }) =>
+        Promise.resolve(
+          args.where.severity === Severity.CRITICAL ? CRITICAL_RULES_WITH_SMS : STANDARD_RULES,
+        ),
+      );
+      // Tier one was pushed to the caregiver and has had no SMS yet.
+      prisma.notification.findMany
+        .mockResolvedValueOnce([{ recipientId: 'caregiver-1' }])
+        .mockResolvedValueOnce([]);
+
+      await build(
+        prisma,
+        timers,
+        notifications,
+        buildSeverity(Severity.CRITICAL, 75),
+      ).reviewSeverity('event-1');
+
+      // The critical window is 60 seconds from when tier one was asked, about 50 left.
+      const [, armedTier, seconds] = timers.arm.mock.calls[0] as [string, number, number];
+      expect(armedTier).toBe(1);
+      expect(seconds).toBeGreaterThanOrEqual(49);
+      expect(seconds).toBeLessThanOrEqual(51);
+
+      // Texted now, because the critical band does not wait for a push to fail.
+      expect(notified(prisma)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ recipientId: 'caregiver-1', tier: 1, channel: 'SMS' }),
+        ]),
+      );
+      // And the family tier, which the critical band sends alongside, goes out now.
+      expect(notified(prisma).some((row) => row.tier === 2)).toBe(true);
+      expect(notifications.enqueue).toHaveBeenCalled();
+    });
+
+    it('records a promotion but changes nothing once somebody owns the emergency', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(raised());
+      prisma.emergencyEvent.findUniqueOrThrow.mockResolvedValue(
+        raised({
+          state: EventState.ACKNOWLEDGED,
+          acknowledgedBy: 'caregiver-1',
+          severity: Severity.CRITICAL,
+        }),
+      );
+
+      await build(
+        prisma,
+        timers,
+        buildNotifications(),
+        buildSeverity(Severity.CRITICAL, 75),
+      ).reviewSeverity('event-1');
+
+      expect(prisma.auditLog.create).toHaveBeenCalled();
+      expect(timers.arm).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('catches up on every emergency whose window closed unreviewed', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
+      const service = build(prisma);
+      const review = jest.spyOn(service, 'reviewSeverity').mockResolvedValue(undefined);
+
+      expect(await service.reviewOverdueSeverity()).toBe(2);
+      expect(review).toHaveBeenCalledWith('event-1');
+      expect(review).toHaveBeenCalledWith('event-2');
+      expect(prisma.emergencyEvent.findMany.mock.calls[0][0].where).toMatchObject({
+        severityReviewedAt: null,
+      });
     });
   });
 

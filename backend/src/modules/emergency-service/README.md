@@ -37,6 +37,11 @@ dispatch also records a deadline in the database, so a restart cannot lose one, 
 expiry events never arrive. The full account is in
 [`../../../docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md).
 
+Severity is scored at the press and again, once, when the cancel window closes and
+"did not cancel" can count (`EscalationService.reviewSeverity`, driven by a review key
+like the tier timers, with the sweep as its safety net). A higher band applies to the
+rest of the chain at once.
+
 Every state change goes through `shared/utils/event-lifecycle.ts`, the one table of
 which state may become which. Its writes are conditional on the row still being in a
 state the move can come from, so a timer that fires as somebody acknowledges, or two
@@ -60,6 +65,7 @@ takes effect on the next alert with no restart.
 | `services/escalation-timer.service.ts` | Sets and clears the Redis window keys |
 | `services/escalation.keys.ts` | The key format, in one place |
 | `services/severity.service.ts` | The weighted severity policy |
+| `models/severity-context.ts` | Builds what the policy reads, the same way at the press, the review and a reopen |
 | `consumers/escalation.listener.ts` | Window expiry becomes promotion; recovery on boot |
 | `workers/escalation-sweep.service.ts` | Reconciles recorded deadlines on an interval |
 | `validation/` | The request shapes for each endpoint |

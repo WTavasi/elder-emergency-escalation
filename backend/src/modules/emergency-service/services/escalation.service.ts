@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   DispatchMode,
@@ -29,6 +30,12 @@ import {
   transitionEvent,
 } from '../../../shared/utils/event-lifecycle';
 import { EscalationTimerService } from './escalation-timer.service';
+import { SeverityService } from './severity.service';
+import {
+  recentEventsWhere,
+  severityAuditDetail,
+  severityContextFor,
+} from '../models/severity-context';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
   REALTIME_PUBLISHER,
@@ -38,7 +45,11 @@ import {
 /** Guards the parallel-dispatch walk against a cycle in misconfigured rules. */
 const MAX_TIERS = 10;
 
-export type DispatchReason = 'initial' | 'escalation' | 'manual';
+/**
+ * Why a tier is going out. `severity` is a tier sent early because the emergency was
+ * promoted to a band that sends it alongside the one before.
+ */
+export type DispatchReason = 'initial' | 'escalation' | 'manual' | 'severity';
 
 export interface ResponderLocation {
   latitude: number;
@@ -54,6 +65,8 @@ export class EscalationService {
     private readonly timers: EscalationTimerService,
     private readonly notifications: NotificationsService,
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
+    private readonly severity: SeverityService,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -101,10 +114,11 @@ export class EscalationService {
     // ESCALATED is sticky: once a tier has timed out, the event stays marked as
     // escalated, which is what the outlined red state means on every screen. So a tier
     // sent alongside an escalated one in parallel does not set it back to NOTIFIED.
+    const escalating = reason === 'escalation' || reason === 'manual';
     const target =
-      reason === 'initial' && event.state !== EventState.ESCALATED
-        ? EventState.NOTIFIED
-        : EventState.ESCALATED;
+      escalating || event.state === EventState.ESCALATED
+        ? EventState.ESCALATED
+        : EventState.NOTIFIED;
 
     let dispatched: { updated: EmergencyEvent; notificationIds: string[] };
     try {
@@ -231,6 +245,230 @@ export class EscalationService {
     if (event.currentTier !== tier) return;
 
     await this.escalate(event, tier);
+  }
+
+  /**
+   * The second look at severity, once the cancel window has closed.
+   *
+   * At the press, "did not cancel" cannot be known, so it scores nothing. When the window
+   * closes without a cancel, that is the clearest sign the person may not be able to
+   * reach their phone, and the emergency is scored again with it counted. Called by the
+   * review timer and, as a safety net, by the sweep; the column it sets makes sure only
+   * one of them does the work.
+   *
+   * Severity only ever rises. A rise changes the rules for the rest of the chain at once
+   * (see promote), unless somebody has already taken the emergency on.
+   */
+  async reviewSeverity(eventId: string): Promise<void> {
+    const event = await this.prisma.emergencyEvent.findUnique({
+      where: { id: eventId },
+      include: { elder: true },
+    });
+    if (!event || event.severityReviewedAt || !OPEN_STATES.includes(event.state)) return;
+
+    const at = new Date();
+    const hours = this.config.get<number>('RECENT_ACTIVITY_HOURS', 6);
+    const recentEventCount = await this.prisma.emergencyEvent.count({
+      where: recentEventsWhere(event.elderlyId, at, hours, event.id),
+    });
+
+    const assessment = await this.severity.evaluate(
+      severityContextFor(
+        event.elder,
+        { latitude: Number(event.alertLatitude), longitude: Number(event.alertLongitude) },
+        at,
+        recentEventCount,
+        true,
+      ),
+    );
+
+    const band = this.severity.highestOf(event.severity, assessment.band);
+    // The stored factors always explain the stored score, so they are replaced only
+    // together. A lower re-score, which only a clock crossing out of night inside ten
+    // seconds could produce, leaves both as they were.
+    const rescored = assessment.score >= event.severityScore;
+
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      // Exactly once, and only while the emergency is open: a cancel that lands in the
+      // same instant as the review wins, and the review finds nothing to claim.
+      const claim = await tx.emergencyEvent.updateMany({
+        where: { id: eventId, severityReviewedAt: null, state: { in: OPEN_STATES } },
+        data: {
+          severityReviewedAt: at,
+          severity: band,
+          ...(rescored
+            ? {
+                severityScore: assessment.score,
+                severityFactors: assessment as unknown as Prisma.InputJsonValue,
+              }
+            : {}),
+        },
+      });
+      if (claim.count === 0) return false;
+
+      await tx.auditLog.create({
+        data: {
+          eventId,
+          actorId: null,
+          action: AuditAction.SEVERITY_EVALUATED,
+          detail: {
+            ...severityAuditDetail(assessment),
+            stage: 'cancel_window_closed',
+            severityBefore: event.severity,
+            severityAfter: band,
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: at,
+        },
+      });
+      return true;
+    });
+
+    if (!claimed) return;
+
+    const reviewed = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
+    this.realtime.emergencyUpdated(reviewed);
+    this.logger.log(
+      `Event ${eventId} reviewed after its cancel window: ${event.severity} to ${band} (score ${assessment.score})`,
+    );
+
+    if (band !== event.severity) await this.promote(reviewed, event.severity);
+  }
+
+  /**
+   * Reviews every open emergency whose cancel window closed without a review.
+   *
+   * Normally none: the review timer does this within a second of the window closing.
+   * This catches the ones it could not, because the API was restarting, the timer could
+   * not be armed, or Redis is not publishing expiry events. Returns how many it found.
+   */
+  async reviewOverdueSeverity(): Promise<number> {
+    const windowSeconds = this.config.get<number>('CANCEL_GRACE_WINDOW', 10);
+    const closedBefore = new Date(Date.now() - windowSeconds * 1000);
+
+    const overdue = await this.prisma.emergencyEvent.findMany({
+      where: {
+        severityReviewedAt: null,
+        state: { in: OPEN_STATES },
+        triggeredAt: { lte: closedBefore },
+      },
+      select: { id: true },
+      orderBy: { triggeredAt: 'asc' },
+      take: 50,
+    });
+
+    for (const { id } of overdue) {
+      try {
+        await this.reviewSeverity(id);
+      } catch (error) {
+        this.logger.error(
+          `Severity review failed for event ${id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+    return overdue.length;
+  }
+
+  /**
+   * Applies a higher band's rules to an emergency already under way.
+   *
+   * Three things can differ between bands, and each is brought forward rather than
+   * restarted: the tier already asked keeps its place but gets the shorter window,
+   * measured from when it was asked; if the new band texts as well as pushes, that tier
+   * is texted now; and if the new band sends the next tier alongside this one, it goes
+   * out now. Nothing changes once somebody owns the emergency.
+   */
+  private async promote(
+    event: EmergencyEvent,
+    fromBand: EmergencyEvent['severity'],
+  ): Promise<void> {
+    if (event.acknowledgedBy || !AWAITING_STATES.includes(event.state)) return;
+
+    const [rules, previousRules] = await Promise.all([
+      this.rulesFor(event),
+      this.prisma.escalationRule.findMany({ where: { severity: fromBand } }),
+    ]);
+    const tier = event.currentTier;
+    const current = rules.find((rule) => rule.tierOrder === tier);
+    const previous = previousRules.find((rule) => rule.tierOrder === tier);
+
+    await this.shortenWindow(event, current, previous);
+    if (current?.smsFallbackImmediate && !previous?.smsFallbackImmediate) {
+      await this.textTierNow(event.id, tier);
+    }
+
+    const next = rules.find((rule) => rule.tierOrder === tier + 1);
+    if (next?.dispatchMode === DispatchMode.PARALLEL) {
+      const alreadySent = await this.prisma.notification.count({
+        where: { eventId: event.id, tier: next.tierOrder },
+      });
+      if (alreadySent === 0) await this.dispatchTier(event.id, next.tierOrder, 'severity');
+    }
+  }
+
+  /** The tier already asked gets the new band's window, counted from when it was asked. */
+  private async shortenWindow(
+    event: EmergencyEvent,
+    current: EscalationRule | undefined,
+    previous: EscalationRule | undefined,
+  ): Promise<void> {
+    const oldDeadline = event.currentTierDeadlineAt;
+    if (!oldDeadline || current?.timeoutSeconds == null || previous?.timeoutSeconds == null) {
+      return;
+    }
+
+    const askedAt = oldDeadline.getTime() - previous.timeoutSeconds * 1000;
+    const newDeadline = askedAt + current.timeoutSeconds * 1000;
+    if (newDeadline >= oldDeadline.getTime()) return;
+
+    // At least a second, so a window that should already have closed closes now
+    // through the normal path rather than through a special case.
+    const seconds = Math.max(1, Math.ceil((newDeadline - Date.now()) / 1000));
+    const moved = await this.prisma.emergencyEvent.updateMany({
+      where: { id: event.id, currentTier: event.currentTier, acknowledgedBy: null },
+      data: { currentTierDeadlineAt: new Date(Date.now() + seconds * 1000) },
+    });
+    if (moved.count > 0) await this.timers.arm(event.id, event.currentTier, seconds);
+  }
+
+  /** Texts everybody at this tier who was pushed, has not declined and has not had an SMS. */
+  private async textTierNow(eventId: string, tier: number): Promise<void> {
+    const [pushed, texted] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { eventId, tier, channel: NotificationChannel.PUSH, declinedAt: null },
+        select: { recipientId: true },
+      }),
+      this.prisma.notification.findMany({
+        where: { eventId, tier, channel: NotificationChannel.SMS },
+        select: { recipientId: true },
+      }),
+    ]);
+
+    const already = new Set(texted.map((row) => row.recipientId));
+    const recipients = [...new Set(pushed.map((row) => row.recipientId))].filter(
+      (recipientId) => !already.has(recipientId),
+    );
+    if (recipients.length === 0) return;
+
+    const now = new Date();
+    const created = await this.prisma.$transaction((tx) =>
+      Promise.all(
+        recipients.map((recipientId) =>
+          tx.notification.create({
+            data: {
+              eventId,
+              recipientId,
+              channel: NotificationChannel.SMS,
+              status: NotificationStatus.QUEUED,
+              tier,
+              createdAt: now,
+            },
+            select: { id: true },
+          }),
+        ),
+      ),
+    );
+    await this.notifications.enqueue(created.map((row) => row.id));
   }
 
   /** Someone takes ownership. Stops every pending timer for this emergency. */

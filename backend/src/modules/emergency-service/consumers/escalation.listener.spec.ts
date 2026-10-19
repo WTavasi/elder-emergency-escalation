@@ -17,11 +17,18 @@ const buildRedis = () => {
 };
 
 const buildDeps = () => {
-  const escalation = { onTierTimeout: jest.fn().mockResolvedValue(undefined) };
+  const escalation = {
+    onTierTimeout: jest.fn().mockResolvedValue(undefined),
+    reviewSeverity: jest.fn().mockResolvedValue(undefined),
+    reviewOverdueSeverity: jest.fn().mockResolvedValue(0),
+  };
   const timers = { arm: jest.fn().mockResolvedValue(new Date()) };
   const prisma = { emergencyEvent: { findMany: jest.fn().mockResolvedValue([]) } };
   return {
-    escalation: escalation as unknown as EscalationService & { onTierTimeout: jest.Mock },
+    escalation: escalation as unknown as EscalationService & {
+      onTierTimeout: jest.Mock;
+      reviewSeverity: jest.Mock;
+    },
     timers: timers as unknown as EscalationTimerService & { arm: jest.Mock },
     prisma: prisma as unknown as PrismaService & { emergencyEvent: { findMany: jest.Mock } },
     raw: { escalation, timers, prisma },
@@ -30,6 +37,17 @@ const buildDeps = () => {
 
 describe('EscalationListener', () => {
   describe('expiry handling', () => {
+    it("reviews severity when an emergency's cancel window closes", async () => {
+      const { redis } = buildRedis();
+      const deps = buildDeps();
+      const listener = new EscalationListener(redis, deps.prisma, deps.escalation, deps.timers);
+
+      await listener.handleExpiry('escalation:review:event-9');
+
+      expect(deps.raw.escalation.reviewSeverity).toHaveBeenCalledWith('event-9');
+      expect(deps.raw.escalation.onTierTimeout).not.toHaveBeenCalled();
+    });
+
     it('escalates the event named by an expired timer key', async () => {
       const { redis } = buildRedis();
       const deps = buildDeps();

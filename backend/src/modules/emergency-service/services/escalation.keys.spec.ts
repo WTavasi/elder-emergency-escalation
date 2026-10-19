@@ -1,4 +1,4 @@
-import { parseTimerKey, timerKey } from './escalation.keys';
+import { parseReviewKey, parseTimerKey, reviewKey, timerKey } from './escalation.keys';
 
 describe('timer keys', () => {
   it('round-trips an event and tier', () => {
@@ -23,5 +23,17 @@ describe('timer keys', () => {
     ]) {
       expect(parseTimerKey(key)).toBeNull();
     }
+  });
+});
+
+describe('severity review keys', () => {
+  it('round-trips an event', () => {
+    expect(parseReviewKey(reviewKey('event-1'))).toBe('event-1');
+  });
+
+  it('is never mistaken for a tier timer, nor a tier timer for it', () => {
+    expect(parseTimerKey(reviewKey('event-1'))).toBeNull();
+    expect(parseReviewKey(timerKey('event-1', 2))).toBeNull();
+    expect(parseReviewKey('session:abc')).toBeNull();
   });
 });

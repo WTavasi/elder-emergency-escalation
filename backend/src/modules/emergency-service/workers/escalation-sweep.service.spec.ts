@@ -11,7 +11,11 @@ const buildConfig = (settings: Record<string, unknown> = {}) =>
 const buildListener = (result = { fired: 0, rearmed: 0 }) =>
   ({
     recoverPendingTimers: jest.fn().mockResolvedValue(result),
-  }) as unknown as EscalationListener & { recoverPendingTimers: jest.Mock };
+    reviewOverdueSeverity: jest.fn().mockResolvedValue(0),
+  }) as unknown as EscalationListener & {
+    recoverPendingTimers: jest.Mock;
+    reviewOverdueSeverity: jest.Mock;
+  };
 
 describe('EscalationSweepService', () => {
   describe('starting', () => {

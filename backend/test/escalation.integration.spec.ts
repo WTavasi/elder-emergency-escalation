@@ -14,6 +14,7 @@ import { EscalationService } from '../src/modules/emergency-service/services/esc
 import { PrismaService } from '../src/db/prisma.service';
 import { PasswordService } from '../src/modules/auth-service/services/password.service';
 import { RedisService } from '../src/shared/redis/redis.service';
+import type { SeverityAssessment } from '../src/modules/emergency-service/models/severity.types';
 
 /**
  * The claim this project makes is that an unacknowledged emergency climbs the chain by
@@ -304,6 +305,33 @@ describe('escalation, end to end', () => {
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     expect(stored.state).toBe(EventState.CANCELLED);
     expect(stored.currentTier).toBe(1);
+  });
+
+  it('scores severity again once the cancel window closes without a cancel', async () => {
+    const event = await alerts.create(ids.elder as string, {});
+    const noCancelAtPress = (event.severityFactors as unknown as SeverityAssessment).factors.find(
+      (factor) => factor.key === 'no_cancel_in_grace_window',
+    );
+    expect(noCancelAtPress?.contribution).toBe(0);
+
+    // Driven by a Redis key expiring when the ten second window closes. The sweep is off
+    // in this suite, so nothing else could have done it.
+    await waitFor('the severity review', async () => {
+      const current = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+      return current.severityReviewedAt !== null;
+    });
+
+    const reviewed = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    const noCancelAfter = (reviewed.severityFactors as unknown as SeverityAssessment).factors.find(
+      (factor) => factor.key === 'no_cancel_in_grace_window',
+    );
+    expect(noCancelAfter?.contribution).toBe(30);
+    expect(reviewed.severityScore).toBeGreaterThan(event.severityScore);
+
+    const evaluations = await prisma.auditLog.count({
+      where: { eventId: event.id, action: AuditAction.SEVERITY_EVALUATED },
+    });
+    expect(evaluations).toBe(2);
   });
 
   it('passes over a deactivated chain member and goes straight to the next rank', async () => {
