@@ -313,7 +313,16 @@ async function main() {
   for (const person of people) {
     const user = await prisma.user.upsert({
       where: { phone: person.phone },
-      update: { ...person, passwordHash },
+      // Back to a known state every time: the shared password, active, and signed out
+      // everywhere. Testing deactivation or a password change on a seeded account would
+      // otherwise leave it unusable until somebody repaired it by hand.
+      update: {
+        ...person,
+        passwordHash,
+        deactivatedAt: null,
+        refreshTokenHash: null,
+        refreshTokenUpdatedAt: null,
+      },
       create: { ...person, passwordHash },
     });
     byPhone[person.phone] = user;

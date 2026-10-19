@@ -245,9 +245,28 @@ expired token is disconnected straight away.
 | `429 Too Many Requests` | A rate limit. Wait, or see below |
 
 **Rate limits.** Sign-in allows 20 attempts in 5 minutes and sign-up codes 10 an hour from
-one address, which a lot of re-running can reach. For a long testing session, add
-`RATE_LIMIT_ENABLED=false` to `backend/.env` and restart the API. Take it out again
-afterwards.
+one address. A full run of the collection signs in about nine times, and the app and the
+console count too, so running it two or three times in a row reaches the limit and **1.
+Sign in** starts answering `429`. Clear the counters and carry on, with no restart:
+
+```bash
+npm run dev:clear-limits -w @mzazicare/api
+```
+
+It only touches a Redis on your own machine, and only the counters. For a very long
+session you can instead add `RATE_LIMIT_ENABLED=false` to `backend/.env` and restart the
+API; take it out again afterwards.
+
+**1. Sign in fails for one account with `401`.** Open the response: if it says the account
+has been deactivated, or the password is wrong, a test account was changed while testing
+(the console's Users page, or a password reset in the app). Re-seeding puts every test
+account back as it should be, with the shared password, active and signed out:
+
+```bash
+npm run db:seed -w @mzazicare/api
+```
+
+Then run **1. Sign in** again.
 
 **Keep tokens out of the repository.** Postman keeps the tokens it saves as local
 "current values" on your machine. If you ever export the environment again, do not commit
