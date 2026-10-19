@@ -590,6 +590,52 @@ describe('AlertsService', () => {
   });
 
   describe('findForUser', () => {
+    const listed = (state: EventState) => ({
+      ...event({ state, outcome: null, outcomeNote: null }),
+      alertAddressLabel: 'Kileleshwa',
+      acknowledgedAt: null,
+      resolvedAt: null,
+      currentTierDeadlineAt: null,
+      responderRequestedAt: null,
+      owner: null,
+      elder: {
+        id: 'elder-1',
+        name: 'Grace',
+        phone: '+254700000010',
+        homeAddressLabel: 'Kileleshwa',
+        consentsAboutMe: [
+          { type: 'LOCATION_SHARING', withdrawnAt: new Date() },
+          { type: 'CONTACT_SHARING', withdrawnAt: new Date() },
+        ],
+      },
+    });
+
+    it('leaves out what the elder withdrew once the emergency is over, and says so', async () => {
+      const prisma = buildPrisma();
+      prisma.careAssignment.findMany.mockResolvedValue([{ elderlyId: 'elder-1' }]);
+      prisma.emergencyEvent.findMany.mockResolvedValue([listed(EventState.RESOLVED)]);
+
+      const [alert] = await build(prisma).findForUser('caregiver-1', Role.CAREGIVER);
+
+      expect(alert.elder.phone).toBeNull();
+      expect(alert.addressLabel).toBeNull();
+      expect(alert.latitude).toBeNull();
+      expect(alert.withheld).toEqual(['phone', 'location']);
+    });
+
+    it('shows it all while the emergency is open, and always to the elder herself', async () => {
+      const prisma = buildPrisma();
+      prisma.careAssignment.findMany.mockResolvedValue([{ elderlyId: 'elder-1' }]);
+      prisma.emergencyEvent.findMany.mockResolvedValue([listed(EventState.NOTIFIED)]);
+      const [open] = await build(prisma).findForUser('caregiver-1', Role.CAREGIVER);
+      expect(open.elder.phone).toBe('+254700000010');
+      expect(open.withheld).toEqual([]);
+
+      prisma.emergencyEvent.findMany.mockResolvedValue([listed(EventState.RESOLVED)]);
+      const [own] = await build(prisma).findForUser('elder-1', Role.ELDER);
+      expect(own.addressLabel).toBe('Kileleshwa');
+    });
+
     it('scopes a caregiver to the elders whose chains they belong to', async () => {
       const prisma = buildPrisma();
       prisma.careAssignment.findMany.mockResolvedValue([

@@ -25,6 +25,8 @@ import { AddressSearchService, type AddressSearchResult } from '../services/addr
 import { ChainService, type ChainView, type ElderSummary } from '../services/chain.service';
 import { SetPlaceDto } from '../validation/set-place.dto';
 import { EldersService, type ElderDetail, type PlaceView } from '../services/elders.service';
+import { ConsentService, type ConsentView } from '../services/consent.service';
+import { WithdrawConsentDto } from '../validation/withdraw-consent.dto';
 
 /**
  * Where an elder is staying.
@@ -39,7 +41,40 @@ export class EldersController {
     private readonly elders: EldersService,
     private readonly chains: ChainService,
     private readonly addresses: AddressSearchService,
+    private readonly consents: ConsentService,
   ) {}
+
+  /** What has been agreed about an elder, by whom, and what has been withdrawn. */
+  @Roles(Role.ELDER, Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR)
+  @Get(':id/consent')
+  consent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ConsentView> {
+    return this.consents.view(id, user.userId, user.role);
+  }
+
+  /** The elder confirming, for themselves, what was agreed on their behalf. */
+  @Roles(Role.ELDER)
+  @Post(':id/consent/confirm')
+  confirmConsent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ConsentView> {
+    return this.consents.confirm(id, user.userId);
+  }
+
+  /** The elder, or a caregiver in their chain, withdrawing one consent. */
+  @Roles(Role.ELDER, Role.CAREGIVER)
+  @Throttle(20, 3600)
+  @Post(':id/consent/withdraw')
+  withdrawConsent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: WithdrawConsentDto,
+  ): Promise<ConsentView> {
+    return this.consents.withdraw(id, user.userId, user.role, dto.type, dto.confirm === true);
+  }
 
   /** The elders the caller looks after. */
   @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER)

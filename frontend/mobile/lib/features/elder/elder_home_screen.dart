@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/sign_out_button.dart';
+import '../consent/consent_screen.dart';
 import 'alert_controller.dart';
 import 'widgets/panic_button.dart';
 
@@ -15,13 +19,71 @@ import 'widgets/panic_button.dart';
 /// to understand at the worst possible moment, and a person who has just pressed for
 /// help should not have to recognise that they are somewhere new: the thing they
 /// pressed is replaced, in place, by what happened next.
-class ElderHomeScreen extends StatelessWidget {
-  const ElderHomeScreen({super.key});
+class ElderHomeScreen extends StatefulWidget {
+  const ElderHomeScreen({this.api, super.key});
+
+  /// For the consent question and the privacy page. Without it, which only a test that
+  /// exercises the alert alone does, neither appears.
+  final ApiClient? api;
+
+  @override
+  State<ElderHomeScreen> createState() => _ElderHomeScreenState();
+}
+
+class _ElderHomeScreenState extends State<ElderHomeScreen> {
+  /// What was agreed on the elder's behalf, while they have not yet confirmed it.
+  ConsentView? _toConfirm;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_checkConsent());
+  }
+
+  /// Asks, once each time the app opens, until the elder has confirmed for themselves.
+  /// Never in the way: it is a line above the panic button, not a screen in front of it.
+  Future<void> _checkConsent() async {
+    final ApiClient? api = widget.api;
+    final String? elderId = context.read<AuthController>().account?.id;
+    if (api == null || elderId == null) return;
+
+    try {
+      final ConsentView view = await api.consent(elderId);
+      if (mounted && view.needsConfirmation) setState(() => _toConfirm = view);
+    } on ApiException {
+      // Asked again the next time the app opens.
+    } on NetworkException {
+      // Likewise. Nothing about consent may stand between the elder and the button.
+    }
+  }
+
+  Future<void> _openConsent({ConsentView? initial}) async {
+    final ApiClient? api = widget.api;
+    final AuthController auth = context.read<AuthController>();
+    final String? elderId = auth.account?.id;
+    if (api == null || elderId == null) return;
+
+    setState(() => _toConfirm = null);
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => ConsentScreen(
+          api: api,
+          elderId: elderId,
+          audience: ConsentAudience.elder,
+          firstSignIn: initial != null,
+          initial: initial,
+          onServiceEnded: () => unawaited(auth.signOut()),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final AlertController alerts = context.watch<AlertController>();
     final AuthController auth = context.watch<AuthController>();
+    final ConsentView? toConfirm = _toConfirm;
+    final bool idle = alerts.phase == AlertPhase.idle || alerts.phase == AlertPhase.raising;
 
     return Scaffold(
       body: SafeArea(
@@ -30,7 +92,18 @@ class ElderHomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Header(name: auth.account?.name ?? '', onSignOut: auth.signOut),
+              _Header(
+                name: auth.account?.name ?? '',
+                onSignOut: auth.signOut,
+                onPrivacy: widget.api == null ? null : () => unawaited(_openConsent()),
+              ),
+              if (toConfirm != null && idle) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s16),
+                _ConsentQuestion(
+                  onRead: () => unawaited(_openConsent(initial: toConfirm)),
+                  onLater: () => setState(() => _toConfirm = null),
+                ),
+              ],
               const SizedBox(height: MzaziSpace.s24),
               Expanded(child: _Body(alerts: alerts)),
             ],
@@ -41,21 +114,76 @@ class ElderHomeScreen extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.name, required this.onSignOut});
+/// The first-sign-in question, as a line above the panic button rather than a screen in
+/// front of it.
+class _ConsentQuestion extends StatelessWidget {
+  const _ConsentQuestion({required this.onRead, required this.onLater});
 
-  final String name;
-  final VoidCallback onSignOut;
+  final VoidCallback onRead;
+  final VoidCallback onLater;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          'Before you start, please read what was agreed for you.',
+          style: theme.textTheme.bodyLarge,
+        ),
+        const SizedBox(height: MzaziSpace.s8),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: SizedBox(
+                height: MzaziA11y.elderMinTouchTarget,
+                child: OutlinedButton(onPressed: onRead, child: const Text('Read it')),
+              ),
+            ),
+            const SizedBox(width: MzaziSpace.s12),
+            Expanded(
+              child: SizedBox(
+                height: MzaziA11y.elderMinTouchTarget,
+                child: TextButton(onPressed: onLater, child: const Text('Not now')),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.name, required this.onSignOut, this.onPrivacy});
+
+  final String name;
+  final VoidCallback onSignOut;
+  final VoidCallback? onPrivacy;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final VoidCallback? privacy = onPrivacy;
 
     return Row(
       children: <Widget>[
         Expanded(
           child: Text(name, style: theme.textTheme.titleLarge, overflow: TextOverflow.ellipsis),
         ),
+        if (privacy != null)
+          IconButton(
+            onPressed: privacy,
+            icon: const Icon(Icons.privacy_tip_outlined, semanticLabel: 'Privacy and consent'),
+            tooltip: 'Privacy and consent',
+            constraints: const BoxConstraints(
+              minWidth: MzaziA11y.elderMinTouchTarget,
+              minHeight: MzaziA11y.elderMinTouchTarget,
+            ),
+            iconSize: MzaziA11y.elderMinTouchTarget / 2.4,
+          ),
         // The same control the caregiver's app bar uses, at the elder touch target. It
         // stays visually quiet next to the panic control because it is an icon rather
         // than a filled button, and it must never be mistaken for the one that matters.

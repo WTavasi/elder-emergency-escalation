@@ -313,7 +313,16 @@ async function main() {
   for (const person of people) {
     const user = await prisma.user.upsert({
       where: { phone: person.phone },
-      update: { ...person, passwordHash },
+      // Back to a known state every time: the shared password, active, and signed out
+      // everywhere. Testing deactivation or a password change on a seeded account would
+      // otherwise leave it unusable until somebody repaired it by hand.
+      update: {
+        ...person,
+        passwordHash,
+        deactivatedAt: null,
+        refreshTokenHash: null,
+        refreshTokenUpdatedAt: null,
+      },
       create: { ...person, passwordHash },
     });
     byPhone[person.phone] = user;
@@ -397,23 +406,23 @@ async function main() {
     { subject: '+254700000011', grantor: '+254700000021', relationship: 'primary caregiver' },
   ];
   for (const c of consents) {
+    const subject = byPhone[c.subject];
+    const grantor = byPhone[c.grantor];
+    // Back to where a new elder starts: all three given on their behalf, none withdrawn,
+    // and not yet confirmed by the elder, so the first-sign-in question and withdrawal
+    // can be tried again after every seed. Safe only because these are synthetic test
+    // accounts in a local database, which assertLocalDatabase has already checked.
+    await prisma.consentRecord.deleteMany({ where: { subjectId: subject.id } });
     for (const type of ['DATA_PROCESSING', 'LOCATION_SHARING', 'CONTACT_SHARING']) {
-      const subject = byPhone[c.subject];
-      const grantor = byPhone[c.grantor];
-      const existing = await prisma.consentRecord.findFirst({
-        where: { subjectId: subject.id, type, withdrawnAt: null },
+      await prisma.consentRecord.create({
+        data: {
+          subjectId: subject.id,
+          grantedById: grantor.id,
+          type,
+          policyVersion: '2026-09-1',
+          grantorRelationship: c.relationship,
+        },
       });
-      if (!existing) {
-        await prisma.consentRecord.create({
-          data: {
-            subjectId: subject.id,
-            grantedById: grantor.id,
-            type,
-            policyVersion: '2026-09-1',
-            grantorRelationship: c.relationship,
-          },
-        });
-      }
     }
     console.log(`  consent   3 consents recorded for ${byPhone[c.subject].name}`);
   }

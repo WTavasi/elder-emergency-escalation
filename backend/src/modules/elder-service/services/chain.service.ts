@@ -11,6 +11,7 @@ import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { tierForRole } from '../../../shared/utils/chain';
+import { CONSENT_STATE_SELECT, disclosureFor } from '../../../shared/utils/consent';
 import { redactPhone } from '../../../shared/utils/redaction';
 import { PasswordService } from '../../auth-service/services/password.service';
 import { PhoneVerificationService } from '../../auth-service/services/phone-verification.service';
@@ -23,8 +24,12 @@ import type { CreateElderDto } from '../validation/create-elder.dto';
 export interface ElderSummary {
   id: string;
   name: string;
-  phone: string;
+  /** Null when the elder has withdrawn consent to share it and no emergency is open. */
+  phone: string | null;
+  /** Null when the elder has withdrawn consent to share their location, likewise. */
   homeLabel: string | null;
+  /** What is left out because of a withdrawn consent, so the screen can say why. */
+  withheld: Array<'phone' | 'location'>;
   /** The caller's own rank in this elder's chain. */
   myTier: number;
   /** Whether the caller may change the chain, which only a caregiver in it may. */
@@ -131,6 +136,8 @@ export class ChainService {
         name: elder.name,
         phone: elder.phone,
         homeLabel: elder.homeAddressLabel,
+        // Just registered, with all three consents given, so nothing is withheld.
+        withheld: [],
         myTier: await tierForRole(this.prisma, Role.CAREGIVER),
         canEditChain: true,
       };
@@ -149,18 +156,49 @@ export class ChainService {
       orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
       select: {
         priorityOrder: true,
-        elder: { select: { id: true, name: true, phone: true, homeAddressLabel: true } },
+        elder: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            homeAddressLabel: true,
+            consentsAboutMe: CONSENT_STATE_SELECT,
+          },
+        },
       },
     });
 
-    return assignments.map((assignment) => ({
-      id: assignment.elder.id,
-      name: assignment.elder.name,
-      phone: assignment.elder.phone,
-      homeLabel: assignment.elder.homeAddressLabel,
-      myTier: assignment.priorityOrder,
-      canEditChain: role === Role.CAREGIVER,
-    }));
+    // One query for every elder in the list, rather than one per elder.
+    const inEmergency = new Set(
+      (
+        await this.prisma.emergencyEvent.findMany({
+          where: {
+            elderlyId: { in: assignments.map((assignment) => assignment.elder.id) },
+            state: { in: OPEN_STATES },
+          },
+          select: { elderlyId: true },
+        })
+      ).map((event) => event.elderlyId),
+    );
+
+    return assignments.map((assignment) => {
+      const shown = disclosureFor(assignment.elder.consentsAboutMe, {
+        viewerIsSubject: false,
+        emergencyOpen: inEmergency.has(assignment.elder.id),
+      });
+      return {
+        id: assignment.elder.id,
+        name: assignment.elder.name,
+        phone: shown.phone ? assignment.elder.phone : null,
+        homeLabel: shown.location ? assignment.elder.homeAddressLabel : null,
+        withheld: [
+          ...(shown.phone ? [] : ['phone' as const]),
+          ...(shown.location ? [] : ['location' as const]),
+        ],
+        myTier: assignment.priorityOrder,
+        canEditChain: role === Role.CAREGIVER,
+      };
+    });
   }
 
   /** Everybody in an elder's chain, and the places held for people yet to sign up. */

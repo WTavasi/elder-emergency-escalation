@@ -8,6 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
+import '../consent/consent_screen.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
 
@@ -163,6 +164,22 @@ class _ElderScreenState extends State<ElderScreen> {
     }
   }
 
+  /// What has been agreed about this elder. A caregiver can withdraw it for them there;
+  /// anybody else in the chain can read it. Reloaded afterwards, since a withdrawal
+  /// changes what this page may show.
+  Future<void> _openConsent() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => ConsentScreen(
+          api: widget.api,
+          elderId: widget.elderId,
+          audience: ConsentAudience.careCircle,
+        ),
+      ),
+    );
+    if (mounted) await _load();
+  }
+
   Future<void> _addFamily() async {
     final ChainView? updated = await showModalBottomSheet<ChainView>(
       context: context,
@@ -207,27 +224,37 @@ class _ElderScreenState extends State<ElderScreen> {
                     )
                   : const SizedBox.shrink()
             else ...<Widget>[
-              Text(
-                elder.phone,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontFamily: MzaziFont.mono,
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (elder.phone case final String phone) ...<Widget>[
+                Text(
+                  phone,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontFamily: MzaziFont.mono,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: MzaziSpace.s16),
-              SizedBox(
-                width: double.infinity,
-                child: CallButton(name: elder.name, phone: elder.phone),
-              ),
+                const SizedBox(height: MzaziSpace.s16),
+                SizedBox(
+                  width: double.infinity,
+                  child: CallButton(name: elder.name, phone: phone),
+                ),
+              ] else
+                const _Fact(
+                  'Their number is not shared, at their request. In an emergency it is shown '
+                  'to whoever is helping.',
+                ),
               const SizedBox(height: MzaziSpace.s32),
               const SectionLabel('Where they are now'),
               _Fact(
-                elder.place.isAtHome
+                elder.place.withheld
+                    ? 'Not shared, at their request'
+                    : elder.place.isAtHome
                     ? 'At home'
                     : 'Staying at ${elder.place.label ?? 'a recorded place'}',
               ),
               // Anybody in the chain may say where she is, so this is not behind canEdit.
-              if (elder.place.isAtHome)
+              if (elder.place.withheld)
+                const SizedBox.shrink()
+              else if (elder.place.isAtHome)
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => unawaited(_recordStay()),
                   icon: const Icon(Icons.luggage_outlined),
@@ -246,14 +273,18 @@ class _ElderScreenState extends State<ElderScreen> {
               // on either platform puts an editable fact.
               SectionLabel(
                 'Home',
-                trailing: elder.canEdit
+                trailing: elder.canEdit && !elder.withheld.contains('location')
                     ? TextButton(
                         onPressed: _busy ? null : () => unawaited(_changeHome()),
                         child: const Text('Change their home'),
                       )
                     : null,
               ),
-              _Fact(elder.home?.label ?? 'No home recorded'),
+              _Fact(
+                elder.withheld.contains('location')
+                    ? 'Not shared, at their request'
+                    : elder.home?.label ?? 'No home recorded',
+              ),
               const SizedBox(height: MzaziSpace.s16),
               SectionLabel(
                 'How much help they need',
@@ -296,6 +327,16 @@ class _ElderScreenState extends State<ElderScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: MzaziSpace.s32),
+              const SectionLabel('Privacy'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _busy ? null : () => unawaited(_openConsent()),
+                  icon: const Icon(Icons.privacy_tip_outlined),
+                  label: const Text('Privacy and consent'),
+                ),
+              ),
             ],
           ],
         ),

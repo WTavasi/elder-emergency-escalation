@@ -66,17 +66,30 @@ describe('AfricasTalkingSmsProvider', () => {
     const withoutSender = jest
       .fn()
       .mockResolvedValue(reply(201, accepted)) as jest.MockedFunction<FetchLike>;
-    await new AfricasTalkingSmsProvider(buildConfig(), withoutSender).send(message);
+    await new AfricasTalkingSmsProvider(
+      buildConfig({ AT_USERNAME: 'mzazicare' }),
+      withoutSender,
+    ).send(message);
     expect(withoutSender.mock.calls[0][1].body).not.toContain('from=');
 
     const withSender = jest
       .fn()
       .mockResolvedValue(reply(201, accepted)) as jest.MockedFunction<FetchLike>;
     await new AfricasTalkingSmsProvider(
-      buildConfig({ AT_SENDER_ID: 'MZAZICARE' }),
+      buildConfig({ AT_USERNAME: 'mzazicare', AT_SENDER_ID: 'MZAZICARE' }),
       withSender,
     ).send(message);
     expect(withSender.mock.calls[0][1].body).toContain('from=MZAZICARE');
+  });
+
+  it('never sends a sender id to the sandbox, which would refuse the message', async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue(reply(201, accepted)) as jest.MockedFunction<FetchLike>;
+    await new AfricasTalkingSmsProvider(buildConfig({ AT_SENDER_ID: 'MZAZICARE' }), fetchImpl).send(
+      message,
+    );
+    expect(fetchImpl.mock.calls[0][1].body).not.toContain('from=');
   });
 
   it('treats every accepted status code as delivered', async () => {

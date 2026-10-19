@@ -141,14 +141,55 @@ real adapters switched on, with the Africa's Talking simulator open in a browser
 PUSH_PROVIDER=fcm SMS_PROVIDER=africastalking npm run dev
 ```
 
-Run the demo again. Firebase authenticates with the real service account and rejects
-the seeded fake device token as a permanent failure, so the processor does not retry
-it, marks it undelivered and queues the SMS fallback, and the simulator receives the
-message. That one sequence demonstrates the whole fallback design against two live
-third parties.
+Run the demo again. None of the test accounts has a registered device, so Firebase
+cannot deliver the push and the processor records it as a permanent failure, without
+retrying, and queues the SMS fallback. The simulator then receives the message. That one
+sequence demonstrates the whole fallback design against two live third parties.
 
 Pass these per run rather than writing them into `.env`, so the test suites stay
 deterministic.
+
+#### When the simulator shows nothing
+
+Work down this list. Each step rules out one cause.
+
+1. **Read the API's first lines.** It must say `SMS provider: africastalking (sandbox,
+   delivers to the simulator only)`. If it says `SMS provider: logging`, it was started
+   without `SMS_PROVIDER=africastalking`, and every text is being printed in that
+   terminal instead of sent.
+2. **Open the simulator for the right number.** Go to https://simulator.africastalking.com,
+   enter the number of the person being texted, and press **Launch**. For an alert raised
+   by Grace, tier one is Mary, `+254700000020`; tier two is `+254700000030`. A sign-up
+   code goes to the number signing up. Messages to any other number do not appear.
+   Keep that tab open while you test.
+3. **Check the credentials on their own.** With the simulator open for one number, run
+   `npm run check:sms -w @mzazicare/api -- +254700000020`. It sends one text using
+   `AT_USERNAME` and `AT_API_KEY` from `backend/.env` and prints exactly what Africa's
+   Talking answered, without printing the key. `AT_USERNAME` must be `sandbox`, and the
+   key must be one generated in the sandbox app, not the live one.
+4. **Read the delivery log.** In the console, open the emergency: a failed SMS shows its
+   reason. In the terminal, a failure is logged as `SMS delivery failed ... :` followed by
+   Africa's Talking's own answer, such as `InvalidPhoneNumber` or `UserInBlacklist`.
+
+A sender id (`AT_SENDER_ID`) is never sent to the sandbox, which would refuse the message,
+so it is safe to leave one set for the live account.
+
+**A sign-up or reset code does not arrive.** The app always says a code is on its way,
+whatever happened, so that nobody can use it to find out which numbers are registered.
+The API's terminal says what really happened, in one line, the moment **Send code** is
+pressed:
+
+| The terminal says | What to do |
+| --- | --- |
+| `Sign-up code sent to +25471…` | Delivered. Check the simulator is launched for exactly that number |
+| `No code sent ...: asked again within 30s of the last one` | Wait half a minute and ask again |
+| `No code sent ...: 5 codes already sent in the last hour` | Run `npm run dev:clear-limits -w @mzazicare/api` |
+| `No code sent ...: it already has an account` | That number is registered. Sign in, or use another number |
+| `... code for ... was not delivered`, after an `SMS ... refused:` line | Africa's Talking refused it; the line above gives its reason |
+| Nothing at all | The request did not reach the API. Check the app is pointed at it |
+
+Use a Kenyan number in both the app and the simulator, such as `+254711000001`, typed the
+same way in both.
 
 ## Layer 5: by hand
 

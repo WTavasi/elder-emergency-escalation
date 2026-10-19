@@ -69,10 +69,12 @@ export class AfricasTalkingSmsProvider implements SmsProvider {
       message: message.text,
     });
 
-    // The sandbox rejects a custom sender id, and a live account without a registered
-    // one falls back to a shared shortcode. Either way, omitting it is correct when
-    // none is configured.
-    if (senderId) body.set('from', senderId);
+    // Only on a live account. The sandbox answers an unregistered sender id with
+    // "InvalidSenderId" and sends nothing, so a sender id set for the live account in
+    // the same environment would silently stop every message reaching the simulator.
+    // A live account without one falls back to a shared shortcode, so omitting it is
+    // always safe.
+    if (senderId && username !== 'sandbox') body.set('from', senderId);
 
     // Node's fetch has no default timeout, so a connection that opens and then stalls
     // would hold this job until the queue's lock expired, minutes later. In an

@@ -158,6 +158,16 @@ says the person came back rather than losing that a stay ever happened.
 | DELETE | `/api/v1/elders/:id/chain/:entryId` | caregiver in that chain | Remove a family member, or withdraw a held place |
 | GET | `/api/v1/elders/:id` | care chain | Name, phone, home, care level, where they are now, and whether the caller may edit |
 | PATCH | `/api/v1/elders/:id` | caregiver in that chain | Change their home or care level (`careLevel: null` means not sure) |
+| GET | `/api/v1/elders/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
+| POST | `/api/v1/elders/:id/consent/confirm` | the elder | Agree, for themselves, to what was agreed on their behalf |
+| POST | `/api/v1/elders/:id/consent/withdraw` | the elder, caregiver in that chain | `{ type, confirm? }`. `confirm: true` is required for `DATA_PROCESSING` |
+
+**Withdrawn consent** is honoured everywhere data leaves the server, outside an
+emergency. An elder's `phone`, home, stay and an alert's location come back as `null`,
+with a `withheld` list (`"phone"`, `"location"`) saying why, so a screen can explain
+rather than show a blank. While an emergency is open, nothing is withheld from those
+responding to it. Withdrawing `DATA_PROCESSING` withdraws everything and deactivates the
+account.
 
 **Registering an elder** takes `{ name, phone, code, password, home: { latitude,
 longitude, label }, relationship, careLevel?, consentConfirmed: true }`. The elder's phone

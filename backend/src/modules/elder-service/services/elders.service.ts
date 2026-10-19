@@ -1,6 +1,12 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CareLevel, Prisma, Role, type User } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import {
+  CONSENT_STATE_SELECT,
+  disclosureFor,
+  type Disclosure,
+} from '../../../shared/utils/consent';
+import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { SetPlaceDto } from '../validation/set-place.dto';
 import type { UpdateElderDto } from '../validation/update-elder.dto';
 
@@ -12,16 +18,22 @@ export interface PlaceView {
   longitude: number | null;
   label: string | null;
   setAt: string | null;
+  /** True when the elder has withdrawn consent to share where they are. */
+  withheld: boolean;
 }
 
 /** Everything the elder's page in the app shows about them. */
 export interface ElderDetail {
   id: string;
   name: string;
-  phone: string;
+  /** Null when the elder has withdrawn consent to share it and no emergency is open. */
+  phone: string | null;
   careLevel: CareLevel | null;
+  /** Null when no home is registered, or when its sharing has been withdrawn. */
   home: { latitude: number; longitude: number; label: string | null } | null;
   place: PlaceView;
+  /** What is left out because of a withdrawn consent, so the screen can say why. */
+  withheld: Array<'phone' | 'location'>;
   /** Only a caregiver in the chain may change the elder's details. */
   canEdit: boolean;
 }
@@ -44,7 +56,8 @@ export class EldersService {
   /** The elder's details, for anybody in their chain or an administrator. */
   async detail(elderId: string, actorId: string, actorRole: Role): Promise<ElderDetail> {
     const elder = await this.requireVisibleElder(elderId, actorId, actorRole);
-    return EldersService.toDetail(elder, actorRole === Role.CAREGIVER);
+    const shown = await this.disclosure(elderId, actorId);
+    return EldersService.toDetail(elder, actorRole === Role.CAREGIVER, shown);
   }
 
   /**
@@ -77,12 +90,12 @@ export class EldersService {
     });
 
     if (dto.home) this.logger.log(`Home changed for elder ${elderId} by ${actorId}`);
-    return EldersService.toDetail(updated, true);
+    return EldersService.toDetail(updated, true, await this.disclosure(elderId, actorId));
   }
 
   async place(elderId: string, actorId: string, actorRole: Role): Promise<PlaceView> {
     const elder = await this.requireVisibleElder(elderId, actorId, actorRole);
-    return EldersService.toView(elder);
+    return EldersService.toView(elder, await this.disclosure(elderId, actorId));
   }
 
   async setPlace(
@@ -107,7 +120,7 @@ export class EldersService {
     // Logged without the coordinates. Knowing that a stay was recorded is operationally
     // useful; putting an elder's whereabouts into a log file is not.
     this.logger.log(`Stay away from home recorded for elder ${elderId} by ${actorId}`);
-    return EldersService.toView(updated);
+    return EldersService.toView(updated, await this.disclosure(elderId, actorId));
   }
 
   /** Back home. Clears the stay, so alerts are located at the registered home again. */
@@ -126,7 +139,27 @@ export class EldersService {
     });
 
     this.logger.log(`Elder ${elderId} recorded as back home by ${actorId}`);
-    return EldersService.toView(updated);
+    return EldersService.toView(updated, await this.disclosure(elderId, actorId));
+  }
+
+  /**
+   * What this viewer may see of the elder's number and whereabouts right now. Everything
+   * while an emergency is open, and otherwise only what the elder still consents to share.
+   */
+  private async disclosure(elderId: string, actorId: string): Promise<Disclosure> {
+    const [consents, open] = await Promise.all([
+      this.prisma.consentRecord.findMany({
+        where: { subjectId: elderId },
+        ...CONSENT_STATE_SELECT,
+      }),
+      this.prisma.emergencyEvent.count({
+        where: { elderlyId: elderId, state: { in: OPEN_STATES } },
+      }),
+    ]);
+    return disclosureFor(consents, {
+      viewerIsSubject: actorId === elderId,
+      emergencyOpen: open > 0,
+    });
   }
 
   /**
@@ -152,32 +185,54 @@ export class EldersService {
     return elder;
   }
 
-  private static toDetail(elder: User, canEdit: boolean): ElderDetail {
+  private static toDetail(elder: User, canEdit: boolean, shown: Disclosure): ElderDetail {
     const hasHome = elder.homeLatitude !== null && elder.homeLongitude !== null;
     return {
       id: elder.id,
       name: elder.name,
-      phone: elder.phone,
+      phone: shown.phone ? elder.phone : null,
       careLevel: elder.careLevel,
-      home: hasHome
-        ? {
-            latitude: Number(elder.homeLatitude),
-            longitude: Number(elder.homeLongitude),
-            label: elder.homeAddressLabel,
-          }
-        : null,
-      place: EldersService.toView(elder),
+      home:
+        hasHome && shown.location
+          ? {
+              latitude: Number(elder.homeLatitude),
+              longitude: Number(elder.homeLongitude),
+              label: elder.homeAddressLabel,
+            }
+          : null,
+      place: EldersService.toView(elder, shown),
+      withheld: [
+        ...(shown.phone ? [] : ['phone' as const]),
+        ...(shown.location ? [] : ['location' as const]),
+      ],
       canEdit,
     };
   }
 
-  private static toView(elder: {
-    id: string;
-    currentLatitude: Prisma.Decimal | null;
-    currentLongitude: Prisma.Decimal | null;
-    currentPlaceLabel: string | null;
-    currentPlaceSetAt: Date | null;
-  }): PlaceView {
+  private static toView(
+    elder: {
+      id: string;
+      currentLatitude: Prisma.Decimal | null;
+      currentLongitude: Prisma.Decimal | null;
+      currentPlaceLabel: string | null;
+      currentPlaceSetAt: Date | null;
+    },
+    shown: Disclosure,
+  ): PlaceView {
+    if (!shown.location) {
+      // Not even whether they are at home: that is itself a statement about where
+      // somebody is.
+      return {
+        elderId: elder.id,
+        isAtHome: false,
+        latitude: null,
+        longitude: null,
+        label: null,
+        setAt: null,
+        withheld: true,
+      };
+    }
+
     const away = elder.currentLatitude !== null && elder.currentLongitude !== null;
 
     return {
@@ -187,6 +242,7 @@ export class EldersService {
       longitude: away ? Number(elder.currentLongitude) : null,
       label: elder.currentPlaceLabel ?? null,
       setAt: elder.currentPlaceSetAt?.toISOString() ?? null,
+      withheld: false,
     };
   }
 }

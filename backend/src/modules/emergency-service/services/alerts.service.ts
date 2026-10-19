@@ -17,6 +17,7 @@ import {
   type Severity,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { CONSENT_STATE_SELECT, disclosureFor } from '../../../shared/utils/consent';
 import {
   INITIAL_STATE,
   OPEN_STATES,
@@ -61,7 +62,15 @@ export interface AlertFilters {
  * and the detail query, so the two can never drift into disclosing different columns.
  */
 const SUMMARY_INCLUDE = {
-  elder: { select: { id: true, name: true, phone: true, homeAddressLabel: true } },
+  elder: {
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      homeAddressLabel: true,
+      consentsAboutMe: CONSENT_STATE_SELECT,
+    },
+  },
   owner: { select: { id: true, name: true, role: true } },
 } satisfies Prisma.EmergencyEventInclude;
 
@@ -75,7 +84,12 @@ type SummaryRow = Prisma.EmergencyEventGetPayload<{ include: typeof SUMMARY_INCL
  * differently depending on the interceptor that touches it last. Doing it once means
  * a client never has to guess which it received.
  */
-function toSummary(row: SummaryRow): AlertSummary {
+function toSummary(row: SummaryRow, viewerId: string): AlertSummary {
+  const shown = disclosureFor(row.elder.consentsAboutMe, {
+    viewerIsSubject: row.elder.id === viewerId,
+    emergencyOpen: OPEN_STATES.includes(row.state),
+  });
+
   return {
     eventId: row.id,
     state: row.state,
@@ -87,13 +101,17 @@ function toSummary(row: SummaryRow): AlertSummary {
     elder: {
       id: row.elder.id,
       name: row.elder.name,
-      phone: row.elder.phone,
-      addressLabel: row.elder.homeAddressLabel,
+      phone: shown.phone ? row.elder.phone : null,
+      addressLabel: shown.location ? row.elder.homeAddressLabel : null,
     },
     acknowledgedBy: row.owner,
-    latitude: Number(row.alertLatitude),
-    longitude: Number(row.alertLongitude),
-    addressLabel: row.alertAddressLabel,
+    latitude: shown.location ? Number(row.alertLatitude) : null,
+    longitude: shown.location ? Number(row.alertLongitude) : null,
+    addressLabel: shown.location ? row.alertAddressLabel : null,
+    withheld: [
+      ...(shown.phone ? [] : ['phone' as const]),
+      ...(shown.location ? [] : ['location' as const]),
+    ],
     triggeredAt: row.triggeredAt.toISOString(),
     acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
@@ -416,7 +434,7 @@ export class AlertsService {
     const triggeredAt = row.triggeredAt.getTime();
 
     return {
-      ...toSummary(row),
+      ...toSummary(row, userId),
       severityFactors: row.severityFactors,
       chain: chain.map((link) => ({
         responderId: link.responder.id,
@@ -477,7 +495,7 @@ export class AlertsService {
           : {}),
     });
 
-    return rows.map(toSummary);
+    return rows.map((row) => toSummary(row, userId));
   }
 
   /**

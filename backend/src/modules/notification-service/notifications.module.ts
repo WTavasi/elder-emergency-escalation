@@ -74,7 +74,12 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
           return new AfricasTalkingSmsProvider(config);
         }
 
-        new Logger('Notifications').log('SMS provider: logging');
+        // Loud on purpose. The most common reason the simulator shows nothing is that
+        // the API was started without the real provider, and the log is where to see it.
+        new Logger('Notifications').warn(
+          'SMS provider: logging. Texts are printed in this terminal, not sent. To reach the ' +
+            "Africa's Talking simulator, restart with SMS_PROVIDER=africastalking.",
+        );
         return new LoggingSmsProvider();
       },
     },

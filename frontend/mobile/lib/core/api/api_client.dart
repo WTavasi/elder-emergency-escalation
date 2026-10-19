@@ -238,6 +238,29 @@ class ApiClient {
   Future<ElderDetail> elder(String id) async =>
       ElderDetail.fromJson(await _send('GET', '/elders/$id'));
 
+  /// What has been agreed about an elder, by whom, and what has been withdrawn.
+  Future<ConsentView> consent(String elderId) async =>
+      ConsentView.fromJson(await _send('GET', '/elders/$elderId/consent'));
+
+  /// The elder confirming, for themselves, what was agreed on their behalf.
+  Future<ConsentView> confirmConsent(String elderId) async => ConsentView.fromJson(
+    await _send('POST', '/elders/$elderId/consent/confirm', body: const <String, dynamic>{}),
+  );
+
+  /// Withdrawing one consent. [confirm] must be true to withdraw [ConsentKind.dataProcessing],
+  /// which ends the service for that elder.
+  Future<ConsentView> withdrawConsent(
+    String elderId,
+    ConsentKind kind, {
+    bool confirm = false,
+  }) async => ConsentView.fromJson(
+    await _send(
+      'POST',
+      '/elders/$elderId/consent/withdraw',
+      body: <String, dynamic>{'type': kind.wire, if (confirm) 'confirm': true},
+    ),
+  );
+
   /// A caregiver changing an elder's home or care level. [clearCareLevel] sets "not sure".
   Future<ElderDetail> updateElder(
     String id, {
