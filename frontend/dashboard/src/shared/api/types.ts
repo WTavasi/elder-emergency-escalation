@@ -33,11 +33,14 @@ export interface AlertSummary {
   outcome: string | null;
   /** What the person who closed it wrote. Always set when outcome is OTHER. */
   outcomeNote: string | null;
-  elder: { id: string; name: string; phone: string; addressLabel: string | null };
+  /** Null where the elder withdrew consent to share it and the emergency is over. */
+  elder: { id: string; name: string; phone: string | null; addressLabel: string | null };
   acknowledgedBy: Person | null;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   addressLabel: string | null;
+  /** What is left out because the elder withdrew consent. Empty while the emergency is open. */
+  withheld?: Array<'phone' | 'location'>;
   triggeredAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;

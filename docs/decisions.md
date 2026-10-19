@@ -377,3 +377,28 @@ one request a second across all users, an identifying User-Agent with a contact,
 caching, searching on a button rather than as the person types, and the OpenStreetMap
 attribution shown under the results. A deployment with real traffic should run its own
 Nominatim or use a paid geocoder, which is one setting, `GEOCODER_URL`.
+
+## Consent is confirmed by the elder, can be withdrawn, and never stands in front of help
+
+A caregiver usually registers an elder and consents on their behalf. The Data Protection
+Act allows that only as far as the person cannot consent themselves, so the elder is
+asked to confirm at sign-in. The question is a line above the panic button, with "Not
+now" beside it, never a screen in front of it: an elder opening the app in an emergency
+must be one press from help, and the consent given on their behalf still stands until
+they confirm or withdraw it.
+
+The elder, or a caregiver in their chain for an elder who cannot use the app, can
+withdraw any consent. Withdrawal is honoured everywhere data leaves the server, outside
+an emergency: the number and whereabouts disappear from the care circle's screens,
+from closed alerts and from history, and the screens say why. During an open emergency
+the people responding still see them. That is processing to protect the elder's vital
+interests, a ground the Act provides apart from consent, and the privacy notice has to
+say so. Withholding an address from the person driving to a fall would be the opposite
+of what the elder wanted protection for.
+
+Withdrawing consent to processing itself ends the service: everything is withdrawn with
+it, the account is deactivated and its sessions end, and the history is kept, since it
+is named in other people's records. It needs an explicit confirmation in the app and in
+the API, and is refused while an emergency is open. An administrator can reactivate the
+account; giving consent again after a withdrawal is a separate decision, not yet built.
+

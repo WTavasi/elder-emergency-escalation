@@ -174,7 +174,12 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
       <td className={`urgency${live && !alert.acknowledgedBy ? ' urgency--live' : ''}`} />
       <td>
         <Link to={`/emergencies/${alert.eventId}`}>{alert.elder.name}</Link>
-        <div className="micro">{alert.addressLabel ?? 'Location captured, no address'}</div>
+        <div className="micro">
+          {alert.addressLabel ??
+            (alert.withheld?.includes('location')
+              ? 'Location withheld at the elder\u2019s request'
+              : 'Location captured, no address')}
+        </div>
       </td>
       <td className="center">
         <StatePill state={alert.state} />

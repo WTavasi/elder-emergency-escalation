@@ -26,11 +26,21 @@ export interface AlertSummary {
    * number anyway. What it avoids is somebody scrolling through their contacts while an
    * emergency is open.
    */
-  elder: { id: string; name: string; phone: string; addressLabel: string | null };
+  /**
+   * Null where the elder has withdrawn consent to share it and the emergency is over.
+   * See `withheld`.
+   */
+  elder: { id: string; name: string; phone: string | null; addressLabel: string | null };
   acknowledgedBy: { id: string; name: string; role: Role } | null;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   addressLabel: string | null;
+  /**
+   * What is left out because the elder withdrew consent to share it, so a screen can say
+   * why rather than show a blank. Always empty while the emergency is open: responding to
+   * it is processing in the elder's vital interests, whatever was withdrawn.
+   */
+  withheld: Array<'phone' | 'location'>;
   triggeredAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;

@@ -28,6 +28,9 @@ finding the coordinates of a home address, and recording a stay away from home.
 | GET | `/:id/place` | care circle, administrator | At home, or where |
 | PUT | `/:id/place` | care circle, administrator | Record a stay away from home |
 | DELETE | `/:id/place` | care circle, administrator | Back home |
+| GET | `/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
+| POST | `/:id/consent/confirm` | the elder | Agree, for themselves, to what was agreed on their behalf |
+| POST | `/:id/consent/withdraw` | the elder, caregiver in that chain | Withdraw one consent, `{ type, confirm? }`. 20 an hour |
 
 An elder cannot change any of this about themselves, deliberately.
 
@@ -50,10 +53,28 @@ policy: one request a second for everybody (a slot in Redis), an identifying Use
 a day's caching, no search-as-you-type, and the attribution returned with every result.
 https://operations.osmfoundation.org/policies/nominatim/
 
+## Consent
+
+A caregiver registering an elder consents on their behalf, which the Data Protection Act
+allows only as far as the elder cannot consent themselves. So the elder is asked to
+confirm at sign-in, as a line above the panic button that never blocks it, and the
+elder, or a caregiver in their chain, can withdraw any consent. Nothing is overwritten:
+the elder's confirmation is a new row granted by them (`grantor_relationship = 'self'`),
+and a withdrawal is a time on the rows it ends.
+
+What a withdrawal does, outside an emergency, is applied where data leaves the server
+(`shared/utils/consent.ts`): contact sharing hides the elder's number, location sharing
+hides their home, any stay and where past alerts happened, from the care circle's
+screens, closed alerts and history. While an emergency is open, whoever is responding
+still sees both, on the vital interests ground rather than consent. Withdrawing data
+processing withdraws everything, deactivates the account and ends its sessions; it needs
+`confirm: true`, and is refused while an emergency is open. The other side is told by
+SMS: the caregivers, and the elder when a caregiver withdrew it.
+
 ## Data it writes
 
 New elder accounts on `users`, with their home; three `consent_records` rows per elder,
-given by the caregiver; `care_assignments`; `chain_invitations`; and the `current_*`
+given by the caregiver, then the elder's own confirmation and any withdrawals; `care_assignments`; `chain_invitations`; and the `current_*`
 columns on `users` for a stay.
 
 ## Files
@@ -61,13 +82,14 @@ columns on `users` for a stay.
 | Path | What it is |
 | --- | --- |
 | `elders.module.ts` | NestJS wiring |
-| `controllers/elders.controller.ts` | All eleven endpoints |
+| `controllers/elders.controller.ts` | All fourteen endpoints |
 | `services/chain.service.ts` | Registering elders, the chain, adding and removing family |
 | `services/address-search.service.ts` | The geocoder, its rate slot and cache |
 | `services/elders.service.ts` | An elder's details, their home and care level, and stays away from home |
+| `services/consent.service.ts` | Viewing, confirming and withdrawing consent |
 | `validation/` | The request shapes |
 
 ## Depends on
 
-`auth-service` for passwords and phone codes, `notification-service` for the "you were
-added" SMS.
+`auth-service` for passwords, phone codes and ending a session at once,
+`notification-service` for the "you were added" and "consent withdrawn" SMS.

@@ -1,5 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { ConsentType, Role } from '@prisma/client';
 import { EldersService } from './elders.service';
 import type { PrismaService } from '../../../db/prisma.service';
 
@@ -15,6 +15,8 @@ const elderAtHome = {
 interface PrismaMock {
   user: { findUnique: jest.Mock; update: jest.Mock };
   careAssignment: { findFirst: jest.Mock };
+  consentRecord: { findMany: jest.Mock };
+  emergencyEvent: { count: jest.Mock };
 }
 
 const buildPrisma = (): PrismaMock => ({
@@ -25,7 +27,12 @@ const buildPrisma = (): PrismaMock => ({
     ),
   },
   careAssignment: { findFirst: jest.fn().mockResolvedValue({ id: 'assignment-1' }) },
+  // No consent recorded and no emergency open, unless a test says otherwise.
+  consentRecord: { findMany: jest.fn().mockResolvedValue([]) },
+  emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
 });
+
+const withdrawn = (type: ConsentType) => ({ type, withdrawnAt: new Date() });
 
 const build = (prisma: PrismaMock) => new EldersService(prisma as unknown as PrismaService);
 
@@ -189,5 +196,74 @@ describe('EldersService, details and editing', () => {
     await expect(
       build(prismaWith()).update('elder-1', 'family-1', Role.FAMILY_MEMBER, { careLevel: null }),
     ).rejects.toThrow(ForbiddenException);
+  });
+});
+
+describe('EldersService, after a consent is withdrawn', () => {
+  const elder = {
+    id: 'elder-1',
+    role: Role.ELDER,
+    name: 'Grace',
+    phone: '+254700000010',
+    careLevel: null,
+    homeLatitude: -1.2833,
+    homeLongitude: 36.7833,
+    homeAddressLabel: 'Kileleshwa',
+    currentLatitude: -1.3,
+    currentLongitude: 36.8,
+    currentPlaceLabel: 'Her daughter, Karen',
+    currentPlaceSetAt: new Date(),
+  };
+
+  it('hides the number once contact sharing is withdrawn, and says so', async () => {
+    const prisma = buildPrisma();
+    prisma.user.findUnique.mockResolvedValue(elder);
+    prisma.consentRecord.findMany.mockResolvedValue([withdrawn(ConsentType.CONTACT_SHARING)]);
+
+    const detail = await build(prisma).detail('elder-1', 'caregiver-1', Role.CAREGIVER);
+
+    expect(detail.phone).toBeNull();
+    expect(detail.home?.label).toBe('Kileleshwa');
+    expect(detail.withheld).toEqual(['phone']);
+  });
+
+  it('hides the home and any stay, even whether she is at home, once location sharing is', async () => {
+    const prisma = buildPrisma();
+    prisma.user.findUnique.mockResolvedValue(elder);
+    prisma.consentRecord.findMany.mockResolvedValue([withdrawn(ConsentType.LOCATION_SHARING)]);
+
+    const detail = await build(prisma).detail('elder-1', 'caregiver-1', Role.CAREGIVER);
+
+    expect(detail.home).toBeNull();
+    expect(detail.place).toMatchObject({ withheld: true, label: null, latitude: null });
+    expect(detail.phone).toBe('+254700000010');
+  });
+
+  it('shows everything while an emergency is open, whatever was withdrawn', async () => {
+    const prisma = buildPrisma();
+    prisma.user.findUnique.mockResolvedValue(elder);
+    prisma.consentRecord.findMany.mockResolvedValue([
+      withdrawn(ConsentType.LOCATION_SHARING),
+      withdrawn(ConsentType.CONTACT_SHARING),
+    ]);
+    prisma.emergencyEvent.count.mockResolvedValue(1);
+
+    const detail = await build(prisma).detail('elder-1', 'caregiver-1', Role.CAREGIVER);
+
+    expect(detail.phone).toBe('+254700000010');
+    expect(detail.place.label).toBe('Her daughter, Karen');
+    expect(detail.withheld).toEqual([]);
+  });
+
+  it('still shows everything when only an earlier record was withdrawn and a later one stands', async () => {
+    const prisma = buildPrisma();
+    prisma.user.findUnique.mockResolvedValue(elder);
+    prisma.consentRecord.findMany.mockResolvedValue([
+      withdrawn(ConsentType.CONTACT_SHARING),
+      { type: ConsentType.CONTACT_SHARING, withdrawnAt: null },
+    ]);
+
+    const detail = await build(prisma).detail('elder-1', 'caregiver-1', Role.CAREGIVER);
+    expect(detail.phone).toBe('+254700000010');
   });
 });

@@ -65,7 +65,7 @@ class _Home extends StatelessWidget {
         // fresh controller rather than inheriting the previous person's emergency.
         key: ValueKey<String>(auth.account!.id),
         create: (_) => AlertController(api: api),
-        child: const ElderHomeScreen(),
+        child: ElderHomeScreen(api: api),
       ),
       // Everybody who responds to an emergency gets the same screen. The differences
       // between a caregiver, a family member and an emergency responder are differences

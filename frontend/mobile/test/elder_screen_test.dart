@@ -7,14 +7,20 @@ import 'package:mzazicare/features/elders/elder_screen.dart';
 
 import 'support.dart';
 
-Map<String, dynamic> elderBody({bool canEdit = true, bool atHome = true}) => <String, dynamic>{
+Map<String, dynamic> elderBody({
+  bool canEdit = true,
+  bool atHome = true,
+  bool withheld = false,
+}) => <String, dynamic>{
   'id': 'elder-1',
   'name': 'Grace Wanjiru',
-  'phone': '+254700000010',
+  'phone': withheld ? null : '+254700000010',
+  'withheld': withheld ? <String>['phone', 'location'] : <String>[],
   'careLevel': 'ASSISTED',
   'home': <String, dynamic>{'latitude': -1.2833, 'longitude': 36.7833, 'label': 'Kilimani, Nairobi'},
   'place': <String, dynamic>{
     'elderId': 'elder-1',
+    'withheld': withheld,
     'isAtHome': atHome,
     'latitude': atHome ? null : -1.3125,
     'longitude': atHome ? null : 36.8269,
@@ -55,6 +61,7 @@ void main() {
     WidgetTester tester, {
     bool canEdit = true,
     bool atHome = true,
+    bool withheld = false,
   }) async {
     bool removed = false;
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
@@ -66,7 +73,7 @@ void main() {
       if (path.endsWith('/chain')) {
         return <http.Response>[json(chainBody(canEdit: canEdit, withFamily: !removed))];
       }
-      return <http.Response>[json(elderBody(canEdit: canEdit, atHome: atHome))];
+      return <http.Response>[json(elderBody(canEdit: canEdit, atHome: atHome, withheld: withheld))];
     });
 
     await tester.binding.setSurfaceSize(const Size(800, 2400));
@@ -141,5 +148,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(calls.any((Exchange c) => c.method == 'DELETE'), isFalse);
+  });
+
+  testWidgets('says plainly what she has chosen not to share, rather than leaving gaps', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester, withheld: true);
+
+    expect(find.textContaining('Their number is not shared, at their request'), findsOneWidget);
+    expect(find.byIcon(Icons.phone), findsNothing);
+    expect(find.text('Not shared, at their request'), findsNWidgets(2));
+    expect(find.text('Change their home'), findsNothing);
+    expect(find.text('They are staying somewhere else'), findsNothing);
+    expect(find.text('Privacy and consent'), findsOneWidget);
   });
 }

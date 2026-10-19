@@ -150,6 +150,9 @@ export function EventDetail() {
           <p>
             Raised {formatClock(alert.triggeredAt)}
             {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
+            {alert.withheld?.includes('location')
+              ? '. Location withheld at the elder\u2019s request'
+              : ''}
           </p>
         </div>
       </div>

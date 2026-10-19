@@ -498,24 +498,35 @@ class ElderSummary {
     required this.myTier,
     required this.canEditChain,
     this.homeLabel,
+    this.withheld = const <String>[],
   });
 
   final String id;
   final String name;
-  final String phone;
+
+  /// Null when the elder has withdrawn consent to share it and no emergency is open.
+  final String? phone;
   final String? homeLabel;
   final int myTier;
   final bool canEditChain;
 
+  /// What the server left out because of a withdrawn consent: "phone", "location".
+  final List<String> withheld;
+
   factory ElderSummary.fromJson(Map<String, dynamic> json) => ElderSummary(
     id: json['id'] as String,
     name: json['name'] as String,
-    phone: json['phone'] as String,
+    phone: json['phone'] as String?,
     homeLabel: json['homeLabel'] as String?,
     myTier: (json['myTier'] as num).toInt(),
     canEditChain: json['canEditChain'] as bool? ?? false,
+    withheld: _strings(json['withheld']),
   );
 }
+
+/// A list of strings from JSON, or an empty one for anything else.
+List<String> _strings(Object? value) =>
+    value is List<dynamic> ? value.whereType<String>().toList(growable: false) : const <String>[];
 
 /// One place in an elder's chain: a person in it, or a place held for somebody who has
 /// not signed up yet.
@@ -613,18 +624,28 @@ class AddressSearchResult {
 
 /// Where an elder is right now: at home, or staying somewhere their circle recorded.
 class PlaceView {
-  const PlaceView({required this.isAtHome, this.latitude, this.longitude, this.label});
+  const PlaceView({
+    required this.isAtHome,
+    this.latitude,
+    this.longitude,
+    this.label,
+    this.withheld = false,
+  });
 
   final bool isAtHome;
   final double? latitude;
   final double? longitude;
   final String? label;
 
+  /// The elder has withdrawn consent to share where they are, so none of this is known.
+  final bool withheld;
+
   factory PlaceView.fromJson(Map<String, dynamic> json) => PlaceView(
     isAtHome: json['isAtHome'] as bool? ?? true,
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
     label: json['label'] as String?,
+    withheld: json['withheld'] as bool? ?? false,
   );
 }
 
@@ -638,12 +659,18 @@ class ElderDetail {
     required this.canEdit,
     this.careLevel,
     this.home,
+    this.withheld = const <String>[],
   });
 
   final String id;
   final String name;
-  final String phone;
+
+  /// Null when the elder has withdrawn consent to share it and no emergency is open.
+  final String? phone;
   final CareLevel? careLevel;
+
+  /// What the server left out because of a withdrawn consent: "phone", "location".
+  final List<String> withheld;
 
   /// The registered home, which alerts are sent to unless a stay is recorded.
   final AddressMatch? home;
@@ -656,7 +683,7 @@ class ElderDetail {
     return ElderDetail(
       id: json['id'] as String,
       name: json['name'] as String,
-      phone: json['phone'] as String,
+      phone: json['phone'] as String?,
       careLevel: level is String
           ? CareLevel.values.where((CareLevel c) => c.wire == level).firstOrNull
           : null,
@@ -669,6 +696,107 @@ class ElderDetail {
           : null,
       place: PlaceView.fromJson(json['place'] as Map<String, dynamic>? ?? const <String, dynamic>{}),
       canEdit: json['canEdit'] as bool? ?? false,
+      withheld: _strings(json['withheld']),
     );
   }
 }
+
+/// The kinds of consent recorded about an elder.
+enum ConsentKind {
+  dataProcessing('DATA_PROCESSING'),
+  locationSharing('LOCATION_SHARING'),
+  contactSharing('CONTACT_SHARING');
+
+  const ConsentKind(this.wire);
+
+  /// The name the API uses.
+  final String wire;
+
+  static ConsentKind? parse(Object? value) =>
+      ConsentKind.values.where((ConsentKind kind) => kind.wire == value).firstOrNull;
+}
+
+/// One consent about an elder: who gave it, whether the elder confirmed it, and whether
+/// it still stands.
+class ConsentItem {
+  const ConsentItem({
+    required this.kind,
+    required this.active,
+    this.givenByName,
+    this.givenByRelationship,
+    this.givenAt,
+    this.confirmedAt,
+    this.withdrawnAt,
+  });
+
+  final ConsentKind kind;
+
+  /// Given and not withdrawn.
+  final bool active;
+
+  /// Who first gave it on the elder's behalf, and how they described themselves.
+  final String? givenByName;
+  final String? givenByRelationship;
+  final DateTime? givenAt;
+
+  /// When the elder confirmed it themselves. Null until they do.
+  final DateTime? confirmedAt;
+  final DateTime? withdrawnAt;
+
+  /// Null for a kind this version of the app does not know, which is then left out
+  /// rather than shown wrongly.
+  static ConsentItem? fromJson(Map<String, dynamic> json) {
+    final ConsentKind? kind = ConsentKind.parse(json['type']);
+    if (kind == null) return null;
+    final Object? givenBy = json['givenBy'];
+    return ConsentItem(
+      kind: kind,
+      active: json['active'] as bool? ?? false,
+      givenByName: givenBy is Map<String, dynamic> ? givenBy['name'] as String? : null,
+      givenByRelationship:
+          givenBy is Map<String, dynamic> ? givenBy['relationship'] as String? : null,
+      givenAt: _date(json['givenAt']),
+      confirmedAt: _date(json['confirmedAt']),
+      withdrawnAt: _date(json['withdrawnAt']),
+    );
+  }
+}
+
+/// Everything recorded about consent for one elder.
+class ConsentView {
+  const ConsentView({
+    required this.elderId,
+    required this.elderName,
+    required this.needsConfirmation,
+    required this.canWithdraw,
+    required this.items,
+  });
+
+  final String elderId;
+  final String elderName;
+
+  /// The elder has never confirmed, for themselves, what was agreed on their behalf.
+  final bool needsConfirmation;
+
+  /// Whether the signed-in person may withdraw: the elder, or a caregiver in the chain.
+  final bool canWithdraw;
+  final List<ConsentItem> items;
+
+  /// The first person who agreed on the elder's behalf, if anybody did.
+  ConsentItem? get givenOnBehalf =>
+      items.where((ConsentItem item) => item.givenByName != null).firstOrNull;
+
+  factory ConsentView.fromJson(Map<String, dynamic> json) => ConsentView(
+    elderId: json['elderId'] as String? ?? '',
+    elderName: json['elderName'] as String? ?? '',
+    needsConfirmation: json['needsConfirmation'] as bool? ?? false,
+    canWithdraw: json['canWithdraw'] as bool? ?? false,
+    items: (json['items'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(ConsentItem.fromJson)
+        .whereType<ConsentItem>()
+        .toList(growable: false),
+  );
+}
+
+DateTime? _date(Object? value) => value is String ? DateTime.tryParse(value)?.toLocal() : null;

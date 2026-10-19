@@ -185,4 +185,32 @@ export const accountMessages = {
       `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare contacts. Sign up in the MzaziCare app with this number.`,
     );
   },
+
+  /**
+   * A consent about an elder was withdrawn. Sent to their caregivers, and to the elder
+   * when somebody else withdrew it, so nobody learns of it by finding a blank screen.
+   * `what` names the consent, such as "location sharing".
+   */
+  consentWithdrawn(byName: string, elderName: string, what: string, byElder: boolean): string {
+    const elder = firstName(elderName);
+    const action = byElder
+      ? `${elder} has withdrawn consent to ${what} in MzaziCare.`
+      : `${firstName(byName)} has withdrawn ${elder}'s consent to ${what} in MzaziCare.`;
+    return capSms(
+      `${action} In an emergency, responders still see what they need to reach ${elder}.`,
+      action,
+    );
+  },
+
+  /** Consent to processing was withdrawn, which ends the service for that elder. */
+  serviceEnded(byName: string, elderName: string, byElder: boolean): string {
+    const elder = firstName(elderName);
+    const action = byElder
+      ? `${elder} has withdrawn consent for MzaziCare to hold their information.`
+      : `${firstName(byName)} has withdrawn ${elder}'s consent for MzaziCare to hold their information.`;
+    return capSms(
+      `${action} ${elder} can no longer raise an alert. An administrator can restore the account.`,
+      `${action} Alerts are now off for ${elder}.`,
+    );
+  },
 };
