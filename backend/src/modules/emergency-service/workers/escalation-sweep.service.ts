@@ -73,6 +73,7 @@ export class EscalationSweepService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     try {
       const { fired } = await this.listener.recoverPendingTimers();
+      const reviewed = await this.listener.reviewOverdueSeverity();
 
       // Quiet when there is nothing to do, which is almost always. A sweep that logged
       // every pass would bury the one line that matters, and that line matters a lot: it
@@ -81,6 +82,12 @@ export class EscalationSweepService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(
           `Escalation sweep promoted ${fired} overdue emergency(ies). ` +
             'Expected to be zero: check that Redis keyspace expiry events are arriving.',
+        );
+      }
+      if (reviewed > 0) {
+        this.logger.warn(
+          `Escalation sweep reviewed the severity of ${reviewed} emergency(ies) late. ` +
+            'Expected to be zero: the review timer should have done it.',
         );
       }
     } catch (error) {

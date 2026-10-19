@@ -4,7 +4,7 @@ import { RedisService } from '../../../shared/redis/redis.service';
 import { AWAITING_STATES } from '../../../shared/utils/event-lifecycle';
 import { EscalationService } from '../services/escalation.service';
 import { EscalationTimerService } from '../services/escalation-timer.service';
-import { parseTimerKey } from '../services/escalation.keys';
+import { parseReviewKey, parseTimerKey } from '../services/escalation.keys';
 
 /**
  * Turns Redis key expiry into escalation.
@@ -28,6 +28,7 @@ export class EscalationListener implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     await this.subscribe();
     await this.recoverPendingTimers();
+    await this.reviewOverdueSeverity();
   }
 
   private async subscribe(): Promise<void> {
@@ -47,6 +48,19 @@ export class EscalationListener implements OnModuleInit {
    * it every future escalation, which is a far worse outcome than one failed promotion.
    */
   async handleExpiry(key: string): Promise<void> {
+    const reviewOf = parseReviewKey(key);
+    if (reviewOf) {
+      try {
+        await this.escalation.reviewSeverity(reviewOf);
+      } catch (error) {
+        this.logger.error(
+          `Failed to review the severity of event ${reviewOf}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+      return;
+    }
+
     const parsed = parseTimerKey(key);
     if (!parsed) return;
 
@@ -57,6 +71,22 @@ export class EscalationListener implements OnModuleInit {
         `Failed to escalate event ${parsed.eventId} from tier ${parsed.tier}`,
         error instanceof Error ? error.stack : undefined,
       );
+    }
+  }
+
+  /**
+   * Reviews the severity of any emergency whose cancel window closed while nobody was
+   * listening. Never throws, for the same reason as handleExpiry.
+   */
+  async reviewOverdueSeverity(): Promise<number> {
+    try {
+      return await this.escalation.reviewOverdueSeverity();
+    } catch (error) {
+      this.logger.error(
+        'Overdue severity reviews failed',
+        error instanceof Error ? error.stack : undefined,
+      );
+      return 0;
     }
   }
 

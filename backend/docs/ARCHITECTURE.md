@@ -51,6 +51,12 @@ instead of to no escalation. It logs nothing on a quiet pass and warns loudly wh
 to promote anything, because having something to promote means the listener missed an
 expiry it should have received.
 
+The same mechanism scores severity a second time. Raising an alert also sets a review
+key that expires when the ten second cancel window closes; its expiry re-scores the
+emergency with "did not cancel" counted and, if the band rises, applies the higher
+band's rules to the rest of the chain. The sweep reviews any emergency whose window
+closed unreviewed, and `severity_reviewed_at` makes sure each is reviewed once.
+
 It is switched off for the integration suite. That suite exists to prove escalation is
 genuinely event-driven, and a safety net running underneath it would promote whatever the
 listener missed, so the suite would pass whether the primary mechanism worked or not.

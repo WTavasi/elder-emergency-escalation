@@ -281,6 +281,11 @@ model EmergencyEvent {
   severityScore   Int      @default(0) @map("severity_score") @db.SmallInt
   severityFactors Json?    @map("severity_factors")
 
+  /// EXTENSION. When severity was scored the second time, once the cancel window had
+  /// closed and "did not cancel" could count. Null until then. Makes the review happen
+  /// exactly once, whichever of the Redis timer and the sweep reaches it first.
+  severityReviewedAt DateTime? @map("severity_reviewed_at") @db.Timestamptz(3)
+
   /// EXTENSION. When the current tier's acknowledgement window runs out.
   ///
   /// The timer itself lives in Redis, which is what makes expiry event-driven rather

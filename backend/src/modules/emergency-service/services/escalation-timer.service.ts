@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../../shared/redis/redis.service';
-import { TIMER_PREFIX, timerKey } from './escalation.keys';
+import { TIMER_PREFIX, reviewKey, timerKey } from './escalation.keys';
 
 /**
  * Escalation timers as expiring Redis keys.
@@ -21,6 +21,11 @@ export class EscalationTimerService {
     await this.redis.client.set(key, String(tier), 'EX', seconds);
     this.logger.debug(`Armed ${key} for ${seconds}s`);
     return new Date(Date.now() + seconds * 1000);
+  }
+
+  /** Arms the severity review for when the cancel window closes. */
+  async armSeverityReview(eventId: string, seconds: number): Promise<void> {
+    await this.redis.client.set(reviewKey(eventId), '1', 'EX', Math.max(1, seconds));
   }
 
   /**

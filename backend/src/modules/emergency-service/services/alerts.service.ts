@@ -32,6 +32,11 @@ import {
 } from '../../realtime-service/services/realtime.publisher';
 import { SeverityService } from './severity.service';
 import type { SeverityAssessment } from '../models/severity.types';
+import {
+  recentEventsWhere,
+  severityAuditDetail,
+  severityContextFor,
+} from '../models/severity-context';
 import type { CreateAlertDto } from '../validation/create-alert.dto';
 import type { AlertDetail, AlertSummary } from '../views/alert-views';
 
@@ -135,18 +140,17 @@ export class AlertsService {
     const recentEventCount = await this.countRecentEvents(elderId, at);
     const where = AlertsService.resolveAlertLocation(elder, dto);
 
-    const assessment = await this.severity.evaluate({
-      careLevel: elder.careLevel,
-      alertLocation: { latitude: where.latitude, longitude: where.longitude },
-      homeLocation:
-        elder.homeLatitude !== null && elder.homeLongitude !== null
-          ? { latitude: Number(elder.homeLatitude), longitude: Number(elder.homeLongitude) }
-          : null,
-      timezone: elder.timezone,
-      at,
-      recentEventCount,
-      cancelWindowElapsed: false,
-    });
+    // Scored now with the cancel window still open, so "did not cancel" counts nothing.
+    // It is scored again once, when the window closes (EscalationService.reviewSeverity).
+    const assessment = await this.severity.evaluate(
+      severityContextFor(
+        elder,
+        { latitude: where.latitude, longitude: where.longitude },
+        at,
+        recentEventCount,
+        false,
+      ),
+    );
 
     const event = await this.prisma.$transaction(async (tx) => {
       const created = await tx.emergencyEvent.create({
@@ -196,6 +200,22 @@ export class AlertsService {
     // in the next second would leave an emergency nobody is counting down for. The
     // actual sending, which is network work that can fail and retry, is queued.
     this.realtime.emergencyUpdated(event);
+
+    // The second look at severity, when the cancel window closes. Armed before dispatch
+    // so a dispatch failure cannot skip it, and never allowed to fail the alert itself:
+    // the escalation sweep reviews any emergency whose window closed unreviewed.
+    try {
+      await this.timers.armSeverityReview(
+        event.id,
+        this.config.get<number>('CANCEL_GRACE_WINDOW', 10),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not arm the severity review for ${event.id}; the sweep will pick it up`,
+        error instanceof Error ? error.message : undefined,
+      );
+    }
+
     await this.escalation.dispatchTier(event.id, 1, 'initial');
 
     return event;
@@ -307,21 +327,16 @@ export class AlertsService {
     const elder = await this.prisma.user.findUnique({ where: { id: event.elderlyId } });
     if (!elder) throw new NotFoundException('Emergency not found');
 
-    const assessment = await this.severity.evaluate({
-      careLevel: elder.careLevel,
-      alertLocation: {
-        latitude: Number(event.alertLatitude),
-        longitude: Number(event.alertLongitude),
-      },
-      homeLocation:
-        elder.homeLatitude !== null && elder.homeLongitude !== null
-          ? { latitude: Number(elder.homeLatitude), longitude: Number(elder.homeLongitude) }
-          : null,
-      timezone: elder.timezone,
-      at,
-      recentEventCount: await this.countRecentEvents(event.elderlyId, at),
-      cancelWindowElapsed: true,
-    });
+    // The alert being reopened is not its own history, so it is left out of the count.
+    const assessment = await this.severity.evaluate(
+      severityContextFor(
+        elder,
+        { latitude: Number(event.alertLatitude), longitude: Number(event.alertLongitude) },
+        at,
+        await this.countRecentEvents(event.elderlyId, at, event.id),
+        true,
+      ),
+    );
 
     const band = this.severity.highestOf(event.severity, assessment.band);
     const tier = assignment?.priorityOrder ?? 1;
@@ -339,6 +354,9 @@ export class AlertsService {
         severity: band,
         severityScore: Math.max(event.severityScore, assessment.score),
         severityFactors: assessment as unknown as Prisma.InputJsonValue,
+        // Already scored with the cancel window treated as closed, so the review that
+        // follows a fresh alert has nothing left to do here.
+        severityReviewedAt: at,
       });
 
       await tx.auditLog.create({
@@ -530,15 +548,10 @@ export class AlertsService {
     return event;
   }
 
-  private countRecentEvents(elderId: string, at: Date): Promise<number> {
+  private countRecentEvents(elderId: string, at: Date, excludeEventId?: string): Promise<number> {
     const hours = this.config.get<number>('RECENT_ACTIVITY_HOURS', 6);
-    const since = new Date(at.getTime() - hours * 60 * 60 * 1000);
-
     return this.prisma.emergencyEvent.count({
-      where: {
-        elderlyId: elderId,
-        OR: [{ triggeredAt: { gte: since } }, { state: { in: OPEN_STATES } }],
-      },
+      where: recentEventsWhere(elderId, at, hours, excludeEventId),
     });
   }
 
@@ -596,16 +609,6 @@ export class AlertsService {
   }
 
   private static auditDetail(assessment: SeverityAssessment): Prisma.InputJsonValue {
-    return {
-      score: assessment.score,
-      band: assessment.band,
-      factors: assessment.factors.map((factor) => ({
-        key: factor.key,
-        weight: factor.weight,
-        value: factor.value,
-        contribution: factor.contribution,
-        detail: factor.detail,
-      })),
-    } as unknown as Prisma.InputJsonValue;
+    return severityAuditDetail(assessment) as unknown as Prisma.InputJsonValue;
   }
 }

@@ -13,6 +13,18 @@ did it call the ambulance". This can: the factor values and their contributions 
 stored on the event, and the dashboard renders them as a table that adds up to the
 score. The weights are configuration, so the policy can be tuned without a deployment.
 
+Severity is scored twice. At the press, whether the elder will cancel cannot be known,
+so that factor scores nothing and tier one goes out at once on what is known. When the
+cancel window closes without a cancel, the emergency is scored again with it counted,
+because an elder who raised an alert and then could not withdraw it is the clearest
+sign in the policy that they may not be able to reach their phone. A higher band from
+that review applies to the rest of the chain straight away: the tier already asked
+keeps its place but gets the shorter window, counted from when it was asked; it is
+texted as well if the new band sends SMS alongside push; and a tier the new band sends
+in parallel goes out now. Nothing restarts, and nothing changes once somebody owns the
+emergency. The review is a Redis timer like every other window, with the escalation
+sweep as its safety net and `severity_reviewed_at` making sure it happens once.
+
 ## Caregiver cover was dropped as a severity factor
 
 There were six factors at first. The sixth scored an alert higher when no caregiver had

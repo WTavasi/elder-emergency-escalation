@@ -122,10 +122,12 @@ The script narrates the whole lifecycle. Each step prints what happened and then
    values and contributions, and the resulting score and band.
 5. Shows tier one dispatched immediately, with a millisecond timing.
 6. Waits out the five seconds and shows the state move to `ESCALATED`.
-7. Acknowledges as the family member and prints the measured response time.
-8. Resolves with an outcome, then prints the audit trail as a table with system actions
+7. Waits for the ten second cancel window to close and shows severity scored again, with
+   "did not cancel" now counted, and the band before and after.
+8. Acknowledges as the family member and prints the measured response time.
+9. Resolves with an outcome, then prints the audit trail as a table with system actions
    distinguishable from human ones.
-9. Prints every delivery attempt, including failures with their reason.
+10. Prints every delivery attempt, including failures with their reason.
 
 Run it twice. The timings will differ slightly, which is worth pointing out: the
 numbers are measured rather than printed.
