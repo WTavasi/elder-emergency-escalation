@@ -174,6 +174,23 @@ Work down this list. Each step rules out one cause.
 A sender id (`AT_SENDER_ID`) is never sent to the sandbox, which would refuse the message,
 so it is safe to leave one set for the live account.
 
+**A sign-up or reset code does not arrive.** The app always says a code is on its way,
+whatever happened, so that nobody can use it to find out which numbers are registered.
+The API's terminal says what really happened, in one line, the moment **Send code** is
+pressed:
+
+| The terminal says | What to do |
+| --- | --- |
+| `Sign-up code sent to +25471…` | Delivered. Check the simulator is launched for exactly that number |
+| `No code sent ...: asked again within 30s of the last one` | Wait half a minute and ask again |
+| `No code sent ...: 5 codes already sent in the last hour` | Run `npm run dev:clear-limits -w @mzazicare/api` |
+| `No code sent ...: it already has an account` | That number is registered. Sign in, or use another number |
+| `... code for ... was not delivered`, after an `SMS ... refused:` line | Africa's Talking refused it; the line above gives its reason |
+| Nothing at all | The request did not reach the API. Check the app is pointed at it |
+
+Use a Kenyan number in both the app and the simulator, such as `+254711000001`, typed the
+same way in both.
+
 ## Layer 5: by hand
 
 The API on its own can be exercised by hand with the Postman collection in

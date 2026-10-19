@@ -58,6 +58,10 @@ export class PhoneVerificationService {
    * the phone and the SMS bill, and neither cares what the code was for.
    */
   async start(phone: string, purpose: CodePurpose = 'signup'): Promise<void> {
+    // Every way this can end without sending a code says why, here in the server's log.
+    // The caller is told nothing either way, so this explains a missing text to whoever
+    // runs the server without telling an outsider which numbers are registered.
+    const who = redactPhone(phone);
     const cooldownKey = `verify:cooldown:${phone}`;
     const countKey = `verify:count:${phone}`;
 
@@ -70,12 +74,20 @@ export class PhoneVerificationService {
       RESEND_COOLDOWN_SECONDS,
       'NX',
     );
-    if (fresh !== 'OK') return;
+    if (fresh !== 'OK') {
+      this.logger.log(
+        `No code sent to ${who}: asked again within ${RESEND_COOLDOWN_SECONDS}s of the last one`,
+      );
+      return;
+    }
 
     const sends = await this.redis.client.incr(countKey);
     if (sends === 1) await this.redis.client.expire(countKey, 3600);
     if (sends > MAX_SENDS_PER_HOUR) {
-      this.logger.warn(`Code limit reached for ${redactPhone(phone)}`);
+      this.logger.warn(
+        `No code sent to ${who}: ${MAX_SENDS_PER_HOUR} codes already sent in the last hour. ` +
+          'For local testing, npm run dev:clear-limits -w @mzazicare/api resets this.',
+      );
       return;
     }
 
@@ -85,12 +97,18 @@ export class PhoneVerificationService {
     });
     if (purpose === 'signup' && existing) {
       await this.sms.send(phone, accountMessages.alreadyRegistered());
+      this.logger.log(
+        `No code sent to ${who}: it already has an account, so it was told that instead`,
+      );
       return;
     }
     // Nobody to reset. Nothing is sent: the number belongs to somebody with no account,
     // who did not ask and has nothing to protect, and a message would only cost money.
     // A deactivated account is treated as none: its password cannot be reset into use.
-    if (purpose === 'reset' && (!existing || existing.deactivatedAt)) return;
+    if (purpose === 'reset' && (!existing || existing.deactivatedAt)) {
+      this.logger.log(`No reset code sent to ${who}: no active account has that number`);
+      return;
+    }
 
     const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
     const ttl = this.ttlSeconds();
@@ -104,15 +122,19 @@ export class PhoneVerificationService {
       .exec();
 
     const minutes = Math.round(ttl / 60);
-    await this.sms.send(
+    const delivered = await this.sms.send(
       phone,
       purpose === 'reset'
         ? accountMessages.resetCode(code, minutes)
         : accountMessages.verificationCode(code, minutes),
     );
-    this.logger.log(
-      `${purpose === 'reset' ? 'Password reset' : 'Sign-up'} code sent to ${redactPhone(phone)}`,
-    );
+    const what = purpose === 'reset' ? 'Password reset' : 'Sign-up';
+    if (delivered) {
+      this.logger.log(`${what} code sent to ${who}`);
+    } else {
+      // The provider's own reason is logged just above, by the SMS service.
+      this.logger.warn(`${what} code for ${who} was not delivered`);
+    }
   }
 
   /**

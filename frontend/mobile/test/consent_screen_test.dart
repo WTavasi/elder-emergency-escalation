@@ -146,7 +146,8 @@ void main() {
       audience: ConsentAudience.careCircle,
     );
 
-    expect(find.text('Sharing where they are'), findsOneWidget);
+    // Section labels are set in capitals; the words a screen reader hears are unchanged.
+    expect(find.text('SHARING WHERE THEY ARE'), findsOneWidget);
     expect(find.text('Agreed by Mary Otieno on 1 October 2026'), findsNWidgets(3));
 
     await tester.tap(find.text('Withdraw').first);
