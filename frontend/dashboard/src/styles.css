@@ -509,6 +509,12 @@ a {
   color: var(--pill-acknowledged-fg);
   border-color: var(--pill-acknowledged-bd);
 }
+/* Somebody is with the elder: the same reassuring ink as somebody on the way. */
+.pill--on_scene {
+  background: var(--pill-acknowledged-bg);
+  color: var(--pill-acknowledged-fg);
+  border-color: var(--pill-acknowledged-bd);
+}
 .pill--escalated {
   background: var(--pill-escalated-bg);
   color: var(--pill-escalated-fg);

@@ -9,14 +9,20 @@
  */
 
 export type EventState =
-  'TRIGGERED' | 'NOTIFIED' | 'ACKNOWLEDGED' | 'ESCALATED' | 'RESOLVED' | 'CANCELLED';
+  'TRIGGERED' | 'NOTIFIED' | 'ACKNOWLEDGED' | 'ON_SCENE' | 'ESCALATED' | 'RESOLVED' | 'CANCELLED';
 
 export type Severity = 'STANDARD' | 'ELEVATED' | 'CRITICAL';
 
 export type Role =
   'ELDER' | 'CAREGIVER' | 'FAMILY_MEMBER' | 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR';
 
-export const OPEN_STATES: EventState[] = ['TRIGGERED', 'NOTIFIED', 'ACKNOWLEDGED', 'ESCALATED'];
+export const OPEN_STATES: EventState[] = [
+  'TRIGGERED',
+  'NOTIFIED',
+  'ACKNOWLEDGED',
+  'ON_SCENE',
+  'ESCALATED',
+];
 
 export interface Person {
   id: string;
@@ -43,6 +49,8 @@ export interface AlertSummary {
   withheld?: Array<'phone' | 'location'>;
   triggeredAt: string;
   acknowledgedAt: string | null;
+  /** When the person who took it on reached the elder. Kept if it later moves on. */
+  arrivedAt?: string | null;
   resolvedAt: string | null;
   deadlineAt: string | null;
   responderRequestedAt: string | null;
