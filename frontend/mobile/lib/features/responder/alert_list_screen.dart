@@ -100,12 +100,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
       // no alerts is the good outcome, and it needs no picture to say so.
       return <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
-            MzaziSpace.s32,
-            MzaziSpace.s16,
-            0,
-          ),
+          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s32, MzaziSpace.s16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -130,12 +125,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
       for (final _Group group in _groups(alerts.alerts, byDay: !alerts.openOnly)) ...<Widget>[
         if (group.heading != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              MzaziSpace.s16,
-              MzaziSpace.s24,
-              MzaziSpace.s16,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
             child: SectionLabel(group.heading!),
           ),
         for (final AlertSummary alert in group.alerts) ...<Widget>[
@@ -193,7 +183,18 @@ class _Group {
 
 const List<String> _weekdays = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const List<String> _months = <String>[
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "Today", "Yesterday", or a short date, for the history headings.

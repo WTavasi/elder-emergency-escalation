@@ -83,9 +83,7 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
     final ApiClient? api = widget.api;
     if (api == null) return null;
     return () => unawaited(
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => ElderMeScreen(api: api)),
-      ),
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ElderMeScreen(api: api))),
     );
   }
 

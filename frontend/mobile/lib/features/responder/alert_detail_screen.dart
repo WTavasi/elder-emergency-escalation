@@ -58,12 +58,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       body: RefreshIndicator(
         onRefresh: controller.refresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
-            0,
-            MzaziSpace.s16,
-            MzaziSpace.s32,
-          ),
+          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s32),
           children: <Widget>[
             _Header(alert: alert),
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
@@ -114,10 +109,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             ],
             if (controller.loadError != null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
-              Text(
-                'Could not refresh: ${controller.loadError}',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text('Could not refresh: ${controller.loadError}', style: theme.textTheme.bodySmall),
             ],
           ],
         ),
@@ -186,10 +178,7 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Semantics(
-          header: true,
-          child: Text(alert.elderName, style: theme.textTheme.headlineLarge),
-        ),
+        Semantics(header: true, child: Text(alert.elderName, style: theme.textTheme.headlineLarge)),
         const SizedBox(height: MzaziSpace.s12),
         Wrap(
           spacing: MzaziSpace.s16,

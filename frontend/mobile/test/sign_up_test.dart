@@ -49,10 +49,7 @@ void main() {
 
   Future<void> fillDetails(WidgetTester tester) async {
     await tester.enterText(find.widgetWithText(TextFormField, 'Your name'), 'Mary Otieno');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Your phone number'),
-      '0712 345 678',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'Your phone number'), '0712 345 678');
     await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'Dev!2026x');
     await tester.enterText(find.widgetWithText(TextFormField, 'Password again'), 'Dev!2026x');
   }

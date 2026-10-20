@@ -7,7 +7,8 @@ import 'package:flutter/widgets.dart';
 /// Reduce Motion (iOS) or Remove animations (Android) on, movement collapses to an
 /// instant change. The state still changes, it just stops travelling.
 abstract final class Motion {
-  static bool reduced(BuildContext context) => MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+  static bool reduced(BuildContext context) =>
+      MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
   static Duration of(BuildContext context, Duration duration) =>
       reduced(context) ? Duration.zero : duration;

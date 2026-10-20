@@ -142,8 +142,7 @@ class FirebasePushTransport implements PushTransport {
 
   @override
   Stream<Map<String, dynamic>> get messages {
-    final StreamController<Map<String, dynamic>> merged =
-        StreamController<Map<String, dynamic>>();
+    final StreamController<Map<String, dynamic>> merged = StreamController<Map<String, dynamic>>();
     final List<StreamSubscription<RemoteMessage>> sources = <StreamSubscription<RemoteMessage>>[
       FirebaseMessaging.onMessage.listen((RemoteMessage m) => merged.add(m.data)),
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage m) => merged.add(m.data)),

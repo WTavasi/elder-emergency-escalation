@@ -131,7 +131,9 @@ void main() {
   group('screens', () {
     test('the alert list re-reads when one of its emergencies changes', () async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int _) => <http.Response>[json(<Map<String, dynamic>>[summaryBody()])],
+        (http.Request request, int _) => <http.Response>[
+          json(<Map<String, dynamic>>[summaryBody()]),
+        ],
       );
       final LiveUpdates live = LiveUpdates()..connectionChanged(true);
       final AlertsController controller = AlertsController(

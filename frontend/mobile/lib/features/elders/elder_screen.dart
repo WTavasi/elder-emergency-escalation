@@ -19,12 +19,7 @@ import 'widgets/address_picker.dart';
 /// is back home, because whoever knows should be able to say. Only a caregiver can move
 /// the registered home, change the care level, or change the chain.
 class ElderScreen extends StatefulWidget {
-  const ElderScreen({
-    required this.api,
-    required this.elderId,
-    required this.elderName,
-    super.key,
-  });
+  const ElderScreen({required this.api, required this.elderId, required this.elderName, super.key});
 
   final ApiClient api;
   final String elderId;
@@ -99,8 +94,7 @@ class _ElderScreenState extends State<ElderScreen> {
   Future<void> _recordStay() async {
     final AddressMatch? place = await _pickPlace(
       title: 'Where are they staying?',
-      explanation:
-          'Alerts from them go to this place until you record that they are back home.',
+      explanation: 'Alerts from them go to this place until you record that they are back home.',
       prefix: 'Staying at',
       action: 'Record this stay',
     );
@@ -201,12 +195,7 @@ class _ElderScreenState extends State<ElderScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
-            0,
-            MzaziSpace.s16,
-            MzaziSpace.s32,
-          ),
+          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s32),
           children: <Widget>[
             Semantics(
               header: true,

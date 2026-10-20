@@ -46,9 +46,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _createAccount() async {
     final AuthController auth = context.read<AuthController>()..clearError();
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
-    );
+    await Navigator.of(context)
+        .push<void>(MaterialPageRoute<void>(builder: (_) => const SignUpScreen()));
     // A sign-up that succeeded has already signed in, and the app has moved on; one
     // that was abandoned should not leave its error on this screen.
     auth.clearError();
@@ -59,8 +58,7 @@ class _SignInScreenState extends State<SignInScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         // Whatever was typed here is carried over, so nobody types their number twice.
-        builder: (_) =>
-            ForgotPasswordScreen(country: _phone.country, number: _phone.text.text),
+        builder: (_) => ForgotPasswordScreen(country: _phone.country, number: _phone.text.text),
       ),
     );
     auth.clearError();
@@ -124,9 +122,8 @@ class _SignInScreenState extends State<SignInScreen> {
                             autofillHints: const <String>[AutofillHints.password],
                             decoration: const InputDecoration(labelText: 'Password'),
                             onFieldSubmitted: (_) => unawaited(_submit()),
-                            validator: (String? value) => (value == null || value.isEmpty)
-                                ? 'Enter your password.'
-                                : null,
+                            validator: (String? value) =>
+                                (value == null || value.isEmpty) ? 'Enter your password.' : null,
                           ),
                           const SizedBox(height: MzaziSpace.s24),
                           FilledButton(
@@ -135,9 +132,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           const SizedBox(height: MzaziSpace.s8),
                           TextButton(
-                            onPressed: auth.isBusy
-                                ? null
-                                : () => unawaited(_forgotPassword()),
+                            onPressed: auth.isBusy ? null : () => unawaited(_forgotPassword()),
                             child: const Text('Forgot your password?'),
                           ),
                         ],
@@ -148,9 +143,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     // caregiver, and the sign-up screen says so.
                     OutlinedButton(
                       // Filled like the fields, so the rings do not show through it.
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.surface,
-                      ),
+                      style: OutlinedButton.styleFrom(backgroundColor: theme.colorScheme.surface),
                       onPressed: auth.isBusy ? null : () => unawaited(_createAccount()),
                       child: const Text('New here? Create an account'),
                     ),

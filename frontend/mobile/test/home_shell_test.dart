@@ -22,7 +22,9 @@ void main() {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
       if (request.url.path.endsWith('/auth/login')) return <http.Response>[json(sessionBody())];
       if (request.url.path.endsWith('/alerts')) {
-        return <http.Response>[json(<Map<String, dynamic>>[summaryBody()])];
+        return <http.Response>[
+          json(<Map<String, dynamic>>[summaryBody()]),
+        ];
       }
       return <http.Response>[json(<Map<String, dynamic>>[])];
     });
@@ -71,9 +73,7 @@ void main() {
     expect(inBar('Me'), findsOneWidget);
   });
 
-  testWidgets('the alerts tab carries the number nobody has answered', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('the alerts tab carries the number nobody has answered', (WidgetTester tester) async {
     await pump(tester, Role.caregiver);
 
     expect(inBar('1'), findsOneWidget);

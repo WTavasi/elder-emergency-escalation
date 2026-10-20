@@ -41,8 +41,9 @@ class StatePill extends StatelessWidget {
     final bool dark = theme.brightness == Brightness.dark;
     return switch (state) {
       // Nobody has answered, or it had to move on: the red that means a person is needed.
-      EventState.triggered || EventState.notified || EventState.escalated =>
-        dark ? MzaziColorsDark.danger : MzaziColorsLight.danger,
+      EventState.triggered ||
+      EventState.notified ||
+      EventState.escalated => dark ? MzaziColorsDark.danger : MzaziColorsLight.danger,
       EventState.acknowledged =>
         dark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg,
       EventState.resolved =>

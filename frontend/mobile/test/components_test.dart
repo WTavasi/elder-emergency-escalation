@@ -27,10 +27,7 @@ void main() {
       final SemanticsHandle semantics = tester.ensureSemantics();
       await tester.pumpWidget(
         host(
-          const ProgressStepper(
-            steps: <String>['Told', 'Coming', 'Arrived', 'Closed'],
-            current: 1,
-          ),
+          const ProgressStepper(steps: <String>['Told', 'Coming', 'Arrived', 'Closed'], current: 1),
         ),
       );
 
@@ -76,9 +73,7 @@ void main() {
       );
 
       final Semantics node = tester.widget<Semantics>(
-        find.byWidgetPredicate(
-          (Widget w) => w is Semantics && w.properties.label == swipeLabel,
-        ),
+        find.byWidgetPredicate((Widget w) => w is Semantics && w.properties.label == swipeLabel),
       );
       expect(node.properties.button, isTrue);
       node.properties.onTap!();
@@ -90,9 +85,7 @@ void main() {
     testWidgets('does nothing while disabled', (WidgetTester tester) async {
       int confirmed = 0;
       await tester.pumpWidget(
-        host(
-          SwipeToConfirm(label: swipeLabel, enabled: false, onConfirmed: () => confirmed += 1),
-        ),
+        host(SwipeToConfirm(label: swipeLabel, enabled: false, onConfirmed: () => confirmed += 1)),
       );
 
       await tester.drag(find.byIcon(Icons.arrow_forward), const Offset(2000, 0));

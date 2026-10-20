@@ -9,7 +9,12 @@ import 'motion.dart';
 /// not jump when it arrives. It pulses gently, or holds still under Reduce Motion, and
 /// is hidden from screen readers, which are told by the screen that it is loading.
 class Skeleton extends StatefulWidget {
-  const Skeleton({this.width, this.height = MzaziSpace.s16, this.radius = MzaziRadius.input, super.key});
+  const Skeleton({
+    this.width,
+    this.height = MzaziSpace.s16,
+    this.radius = MzaziRadius.input,
+    super.key,
+  });
 
   final double? width;
   final double height;

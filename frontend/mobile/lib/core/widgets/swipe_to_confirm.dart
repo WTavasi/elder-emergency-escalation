@@ -124,9 +124,7 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
                   ),
                   AnimatedPositioned(
                     // Follows the finger exactly while dragging; springs home after.
-                    duration: _dragging
-                        ? Duration.zero
-                        : Motion.of(context, MzaziMotion.standard),
+                    duration: _dragging ? Duration.zero : Motion.of(context, MzaziMotion.standard),
                     curve: MzaziEasing.decelerate,
                     left: _progress * travel,
                     child: Container(

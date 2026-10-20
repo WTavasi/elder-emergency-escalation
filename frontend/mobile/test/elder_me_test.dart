@@ -45,9 +45,7 @@ void main() {
     expect(find.text('Privacy and consent'), findsOneWidget);
   });
 
-  testWidgets('asks before signing out, and staying changes nothing', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('asks before signing out, and staying changes nothing', (WidgetTester tester) async {
     final ({AuthController auth, List<Exchange> calls}) t = await pump(tester);
 
     await tester.tap(find.text('Sign out of this phone'));

@@ -226,9 +226,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               labelText: 'Password',
               helperText: 'At least 8 characters',
             ),
-            validator: (String? value) => (value == null || value.length < 8)
-                ? 'Use at least 8 characters.'
-                : null,
+            validator: (String? value) =>
+                (value == null || value.length < 8) ? 'Use at least 8 characters.' : null,
           ),
           const SizedBox(height: MzaziSpace.s16),
           TextFormField(
