@@ -8,9 +8,9 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/sign_out_button.dart';
 import '../consent/consent_screen.dart';
 import 'alert_controller.dart';
+import 'elder_me_screen.dart';
 import 'widgets/panic_button.dart';
 
 /// The elder's whole app.
@@ -78,6 +78,17 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
     );
   }
 
+  /// Null without an API, which only a test that exercises the alert alone builds.
+  VoidCallback? get _openMe {
+    final ApiClient? api = widget.api;
+    if (api == null) return null;
+    return () => unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => ElderMeScreen(api: api)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final AlertController alerts = context.watch<AlertController>();
@@ -92,11 +103,7 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Header(
-                name: auth.account?.name ?? '',
-                onSignOut: auth.signOut,
-                onPrivacy: widget.api == null ? null : () => unawaited(_openConsent()),
-              ),
+              _Header(name: auth.account?.name ?? '', onMe: _openMe),
               if (toConfirm != null && idle) ...<Widget>[
                 const SizedBox(height: MzaziSpace.s16),
                 _ConsentQuestion(
@@ -157,37 +164,34 @@ class _ConsentQuestion extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.name, required this.onSignOut, this.onPrivacy});
+  const _Header({required this.name, this.onMe});
 
   final String name;
-  final VoidCallback onSignOut;
-  final VoidCallback? onPrivacy;
+  final VoidCallback? onMe;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final VoidCallback? privacy = onPrivacy;
+    final VoidCallback? me = onMe;
 
     return Row(
       children: <Widget>[
         Expanded(
           child: Text(name, style: theme.textTheme.titleLarge, overflow: TextOverflow.ellipsis),
         ),
-        if (privacy != null)
+        // One quiet control: the elder's own page, with privacy and signing out behind
+        // it. Nothing next to the panic control can end the session in one tap.
+        if (me != null)
           IconButton(
-            onPressed: privacy,
-            icon: const Icon(Icons.privacy_tip_outlined, semanticLabel: 'Privacy and consent'),
-            tooltip: 'Privacy and consent',
+            onPressed: me,
+            icon: const Icon(Icons.account_circle_outlined, semanticLabel: 'You and your privacy'),
+            tooltip: 'You and your privacy',
             constraints: const BoxConstraints(
               minWidth: MzaziA11y.elderMinTouchTarget,
               minHeight: MzaziA11y.elderMinTouchTarget,
             ),
             iconSize: MzaziA11y.elderMinTouchTarget / 2.4,
           ),
-        // The same control the caregiver's app bar uses, at the elder touch target. It
-        // stays visually quiet next to the panic control because it is an icon rather
-        // than a filled button, and it must never be mistaken for the one that matters.
-        SignOutButton(onPressed: onSignOut, minSize: MzaziA11y.elderMinTouchTarget),
       ],
     );
   }

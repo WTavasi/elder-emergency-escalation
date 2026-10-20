@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/live/live_updates.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -168,7 +169,11 @@ class _AlertListScreenState extends State<AlertListScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => ChangeNotifierProvider<AlertDetailController>(
-          create: (_) => AlertDetailController(api: widget.api, eventId: alert.eventId),
+          create: (BuildContext context) => AlertDetailController(
+            api: widget.api,
+            eventId: alert.eventId,
+            live: LiveUpdates.maybeOf(context),
+          ),
           child: AlertDetailScreen(fallback: alert),
         ),
       ),

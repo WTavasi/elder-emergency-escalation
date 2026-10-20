@@ -276,6 +276,112 @@ While `flutter run` is attached, **r** reloads changed Dart, **R** restarts the 
 **q** quits. Changes to `pubspec.yaml` or to anything native need a full **q** and
 `flutter run` again.
 
+### Live updates
+
+Once signed in, the app opens a socket to the API's `/realtime` namespace on the same
+address it uses for everything else, so there is nothing to configure. A screen showing
+an emergency changes within a second of somebody acting on it, on the phone and on the
+console alike. The screens still poll behind the socket, every 30 seconds while it is
+up and at their old pace (5 to 10 seconds) when it is not, so a dropped connection
+makes the app slower, never wrong.
+
+### Step 6 (optional). Reach the API from anywhere: an ngrok tunnel
+
+A real phone on the same Wi-Fi as the Mac should use the Mac's address, as in Step 3.
+The tunnel is for when it cannot: a phone on mobile data, a network that keeps devices
+apart, or showing the app to somebody else. It gives the Mac's port 3000 a public
+https address.
+
+1. Install it and connect it to your account (free; sign up at ngrok.com first):
+
+   ```bash
+   brew install ngrok
+   ngrok config add-authtoken <the token from the ngrok dashboard>
+   ```
+
+2. On the ngrok dashboard, open **Domains**. The free plan includes one dev domain,
+   something like `quiet-owl-1234.ngrok-free.app`. It stays the same every time, so the
+   app can be pointed at it once.
+
+3. With the API running (Guide A), start the tunnel in a new terminal tab:
+
+   ```bash
+   ngrok http --url=quiet-owl-1234.ngrok-free.app 3000
+   ```
+
+4. Run the app against it:
+
+   ```bash
+   flutter run --dart-define=API_BASE_URL=https://quiet-owl-1234.ngrok-free.app/api/v1
+   ```
+
+   The live updates socket goes through the same tunnel; ngrok carries WebSockets.
+
+Two limits of the free plan matter here. It allows about 20,000 requests a month, and a
+phone left open on an alert list spends some of them, so close the app when you are not
+testing and prefer the Wi-Fi address when you can. And a browser opening the address
+sees an ngrok warning page first; the app is not a browser and never sees it.
+
+For the demonstration the API moves to Render instead, which has no such limits (issues
+#78 and #79).
+
+### Step 7 (optional). Push notifications on a phone
+
+Push is what reaches a caregiver whose app is closed. It needs a Firebase project, and
+it is off in any build that was not given one: the app then never asks for notification
+permission, and everything else works.
+
+1. In the [Firebase console](https://console.firebase.google.com), open the MzaziCare
+   project (or create one), then **Project settings**, **Your apps**, and add an
+   **Android app** with the package name `ke.ac.strathmore.mzazicare`. Download the
+   `google-services.json` it offers into your Downloads folder, and skip the steps about
+   editing Gradle: this app reads the same values as build defines instead.
+
+2. Copy the example file and fill it in from the downloaded `google-services.json`:
+
+   ```bash
+   cd ~/Desktop/Mzazicare/frontend/mobile
+   cp firebase.example.json firebase.local.json
+   ```
+
+   | Key | Where it is in `google-services.json` |
+   | --- | --- |
+   | `FIREBASE_PROJECT_ID` | `project_info.project_id` |
+   | `FIREBASE_SENDER_ID` | `project_info.project_number` |
+   | `FIREBASE_ANDROID_APP_ID` | `client[0].client_info.mobilesdk_app_id` (`1:...:android:...`) |
+   | `FIREBASE_ANDROID_API_KEY` | `client[0].api_key[0].current_key` |
+   | `API_BASE_URL` | Not in that file. Optional: the ngrok or Wi-Fi address from above |
+
+   `firebase.local.json` is gitignored, and so is `google-services.json` should it end up
+   in `android/app`. Leave the iOS keys empty for now.
+
+3. Run with it:
+
+   ```bash
+   flutter run --dart-define-from-file=firebase.local.json
+   ```
+
+   After signing in, the phone asks once whether MzaziCare may send notifications, then
+   registers itself with the API (`PUT /api/v1/auth/me/push-token`). Signing out removes
+   the registration.
+
+4. Start the API with real push, as in docs/testing.md, "With real providers":
+
+   ```bash
+   PUSH_PROVIDER=fcm npm run dev
+   ```
+
+   The API's service account (`credentials/fcm-service-account.json`) has to belong to
+   the same Firebase project as the app, or Firebase refuses every message.
+
+   Raise an alert as Grace from another device or Postman, with Mary signed in on the
+   phone and the app in the background. The notification arrives on the
+   **Emergencies** channel.
+
+**iOS** needs an APNs key, which needs a paid Apple Developer account, uploaded to
+Firebase under Cloud Messaging. Without one, the iOS app runs and simply registers no
+push address. Android is enough for the demonstration.
+
 ---
 
 ## The first run on a new machine, or after pulling changes

@@ -319,6 +319,12 @@ class ApiClient {
     }
   }
 
+  /// Tells the server where to send this account's push messages. Called once per
+  /// account on a phone, and again whenever the push service rotates the address.
+  Future<void> registerPushToken(String token) async {
+    await _send('PUT', '/auth/me/push-token', body: <String, dynamic>{'token': token});
+  }
+
   Future<Account> me() async {
     final Map<String, dynamic> body = await _send('GET', '/auth/me');
     return Account.fromJson(body);

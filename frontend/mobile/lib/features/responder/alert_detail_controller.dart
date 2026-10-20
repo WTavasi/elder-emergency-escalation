@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/live/live_updates.dart';
 
 /// One emergency, and the four things a person can do about it.
 ///
@@ -18,11 +19,21 @@ class AlertDetailController extends ChangeNotifier {
     required ApiClient api,
     required this.eventId,
     this.pollInterval = const Duration(seconds: 8),
-  }) : _api = api;
+    LiveUpdates? live,
+  }) : _api = api {
+    _live = LiveFollower(
+      live: live,
+      wants: (LiveChange change) => change.eventId == eventId,
+      // A refresh landing mid-action would replace what the person is looking at with
+      // the state from before their press. The action refetches when it finishes.
+      refresh: () => _isWorking ? Future<void>.value() : refresh(),
+    );
+  }
 
   final ApiClient _api;
   final String eventId;
   final Duration pollInterval;
+  late final LiveFollower _live;
 
   AlertDetail? _detail;
   bool _isLoading = true;
@@ -49,15 +60,17 @@ class AlertDetailController extends ChangeNotifier {
   String? get confirmation => _confirmation;
 
   void start() {
+    _live.start();
     unawaited(refresh());
     _poll = Timer.periodic(pollInterval, (Timer _) {
       // A refresh landing mid-action would replace what the person is looking at with
       // the state from before their press.
-      if (!_isWorking) unawaited(refresh());
+      if (!_isWorking && _live.shouldPoll) unawaited(refresh());
     });
   }
 
   Future<void> refresh() async {
+    _live.asked();
     try {
       final AlertDetail fetched = await _api.alertDetail(eventId);
       if (_disposed) return;
@@ -132,6 +145,7 @@ class AlertDetailController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _poll?.cancel();
+    _live.dispose();
     super.dispose();
   }
 }

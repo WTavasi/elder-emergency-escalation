@@ -278,8 +278,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
         ],
         Text(
           'In an emergency, the people helping you always see what they need to reach you. '
-          'You can change your mind at any time with the privacy button at the top of your '
-          'screen.',
+          'You can change your mind at any time. Tap the round button at the top of your '
+          'screen, then Privacy and consent.',
           style: theme.textTheme.bodyLarge,
         ),
         if (error != null) ...<Widget>[

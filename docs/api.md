@@ -26,6 +26,19 @@ the REST Client extension and a **Send Request** link appears above each one.
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
 | PATCH | `/api/v1/auth/me` | bearer | Change your own name or email (`email: null` removes it) |
 | POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
+| PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
+| DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
+
+**An elder stays signed in.** Access tokens last the same for everyone, but an elder's
+refresh token lasts `JWT_REFRESH_TTL_ELDER` (ten years by default) rather than
+`JWT_REFRESH_TTL`, because an elder signed out by a timer is an elder whose panic button
+silently stopped working. Every other safeguard still applies: rotation on each refresh,
+revocation of every session on a replayed token, and on deactivation.
+
+**One push address per account, one account per address.** Registering an address that
+another account held takes it from that account, so a phone handed from one person to
+the next never receives the first person's emergencies. The app registers after every
+sign-in and whenever Firebase rotates the address.
 
 Elders are registered by a caregiver rather than themselves, because the consent record
 has to name who consented on whose behalf (`POST /api/v1/elders`, below). Emergency
@@ -233,5 +246,21 @@ scope of its own: it reports across everybody. A caregiver is refused.
 
 ## Live updates
 
-Socket.IO namespace `/realtime`, message `emergency.updated`. See
-[ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).
+Socket.IO namespace `/realtime`, message `emergency.updated`. The access token goes in
+the handshake, `auth: { token }`; without a valid one, or for a deactivated account, the
+server sends `unauthorized` and disconnects. The token is checked once, at the handshake,
+so a client whose socket was refused after a reconnect refreshes its tokens the usual way
+and opens a new socket.
+
+Who receives a change:
+
+- the elder, and everyone in their chain, through the room `elder:{id}`;
+- administrators, through `administrators`;
+- anyone else who was asked about this emergency (an emergency responder matched by
+  area, for instance), through their own `user:{id}` room.
+
+The message is a snapshot: `eventId`, `elderlyId`, `state`, `severity`, `currentTier`,
+`acknowledgedBy`, `triggeredAt`, `deadlineAt`. It never carries where the elder is.
+Location is disclosed through the REST endpoints, which apply the consent rules for the
+person asking, so a client treats the message as a signal to re-read, not as the data
+to show. See [ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).

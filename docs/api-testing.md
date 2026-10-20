@@ -174,6 +174,7 @@ which **Add a family member** in folder 6 works again.
 | **8b. My account** | Adds an email to the account from Part 5, changes its password, then changes it back |
 | **8c. Forgotten password** | A reset code for the account from Part 5, then a new password with it. Needs the code typed in, as in Part 5 |
 | **8d. Accounts (administrator)** | Lists and searches accounts, adds a responder, deactivates them (and shows they can no longer sign in), reactivates them, and pages the history with a name search |
+| **8e. Privacy and this phone** | Grace reads and confirms the consent given on her behalf, Mary sees the same record, then Mary's phone registers a push address, a too-short one is refused, and the address is forgotten |
 | **9. Things that must be refused** | Each request here should fail, and passes when it does |
 
 Folder 9 is worth running in a demonstration. It shows that a request with no token is

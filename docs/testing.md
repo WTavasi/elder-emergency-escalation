@@ -67,10 +67,15 @@ All three, in that order, and all three should be clean. `flutter analyze` is co
 to treat a warning as an error, so it either says "No issues found" or it has found
 something real.
 
-Expect 51 tests across 7 files. They cover the API client's headers and its refresh
-path, the model parsing including the malformed cases, the elder's alert phases and the
-rule that one press raises exactly one emergency, the caregiver list ordering, each of
-the four actions with its refetch, and the accessibility floors.
+Expect about 145 tests across 21 files. They cover the API client's headers and its
+refresh path, the model parsing including the malformed cases, the elder's alert phases
+and the rule that one press raises exactly one emergency, the caregiver list ordering,
+each of the four actions with its refetch, sign-up, password reset, the profile, consent,
+live updates (a change refreshes only the screens it concerns, a burst becomes one
+request, and the poll slows while the socket is up), push registration (once per
+account, again for the next person on the phone, never without a Firebase project), the
+elder's own page (signing out asks first), the shared components, and the accessibility
+floors.
 
 The accessibility file is the one worth understanding. It asserts the minimum touch
 target and body size against the constants in the generated token file rather than
@@ -79,8 +84,9 @@ pass a test written to a copy of the old value. It has already caught one real d
 the panic control computed its floor correctly and then handed it to a widget that
 cannot exceed its parent's constraints, so a cramped layout rendered it at 20 points.
 
-Note that `flutter test` is not yet run by continuous integration, so it only protects
-you when you remember to run it. Run it before every push that touches `frontend/mobile`.
+Continuous integration runs `flutter analyze` and `flutter test` on every push, with the
+design tokens built first. It does not run `dart format`, so run that yourself before
+committing.
 
 ---
 

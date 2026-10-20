@@ -175,14 +175,16 @@ credentials. The API refuses to start in production while either is still set to
 
 ## Live updates
 
-The administrator console connects to a Socket.IO namespace at `/realtime` and receives
-an `emergency.updated` message whenever an emergency changes: raised, dispatched,
-escalated, acknowledged, resolved, cancelled or reopened.
+The administrator console and the Flutter app both connect to a Socket.IO namespace at
+`/realtime` and receive an `emergency.updated` message whenever an emergency changes:
+raised, dispatched, escalated, acknowledged, resolved, cancelled or reopened.
 
-The Flutter app does **not** use the socket yet. Both the elder's screen and the
-caregiver's list poll on a timer, which is correct but not instant. The gateway is ready
-and the polling interval is a constructor field on each controller, so the swap is a
-deletion rather than a rewrite.
+In the app, the socket and any push that arrives while the app is open feed one hub
+(`lib/core/live/live_updates.dart`), and each screen re-reads its own projection when a
+change concerns it. The screens keep polling behind that, every 30 seconds while the
+socket is up and at their old interval when it is not. A notice can be missed (a socket
+that reconnects does not replay what happened while it was away), so the poll is the
+guarantee and the socket is the speed.
 
 The handshake carries an access token, the same one used for HTTP:
 
@@ -194,10 +196,19 @@ A socket with no token, or a bad one, is disconnected rather than left attached.
 are worked out once at connection time from the same care assignments that decide who
 gets notified, so a publish is one emit to one room rather than a query per change, and
 a caregiver cannot subscribe to an elder they have no relationship with because they
-were never put in that room. Administrators join a room that receives everything.
+were never put in that room. Administrators join a room that receives everything. Each
+socket also joins its own `user:{id}` room, which is how a change reaches somebody who
+was asked about one emergency without being in the elder's chain, such as an emergency
+responder matched by area: the gateway finds them from the notification records.
 
-The message is a compact snapshot rather than the database row. The audit trail and the
-severity breakdown are fetched over HTTP when someone opens an event.
+The message is a compact snapshot rather than the database row, and it never carries
+where the elder is. Location is disclosed over HTTP, where the consent rules are applied
+for the person asking; a socket message reaches a whole room at once and cannot apply
+them per reader. The audit trail and the severity breakdown are fetched over HTTP too.
+
+The token is checked once, at the handshake. A socket that reconnects after a dropped
+network with an expired access token is refused with `unauthorized`; the app then makes
+one ordinary request, which refreshes the tokens, and opens a new socket with them.
 
 Publishing is fire and forget. A screen that misses a message refreshes over HTTP,
 whereas an escalation that failed because a socket was unavailable would be a real
