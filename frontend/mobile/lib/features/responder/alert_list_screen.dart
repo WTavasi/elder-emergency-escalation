@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
+import '../../core/location/way_there.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -162,6 +164,8 @@ class _AlertListScreenState extends State<AlertListScreen> {
           create: (BuildContext context) => AlertDetailController(
             api: widget.api,
             eventId: alert.eventId,
+            myId: _myId(context),
+            wayThere: WayThere.maybeOf(context),
             live: LiveUpdates.maybeOf(context),
           ),
           child: AlertDetailScreen(fallback: alert),
@@ -171,6 +175,15 @@ class _AlertListScreenState extends State<AlertListScreen> {
     // Whatever happened on the detail screen changed this list, so it is re-read on the
     // way back rather than waiting out the poll interval.
     await alerts.refresh();
+  }
+
+  /// The signed-in account, or none where the list is built without one, as in a test.
+  static String? _myId(BuildContext context) {
+    try {
+      return Provider.of<AuthController>(context, listen: false).account?.id;
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 }
 

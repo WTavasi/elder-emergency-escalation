@@ -6,6 +6,15 @@
     <!-- Android 13 and later ask before an app may show notifications. The app asks
          once, after sign-in, and only in a build that was given a Firebase project. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- "Share my way there", for a responder on their way to an emergency they took
+         on. Asked only when they turn that on, never on an elder's phone. Precise
+         location so arriving can be recognised within 100 m; coarse with it, because
+         Android 12 and later let the person choose approximate instead. No background
+         location permission: sharing starts while the app is open and carries on behind
+         a maps app through the plugin's foreground service, which declares its own
+         FOREGROUND_SERVICE_LOCATION and shows a notification while it runs. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <application
         android:label="MzaziCare"

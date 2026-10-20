@@ -50,6 +50,13 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
 
+  # Where a responder is, only while they share their way there to an emergency they
+  # took on (lib/core/location/). The elder's side never uses it. Baseflow's plugin is
+  # the maintained one for both platforms, and its stream keeps running behind a maps
+  # app through a visible foreground service on Android and the location background
+  # mode on iOS. 14.1 was a month old when this was added.
+  geolocator: ^14.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -426,6 +426,46 @@ class ApiClient {
     await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
   }
 
+  /// "I'm here." The person who took the emergency on is with the elder.
+  Future<void> arrived(String id) async {
+    await _send('POST', '/alerts/$id/arrived', body: const <String, dynamic>{});
+  }
+
+  /// One position on the way there, from the person who took the emergency on and
+  /// turned on "Share my way there". The answer says how long they have left, or that
+  /// they have arrived, in which case the phone stops sharing.
+  Future<PositionResult> reportPosition(
+    String id, {
+    required double latitude,
+    required double longitude,
+    double? accuracyMetres,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/alerts/$id/position',
+      body: <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+        // Rounded to a metre, which is finer than any phone's fix, and held inside the
+        // range the server accepts: a fix worse than 10 km is still worth an ETA.
+        'accuracyMetres': ?accuracyMetres?.clamp(0, 10000).roundToDouble(),
+      },
+    );
+    return PositionResult.fromJson(body);
+  }
+
+  Future<Preferences> preferences() async =>
+      Preferences.fromJson(await _send('GET', '/auth/me/preferences'));
+
+  Future<Preferences> updatePreferences({required bool shareWayThere}) async =>
+      Preferences.fromJson(
+        await _send(
+          'PATCH',
+          '/auth/me/preferences',
+          body: <String, dynamic>{'shareWayThere': shareWayThere},
+        ),
+      );
+
   void dispose() => _http.close();
 
   // ------------------------------------------------------------------ internals --

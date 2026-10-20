@@ -7,10 +7,13 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/api/api_client.dart';
+import 'core/api/models.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/auth/session_store.dart';
 import 'core/live/live_updates.dart';
 import 'core/live/realtime_connection.dart';
+import 'core/location/position_source.dart';
+import 'core/location/way_there.dart';
 import 'core/push/push_registration.dart';
 
 /// Where the API is, when it was given at build time:
@@ -84,9 +87,15 @@ void main() {
   );
   final PushRegistration push = PushRegistration(api: api, live: live);
 
+  // Only for people who respond. An elder's account never reads the preference, and
+  // their phone is never asked where it is.
+  final WayThere wayThere = WayThere(api: api, source: const DevicePositionSource());
+
   void followSession() {
     realtime.follow(auth.session);
     unawaited(push.follow(auth.session));
+    final Account? account = auth.account;
+    unawaited(wayThere.follow(account != null && account.role.responds ? account.id : null));
   }
 
   auth.addListener(followSession);
@@ -95,9 +104,12 @@ void main() {
   runApp(
     Provider<LiveUpdates>.value(
       value: live,
-      child: ChangeNotifierProvider<AuthController>.value(
-        value: auth,
-        child: MzaziCareApp(api: api),
+      child: ChangeNotifierProvider<WayThere>.value(
+        value: wayThere,
+        child: ChangeNotifierProvider<AuthController>.value(
+          value: auth,
+          child: MzaziCareApp(api: api),
+        ),
       ),
     ),
   );

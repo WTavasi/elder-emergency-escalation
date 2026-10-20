@@ -7,8 +7,13 @@ void main() {
       expect(EventState.triggered.isOpen, isTrue);
       expect(EventState.escalated.isOpen, isTrue);
       expect(EventState.acknowledged.isOpen, isTrue);
+      expect(EventState.onScene.isOpen, isTrue);
       expect(EventState.resolved.isOpen, isFalse);
       expect(EventState.cancelled.isOpen, isFalse);
+    });
+
+    test('reads the state for somebody being with the elder', () {
+      expect(EventState.parse('ON_SCENE'), EventState.onScene);
     });
 
     test('refuses a state it does not know rather than guessing one', () {
@@ -99,6 +104,73 @@ void main() {
 
       expect(restored.role, Role.elder);
       expect(restored.home?.addressLabel, 'Home');
+    });
+  });
+
+  group('the way there', () {
+    Map<String, dynamic> journey({bool withPosition = true}) => <String, dynamic>{
+      'etaSeconds': 540,
+      'distanceMetres': 4200,
+      'source': 'estimate',
+      'updatedAt': '2026-10-20T10:00:00.000Z',
+      'latitude': withPosition ? -1.27 : null,
+      'longitude': withPosition ? 36.82 : null,
+    };
+
+    test('the elder gets the time and arrival, and no position', () {
+      final Emergency emergency = Emergency.fromJson(<String, dynamic>{
+        'eventId': 'event-1',
+        'state': 'ON_SCENE',
+        'severity': 'ELEVATED',
+        'currentTier': 1,
+        'triggeredAt': '2026-10-20T09:50:00.000Z',
+        'arrivedAt': '2026-10-20T10:05:00.000Z',
+        'journey': journey(withPosition: false),
+      });
+
+      expect(emergency.state, EventState.onScene);
+      expect(emergency.hasArrived, isTrue);
+      expect(emergency.journey?.etaSeconds, 540);
+      expect(emergency.journey?.byRoad, isFalse);
+      expect(emergency.journey?.hasPosition, isFalse);
+    });
+
+    test('a summary says who owns it and when they arrived', () {
+      final AlertSummary summary = AlertSummary.fromJson(<String, dynamic>{
+        'eventId': 'event-1',
+        'state': 'ON_SCENE',
+        'severity': 'ELEVATED',
+        'currentTier': 1,
+        'triggeredAt': '2026-10-20T09:50:00.000Z',
+        'acknowledgedBy': <String, dynamic>{'id': 'c1', 'name': 'Mary', 'role': 'CAREGIVER'},
+        'arrivedAt': '2026-10-20T10:05:00.000Z',
+      });
+
+      expect(summary.ownerId, 'c1');
+      expect(summary.arrivedAt, isNotNull);
+    });
+
+    test('a journey without its numbers is no journey at all', () {
+      expect(Journey.fromJson(null), isNull);
+      expect(Journey.fromJson(<String, dynamic>{'etaSeconds': 60}), isNull);
+      expect(Journey.fromJson(journey())?.hasPosition, isTrue);
+    });
+
+    test('a position answer reads arriving and the time left', () {
+      expect(PositionResult.fromJson(<String, dynamic>{'arrived': true}).arrived, isTrue);
+      final PositionResult result = PositionResult.fromJson(<String, dynamic>{
+        'arrived': false,
+        'journey': journey(),
+      });
+      expect(result.journey?.distanceMetres, 4200);
+    });
+
+    test('only the people who take emergencies on can share a way there', () {
+      expect(Role.caregiver.responds, isTrue);
+      expect(Role.familyMember.responds, isTrue);
+      expect(Role.emergencyResponder.responds, isTrue);
+      expect(Role.elder.responds, isFalse);
+      expect(Role.administrator.responds, isFalse);
     });
   });
 }

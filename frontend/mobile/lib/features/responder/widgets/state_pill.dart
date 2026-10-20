@@ -44,7 +44,8 @@ class StatePill extends StatelessWidget {
       EventState.triggered ||
       EventState.notified ||
       EventState.escalated => dark ? MzaziColorsDark.danger : MzaziColorsLight.danger,
-      EventState.acknowledged =>
+      // Somebody has it, on the way or already there: the same reassuring ink.
+      EventState.acknowledged || EventState.onScene =>
         dark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg,
       EventState.resolved =>
         dark ? MzaziColorsDark.pillResolvedFg : MzaziColorsLight.pillResolvedFg,
@@ -61,6 +62,8 @@ class StatePill extends StatelessWidget {
     EventState.triggered => Icons.hourglass_top,
     EventState.notified => Icons.hourglass_top,
     EventState.acknowledged => Icons.directions_run,
+    // A pin with a tick, the same mark as "I'm here".
+    EventState.onScene => Icons.where_to_vote_outlined,
     EventState.escalated => Icons.arrow_upward,
     EventState.resolved => Icons.check_circle_outline,
     EventState.cancelled => Icons.undo,
@@ -72,6 +75,7 @@ class StatePill extends StatelessWidget {
     EventState.triggered => 'Waiting',
     EventState.notified => 'Waiting',
     EventState.acknowledged => 'Being handled',
+    EventState.onScene => 'Help arrived',
     EventState.escalated => 'Escalated',
     EventState.resolved => 'Closed',
     EventState.cancelled => 'Withdrawn',

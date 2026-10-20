@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/live/live_updates.dart';
+import '../../core/location/way_there.dart';
 
 /// One emergency, and the four things a person can do about it.
 ///
@@ -19,6 +20,8 @@ class AlertDetailController extends ChangeNotifier {
     required ApiClient api,
     required this.eventId,
     this.pollInterval = const Duration(seconds: 8),
+    this.myId,
+    this.wayThere,
     LiveUpdates? live,
   }) : _api = api {
     _live = LiveFollower(
@@ -33,7 +36,18 @@ class AlertDetailController extends ChangeNotifier {
   final ApiClient _api;
   final String eventId;
   final Duration pollInterval;
+
+  /// The signed-in person, to tell whether this emergency is theirs. Null means the
+  /// screen treats it as somebody else's, which only a test that does not care does.
+  final String? myId;
+
+  /// Sharing the way there, when the app has it. Null in a test that does not need it.
+  final WayThere? wayThere;
   late final LiveFollower _live;
+
+  /// Set once sharing has been started from this screen, so a person who pressed
+  /// "Stop sharing" is not started again by the next refresh.
+  bool _offeredSharing = false;
 
   AlertDetail? _detail;
   bool _isLoading = true;
@@ -76,6 +90,7 @@ class AlertDetailController extends ChangeNotifier {
       if (_disposed) return;
       _detail = fetched;
       _loadError = null;
+      _followWayThere();
     } on ApiException catch (error) {
       if (_disposed) return;
       _loadError = error.message;
@@ -105,6 +120,42 @@ class AlertDetailController extends ChangeNotifier {
 
   Future<void> requestResponder() =>
       _act(() => _api.requestResponder(eventId), 'An emergency responder has been requested.');
+
+  /// "I'm here." Stops the sharing first: nobody needs the way there once it is over.
+  Future<void> arrived() {
+    wayThere?.stopFor(eventId);
+    final String elder = _detail?.summary.elderName.split(' ').first ?? 'her';
+    return _act(() => _api.arrived(eventId), 'Recorded that you are with $elder.');
+  }
+
+  /// Whether the person holding this phone is the one who took it on.
+  bool get isMine {
+    final String? me = myId;
+    return me != null && _detail?.summary.ownerId == me;
+  }
+
+  /// Theirs, still open, and they have not arrived: the only time "I'm here" means
+  /// anything, and the only time their way there is worth sharing.
+  bool get isOnTheWay {
+    final AlertSummary? summary = _detail?.summary;
+    return isMine && summary != null && summary.state.isOpen && summary.arrivedAt == null;
+  }
+
+  /// Starts sharing once this emergency becomes theirs, and stops it once it is over
+  /// or they have arrived, by whatever route: this screen, the geofence, or somebody
+  /// else closing it.
+  void _followWayThere() {
+    final WayThere? way = wayThere;
+    if (way == null) return;
+    if (isOnTheWay) {
+      if (!_offeredSharing && way.enabled) {
+        _offeredSharing = true;
+        unawaited(way.shareFor(eventId));
+      }
+    } else {
+      way.stopFor(eventId);
+    }
+  }
 
   /// True when this emergency is still live and nobody has taken it, which is the only
   /// moment acknowledging or declining makes sense.
