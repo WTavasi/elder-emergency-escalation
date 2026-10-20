@@ -161,7 +161,9 @@ void main() {
           patches.add(request.body);
           return <http.Response>[json(jsonDecode(request.body) as Map<String, dynamic>)];
         }
-        return <http.Response>[json(<String, dynamic>{'shareWayThere': false})];
+        return <http.Response>[
+          json(<String, dynamic>{'shareWayThere': false}),
+        ];
       });
       final WayThere way = WayThere(api: t.api, source: source);
       await way.follow('carer-1');

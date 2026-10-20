@@ -67,7 +67,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
           padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s32),
           children: <Widget>[
             _Header(alert: alert),
-            _OnTheWay(controller: controller, alert: alert, journey: detail?.journey, open: widget.open),
+            _OnTheWay(
+              controller: controller,
+              alert: alert,
+              journey: detail?.journey,
+              open: widget.open,
+            ),
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               const SectionLabel('Where'),
@@ -911,10 +916,7 @@ class _OnTheWay extends StatelessWidget {
     final String how = shared.byRoad ? 'by road' : 'in a straight line';
 
     return _section(<Widget>[
-      Text(
-        '$owner is ${minutesAway(shared.etaSeconds)} away',
-        style: theme.textTheme.titleLarge,
-      ),
+      Text('$owner is ${minutesAway(shared.etaSeconds)} away', style: theme.textTheme.titleLarge),
       const SizedBox(height: MzaziSpace.s4),
       Text(
         '${distanceWords(shared.distanceMetres)} $how, updated '
@@ -960,12 +962,7 @@ class _OnTheWay extends StatelessWidget {
 /// A link rather than a map in the app, for the same reasons as the directions button:
 /// no map SDK, no key, and the maps app shows a place better than this app could.
 class _SeeWhere extends StatelessWidget {
-  const _SeeWhere({
-    required this.name,
-    required this.latitude,
-    required this.longitude,
-    this.open,
-  });
+  const _SeeWhere({required this.name, required this.latitude, required this.longitude, this.open});
 
   final String name;
   final double latitude;

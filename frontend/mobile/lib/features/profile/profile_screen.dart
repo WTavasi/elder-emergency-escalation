@@ -44,11 +44,10 @@ class ProfileScreen extends StatelessWidget {
                         Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
                         const SizedBox(height: MzaziSpace.s32),
                         _DetailsForm(account: account),
-                        if (account.role.responds && WayThere.maybeOf(context) != null)
-                          ...<Widget>[
-                            const SizedBox(height: MzaziSpace.s32),
-                            _WayThereSetting(way: WayThere.maybeOf(context)!),
-                          ],
+                        if (account.role.responds && WayThere.maybeOf(context) != null) ...<Widget>[
+                          const SizedBox(height: MzaziSpace.s32),
+                          _WayThereSetting(way: WayThere.maybeOf(context)!),
+                        ],
                         const SizedBox(height: MzaziSpace.s32),
                         const _PasswordForm(),
                         const SizedBox(height: MzaziSpace.s32),

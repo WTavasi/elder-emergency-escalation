@@ -44,7 +44,9 @@ void main() {
         final bool value = request.method == 'PATCH'
             ? (jsonDecode(request.body) as Map<String, dynamic>)['shareWayThere'] as bool
             : shareWayThere;
-        return <http.Response>[json(<String, dynamic>{'shareWayThere': value})];
+        return <http.Response>[
+          json(<String, dynamic>{'shareWayThere': value}),
+        ];
       }
       if (request.url.path.endsWith('/position')) {
         reports += 1;

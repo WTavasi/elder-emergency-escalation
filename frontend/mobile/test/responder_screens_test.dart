@@ -620,9 +620,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('nothing about the way there once they have arrived', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('nothing about the way there once they have arrived', (WidgetTester tester) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[
           json(owned(arrivedAt: DateTime.now().toUtc().toIso8601String())),

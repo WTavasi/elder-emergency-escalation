@@ -201,7 +201,9 @@ void main() {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
         final String path = request.url.path;
         if (path.endsWith('/preferences')) {
-          return <http.Response>[json(<String, dynamic>{'shareWayThere': true})];
+          return <http.Response>[
+            json(<String, dynamic>{'shareWayThere': true}),
+          ];
         }
         if (path.endsWith('/arrived')) {
           arrived = true;
