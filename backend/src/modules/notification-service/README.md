@@ -22,6 +22,14 @@ A provider that returns `false` has failed permanently, so the message falls bac
 A provider that throws has failed transiently, so the queue retries it. Mixing the two up
 would either retry something impossible or give up on something recoverable.
 
+## Replies
+
+With `SMS_INBOUND_TOKEN` set, alert texts end "Reply 1 if you can go, 2 if you cannot"
+(`REPLY_ASK` in `notification-content.ts`), and with `AT_SHORTCODE` set every SMS is sent
+from that shortcode so the reply comes back to it. Reading the reply belongs to the
+emergency service (`SmsRepliesService`), because answering is an acknowledgement or a
+decline; this module only words the question and sends the confirmation.
+
 ## Data it writes
 
 `notifications`, and a `NOTIFICATION_FAILED` entry in `audit_logs` when a delivery fails.

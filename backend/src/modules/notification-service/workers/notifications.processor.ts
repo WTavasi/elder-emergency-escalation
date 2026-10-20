@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuditAction, NotificationChannel, NotificationStatus, Prisma } from '@prisma/client';
 import type { Job } from 'bullmq';
 import { PrismaService } from '../../../db/prisma.service';
@@ -18,6 +19,7 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly notifications: NotificationsService,
     @Inject(PUSH_PROVIDER) private readonly push: PushProvider,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
+    @Optional() private readonly config?: ConfigService,
   ) {
     super();
   }
@@ -45,6 +47,8 @@ export class NotificationsProcessor extends WorkerHost {
       elderName: notification.event.elder.name,
       addressLabel: notification.event.alertAddressLabel,
       eventId: notification.eventId,
+      // Offered only when a reply can be read, which is when the callback has a secret.
+      replyByText: Boolean(this.config?.get<string>('SMS_INBOUND_TOKEN')),
     });
 
     const attempts = job.opts.attempts ?? 1;

@@ -1,5 +1,11 @@
 import { EventState, Severity } from '@prisma/client';
-import { accountMessages, capSms, composeNotification, SMS_LIMIT } from './notification-content';
+import {
+  accountMessages,
+  capSms,
+  composeNotification,
+  REPLY_ASK,
+  SMS_LIMIT,
+} from './notification-content';
 
 const base = {
   severity: Severity.STANDARD,
@@ -90,6 +96,49 @@ describe('composeNotification', () => {
     });
     expect(message.sms.length).toBeLessThanOrEqual(SMS_LIMIT);
     expect(message.sms).toContain('MzaziCare');
+  });
+});
+
+describe('composeNotification, replying by text', () => {
+  const replying = (state: EventState, overrides = {}) =>
+    composeNotification({ ...base, state, replyByText: true, ...overrides });
+
+  it('asks for 1 or 2 on a first alert and on an escalation', () => {
+    expect(replying(EventState.TRIGGERED).sms).toContain(REPLY_ASK);
+    expect(replying(EventState.NOTIFIED).sms).toContain(REPLY_ASK);
+    expect(replying(EventState.ESCALATED).sms).toContain(REPLY_ASK);
+  });
+
+  it('asks nothing of messages that need no answer', () => {
+    for (const state of [
+      EventState.ACKNOWLEDGED,
+      EventState.ON_SCENE,
+      EventState.RESOLVED,
+      EventState.CANCELLED,
+    ]) {
+      expect(replying(state).sms).not.toContain('Reply');
+    }
+  });
+
+  it('never asks for a reply when replies cannot be read', () => {
+    for (const state of Object.values(EventState)) {
+      expect(forState(state).sms).not.toContain('Reply');
+    }
+  });
+
+  it('still fits one segment, keeping the ask, with a long name and address', () => {
+    for (const state of [EventState.TRIGGERED, EventState.ESCALATED]) {
+      const message = replying(state, {
+        elderName: 'Wilhelmina Nyakerario Moraa Kemunto Nyaboke',
+        addressLabel: 'Off Kirichwa Road, Kileleshwa, Nairobi County, Kenya',
+      });
+      expect(message.sms.length).toBeLessThanOrEqual(SMS_LIMIT);
+      expect(message.sms).toContain(REPLY_ASK);
+    }
+  });
+
+  it('keeps 999 in the first alert', () => {
+    expect(replying(EventState.TRIGGERED).sms).toContain('999');
   });
 });
 
