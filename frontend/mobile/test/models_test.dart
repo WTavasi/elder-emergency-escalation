@@ -173,4 +173,24 @@ void main() {
       expect(Role.administrator.responds, isFalse);
     });
   });
+
+  group('TimelineEntry', () {
+    Map<String, dynamic> entry(Map<String, dynamic>? detail) => <String, dynamic>{
+      'id': 'audit-1',
+      'action': 'ACKNOWLEDGED',
+      'secondsFromTrigger': 40,
+      'actor': <String, dynamic>{'id': 'f1', 'name': 'Aisha Otieno', 'role': 'FAMILY_MEMBER'},
+      'detail': detail,
+    };
+
+    test('knows an answer that came by text', () {
+      expect(TimelineEntry.fromJson(entry(<String, dynamic>{'via': 'sms'})).byText, isTrue);
+    });
+
+    test('treats anything else as the app, including entries from before replies existed', () {
+      expect(TimelineEntry.fromJson(entry(<String, dynamic>{'via': 'app'})).byText, isFalse);
+      expect(TimelineEntry.fromJson(entry(<String, dynamic>{'tier': 1})).byText, isFalse);
+      expect(TimelineEntry.fromJson(entry(null)).byText, isFalse);
+    });
+  });
 }
