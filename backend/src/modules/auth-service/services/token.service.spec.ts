@@ -11,7 +11,19 @@ const secrets: Record<string, string> = {
   JWT_REFRESH_TTL: '30d',
 };
 
-const config = { getOrThrow: (key: string) => secrets[key] } as unknown as ConfigService;
+const config = {
+  getOrThrow: (key: string) => secrets[key],
+  get: (key: string, fallback?: string) => secrets[key] ?? fallback,
+} as unknown as ConfigService;
+
+/** Seconds a token is valid for, read from its own claims. */
+const lifetimeOf = (token: string): number => {
+  const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as {
+    iat: number;
+    exp: number;
+  };
+  return claims.exp - claims.iat;
+};
 
 describe('TokenService', () => {
   const service = new TokenService(new JwtService({}), config);
@@ -29,6 +41,14 @@ describe('TokenService', () => {
     const second = await service.signRefresh('user-1');
     expect(first.jti).not.toBe(second.jti);
     expect((await service.verifyRefresh(first.token)).jti).toBe(first.jti);
+  });
+
+  it('keeps an elder signed in for years, and everybody else for the usual month', async () => {
+    const elder = await service.signRefresh('elder-1', Role.ELDER);
+    const caregiver = await service.signRefresh('caregiver-1', Role.CAREGIVER);
+
+    expect(lifetimeOf(elder.token)).toBe(3650 * 24 * 60 * 60);
+    expect(lifetimeOf(caregiver.token)).toBe(30 * 24 * 60 * 60);
   });
 
   it('refuses a refresh token presented as an access token', async () => {

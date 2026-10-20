@@ -173,10 +173,47 @@ export class AuthService {
     return this.issue(user);
   }
 
+  /**
+   * Signing out also stops this phone being sent anybody's emergencies: a phone left
+   * signed out on a table must not keep receiving alerts for the account that left it.
+   */
   async logout(userId: string): Promise<void> {
+    const now = new Date();
     await this.prisma.user.update({
       where: { id: userId },
-      data: { refreshTokenHash: null, refreshTokenUpdatedAt: new Date() },
+      data: {
+        refreshTokenHash: null,
+        refreshTokenUpdatedAt: now,
+        pushToken: null,
+        pushTokenUpdatedAt: now,
+      },
+    });
+  }
+
+  /**
+   * Where push notifications for this account go. One device per account, matching the
+   * one-session model, so the newest registration wins. A token already held by another
+   * account means the phone changed hands, and the previous account loses it: alerts for
+   * one person must never arrive on somebody else's phone.
+   */
+  async registerPushToken(userId: string, token: string): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { pushToken: token, id: { not: userId } },
+        data: { pushToken: null, pushTokenUpdatedAt: now },
+      });
+      await tx.user.update({
+        where: { id: userId },
+        data: { pushToken: token, pushTokenUpdatedAt: now },
+      });
+    });
+  }
+
+  async clearPushToken(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: null, pushTokenUpdatedAt: new Date() },
     });
   }
 
@@ -299,7 +336,7 @@ export class AuthService {
   private async issue(user: User): Promise<AuthResult> {
     const [accessToken, refresh] = await Promise.all([
       this.tokens.signAccess(user.id, user.role),
-      this.tokens.signRefresh(user.id),
+      this.tokens.signRefresh(user.id, user.role),
     ]);
 
     await this.prisma.user.update({

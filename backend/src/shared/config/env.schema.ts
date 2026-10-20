@@ -68,6 +68,15 @@ export class EnvSchema {
   @Matches(/^\d+[smhd]$/, { message: 'JWT_REFRESH_TTL must look like 30d, 12h or 900' })
   JWT_REFRESH_TTL = '30d';
 
+  /**
+   * How long an elder stays signed in without opening the app. Far longer than anybody
+   * else, on purpose: an elder who has not needed the app for a month must not meet a
+   * sign-in screen at the moment they do. Their session still rotates on every use and
+   * still ends at once on sign-out, a password change or deactivation.
+   */
+  @Matches(/^\d+[smhd]$/, { message: 'JWT_REFRESH_TTL_ELDER must look like 3650d or 900' })
+  JWT_REFRESH_TTL_ELDER = '3650d';
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

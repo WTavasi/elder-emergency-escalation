@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { AuthService, type AuthResult, type UserSummary } from '../services/auth.service';
 import {
   CurrentUser,
@@ -9,6 +19,7 @@ import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 import { ChangePasswordDto } from '../validation/change-password.dto';
 import { GoogleSignInDto } from '../validation/google-sign-in.dto';
 import { LoginDto } from '../validation/login.dto';
+import { PushTokenDto } from '../validation/push-token.dto';
 import { RefreshDto } from '../validation/refresh.dto';
 import { RegisterDto } from '../validation/register.dto';
 import { ResetPasswordDto } from '../validation/reset-password.dto';
@@ -116,6 +127,28 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser): Promise<UserSummary> {
     return this.auth.me(user.userId);
+  }
+
+  /**
+   * This phone can receive push notifications, at this token. One device per account, so
+   * registering replaces whatever was there; the same token on another account, a phone
+   * that changed hands, is taken off that account.
+   */
+  @Throttle(30, 3600)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Put('me/push-token')
+  registerPushToken(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: PushTokenDto,
+  ): Promise<void> {
+    return this.auth.registerPushToken(user.userId, dto.token);
+  }
+
+  /** Stop sending this account push notifications, for a phone that turned them off. */
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete('me/push-token')
+  clearPushToken(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    return this.auth.clearPushToken(user.userId);
   }
 
   /** The signed-in person changing their own name or email. */

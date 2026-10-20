@@ -107,9 +107,6 @@ export interface EmergencySnapshot {
   state: EventState;
   severity: Severity;
   currentTier: number;
-  latitude: number;
-  longitude: number;
-  addressLabel: string | null;
   acknowledgedBy: string | null;
   triggeredAt: string;
   deadlineAt: string | null;
