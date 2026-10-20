@@ -26,6 +26,8 @@ the REST Client extension and a **Send Request** link appears above each one.
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
 | PATCH | `/api/v1/auth/me` | bearer | Change your own name or email (`email: null` removes it) |
 | POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
+| GET | `/api/v1/auth/me/preferences` | bearer | `{ shareWayThere }`, the defaults until something is changed |
+| PATCH | `/api/v1/auth/me/preferences` | bearer | Change any of them; only the named fields change |
 | PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
 | DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
 
@@ -89,9 +91,26 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome |
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
+| POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
+| POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 
-Every query is scoped to the caller's own care relationships. An emergency the caller is
-not part of returns 404 rather than 403, so the API does not confirm that an id exists.
+Every query is scoped to the caller's own care relationships, plus any emergency they
+were asked about outside them (an emergency responder matched by area). An emergency the
+caller is not part of returns 404 rather than 403, so the API does not confirm that an id
+exists.
+
+**On the way, and arrived.** A person who turned on "Share my way there"
+(`PATCH /auth/me/preferences { shareWayThere: true }`) and took an emergency on can send
+their position while they travel. The server works out the time to the elder (an OSRM
+route when `ROUTING_PROVIDER=osrm`, otherwise a straight-line estimate), keeps the last
+position in Redis for three minutes, and tells the room to re-read. The detail view then
+carries `journey`: `{ etaSeconds, distanceMetres, source, updatedAt, latitude, longitude }`,
+with the coordinates left out for the elder, who sees the time only. A position within
+`ARRIVAL_RADIUS_METRES` (100) of the alert, from a fix at least that precise, counts as
+arriving, the same as "I'm here". Arriving moves the emergency to `ON_SCENE`, sets
+`arrivedAt`, writes an `ARRIVED` audit entry with the seconds from the alert and from the
+acknowledgement, and forgets the position. No position is ever written to the database.
+An owner on scene can still call in a responder; `arrivedAt` stays set.
 
 Every alert carries the elder's **phone number**, so a caregiver can ring before deciding
 whether to set off, which is the most natural first move on receiving one. It widens

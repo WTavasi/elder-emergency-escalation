@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuditAction, CareLevel, EventState, Prisma, Role, Severity } from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
+import type { JourneyService } from './journey.service';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { SeverityService } from './severity.service';
@@ -77,7 +78,7 @@ interface PrismaMock {
     count: jest.Mock;
   };
   auditLog: { create: jest.Mock; createMany: jest.Mock; findMany: jest.Mock };
-  notification: { findMany: jest.Mock };
+  notification: { findMany: jest.Mock; findFirst: jest.Mock };
   $transaction: jest.Mock;
 }
 
@@ -111,7 +112,10 @@ const buildPrisma = (): PrismaMock => {
       createMany: jest.fn().mockResolvedValue({ count: 2 }),
       findMany: jest.fn().mockResolvedValue([]),
     },
-    notification: { findMany: jest.fn().mockResolvedValue([]) },
+    notification: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     $transaction: jest.fn(),
   };
   mock.$transaction.mockImplementation((fn: (tx: PrismaMock) => unknown) => fn(mock));
@@ -152,6 +156,7 @@ const build = (
     notifications,
     new NoopRealtimePublisher(),
     config,
+    { current: jest.fn().mockResolvedValue(null) } as unknown as JourneyService,
   );
 
 describe('AlertsService', () => {
@@ -575,6 +580,17 @@ describe('AlertsService', () => {
       );
     });
 
+    it('lets in somebody outside the chain who was asked about this emergency', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event());
+      prisma.careAssignment.findFirst.mockResolvedValue(null);
+      prisma.notification.findFirst.mockResolvedValue({ id: 'notification-1' });
+
+      await expect(
+        build(prisma).findOne(event().id, 'area-responder-1', Role.EMERGENCY_RESPONDER),
+      ).resolves.toBeDefined();
+    });
+
     it('lets a chain member and an administrator through', async () => {
       const prisma = buildPrisma();
       prisma.emergencyEvent.findUnique.mockResolvedValue(event());
@@ -646,9 +662,11 @@ describe('AlertsService', () => {
       await build(prisma).findForUser('caregiver-1', Role.CAREGIVER);
 
       const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
-        elderlyId: { in: string[] };
+        OR: [{ elderlyId: { in: string[] } }, { notifications: { some: { recipientId: string } } }];
       };
-      expect(where.elderlyId.in).toEqual(['caregiver-1', 'elder-1', 'elder-2']);
+      expect(where.OR[0].elderlyId.in).toEqual(['caregiver-1', 'elder-1', 'elder-2']);
+      // And anything they were asked about outside those chains, by area for instance.
+      expect(where.OR[1].notifications.some.recipientId).toBe('caregiver-1');
     });
 
     it("matches part of the elder's name, without regard to case", async () => {

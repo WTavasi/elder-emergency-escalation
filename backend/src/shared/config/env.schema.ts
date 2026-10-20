@@ -280,6 +280,37 @@ export class EnvSchema {
   GEOCODER_URL = 'https://nominatim.openstreetmap.org';
 
   /**
+   * How a responder's time to the elder is worked out while they share their way there.
+   * "estimate" uses the straight-line distance, a detour factor and a city driving speed,
+   * needs nothing from outside, and is the default so the test suites stay
+   * deterministic. "osrm" asks an OSRM router for a driving route, falling back to the
+   * estimate whenever it is slow, busy or unreachable. Switched on per run, like the
+   * notification providers.
+   */
+  @IsIn(['estimate', 'osrm'], { message: 'ROUTING_PROVIDER must be "estimate" or "osrm"' })
+  ROUTING_PROVIDER = 'estimate';
+
+  /**
+   * The OSRM router. The public demonstration server allows one request a second for
+   * non-commercial use (https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server),
+   * which the routing service keeps to across every responder. A busier deployment runs
+   * its own.
+   */
+  @IsUrl({ require_tld: false })
+  ROUTING_URL = 'https://router.project-osrm.org';
+
+  /**
+   * How close a shared position has to come to the alert's location to count as
+   * arriving. 100 metres covers a phone's usual accuracy in a city and the walk from
+   * the gate to the door.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(20)
+  @Max(1000)
+  ARRIVAL_RADIUS_METRES: number = 100;
+
+  /**
    * The OAuth client ID for Google sign-in on the console, from Google Cloud Console
    * (APIs & Services, Credentials, a Web application client). Not a secret: the console
    * shows it to every browser. Unset, the console offers no Google button.

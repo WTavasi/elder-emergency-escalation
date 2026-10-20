@@ -238,6 +238,10 @@ at the worst possible moment. There is now nothing in the raise path that can fa
 the request goes out, and the client-side precondition that used to be able to disable the
 panic control for an account with no registered home is gone with it.
 
+This applies to the elder. From Phase 1 a responder's phone can share where it is, but
+only when that person turns it on, only after they took an emergency on, and only until
+they arrive: see "Somebody on the way shares it by choice, and only the arrival is kept".
+
 The cost is precision. An alert raised while the person is out and about, with no stay
 recorded, is located at their home. That is an accepted limitation rather than an
 oversight: the away-from-home factor still works, because a recorded stay moves the alert
@@ -433,3 +437,31 @@ same build with push switched off: it never asks for notification permission.
 The server keeps one push address per account and moves an address to whoever
 registered it last, so a phone passed from one person to another never shows the first
 person's emergencies. Signing out clears it.
+
+## Somebody on the way shares it by choice, and only the arrival is kept
+
+"Help is coming" is the sentence an elder most needs, and it is twice as useful with a
+time attached. So a person who took an emergency on can share their way there, the way a
+ride-hailing app shows a driver coming. It is off until they turn it on, it only runs for
+an emergency they own, and it stops when they arrive or the emergency closes.
+
+The positions are kept in Redis for three minutes and never written to the database. What
+the database keeps is the time they arrived, as `arrivedAt` and an `ARRIVED` audit entry
+with the seconds from the alert and from the acknowledgement. That is the number the
+evaluation needs (how long until somebody was with the elder), and it carries no route.
+
+The elder sees how long and how far, not a map: a moving dot is one more thing to read at
+a bad moment, and "Mary is about 9 minutes away" is the whole message. The care circle
+and the console also see where, so a second person can decide not to set off.
+
+Arrival is a state, `ON_SCENE`, rather than only a timestamp, because the console's board
+and every screen's state label need to say "with the elder" at a glance. The timestamp is
+kept as well, because an owner on scene can still call in a responder, and "help arrived"
+must stay true when the state moves on.
+
+The time comes from OSRM, an open-source router over OpenStreetMap data, when it is
+switched on, and from a straight-line estimate (a 1.4 detour factor at 25 km/h) otherwise
+or whenever the router is slow or busy. The public OSRM server allows one request a
+second, so the server asks it at most every 30 seconds per emergency and scales the last
+route in between. Neither knows about Nairobi traffic, so the time is said as "about".
+

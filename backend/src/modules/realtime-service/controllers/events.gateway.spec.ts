@@ -176,6 +176,7 @@ describe('EventsGateway', () => {
         acknowledgedBy: null,
         triggeredAt: '2026-09-14T10:00:00.000Z',
         deadlineAt: '2026-09-14T10:02:00.000Z',
+        arrivedAt: null,
       });
     });
 

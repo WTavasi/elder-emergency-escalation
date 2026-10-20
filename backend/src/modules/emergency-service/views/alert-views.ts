@@ -1,4 +1,5 @@
 import type { AuditAction, EventOutcome, EventState, Role, Severity } from '@prisma/client';
+import type { JourneyView } from '../services/journey.service';
 
 /**
  * What a list of emergencies looks like to a screen.
@@ -43,6 +44,8 @@ export interface AlertSummary {
   withheld: Array<'phone' | 'location'>;
   triggeredAt: string;
   acknowledgedAt: string | null;
+  /** When the person who took it on reached the elder. Kept if the emergency moves on. */
+  arrivedAt: string | null;
   resolvedAt: string | null;
   deadlineAt: string | null;
   responderRequestedAt: string | null;
@@ -97,4 +100,10 @@ export interface AlertDetail extends AlertSummary {
   chain: ChainMember[];
   timeline: AuditEntry[];
   deliveries: DeliveryAttempt[];
+  /**
+   * The person who took it on, on their way, when they chose to share it. Null when
+   * nobody is sharing, they have arrived, or their last position is over three minutes
+   * old. The elder sees the time and the distance; their care circle also sees where.
+   */
+  journey: JourneyView | null;
 }

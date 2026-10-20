@@ -22,6 +22,7 @@ export interface EmergencySnapshot {
   acknowledgedBy: string | null;
   triggeredAt: string;
   deadlineAt: string | null;
+  arrivedAt: string | null;
 }
 
 export interface RealtimePublisher {
@@ -42,6 +43,7 @@ export function toSnapshot(event: EmergencyEvent): EmergencySnapshot {
     acknowledgedBy: event.acknowledgedBy,
     triggeredAt: event.triggeredAt.toISOString(),
     deadlineAt: event.currentTierDeadlineAt?.toISOString() ?? null,
+    arrivedAt: event.arrivedAt?.toISOString() ?? null,
   };
 }
 

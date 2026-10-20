@@ -32,8 +32,9 @@ describe('the emergency lifecycle table', () => {
   });
 
   it('treats only the unowned open states as waiting on an acknowledgement window', () => {
+    const owned: EventState[] = [EventState.ACKNOWLEDGED, EventState.ON_SCENE];
     expect([...AWAITING_STATES].sort()).toEqual(
-      OPEN_STATES.filter((state) => state !== EventState.ACKNOWLEDGED).sort(),
+      OPEN_STATES.filter((state) => !owned.includes(state)).sort(),
     );
   });
 
@@ -47,11 +48,24 @@ describe('the emergency lifecycle table', () => {
 
   it('never cancels an emergency somebody has taken on', () => {
     expect(canTransition(EventState.ACKNOWLEDGED, EventState.CANCELLED)).toBe(false);
+    expect(canTransition(EventState.ON_SCENE, EventState.CANCELLED)).toBe(false);
+  });
+
+  it('reaches the elder only from an emergency somebody could own', () => {
+    expect(sourcesOf(EventState.ON_SCENE).sort()).toEqual(
+      [EventState.ACKNOWLEDGED, EventState.ESCALATED].sort(),
+    );
+  });
+
+  it('lets somebody with the elder still call in a responder', () => {
+    expect(canTransition(EventState.ON_SCENE, EventState.ESCALATED)).toBe(true);
   });
 
   it('never sends an owned or escalated emergency back to merely notified', () => {
     expect(canTransition(EventState.ACKNOWLEDGED, EventState.NOTIFIED)).toBe(false);
     expect(canTransition(EventState.ESCALATED, EventState.NOTIFIED)).toBe(false);
+    expect(canTransition(EventState.ON_SCENE, EventState.NOTIFIED)).toBe(false);
+    expect(canTransition(EventState.ON_SCENE, EventState.ACKNOWLEDGED)).toBe(false);
   });
 
   it('lets a resolved emergency go nowhere', () => {

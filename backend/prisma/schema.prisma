@@ -47,6 +47,9 @@ enum EventState {
   TRIGGERED
   NOTIFIED
   ACKNOWLEDGED
+  /// EXTENSION. The person who took it on is with the elder. Reached by "I'm here" or
+  /// by their shared position coming within the arrival radius.
+  ON_SCENE
   ESCALATED
   RESOLVED
   CANCELLED
@@ -118,6 +121,8 @@ enum AuditAction {
   DECLINED
   ESCALATED
   RESPONDER_REQUESTED
+  /// EXTENSION. The owner reached the elder.
+  ARRIVED
   REOPENED
   RESOLVED
   CANCELLED
@@ -139,15 +144,15 @@ enum ConsentType {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String    @id @default(uuid()) @map("user_id") @db.Uuid
-  name         String    @db.VarChar(120)
-  phone        String    @unique @db.VarChar(20)
-  email        String?   @unique @db.VarChar(160)
+  id           String   @id @default(uuid()) @map("user_id") @db.Uuid
+  name         String   @db.VarChar(120)
+  phone        String   @unique @db.VarChar(20)
+  email        String?  @unique @db.VarChar(160)
   role         Role
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  timezone     String    @default("Africa/Nairobi") @db.VarChar(64)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  timezone     String   @default("Africa/Nairobi") @db.VarChar(64)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   /// EXTENSION. SHA-256 of the current refresh token, never the token itself, so a
   /// stolen database yields no usable sessions. Null means signed out everywhere.
@@ -182,14 +187,14 @@ model User {
   /// away from home when one actually happens, and alerts raised during it carry that
   /// place. The away-from-home severity factor measures against homeLatitude and
   /// homeLongitude, which never move, so the factor still scores.
-  currentLatitude   Decimal?  @map("current_latitude") @db.Decimal(9, 6)
-  currentLongitude  Decimal?  @map("current_longitude") @db.Decimal(9, 6)
-  currentPlaceLabel String?   @map("current_place_label") @db.VarChar(200)
-  currentPlaceSetAt DateTime? @map("current_place_set_at") @db.Timestamptz(3)
+  currentLatitude     Decimal?  @map("current_latitude") @db.Decimal(9, 6)
+  currentLongitude    Decimal?  @map("current_longitude") @db.Decimal(9, 6)
+  currentPlaceLabel   String?   @map("current_place_label") @db.VarChar(200)
+  currentPlaceSetAt   DateTime? @map("current_place_set_at") @db.Timestamptz(3)
   /// Who recorded the stay. A plain column rather than a relation: a self-relation on
   /// User for one accountability breadcrumb would complicate every query that touches
   /// an account, and nothing joins on this.
-  currentPlaceSetById String? @map("current_place_set_by_id") @db.Uuid
+  currentPlaceSetById String?   @map("current_place_set_by_id") @db.Uuid
 
   // --- emergency-responder-only columns, null for every other role ---
   // coverage_area from Figure 4.4, given physical form as a named area plus a
@@ -211,6 +216,7 @@ model User {
   consentsIGranted   ConsentRecord[]   @relation("consentGrantor")
   invitationsAsElder ChainInvitation[] @relation("invitationElder")
   invitationsSent    ChainInvitation[] @relation("invitationSender")
+  preferences        UserPreference?
 
   @@index([role])
   @@map("users")
@@ -299,14 +305,18 @@ model EmergencyEvent {
   /// responder, which supersedes the automatic chain and stops pending timers.
   responderRequestedAt DateTime? @map("responder_requested_at") @db.Timestamptz(3)
 
-  triggeredAt  DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
+  triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
-  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(3)
+  /// EXTENSION. When the owner reached the elder. Kept when the emergency moves on (an
+  /// owner on scene may still call in a responder), so "help arrived" stays true.
+  /// Only the time is kept: the positions shared on the way live in Redis and expire.
+  arrivedAt      DateTime? @map("arrived_at") @db.Timestamptz(3)
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
 
-  elder      User           @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
-  owner      User?          @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  elder         User           @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
+  owner         User?          @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
   notifications Notification[]
-  auditLogs  AuditLog[]
+  auditLogs     AuditLog[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -321,13 +331,13 @@ model EmergencyEvent {
 // ---------------------------------------------------------------------------
 
 model EscalationRule {
-  id            String @id @default(uuid()) @map("rule_id") @db.Uuid
+  id String @id @default(uuid()) @map("rule_id") @db.Uuid
 
   /// EXTENSION. Severity selects which rule set applies, which is how severity
   /// changes the escalation policy rather than the content of the alert.
   severity      Severity
-  tierOrder     Int    @map("tier_order") @db.SmallInt
-  responderRole Role   @map("responder_role")
+  tierOrder     Int      @map("tier_order") @db.SmallInt
+  responderRole Role     @map("responder_role")
 
   /// Null means no timeout, which is correct for the last tier: an emergency
   /// responder is the end of the chain and there is nowhere left to escalate.
@@ -487,4 +497,23 @@ model ChainInvitation {
   @@unique([elderlyId, phone])
   @@index([phone])
   @@map("chain_invitations")
+}
+
+/// EXTENSION. Choices a person makes about how they help, one row per person, created
+/// the first time one is changed. A missing row means every default.
+///
+/// Columns rather than a key-value bag, so each choice has a type, a default and a
+/// migration that says when it arrived.
+model UserPreference {
+  userId String @id @map("user_id") @db.Uuid
+
+  /// Share my position with the elder's care circle while I am on my way to an
+  /// emergency I took on. Off until the person turns it on.
+  shareWayThere Boolean @default(false) @map("share_way_there")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }

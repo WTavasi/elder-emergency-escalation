@@ -32,14 +32,20 @@ export const TRANSITIONS: Readonly<Record<EventState, readonly EventState[]>> = 
   // Cancelling is still possible here: an empty tier one escalates inside the cancel
   // window, and an elder who pressed by mistake must not lose the right to withdraw it
   // because the first person in their chain was missing.
+  // ON_SCENE from here only for an owner who called in a responder on the way and then
+  // arrived; the arrival service checks that there is an owner.
   [EventState.ESCALATED]: [
     EventState.ESCALATED,
     EventState.ACKNOWLEDGED,
+    EventState.ON_SCENE,
     EventState.RESOLVED,
     EventState.CANCELLED,
   ],
-  // The owner calling in an emergency responder is the one way out other than closing.
-  [EventState.ACKNOWLEDGED]: [EventState.ESCALATED, EventState.RESOLVED],
+  // Owned and on the way. Arriving, calling in an emergency responder, or closing.
+  [EventState.ACKNOWLEDGED]: [EventState.ON_SCENE, EventState.ESCALATED, EventState.RESOLVED],
+  // With the elder. The owner can still call in a responder, which keeps the arrival
+  // time; otherwise the next move is closing.
+  [EventState.ON_SCENE]: [EventState.ESCALATED, EventState.RESOLVED],
   [EventState.RESOLVED]: [],
   // A cancelled alert that could not be confirmed as a false alarm can be put back.
   [EventState.CANCELLED]: [EventState.TRIGGERED],
@@ -58,6 +64,7 @@ export const OPEN_STATES: EventState[] = [
   EventState.TRIGGERED,
   EventState.NOTIFIED,
   EventState.ACKNOWLEDGED,
+  EventState.ON_SCENE,
   EventState.ESCALATED,
 ];
 
