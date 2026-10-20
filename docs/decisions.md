@@ -465,3 +465,13 @@ or whenever the router is slow or busy. The public OSRM server allows one reques
 second, so the server asks it at most every 30 seconds per emergency and scales the last
 route in between. Neither knows about Nairobi traffic, so the time is said as "about".
 
+On the phone, location access is asked for when the person turns the setting on, not
+when they take an emergency on, because the second moment is the worst one to put a
+system dialog in front of somebody. Only "while using the app" access is asked for. The
+sharing still carries on behind a maps app, which is where somebody following directions
+will be, through a foreground service on Android and the location background mode on
+iOS. Both are visible: Android shows a notification and iOS the blue location indicator
+for as long as it runs, so a person can always see that they are being shared. The
+elder's phone never asks for location at all; nothing in the elder's side of the app
+reads it.
+

@@ -382,6 +382,59 @@ permission, and everything else works.
 Firebase under Cloud Messaging. Without one, the iOS app runs and simply registers no
 push address. Android is enough for the demonstration.
 
+### Step 8 (optional). Share the way there
+
+A caregiver who turns on **Share my way there** and takes an emergency on shares where
+they are until they arrive. Grace's phone shows "Mary Otieno is coming" with the minutes
+left; anybody else in the circle also gets a "See where Mary is" button. Nobody has to
+drive anywhere to try it: both emulators can pretend to move.
+
+You need two sessions: the elder (Grace, `+254700000010`) and the caregiver (Mary,
+`+254700000020`). The easiest pair is the Android emulator for Mary and the iOS Simulator
+for Grace, or Postman for Grace (folder **2b** raises her alert).
+
+1. **Turn sharing on as Mary.** Sign in as Mary, open **Me**, and switch on **Share my
+   way there**. The phone asks for location access; choose **While using the app**, and
+   on Android keep **Precise** selected. The switch only stays on once access is
+   allowed.
+
+2. **Put Mary 2 km away.** Grace's home in the seed data is Kileleshwa, at
+   `-1.2833, 36.7833`. Give Mary's emulator a place a little way off:
+   - **Android emulator:** click **⋯** (Extended controls) on the emulator's side bar,
+     open **Location**, search for **Westlands, Nairobi** (or type `-1.268, 36.811`),
+     and click **Set location**.
+   - **iOS Simulator:** in the menu bar, **Features → Location → Custom Location…**, and
+     enter latitude `-1.268` and longitude `36.811`.
+
+3. **Raise an alert as Grace**, from her app or with Postman.
+
+4. **Take it on as Mary.** Open the alert and press **I am on my way**. Within a few
+   seconds the screen says **About N minutes to Grace**, and Grace's screen moves to
+   **Coming** with the same time.
+
+5. **Move Mary closer.** Set the emulator's location to Grace's home, `-1.2833, 36.7833`.
+   Within about 12 seconds, inside 100 m, the alert becomes **Help arrived** on its own,
+   and sharing stops. To try the manual way instead, swipe **Swipe when you are with
+   Grace** at the bottom of Mary's screen before moving her.
+
+   The Android emulator can also play a route: in **Location**, open the **Routes** tab,
+   set a start and an end, and press **Play route**. The iOS Simulator's **Features →
+   Location → City Run** moves the phone continuously, though around Cupertino rather
+   than Nairobi, so the minutes will be large.
+
+While sharing, Android shows a **Sharing your way there** notification and iOS shows the
+blue location indicator. Both disappear when sharing stops.
+
+**Real road times.** By default the time is a straight-line estimate. To use real routes,
+start the API with the public OSRM router switched on for that run:
+
+```bash
+ROUTING_PROVIDER=osrm npm run dev
+```
+
+The public server allows one request a second and is for testing only, so leave it off
+unless you are looking at the times.
+
 ---
 
 ## The first run on a new machine, or after pulling changes
