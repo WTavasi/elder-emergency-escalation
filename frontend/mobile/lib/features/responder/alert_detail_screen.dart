@@ -862,7 +862,7 @@ class _OnTheWay extends StatelessWidget {
         Text(
           latest == null
               ? 'Finding where you are'
-              : '${_capitalised(minutesAway(latest.etaSeconds))} to $elder',
+              : '${_capitalised(timeAway(latest.etaSeconds))} to $elder',
           style: theme.textTheme.titleLarge,
         ),
         const SizedBox(height: MzaziSpace.s4),
@@ -928,7 +928,7 @@ class _OnTheWay extends StatelessWidget {
     final String how = shared.byRoad ? 'by road' : 'in a straight line';
 
     return _section(<Widget>[
-      Text('$owner is ${minutesAway(shared.etaSeconds)} away', style: theme.textTheme.titleLarge),
+      Text('$owner is ${timeAway(shared.etaSeconds)} away', style: theme.textTheme.titleLarge),
       const SizedBox(height: MzaziSpace.s4),
       Text(
         '${distanceWords(shared.distanceMetres)} $how, updated '

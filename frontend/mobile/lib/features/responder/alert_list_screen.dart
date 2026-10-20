@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
@@ -65,6 +67,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
                 subtitleColor: theme.colorScheme.error,
               ),
               _ViewSwitch(openOnly: alerts.openOnly, onChanged: alerts.setOpenOnly),
+              if (!alerts.openOnly) _HistorySearch(alerts: alerts),
               if (alerts.error != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -105,13 +108,19 @@ class _AlertListScreenState extends State<AlertListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                alerts.openOnly ? 'All clear' : 'No history yet',
+                alerts.openOnly
+                    ? 'All clear'
+                    : alerts.isSearching
+                    ? 'Nothing found'
+                    : 'No history yet',
                 style: theme.textTheme.titleLarge,
               ),
               const SizedBox(height: MzaziSpace.s8),
               Text(
                 alerts.openOnly
                     ? 'No open alerts. You will see one here the moment it is raised.'
+                    : alerts.isSearching
+                    ? 'No alerts match. Try part of a name, or other dates.'
                     : 'Alerts you were part of will be listed here once there are some.',
                 style: theme.textTheme.bodyLarge,
               ),
@@ -216,6 +225,122 @@ String dayHeading(DateTime moment, {DateTime? now}) {
   if (daysAgo == 0) return 'Today';
   if (daysAgo == 1) return 'Yesterday';
   return '${_weekdays[day.weekday - 1]} ${day.day} ${_months[day.month - 1]}';
+}
+
+/// Searching history: part of a name, the elder's or whoever attended, and the days.
+///
+/// A plain field and a calendar button under the tabs, only on History. The open list
+/// is short and urgent, and a search box over it would be in the way.
+class _HistorySearch extends StatefulWidget {
+  const _HistorySearch({required this.alerts});
+
+  final AlertsController alerts;
+
+  @override
+  State<_HistorySearch> createState() => _HistorySearchState();
+}
+
+class _HistorySearchState extends State<_HistorySearch> {
+  late final TextEditingController _text = TextEditingController(text: widget.alerts.search);
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDays() async {
+    final DateTime today = DateUtils.dateOnly(DateTime.now());
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(today.year - 2),
+      lastDate: today,
+      initialDateRange: widget.alerts.days,
+      helpText: 'Alerts raised between',
+      saveText: 'Show',
+    );
+    if (picked != null) await widget.alerts.setDays(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final DateTimeRange? days = widget.alerts.days;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s12, MzaziSpace.s8, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: TextField(
+                  controller: _text,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Elder or who attended',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _text.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear the search',
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _text.clear();
+                              widget.alerts.setSearch('');
+                              setState(() {});
+                            },
+                          ),
+                  ),
+                  onChanged: (String value) {
+                    widget.alerts.setSearch(value);
+                    // Shows or hides the clear button.
+                    setState(() {});
+                  },
+                ),
+              ),
+              IconButton(
+                tooltip: 'Choose dates',
+                icon: Icon(days == null ? Icons.calendar_today_outlined : Icons.event),
+                onPressed: () => unawaited(_pickDays()),
+              ),
+            ],
+          ),
+          if (days != null)
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    'Raised ${_rangeWords(days)}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => unawaited(widget.alerts.setDays(null)),
+                  child: const Text('All dates'),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// "today", "on Mon 12 Oct", or "from Mon 12 Oct to today", to follow "Raised".
+  static String _rangeWords(DateTimeRange days) {
+    final String start = _day(days.start);
+    if (DateUtils.isSameDay(days.start, days.end)) {
+      return start == 'today' || start == 'yesterday' ? start : 'on $start';
+    }
+    return 'from $start to ${_day(days.end)}';
+  }
+
+  /// A day heading in the middle of a sentence, where "Today" is "today".
+  static String _day(DateTime day) {
+    final String heading = dayHeading(day);
+    return heading == 'Today' || heading == 'Yesterday' ? heading.toLowerCase() : heading;
+  }
 }
 
 /// Open or History, as two words over a rule, the chosen one underlined in ink.
@@ -379,7 +504,11 @@ class _AlertRow extends StatelessWidget {
 
   /// Who it is with, when that is what the reader most needs next.
   static String? _who(AlertSummary alert) {
-    if (!alert.state.isOpen) return null;
+    // In history, who attended, which is also what a search by name finds.
+    if (!alert.state.isOpen) {
+      return alert.ownerName == null ? null : '${alert.ownerName} attended';
+    }
+    if (alert.state == EventState.onScene) return '${alert.ownerName} is there';
     if (alert.isAnswered) return '${alert.ownerName} is responding';
     return 'Tier ${alert.currentTier}';
   }

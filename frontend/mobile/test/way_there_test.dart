@@ -226,10 +226,13 @@ void main() {
 
   group('words', () {
     test('say the time and distance the way a person would', () {
-      expect(minutesAway(30), 'less than a minute');
-      expect(minutesAway(90), 'about 2 minutes');
-      expect(minutesAway(60), 'about 1 minute');
-      expect(minutesAway(540), 'about 9 minutes');
+      expect(timeAway(30), 'less than a minute');
+      expect(timeAway(90), 'about 2 minutes');
+      expect(timeAway(60), 'about 1 minute');
+      expect(timeAway(540), 'about 9 minutes');
+      expect(timeAway(3600), 'about 1 hour');
+      expect(timeAway(4500), 'about 1 hour 15 minutes');
+      expect(timeAway(7260), 'about 2 hours 1 minute');
       expect(distanceWords(648), '650 m');
       expect(distanceWords(4210), '4.2 km');
     });

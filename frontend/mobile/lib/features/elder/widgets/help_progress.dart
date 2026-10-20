@@ -39,7 +39,7 @@ class HelpProgress extends StatelessWidget {
     };
     // The time only, while they are on their way.
     final String? when = step == 1 && journey != null
-        ? '${_capitalised(minutesAway(journey.etaSeconds))} away.'
+        ? '${_capitalised(timeAway(journey.etaSeconds))} away.'
         : null;
     final String detail = switch (step) {
       2 => 'Help has reached you.',

@@ -365,9 +365,27 @@ class ApiClient {
   ///
   /// [open] narrows to the ones still running, which is what a responder wants nearly
   /// always; the full history is the same call without it.
-  Future<List<AlertSummary>> alerts({bool open = false, int limit = 50}) async {
-    final String query = open ? '?open=true&limit=$limit' : '?limit=$limit';
-    final Object? body = await _sendRaw('GET', '/alerts$query');
+  ///
+  /// [search] matches the elder's name or the name of whoever took it on; [from] and
+  /// [to] bound when it was raised. Sent as UTC, so a day picked on the phone means the
+  /// same hours on the server.
+  Future<List<AlertSummary>> alerts({
+    bool open = false,
+    int limit = 50,
+    String? search,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final String query = Uri(
+      queryParameters: <String, String>{
+        if (open) 'open': 'true',
+        'limit': '$limit',
+        if (search != null && search.trim().isNotEmpty) 'q': search.trim(),
+        if (from != null) 'from': from.toUtc().toIso8601String(),
+        if (to != null) 'to': to.toUtc().toIso8601String(),
+      },
+    ).query;
+    final Object? body = await _sendRaw('GET', '/alerts?$query');
     if (body is! List<dynamic>) return const <AlertSummary>[];
     return body
         .whereType<Map<String, dynamic>>()
