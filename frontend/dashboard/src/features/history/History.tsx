@@ -11,6 +11,7 @@ const STATES: EventState[] = [
   'TRIGGERED',
   'NOTIFIED',
   'ACKNOWLEDGED',
+  'ON_SCENE',
   'ESCALATED',
   'RESOLVED',
   'CANCELLED',
@@ -24,6 +25,7 @@ const STATE_OPTION: Record<EventState, string> = {
   TRIGGERED: 'Waiting, nobody told yet',
   NOTIFIED: 'Waiting, people told',
   ACKNOWLEDGED: 'Being handled',
+  ON_SCENE: 'Help arrived',
   ESCALATED: 'Escalated',
   RESOLVED: 'Closed',
   CANCELLED: 'Withdrawn',
@@ -176,11 +178,11 @@ export function History() {
         >
           <label className="search" htmlFor="filter-q">
             <Icon name="search" size={18} />
-            <span className="visually-hidden">Search by elder name</span>
+            <span className="visually-hidden">Search by elder or who attended</span>
             <input
               id="filter-q"
               type="search"
-              placeholder="Search by elder name"
+              placeholder="Search by elder or who attended"
               value={form.q}
               onChange={(changeEvent) => set('q', changeEvent.target.value)}
             />

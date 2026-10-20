@@ -26,6 +26,13 @@ describe('composeNotification', () => {
     expect(message.body).toContain('Nobody has responded');
   });
 
+  it('never reads as a fresh call for help once somebody is with the elder', () => {
+    const message = forState(EventState.ON_SCENE);
+    expect(message.title).toBe('Someone is with Grace');
+    expect(message.body).toContain('No action needed');
+    expect(message.data.action).toBe('view');
+  });
+
   it('tells the caregiver a cancellation may be a mistake and invites a call', () => {
     const message = forState(EventState.CANCELLED);
     expect(message.title).toBe('Grace cancelled the alert');

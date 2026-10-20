@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mzazicare/core/api/api_client.dart';
+import 'package:mzazicare/core/location/position_source.dart';
 
 /// A recorded exchange: what the client asked for, and what it was told.
 class Exchange {
@@ -202,3 +204,26 @@ Map<String, dynamic> detailBody({
   ],
   'deliveries': <Map<String, dynamic>>[],
 };
+
+/// A phone whose location answers are scripted, and whose readings are pushed by hand.
+class FakePositionSource implements PositionSource {
+  FakePositionSource({this.answer = LocationAccess.granted});
+
+  LocationAccess answer;
+  final List<bool> asked = <bool>[];
+  final StreamController<Fix> readings = StreamController<Fix>.broadcast();
+
+  @override
+  Future<LocationAccess> access({required bool ask}) async {
+    asked.add(ask);
+    return answer;
+  }
+
+  @override
+  Stream<Fix> watch() => readings.stream;
+
+  @override
+  Future<void> openSettings(LocationAccess access) async {}
+
+  Future<void> close() => readings.close();
+}

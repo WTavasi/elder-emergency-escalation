@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/location/position_source.dart';
+import '../../core/location/way_there.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -42,6 +44,10 @@ class ProfileScreen extends StatelessWidget {
                         Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
                         const SizedBox(height: MzaziSpace.s32),
                         _DetailsForm(account: account),
+                        if (account.role.responds && WayThere.maybeOf(context) != null) ...<Widget>[
+                          const SizedBox(height: MzaziSpace.s32),
+                          _WayThereSetting(way: WayThere.maybeOf(context)!),
+                        ],
                         const SizedBox(height: MzaziSpace.s32),
                         const _PasswordForm(),
                         const SizedBox(height: MzaziSpace.s32),
@@ -288,6 +294,59 @@ class _PasswordFormState extends State<_PasswordForm> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Share my way there", with what it means said beside the switch.
+///
+/// Turning it on asks for location access there and then, while the person is calm
+/// and reading, rather than at the moment they take an emergency on.
+class _WayThereSetting extends StatelessWidget {
+  const _WayThereSetting({required this.way});
+
+  final WayThere way;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: way,
+      builder: (BuildContext context, Widget? _) {
+        final bool settings =
+            way.access == LocationAccess.deniedForever || way.access == LocationAccess.serviceOff;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const SectionLabel('On the way'),
+            const SizedBox(height: MzaziSpace.s8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Share my way there'),
+              subtitle: const Text(
+                'When you take an emergency on, the elder sees how long you will be and '
+                'the rest of the circle sees where you are, until you arrive. Where you '
+                'were is not kept.',
+              ),
+              value: way.enabled,
+              onChanged: !way.isLoaded || way.isSaving
+                  ? null
+                  : (bool on) => unawaited(way.setEnabled(on)),
+            ),
+            if (way.problem != null && way.eventId == null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s8),
+              Notice(message: way.problem!, isError: true),
+              if (settings)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    onPressed: () => unawaited(way.openSettings()),
+                    child: const Text('Open settings'),
+                  ),
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

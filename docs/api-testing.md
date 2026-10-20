@@ -99,6 +99,7 @@ second way is the better one for a demonstration.
 | Folder | What it shows |
 | --- | --- |
 | **2. An emergency, start to finish** | Grace raises an alert, Mary sees it in her list, opens it, takes it on and closes it |
+| **2b. On the way, and arriving** | Mary turns on sharing, takes Grace's alert on, shares a position about 2 km away (an ETA comes back), Grace sees the time but not the position, the family member sees both, Mary reaches the gate and it becomes ON_SCENE with the arrival time, then she closes it and turns sharing off |
 | **3. Declining moves it on** | Mary cannot come, so tier 2 is asked at once; the family member takes it on, calls in a responder and closes it |
 | **4. Withdrawing and reopening** | Grace withdraws inside the 10 second grace window; Mary reopens it because she could not reach her |
 

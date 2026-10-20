@@ -142,10 +142,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: <Widget>[
           Text('Forgot your password?', style: theme.textTheme.titleLarge),
           const SizedBox(height: MzaziSpace.s8),
-          Text(
-            'Enter the phone number you sign in with. We will send a code to it by SMS.',
-            style: theme.textTheme.bodyLarge,
-          ),
+          Text('We will send a code by SMS.', style: theme.textTheme.bodyLarge),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(
             controller: _phone,

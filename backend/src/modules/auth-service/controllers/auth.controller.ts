@@ -25,13 +25,16 @@ import { RegisterDto } from '../validation/register.dto';
 import { ResetPasswordDto } from '../validation/reset-password.dto';
 import { StartVerificationDto } from '../validation/start-verification.dto';
 import { UpdateProfileDto } from '../validation/update-profile.dto';
+import { UpdatePreferencesDto } from '../validation/update-preferences.dto';
 import { PhoneVerificationService } from '../services/phone-verification.service';
+import { PreferencesService, type Preferences } from '../services/preferences.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly verification: PhoneVerificationService,
+    private readonly preferences: PreferencesService,
   ) {}
 
   /**
@@ -142,6 +145,25 @@ export class AuthController {
     @Body() dto: PushTokenDto,
   ): Promise<void> {
     return this.auth.registerPushToken(user.userId, dto.token);
+  }
+
+  /** The choices this person has made about how they help. Defaults until they change one. */
+  @Get('me/preferences')
+  getPreferences(@CurrentUser() user: AuthenticatedUser): Promise<Preferences> {
+    return this.preferences.get(user.userId);
+  }
+
+  /**
+   * Changes the named choices. Open to everyone signed in: a choice that does not apply
+   * to a role (an elder sharing a way there) simply never takes effect.
+   */
+  @Throttle(30, 3600)
+  @Patch('me/preferences')
+  updatePreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdatePreferencesDto,
+  ): Promise<Preferences> {
+    return this.preferences.update(user.userId, dto);
   }
 
   /** Stop sending this account push notifications, for a phone that turned them off. */

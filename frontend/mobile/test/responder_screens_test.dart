@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/location/way_there.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/responder/alert_detail_controller.dart';
 import 'package:mzazicare/features/responder/alert_detail_screen.dart';
@@ -515,5 +516,182 @@ void main() {
     }
 
     controller.dispose();
+  });
+
+  group('on the way', () {
+    Map<String, dynamic> owned({String? arrivedAt, Map<String, dynamic>? journey}) =>
+        <String, dynamic>{
+          ...detailBody(
+            state: arrivedAt == null ? 'ACKNOWLEDGED' : 'ON_SCENE',
+            acknowledgedBy: <String, dynamic>{
+              'id': 'caregiver-1',
+              'name': 'Peter Mwangi',
+              'role': 'CAREGIVER',
+            },
+          ),
+          'arrivedAt': arrivedAt,
+          'journey': journey,
+        };
+
+    testWidgets('the person on their way swipes to say they have arrived', (
+      WidgetTester tester,
+    ) async {
+      bool arrived = false;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/arrived')) {
+          arrived = true;
+          return <http.Response>[json(<String, dynamic>{})];
+        }
+        return <http.Response>[
+          json(owned(arrivedAt: arrived ? DateTime.now().toUtc().toIso8601String() : null)),
+        ];
+      });
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myId: 'caregiver-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Swipe when you are with Grace'), findsOneWidget);
+      // Closing is still possible on the way, a step back from arriving.
+      expect(find.text('Close this emergency'), findsOneWidget);
+
+      await tester.drag(find.byIcon(Icons.arrow_forward), const Offset(2000, 0));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(t.calls.map((Exchange e) => e.path), contains('/api/v1/alerts/event-1/arrived'));
+      expect(find.text('Peter Mwangi arrived just now.'), findsOneWidget);
+      expect(find.text('Help arrived'), findsOneWidget);
+      expect(find.text('Swipe when you are with Grace'), findsNothing);
+
+      controller.dispose();
+    });
+
+    testWidgets('the rest of the circle sees how long, and where on a map', (
+      WidgetTester tester,
+    ) async {
+      final Map<String, dynamic> body = owned(
+        journey: <String, dynamic>{
+          'etaSeconds': 540,
+          'distanceMetres': 4200,
+          'source': 'osrm',
+          'updatedAt': DateTime.now().toUtc().toIso8601String(),
+          'latitude': -1.27,
+          'longitude': 36.82,
+        },
+      );
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(body)],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myId: 'family-1',
+      );
+      final List<Uri> opened = <Uri>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          controller,
+          AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED')),
+          open: (Uri uri) async {
+            opened.add(uri);
+            return true;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Peter is about 9 minutes away'), findsOneWidget);
+      expect(find.text('4.2 km by road, updated just now.'), findsOneWidget);
+      // Not theirs, so nothing to swipe.
+      expect(find.text('Swipe when you are with Grace'), findsNothing);
+
+      await tester.ensureVisible(find.text('See where Peter is'));
+      await tester.tap(find.text('See where Peter is'));
+      await tester.pump();
+
+      expect(opened.single.queryParameters['query'], '-1.27,36.82');
+      controller.dispose();
+    });
+
+    testWidgets('stopping the sharing asks first, and keeping it is the easy answer', (
+      WidgetTester tester,
+    ) async {
+      final FakePositionSource source = FakePositionSource();
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/preferences')) {
+          return <http.Response>[
+            json(<String, dynamic>{'shareWayThere': true}),
+          ];
+        }
+        return <http.Response>[json(owned())];
+      });
+      final WayThere way = WayThere(api: t.api, source: source, every: const Duration(hours: 1));
+      await way.follow('caregiver-1');
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myId: 'caregiver-1',
+        wayThere: way,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sharing your location'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Stop sharing'));
+      await tester.tap(find.text('Stop sharing'));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop sharing your way there?'), findsOneWidget);
+
+      await tester.tap(find.text('Keep sharing'));
+      await tester.pumpAndSettle();
+      expect(way.isSharingFor('event-1'), isTrue);
+
+      await tester.tap(find.text('Stop sharing'));
+      await tester.pumpAndSettle();
+      // The dialog's own button, drawn above the page.
+      await tester.tap(find.text('Stop sharing').last);
+      await tester.pumpAndSettle();
+
+      expect(way.isSharingFor('event-1'), isFalse);
+      expect(find.text('Share my way there'), findsOneWidget);
+
+      controller.dispose();
+      way.dispose();
+      await source.close();
+    });
+
+    testWidgets('nothing about the way there once they have arrived', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[
+          json(owned(arrivedAt: DateTime.now().toUtc().toIso8601String())),
+        ],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myId: 'family-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ON_SCENE'))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('On the way'.toUpperCase()), findsNothing);
+      expect(find.text('On the way'), findsNothing);
+      expect(find.text('Peter Mwangi arrived just now.'), findsOneWidget);
+      controller.dispose();
+    });
   });
 }

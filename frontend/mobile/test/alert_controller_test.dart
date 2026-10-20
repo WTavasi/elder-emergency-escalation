@@ -191,4 +191,84 @@ void main() {
       alerts.dispose();
     });
   });
+
+  group('signing back in', () {
+    test('picks up an emergency that is still open and shows help coming', () async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/alerts')) {
+          return <http.Response>[
+            json(<Map<String, dynamic>>[summaryBody(state: 'ACKNOWLEDGED')]),
+          ];
+        }
+        return <http.Response>[
+          json(
+            emergencyBody(
+              state: 'ACKNOWLEDGED',
+              acknowledgedBy: <String, dynamic>{
+                'id': 'c1',
+                'name': 'Mary Otieno',
+                'role': 'CAREGIVER',
+              },
+            ),
+          ),
+        ];
+      });
+
+      final AlertController alerts = build(t.api);
+      await alerts.resume();
+
+      expect(t.calls.first.path, '/api/v1/alerts');
+      expect(alerts.phase, AlertPhase.live);
+      expect(alerts.emergency?.acknowledgedByName, 'Mary Otieno');
+      alerts.dispose();
+    });
+
+    test('leaves the help button when nothing is open', () async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(<Map<String, dynamic>>[])],
+      );
+
+      final AlertController alerts = build(t.api);
+      await alerts.resume();
+
+      expect(alerts.phase, AlertPhase.idle);
+      expect(alerts.canRaise, isTrue);
+      alerts.dispose();
+    });
+
+    test('never replaces a press that started while it was asking', () async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.method == 'GET' && request.url.path.endsWith('/alerts')) {
+          return <http.Response>[
+            json(<Map<String, dynamic>>[summaryBody()]),
+          ];
+        }
+        return <http.Response>[json(emergencyBody())];
+      });
+
+      final AlertController alerts = build(t.api);
+      final Future<void> resuming = alerts.resume();
+      await alerts.raise();
+      await resuming;
+
+      // Still in the window the press opened, not jumped past it by the resume.
+      expect(alerts.phase, AlertPhase.cancellable);
+      alerts.dispose();
+    });
+
+    test('a failure to ask leaves the help button, with no error shown', () async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[
+          json(<String, String>{'message': 'offline'}, 500),
+        ],
+      );
+
+      final AlertController alerts = build(t.api);
+      await alerts.resume();
+
+      expect(alerts.phase, AlertPhase.idle);
+      expect(alerts.error, isNull);
+      alerts.dispose();
+    });
+  });
 }

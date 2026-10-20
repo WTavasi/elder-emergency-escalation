@@ -61,6 +61,7 @@ class AlertController extends ChangeNotifier {
   int _secondsLeft = 0;
   Timer? _countdown;
   Timer? _poll;
+  bool _disposed = false;
 
   AlertPhase get phase => _phase;
   Emergency? get emergency => _emergency;
@@ -70,6 +71,35 @@ class AlertController extends ChangeNotifier {
   /// Whether the panic control should accept a press.
   bool get canRaise =>
       _phase == AlertPhase.idle || _phase == AlertPhase.cancelled || _phase == AlertPhase.closed;
+
+  /// Picks up an emergency that is still open, after signing back in or reopening the
+  /// app. The emergency lives on the server, not on this phone, so signing out never
+  /// ended it; the screen used to forget it anyway and show the help button again,
+  /// which told an elder whose help was on its way that nothing was happening.
+  ///
+  /// Shown as help coming, never as the countdown: by the time somebody has signed out
+  /// and back in, the window to withdraw has almost certainly passed, and the server
+  /// decides that anyway. Does nothing if a press has already started in the meantime.
+  Future<void> resume() async {
+    try {
+      final List<AlertSummary> open = await _api.alerts(open: true, limit: 1);
+      if (_disposed || open.isEmpty || _phase != AlertPhase.idle) return;
+
+      final Emergency latest = await _api.alert(open.first.eventId);
+      if (_disposed || _phase != AlertPhase.idle || !latest.state.isOpen) return;
+
+      _emergency = latest;
+      _phase = AlertPhase.live;
+      notifyListeners();
+      _startPolling();
+    } on Exception {
+      // Nothing to pick up, or no way to ask right now. The help button stays, which is
+      // the right fallback: pressing it reaches the server either way.
+    }
+  }
+
+  /// [resume] without waiting, for a provider's create callback.
+  void resumeLater() => unawaited(resume());
 
   Future<void> raise() async {
     if (!canRaise) return;
@@ -171,6 +201,7 @@ class AlertController extends ChangeNotifier {
 
     try {
       final Emergency latest = await _api.alert(raised.id);
+      if (_disposed) return;
       _emergency = latest;
       if (!latest.state.isOpen) {
         _stopTimers();
@@ -193,6 +224,7 @@ class AlertController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _stopTimers();
     _live.dispose();
     super.dispose();

@@ -7,6 +7,7 @@ import { AuthService } from './services/auth.service';
 import { GoogleIdentityService } from './services/google-identity.service';
 import { PasswordService } from './services/password.service';
 import { PhoneVerificationService } from './services/phone-verification.service';
+import { PreferencesService } from './services/preferences.service';
 import { TokenService } from './services/token.service';
 
 @Module({
@@ -21,6 +22,7 @@ import { TokenService } from './services/token.service';
     PhoneVerificationService,
     GoogleIdentityService,
     AccessRevocationService,
+    PreferencesService,
   ],
   exports: [PasswordService, TokenService, PhoneVerificationService, AccessRevocationService],
 })

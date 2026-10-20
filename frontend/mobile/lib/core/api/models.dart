@@ -22,12 +22,22 @@ enum Role {
     'ADMINISTRATOR' => Role.administrator,
     _ => throw FormatException('Unknown role: $value'),
   };
+
+  /// Whether this role takes emergencies on: everybody but the elder and the
+  /// administrator.
+  bool get responds => switch (this) {
+    Role.caregiver || Role.familyMember || Role.emergencyResponder => true,
+    Role.elder || Role.administrator => false,
+  };
 }
 
 enum EventState {
   triggered,
   notified,
   acknowledged,
+
+  /// The person who took it on is with the elder.
+  onScene,
   escalated,
   resolved,
   cancelled;
@@ -36,6 +46,7 @@ enum EventState {
     'TRIGGERED' => EventState.triggered,
     'NOTIFIED' => EventState.notified,
     'ACKNOWLEDGED' => EventState.acknowledged,
+    'ON_SCENE' => EventState.onScene,
     'ESCALATED' => EventState.escalated,
     'RESOLVED' => EventState.resolved,
     'CANCELLED' => EventState.cancelled,
@@ -47,6 +58,7 @@ enum EventState {
     EventState.triggered ||
     EventState.notified ||
     EventState.acknowledged ||
+    EventState.onScene ||
     EventState.escalated => true,
     EventState.resolved || EventState.cancelled => false,
   };
@@ -177,6 +189,8 @@ class Emergency {
     required this.currentTier,
     required this.triggeredAt,
     this.acknowledgedByName,
+    this.arrivedAt,
+    this.journey,
   });
 
   final String id;
@@ -188,6 +202,16 @@ class Emergency {
   /// Who took responsibility, once somebody has. This is the single most reassuring
   /// thing the screen can show, so it is carried explicitly rather than derived.
   final String? acknowledgedByName;
+
+  /// When that person reached the elder. Stays set if the emergency later moves on, so
+  /// "they came" is never taken back by a call for a responder.
+  final DateTime? arrivedAt;
+
+  /// How long until they arrive, while they are sharing their way there. The elder's
+  /// copy never carries a position: the server leaves the coordinates out for them.
+  final Journey? journey;
+
+  bool get hasArrived => arrivedAt != null;
 
   factory Emergency.fromJson(Map<String, dynamic> json) {
     // The create endpoint returns the raw row, whose id field is `id`, while the list
@@ -205,8 +229,84 @@ class Emergency {
       acknowledgedByName: acknowledgedBy is Map<String, dynamic>
           ? acknowledgedBy['name'] as String?
           : null,
+      arrivedAt: _date(json['arrivedAt']),
+      journey: Journey.fromJson(json['journey']),
     );
   }
+}
+
+/// The person who took an emergency on, on their way there.
+///
+/// Only exists while they share it, and only for three minutes after the last report:
+/// the server keeps it in memory and never writes a position to the database.
+class Journey {
+  const Journey({
+    required this.etaSeconds,
+    required this.distanceMetres,
+    required this.byRoad,
+    required this.updatedAt,
+    this.latitude,
+    this.longitude,
+  });
+
+  final int etaSeconds;
+  final int distanceMetres;
+
+  /// True when a router worked out the route; false for the straight-line estimate.
+  final bool byRoad;
+
+  /// When their phone last reported.
+  final DateTime updatedAt;
+
+  /// Where they are. Null for the elder, who is shown the time and not a map.
+  final double? latitude;
+  final double? longitude;
+
+  bool get hasPosition => latitude != null && longitude != null;
+
+  /// Null for anything that is not a journey, which is what an emergency with nobody
+  /// on the way carries.
+  static Journey? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? eta = json['etaSeconds'];
+    final Object? distance = json['distanceMetres'];
+    final DateTime? updated = _date(json['updatedAt']);
+    if (eta is! num || distance is! num || updated == null) return null;
+    return Journey(
+      etaSeconds: eta.toInt(),
+      distanceMetres: distance.toInt(),
+      byRoad: json['source'] == 'osrm',
+      updatedAt: updated,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+    );
+  }
+}
+
+/// What the server said to one shared position.
+class PositionResult {
+  const PositionResult({required this.arrived, this.journey});
+
+  /// They are there, by this report or an earlier one. The phone stops sharing.
+  final bool arrived;
+  final Journey? journey;
+
+  factory PositionResult.fromJson(Map<String, dynamic> json) => PositionResult(
+    arrived: json['arrived'] as bool? ?? false,
+    journey: Journey.fromJson(json['journey']),
+  );
+}
+
+/// The signed-in person's own choices.
+class Preferences {
+  const Preferences({required this.shareWayThere});
+
+  /// Whether their position is shared while they are on their way to an emergency
+  /// they took on. Off until they turn it on.
+  final bool shareWayThere;
+
+  factory Preferences.fromJson(Map<String, dynamic> json) =>
+      Preferences(shareWayThere: json['shareWayThere'] as bool? ?? false);
 }
 
 /// One emergency as a row in a responder's list.
@@ -229,6 +329,8 @@ class AlertSummary {
     this.latitude,
     this.longitude,
     this.ownerName,
+    this.ownerId,
+    this.arrivedAt,
     this.deadlineAt,
     this.responseSeconds,
     this.outcome,
@@ -259,6 +361,12 @@ class AlertSummary {
 
   /// Who took responsibility, once somebody has.
   final String? ownerName;
+
+  /// Their account, so a screen can tell whether the person holding the phone is them.
+  final String? ownerId;
+
+  /// When they reached the elder. Stays set if the emergency later moves on.
+  final DateTime? arrivedAt;
 
   /// When the current tier's window runs out. Null when nothing is timing.
   final DateTime? deadlineAt;
@@ -295,6 +403,8 @@ class AlertSummary {
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       ownerName: owner is Map<String, dynamic> ? owner['name'] as String? : null,
+      ownerId: owner is Map<String, dynamic> ? owner['id'] as String? : null,
+      arrivedAt: _date(json['arrivedAt']),
       deadlineAt: deadline is String ? DateTime.parse(deadline).toLocal() : null,
       responseSeconds: response is num ? response.toInt() : null,
       outcome: json['outcome'] as String?,
@@ -421,12 +531,16 @@ class AlertDetail {
     required this.factors,
     required this.timeline,
     required this.chain,
+    this.journey,
   });
 
   final AlertSummary summary;
   final List<SeverityFactor> factors;
   final List<TimelineEntry> timeline;
   final List<ChainMember> chain;
+
+  /// The person who took it on, on their way, while they share it.
+  final Journey? journey;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -445,6 +559,7 @@ class AlertDetail {
       chain: (json['chain'] as List<dynamic>? ?? const [])
           .map((dynamic c) => ChainMember.fromJson(c as Map<String, dynamic>))
           .toList(),
+      journey: Journey.fromJson(json['journey']),
     );
   }
 }

@@ -291,9 +291,7 @@ class _ElderScreenState extends State<ElderScreen> {
               const SectionLabel('Who is asked, in order'),
               const SizedBox(height: MzaziSpace.s12),
               Text(
-                'When ${widget.elderName} asks for help, the first person is asked. If nobody '
-                'answers in time, the next is asked. An emergency responder near the alert '
-                'comes last, chosen by area.',
+                'An emergency responder near the alert is asked last, chosen by area.',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: MzaziSpace.s8),

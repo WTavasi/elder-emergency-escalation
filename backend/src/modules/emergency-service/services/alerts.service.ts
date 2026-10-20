@@ -26,6 +26,7 @@ import {
 } from '../../../shared/utils/event-lifecycle';
 import { EscalationService } from './escalation.service';
 import { EscalationTimerService } from './escalation-timer.service';
+import { JourneyService } from './journey.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
   REALTIME_PUBLISHER,
@@ -114,6 +115,7 @@ function toSummary(row: SummaryRow, viewerId: string): AlertSummary {
     ],
     triggeredAt: row.triggeredAt.toISOString(),
     acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
+    arrivedAt: row.arrivedAt?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     deadlineAt: row.currentTierDeadlineAt?.toISOString() ?? null,
     responderRequestedAt: row.responderRequestedAt?.toISOString() ?? null,
@@ -135,6 +137,7 @@ export class AlertsService {
     private readonly notifications: NotificationsService,
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly config: ConfigService,
+    private readonly journeys: JourneyService,
   ) {}
 
   /**
@@ -406,7 +409,7 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries] = await Promise.all([
+    const [row, chain, logs, deliveries, journey] = await Promise.all([
       this.prisma.emergencyEvent.findUniqueOrThrow({
         where: { id: eventId },
         include: SUMMARY_INCLUDE,
@@ -429,6 +432,7 @@ export class AlertsService {
         orderBy: { createdAt: 'asc' },
         include: { recipient: { select: { id: true, name: true, role: true } } },
       }),
+      this.journeys.current(eventId, event.elderlyId === userId),
     ]);
 
     const triggeredAt = row.triggeredAt.getTime();
@@ -463,6 +467,7 @@ export class AlertsService {
         deliveredAt: delivery.deliveredAt?.toISOString() ?? null,
         acknowledgedAt: delivery.acknowledgedAt?.toISOString() ?? null,
       })),
+      journey,
     };
   }
 
@@ -519,7 +524,21 @@ export class AlertsService {
       ...(filters.states?.length ? { state: { in: filters.states } } : {}),
       ...(filters.severities?.length ? { severity: { in: filters.severities } } : {}),
       ...(filters.elderId ? { elderlyId: filters.elderId } : {}),
-      ...(q ? { elder: { name: { contains: q, mode: 'insensitive' as const } } } : {}),
+      // The elder's name, or the name of whoever took it on, so "who attended" is a
+      // search too. Under AND, because the scope above already uses the OR key and a
+      // second one in the same object would replace it.
+      ...(q
+        ? {
+            AND: [
+              {
+                OR: [
+                  { elder: { name: { contains: q, mode: 'insensitive' as const } } },
+                  { owner: { name: { contains: q, mode: 'insensitive' as const } } },
+                ],
+              },
+            ],
+          }
+        : {}),
       ...(filters.from || filters.to
         ? {
             triggeredAt: {
@@ -540,7 +559,15 @@ export class AlertsService {
       select: { elderlyId: true },
     });
 
-    return { elderlyId: { in: [userId, ...assignments.map((a) => a.elderlyId)] } };
+    // Everyone asked about an emergency can see it, not only the elder's own chain: an
+    // emergency responder matched by area was sent the alert and has to be able to open
+    // it, act on it and find it again in their history.
+    return {
+      OR: [
+        { elderlyId: { in: [userId, ...assignments.map((a) => a.elderlyId)] } },
+        { notifications: { some: { recipientId: userId } } },
+      ],
+    };
   }
 
   /** Authorisation only. Returns the raw row so callers can project it themselves. */
@@ -552,10 +579,13 @@ export class AlertsService {
     const event = await this.requireEvent(eventId);
     if (role === Role.ADMINISTRATOR || event.elderlyId === userId) return event;
 
-    const assignment = await this.prisma.careAssignment.findFirst({
-      where: { elderlyId: event.elderlyId, responderId: userId },
-    });
-    if (!assignment) throw new NotFoundException('Emergency not found');
+    const [assignment, asked] = await Promise.all([
+      this.prisma.careAssignment.findFirst({
+        where: { elderlyId: event.elderlyId, responderId: userId },
+      }),
+      this.prisma.notification.findFirst({ where: { eventId, recipientId: userId } }),
+    ]);
+    if (!assignment && !asked) throw new NotFoundException('Emergency not found');
 
     return event;
   }

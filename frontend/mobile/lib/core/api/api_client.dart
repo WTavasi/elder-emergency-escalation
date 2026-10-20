@@ -365,9 +365,27 @@ class ApiClient {
   ///
   /// [open] narrows to the ones still running, which is what a responder wants nearly
   /// always; the full history is the same call without it.
-  Future<List<AlertSummary>> alerts({bool open = false, int limit = 50}) async {
-    final String query = open ? '?open=true&limit=$limit' : '?limit=$limit';
-    final Object? body = await _sendRaw('GET', '/alerts$query');
+  ///
+  /// [search] matches the elder's name or the name of whoever took it on; [from] and
+  /// [to] bound when it was raised. Sent as UTC, so a day picked on the phone means the
+  /// same hours on the server.
+  Future<List<AlertSummary>> alerts({
+    bool open = false,
+    int limit = 50,
+    String? search,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final String query = Uri(
+      queryParameters: <String, String>{
+        if (open) 'open': 'true',
+        'limit': '$limit',
+        if (search != null && search.trim().isNotEmpty) 'q': search.trim(),
+        if (from != null) 'from': from.toUtc().toIso8601String(),
+        if (to != null) 'to': to.toUtc().toIso8601String(),
+      },
+    ).query;
+    final Object? body = await _sendRaw('GET', '/alerts?$query');
     if (body is! List<dynamic>) return const <AlertSummary>[];
     return body
         .whereType<Map<String, dynamic>>()
@@ -425,6 +443,46 @@ class ApiClient {
   Future<void> requestResponder(String id) async {
     await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
   }
+
+  /// "I'm here." The person who took the emergency on is with the elder.
+  Future<void> arrived(String id) async {
+    await _send('POST', '/alerts/$id/arrived', body: const <String, dynamic>{});
+  }
+
+  /// One position on the way there, from the person who took the emergency on and
+  /// turned on "Share my way there". The answer says how long they have left, or that
+  /// they have arrived, in which case the phone stops sharing.
+  Future<PositionResult> reportPosition(
+    String id, {
+    required double latitude,
+    required double longitude,
+    double? accuracyMetres,
+  }) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/alerts/$id/position',
+      body: <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+        // Rounded to a metre, which is finer than any phone's fix, and held inside the
+        // range the server accepts: a fix worse than 10 km is still worth an ETA.
+        'accuracyMetres': ?accuracyMetres?.clamp(0, 10000).roundToDouble(),
+      },
+    );
+    return PositionResult.fromJson(body);
+  }
+
+  Future<Preferences> preferences() async =>
+      Preferences.fromJson(await _send('GET', '/auth/me/preferences'));
+
+  Future<Preferences> updatePreferences({required bool shareWayThere}) async =>
+      Preferences.fromJson(
+        await _send(
+          'PATCH',
+          '/auth/me/preferences',
+          body: <String, dynamic>{'shareWayThere': shareWayThere},
+        ),
+      );
 
   void dispose() => _http.close();
 

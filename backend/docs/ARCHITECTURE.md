@@ -80,8 +80,9 @@ decides on its own which moves exist.
 | --- | --- |
 | TRIGGERED | NOTIFIED, ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
 | NOTIFIED | NOTIFIED, ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
-| ESCALATED | ESCALATED, ACKNOWLEDGED, RESOLVED, CANCELLED |
-| ACKNOWLEDGED | ESCALATED, RESOLVED |
+| ESCALATED | ESCALATED, ACKNOWLEDGED, ON_SCENE, RESOLVED, CANCELLED |
+| ACKNOWLEDGED | ON_SCENE, ESCALATED, RESOLVED |
+| ON_SCENE | ESCALATED, RESOLVED |
 | RESOLVED | nothing |
 | CANCELLED | TRIGGERED |
 
@@ -97,6 +98,10 @@ stateDiagram-v2
     NOTIFIED --> ACKNOWLEDGED : accepted
     ESCALATED --> ACKNOWLEDGED : accepted
     ACKNOWLEDGED --> ESCALATED : owner calls in a responder
+    ACKNOWLEDGED --> ON_SCENE : owner arrives
+    ESCALATED --> ON_SCENE : owner who called a responder arrives
+    ON_SCENE --> ESCALATED : owner calls in a responder
+    ON_SCENE --> RESOLVED : closed with an outcome
     TRIGGERED --> CANCELLED : elder cancels inside the window
     NOTIFIED --> CANCELLED : elder cancels inside the window
     ESCALATED --> CANCELLED : elder cancels inside the window
@@ -129,6 +134,11 @@ second check is what closes the races between reading and writing:
 
 Acknowledgement keeps its own conditional write, which predates the table (NFR-04), but
 takes the states it may claim from it.
+
+Arrival is the owner's alone. It is reached by "I'm here" or by a shared position coming
+within `ARRIVAL_RADIUS_METRES` of the alert, and its write also requires the same owner
+and no earlier arrival. `arrivedAt` survives a later move to ESCALATED, so every screen
+can say that help reached the elder whatever the state says now.
 
 ## How notifications are delivered
 

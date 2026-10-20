@@ -16,7 +16,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/health"
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
             },
             "auth": {
               "type": "noauth"
@@ -44,7 +46,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/auth/providers"
+              "raw": "{{apiBase}}/auth/providers",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "providers"]
             },
             "auth": {
               "type": "noauth"
@@ -81,7 +85,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -124,7 +130,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -166,7 +174,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -208,7 +218,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -250,7 +262,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -293,7 +307,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -328,7 +344,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/auth/me"
+              "raw": "{{apiBase}}/auth/me",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me"]
             },
             "auth": {
               "type": "bearer",
@@ -362,7 +380,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/refresh"
+              "raw": "{{apiBase}}/auth/refresh",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "refresh"]
             },
             "body": {
               "mode": "raw",
@@ -411,7 +431,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "body": {
               "mode": "raw",
@@ -457,6 +479,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/alerts?open=true",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"],
               "query": [
                 {
                   "key": "open",
@@ -497,7 +521,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}"
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
             },
             "auth": {
               "type": "bearer",
@@ -538,7 +564,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
             },
             "body": {
               "mode": "raw",
@@ -581,7 +609,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
             },
             "body": {
               "mode": "raw",
@@ -620,7 +650,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}"
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
             },
             "auth": {
               "type": "bearer",
@@ -649,6 +681,483 @@
       ]
     },
     {
+      "name": "2b. On the way, and arriving",
+      "item": [
+        {
+          "name": "Elder raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);",
+                  "// Where the alert is, and a point about 2 km north of it to travel from.",
+                  "pm.environment.set('alertLat', Number(body.alertLatitude));",
+                  "pm.environment.set('alertLng', Number(body.alertLongitude));",
+                  "pm.environment.set('farLat', Number(body.alertLatitude) + 0.02);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver turns on Share my way there",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/preferences",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "preferences"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shareWayThere\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('sharing is on', () => pm.expect(pm.response.json().shareWayThere).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver shares a position 2 km away",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/position",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "position"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": {{farLat}},\n  \"longitude\": {{alertLng}},\n  \"accuracyMetres\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('not there yet', () => pm.expect(body.arrived).to.eql(false));",
+                  "pm.test('a time to the elder', () => pm.expect(body.journey.etaSeconds).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elder sees how long, not where",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const journey = pm.response.json().journey;",
+                  "pm.test('a time', () => pm.expect(journey.etaSeconds).to.be.above(0));",
+                  "pm.test('no position', () => pm.expect(journey.latitude).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family member sees where",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a position', () => pm.expect(pm.response.json().journey.latitude).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver reaches the gate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/position",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "position"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": {{alertLat}},\n  \"longitude\": {{alertLng}},\n  \"accuracyMetres\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('counted as arrived', () => pm.expect(pm.response.json().arrived).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "It is on scene, with the arrival time",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('on scene', () => pm.expect(body.state).to.eql('ON_SCENE'));",
+                  "pm.test('arrival recorded', () => pm.expect(body.arrivedAt).to.be.a('string'));",
+                  "pm.test('the way there is forgotten', () => pm.expect(body.journey).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saying I'm here again changes nothing",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/arrived",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "arrived"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caregiver turns sharing back off",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/preferences",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "preferences"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shareWayThere\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "3. Declining moves it on",
       "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
       "item": [
@@ -663,7 +1172,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "body": {
               "mode": "raw",
@@ -711,7 +1222,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/decline"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/decline",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "decline"]
             },
             "body": {
               "mode": "raw",
@@ -750,7 +1263,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}"
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
             },
             "auth": {
               "type": "bearer",
@@ -787,7 +1302,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
             },
             "body": {
               "mode": "raw",
@@ -830,7 +1347,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/request-responder"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/request-responder",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "request-responder"]
             },
             "body": {
               "mode": "raw",
@@ -873,7 +1392,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
             },
             "body": {
               "mode": "raw",
@@ -922,7 +1443,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "body": {
               "mode": "raw",
@@ -970,7 +1493,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/cancel"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/cancel",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "cancel"]
             },
             "body": {
               "mode": "raw",
@@ -1014,7 +1539,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/reopen"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/reopen",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "reopen"]
             },
             "body": {
               "mode": "raw",
@@ -1058,7 +1585,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
             },
             "body": {
               "mode": "raw",
@@ -1101,7 +1630,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
             },
             "body": {
               "mode": "raw",
@@ -1150,7 +1681,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/verify-phone"
+              "raw": "{{apiBase}}/auth/verify-phone",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "verify-phone"]
             },
             "body": {
               "mode": "raw",
@@ -1187,7 +1720,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/register"
+              "raw": "{{apiBase}}/auth/register",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "register"]
             },
             "body": {
               "mode": "raw",
@@ -1230,7 +1765,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders"
+              "raw": "{{apiBase}}/elders",
+              "host": ["{{apiBase}}"],
+              "path": ["elders"]
             },
             "auth": {
               "type": "bearer",
@@ -1260,6 +1797,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/elders/address-search?q=Kileleshwa, Nairobi",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "address-search"],
               "query": [
                 {
                   "key": "q",
@@ -1309,7 +1848,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/verify-phone"
+              "raw": "{{apiBase}}/auth/verify-phone",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "verify-phone"]
             },
             "body": {
               "mode": "raw",
@@ -1345,7 +1886,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/elders"
+              "raw": "{{apiBase}}/elders",
+              "host": ["{{apiBase}}"],
+              "path": ["elders"]
             },
             "body": {
               "mode": "raw",
@@ -1388,7 +1931,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{newElderId}}/chain"
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{newElderId}}", "chain"]
             },
             "auth": {
               "type": "bearer",
@@ -1422,7 +1967,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/elders/{{newElderId}}/chain"
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{newElderId}}", "chain"]
             },
             "body": {
               "mode": "raw",
@@ -1473,7 +2020,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{newElderId}}"
+              "raw": "{{apiBase}}/elders/{{newElderId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{newElderId}}"]
             },
             "auth": {
               "type": "bearer",
@@ -1510,7 +2059,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/elders/{{newElderId}}"
+              "raw": "{{apiBase}}/elders/{{newElderId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{newElderId}}"]
             },
             "body": {
               "mode": "raw",
@@ -1552,7 +2103,9 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{newElderId}}/chain/{{inviteeEntryId}}"
+              "raw": "{{apiBase}}/elders/{{newElderId}}/chain/{{inviteeEntryId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{newElderId}}", "chain", "{{inviteeEntryId}}"]
             },
             "auth": {
               "type": "bearer",
@@ -1594,7 +2147,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+              "raw": "{{apiBase}}/elders/{{elderId}}/place",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "place"]
             },
             "auth": {
               "type": "bearer",
@@ -1628,7 +2183,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+              "raw": "{{apiBase}}/elders/{{elderId}}/place",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "place"]
             },
             "body": {
               "mode": "raw",
@@ -1669,7 +2226,9 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+              "raw": "{{apiBase}}/elders/{{elderId}}/place",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "place"]
             },
             "auth": {
               "type": "bearer",
@@ -1708,6 +2267,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/dashboard/overview?days=30",
+              "host": ["{{apiBase}}"],
+              "path": ["dashboard", "overview"],
               "query": [
                 {
                   "key": "days",
@@ -1743,6 +2304,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/alerts?state=RESOLVED,CANCELLED&limit=20",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"],
               "query": [
                 {
                   "key": "state",
@@ -1787,7 +2350,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/auth/me"
+              "raw": "{{apiBase}}/auth/me",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me"]
             },
             "auth": {
               "type": "bearer",
@@ -1821,7 +2386,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/me"
+              "raw": "{{apiBase}}/auth/me",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me"]
             },
             "body": {
               "mode": "raw",
@@ -1867,7 +2434,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/change-password"
+              "raw": "{{apiBase}}/auth/change-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "change-password"]
             },
             "body": {
               "mode": "raw",
@@ -1914,7 +2483,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/change-password"
+              "raw": "{{apiBase}}/auth/change-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "change-password"]
             },
             "body": {
               "mode": "raw",
@@ -1966,7 +2537,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/forgot-password"
+              "raw": "{{apiBase}}/auth/forgot-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "forgot-password"]
             },
             "body": {
               "mode": "raw",
@@ -2003,7 +2576,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/reset-password"
+              "raw": "{{apiBase}}/auth/reset-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "reset-password"]
             },
             "body": {
               "mode": "raw",
@@ -2046,6 +2621,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/admin/users?page=1&pageSize=25",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users"],
               "query": [
                 {
                   "key": "page",
@@ -2088,6 +2665,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/admin/users?q=mary",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users"],
               "query": [
                 {
                   "key": "q",
@@ -2126,6 +2705,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/admin/users?q={{staffPhone}}",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users"],
               "query": [
                 {
                   "key": "q",
@@ -2169,7 +2750,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/admin/users"
+              "raw": "{{apiBase}}/admin/users",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users"]
             },
             "body": {
               "mode": "raw",
@@ -2216,7 +2799,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/admin/users/deactivate"
+              "raw": "{{apiBase}}/admin/users/deactivate",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users", "deactivate"]
             },
             "body": {
               "mode": "raw",
@@ -2262,7 +2847,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -2301,7 +2888,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/admin/users/reactivate"
+              "raw": "{{apiBase}}/admin/users/reactivate",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users", "reactivate"]
             },
             "body": {
               "mode": "raw",
@@ -2340,6 +2929,8 @@
             "header": [],
             "url": {
               "raw": "{{apiBase}}/alerts?q=grace&limit=5&offset=5",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"],
               "query": [
                 {
                   "key": "q",
@@ -2390,7 +2981,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/consent"
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent"]
             },
             "auth": {
               "type": "bearer",
@@ -2422,7 +3015,9 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/consent/confirm"
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent/confirm",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent", "confirm"]
             },
             "auth": {
               "type": "bearer",
@@ -2454,7 +3049,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/consent"
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent"]
             },
             "auth": {
               "type": "bearer",
@@ -2488,7 +3085,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/me/push-token"
+              "raw": "{{apiBase}}/auth/me/push-token",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "push-token"]
             },
             "auth": {
               "type": "bearer",
@@ -2531,7 +3130,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/me/push-token"
+              "raw": "{{apiBase}}/auth/me/push-token",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "push-token"]
             },
             "auth": {
               "type": "bearer",
@@ -2569,7 +3170,9 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/auth/me/push-token"
+              "raw": "{{apiBase}}/auth/me/push-token",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "push-token"]
             },
             "auth": {
               "type": "bearer",
@@ -2604,7 +3207,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "auth": {
               "type": "noauth"
@@ -2631,7 +3236,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -2670,7 +3277,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/login"
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
             },
             "body": {
               "mode": "raw",
@@ -2710,7 +3319,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/verify-phone"
+              "raw": "{{apiBase}}/auth/verify-phone",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "verify-phone"]
             },
             "body": {
               "mode": "raw",
@@ -2747,7 +3358,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "body": {
               "mode": "raw",
@@ -2795,7 +3408,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
             },
             "body": {
               "mode": "raw",
@@ -2839,7 +3454,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
             },
             "body": {
               "mode": "raw",
@@ -2882,7 +3499,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve"
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
             },
             "body": {
               "mode": "raw",
@@ -2920,7 +3539,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/dashboard/overview"
+              "raw": "{{apiBase}}/dashboard/overview",
+              "host": ["{{apiBase}}"],
+              "path": ["dashboard", "overview"]
             },
             "auth": {
               "type": "bearer",
@@ -2954,7 +3575,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/elders/{{elderId}}/place"
+              "raw": "{{apiBase}}/elders/{{elderId}}/place",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "place"]
             },
             "body": {
               "mode": "raw",
@@ -2997,7 +3620,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/change-password"
+              "raw": "{{apiBase}}/auth/change-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "change-password"]
             },
             "body": {
               "mode": "raw",
@@ -3036,7 +3661,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{apiBase}}/admin/users"
+              "raw": "{{apiBase}}/admin/users",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users"]
             },
             "auth": {
               "type": "bearer",
@@ -3070,7 +3697,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/admin/users/deactivate"
+              "raw": "{{apiBase}}/admin/users/deactivate",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "users", "deactivate"]
             },
             "body": {
               "mode": "raw",
@@ -3113,7 +3742,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/reset-password"
+              "raw": "{{apiBase}}/auth/reset-password",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "reset-password"]
             },
             "body": {
               "mode": "raw",
@@ -3150,7 +3781,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/google"
+              "raw": "{{apiBase}}/auth/google",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "google"]
             },
             "body": {
               "mode": "raw",
@@ -3188,7 +3821,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/auth/verify-phone"
+              "raw": "{{apiBase}}/auth/verify-phone",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "verify-phone"]
             },
             "body": {
               "mode": "raw",
@@ -3225,7 +3860,9 @@
               }
             ],
             "url": {
-              "raw": "{{apiBase}}/alerts"
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
             },
             "body": {
               "mode": "raw",

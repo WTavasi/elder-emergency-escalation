@@ -75,6 +75,14 @@
 	     it wants to. This is what a real phone needs to talk to the API running on a
 	     development machine; it has no effect on a deployed build talking to a server
 	     over the internet. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>When you take an emergency on and have turned on Share my way there, MzaziCare shares where you are with the elder's care circle until you arrive, so they know how long you will be.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>MzaziCare only asks for your location while the app is in use. Sharing your way there carries on behind a maps app until you arrive, and never starts on its own.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>MzaziCare connects to the MzaziCare server running on your development machine so the app can be tested before it is deployed.</string>
 	<key>NSAppTransportSecurity</key>

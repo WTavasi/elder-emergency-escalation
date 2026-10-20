@@ -104,4 +104,23 @@ void main() {
       );
     }
   });
+
+  testWidgets('history can be searched, and the open list cannot', (WidgetTester tester) async {
+    await pump(tester, Role.caregiver);
+    expect(find.text('Elder or who attended'), findsNothing);
+
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Elder or who attended'), findsOneWidget);
+    expect(find.byTooltip('Choose dates'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Elder or who attended'),
+      'nobody like this',
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Clear the search'), findsOneWidget);
+  });
 }

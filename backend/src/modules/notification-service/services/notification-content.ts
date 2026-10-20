@@ -78,6 +78,19 @@ export function composeNotification(context: NotificationContext): ComposedNotif
         data: { ...data, action: 'view' },
       };
 
+    case EventState.ON_SCENE:
+      // Reached only by a message queued before somebody arrived and sent after. It
+      // must not read as a fresh call for help.
+      return {
+        title: `Someone is with ${firstName(name)}`,
+        body: `A member of ${name}'s care circle is with them now. No action needed from you.`,
+        sms: capSms(
+          `MzaziCare: someone is with ${name} now. No action needed from you.`,
+          `MzaziCare: someone is with ${firstName(name)} now.`,
+        ),
+        data: { ...data, action: 'view' },
+      };
+
     case EventState.RESOLVED:
       return {
         title: `${firstName(name)}'s alert is closed`,
