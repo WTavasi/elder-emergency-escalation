@@ -123,9 +123,9 @@ class AlertsController extends ChangeNotifier {
         from: days == null ? null : DateUtils.dateOnly(days.start),
         to: days == null
             ? null
-            : DateUtils.dateOnly(
-                days.end,
-              ).add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1)),
+            : DateUtils.dateOnly(days.end)
+                  .add(const Duration(days: 1))
+                  .subtract(const Duration(milliseconds: 1)),
       );
       if (_disposed || asking != _asked) return;
       _alerts = order(fetched);

@@ -311,10 +311,7 @@ class _HistorySearchState extends State<_HistorySearch> {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(
-                    'Raised ${_rangeWords(days)}',
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  child: Text('Raised ${_rangeWords(days)}', style: theme.textTheme.bodyMedium),
                 ),
                 TextButton(
                   onPressed: () => unawaited(widget.alerts.setDays(null)),
