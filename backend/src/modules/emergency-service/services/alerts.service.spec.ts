@@ -669,14 +669,29 @@ describe('AlertsService', () => {
       expect(where.OR[1].notifications.some.recipientId).toBe('caregiver-1');
     });
 
-    it("matches part of the elder's name, without regard to case", async () => {
+    it("matches part of the elder's name or the responder's, without regard to case", async () => {
       const prisma = buildPrisma();
       await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, { q: '  grace ' });
 
       const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
-        elder: { name: { contains: string; mode: string } };
+        AND: Array<{ OR: Array<Record<string, { name: unknown }>> }>;
       };
-      expect(where.elder.name).toEqual({ contains: 'grace', mode: 'insensitive' });
+      const either = where.AND[0].OR;
+      expect(either[0].elder.name).toEqual({ contains: 'grace', mode: 'insensitive' });
+      expect(either[1].owner.name).toEqual({ contains: 'grace', mode: 'insensitive' });
+    });
+
+    it('keeps the scope when searching, rather than replacing it', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).findForUser('caregiver-1', Role.CAREGIVER, { q: 'mary' });
+
+      const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
+        OR?: unknown[];
+        AND?: unknown[];
+      };
+      // Both present: the scope's OR (whose emergencies these are) and the search's.
+      expect(where.OR).toBeDefined();
+      expect(where.AND).toHaveLength(1);
     });
 
     it('skips to a numbered page, and counts with the same filter', async () => {

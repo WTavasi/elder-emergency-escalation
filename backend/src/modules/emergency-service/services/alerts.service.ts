@@ -524,7 +524,21 @@ export class AlertsService {
       ...(filters.states?.length ? { state: { in: filters.states } } : {}),
       ...(filters.severities?.length ? { severity: { in: filters.severities } } : {}),
       ...(filters.elderId ? { elderlyId: filters.elderId } : {}),
-      ...(q ? { elder: { name: { contains: q, mode: 'insensitive' as const } } } : {}),
+      // The elder's name, or the name of whoever took it on, so "who attended" is a
+      // search too. Under AND, because the scope above already uses the OR key and a
+      // second one in the same object would replace it.
+      ...(q
+        ? {
+            AND: [
+              {
+                OR: [
+                  { elder: { name: { contains: q, mode: 'insensitive' as const } } },
+                  { owner: { name: { contains: q, mode: 'insensitive' as const } } },
+                ],
+              },
+            ],
+          }
+        : {}),
       ...(filters.from || filters.to
         ? {
             triggeredAt: {
