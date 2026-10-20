@@ -1158,6 +1158,413 @@
       ]
     },
     {
+      "name": "2c. Answering by text",
+      "description": "Replying 1 or 2 to the alert SMS, as Africa's Talking would post it. Needs the API started with the same secret as the smsToken variable:\n\n    SMS_INBOUND_TOKEN=local-text-replies-0123456789 npm run dev\n\nEach reply's own answer is always 200, because the gateway resends anything else, so the effect is checked by reading the alert. The texts sent back appear in the API terminal, on lines starting [LoggingSmsProvider].",
+      "item": [
+        {
+          "name": "Elder raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary replies 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{caregiverPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "Mary, tier 1 for Grace, answers the alert text with 1. The API terminal shows the text sent back, with Grace's number and address."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "It is Mary's now, answered by text",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Mary took it on', () => pm.expect(body.acknowledgedBy.name).to.eql('Mary Otieno'));",
+                  "const taken = body.timeline.find((e) => e.action === 'ACKNOWLEDGED');",
+                  "pm.test('the trail says it came by text', () => pm.expect(taken.detail.via).to.eql('sms'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary replies 1 again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{caregiverPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "A resend on a weak signal. Nothing changes; she is told she is already going."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A number nobody has replies",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "+254711000999"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "Still 200, and nothing is sent back, so the address cannot be used to learn who is registered."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A wrong secret finds nothing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token=not-the-secret",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "not-the-secret"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{caregiverPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 404, as if the address did not exist', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "3. Declining moves it on",
       "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
       "item": [
