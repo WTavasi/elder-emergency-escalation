@@ -621,10 +621,12 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('stopping the sharing asks first, and keeping it is the easy answer', (
+    /// A caregiver who took Grace's alert on, sharing their way there, on the screen.
+    Future<({AlertDetailController controller, WayThere way})> sharing(
       WidgetTester tester,
     ) async {
       final FakePositionSource source = FakePositionSource();
+      addTearDown(source.close);
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
         if (request.url.path.endsWith('/preferences')) {
           return <http.Response>[
@@ -642,33 +644,73 @@ void main() {
         wayThere: way,
       );
 
+      // Tall enough that nothing on the page needs scrolling to be tapped.
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Sharing your location'), findsOneWidget);
+      return (controller: controller, way: way);
+    }
 
-      await tester.ensureVisible(find.text('Stop sharing'));
-      await tester.tap(find.text('Stop sharing'));
+    /// The screen taken down first, so nothing is still listening when both are disposed.
+    Future<void> finish(
+      WidgetTester tester,
+      ({AlertDetailController controller, WayThere way}) t,
+    ) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      t.controller.dispose();
+      t.way.dispose();
+    }
+
+    // The page's button, found by its own mark; the dialog's, found inside the dialog.
+    // Both say "Stop sharing", so finding either by its words alone depends on order.
+    final Finder stopOnPage = find.byIcon(Icons.location_off_outlined);
+    final Finder stopInDialog = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text('Stop sharing'),
+    );
+
+    testWidgets('shows that the way there is being shared', (WidgetTester tester) async {
+      final ({AlertDetailController controller, WayThere way}) t = await sharing(tester);
+
+      expect(t.way.isSharingFor('event-1'), isTrue);
+      expect(find.text('Sharing your location'), findsOneWidget);
+      expect(stopOnPage, findsOneWidget);
+      await finish(tester, t);
+    });
+
+    testWidgets('stopping asks first, and keeping it changes nothing', (
+      WidgetTester tester,
+    ) async {
+      final ({AlertDetailController controller, WayThere way}) t = await sharing(tester);
+
+      await tester.tap(stopOnPage);
       await tester.pumpAndSettle();
       expect(find.text('Stop sharing your way there?'), findsOneWidget);
 
       await tester.tap(find.text('Keep sharing'));
       await tester.pumpAndSettle();
-      expect(way.isSharingFor('event-1'), isTrue);
 
-      await tester.tap(find.text('Stop sharing'));
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(t.way.isSharingFor('event-1'), isTrue);
+      await finish(tester, t);
+    });
+
+    testWidgets('stopping, once confirmed, stops and offers to share again', (
+      WidgetTester tester,
+    ) async {
+      final ({AlertDetailController controller, WayThere way}) t = await sharing(tester);
+
+      await tester.tap(stopOnPage);
       await tester.pumpAndSettle();
-      // The dialog's own button, drawn above the page.
-      await tester.tap(find.text('Stop sharing').last);
+      await tester.tap(stopInDialog);
       await tester.pumpAndSettle();
 
-      expect(way.isSharingFor('event-1'), isFalse);
+      expect(t.way.isSharingFor('event-1'), isFalse);
       expect(find.text('Share my way there'), findsOneWidget);
-
-      controller.dispose();
-      way.dispose();
-      await source.close();
+      await finish(tester, t);
     });
 
     testWidgets('nothing about the way there once they have arrived', (WidgetTester tester) async {

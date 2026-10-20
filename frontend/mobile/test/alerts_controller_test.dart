@@ -167,10 +167,7 @@ void main() {
 
       final Map<String, String> query = t.asked.last.queryParameters;
       expect(DateTime.parse(query['from']!).toLocal(), DateTime(2026, 10, 12));
-      expect(
-        DateTime.parse(query['to']!).toLocal(),
-        DateTime(2026, 10, 14, 23, 59, 59, 999),
-      );
+      expect(DateTime.parse(query['to']!).toLocal(), DateTime(2026, 10, 14, 23, 59, 59, 999));
       t.controller.dispose();
     });
 
