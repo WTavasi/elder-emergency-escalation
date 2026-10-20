@@ -475,3 +475,36 @@ for as long as it runs, so a person can always see that they are being shared. T
 elder's phone never asks for location at all; nothing in the elder's side of the app
 reads it.
 
+
+## An alert can be answered by replying to its text
+
+A caregiver with the app answers in the app. The person this is for is the one without
+it: a family member on a basic phone, somebody out of data, a responder whose push did
+not arrive. For them the alert SMS was a dead end that said "please respond" and offered
+no way to. Now it ends "Reply 1 if you can go, 2 if you cannot", and the reply does what
+the two buttons do.
+
+A reply goes through the same acknowledge and decline as the app, not a parallel path.
+So the rules those enforce hold for a text without being written twice: only somebody who
+was asked can answer, the first to accept owns the emergency (the same conditional write
+settles a text and a tap arriving together), declining is limited to the tier being
+asked, and nothing a reply does can close an emergency.
+
+The sender is identified by their number alone. The gateway reports it, and the secret in
+the callback address is what shows the request came from the gateway. That is weaker than
+a signed-in session, and acceptable for what a reply can do: accept or decline an
+emergency the number was itself sent. A number that belongs to nobody gets no answer, so
+the address cannot be used to learn who is registered or to run up a bill, and each phone
+is limited to six replies in ten minutes.
+
+Digits rather than words, because they are the same in English and Swahili and on every
+keypad; the common words are read too, since people type them anyway. A reply is matched
+to the newest alert still waiting on that person rather than carrying a reference,
+because a reference is one more thing to get wrong on a small keypad, and two alerts
+waiting on the same person at once is rare enough to accept the cost: they are told which
+elder they answered for.
+
+Replying is off unless `SMS_INBOUND_TOKEN` is set, and the alert only offers it when it
+is, so nobody is told to reply to a number that ignores them. Two-way SMS needs a
+shortcode. The sandbox gives one free with its simulator, which is what the demonstration
+uses; a live shortcode is rented, which is a deployment cost rather than a design change.

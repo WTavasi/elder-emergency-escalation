@@ -435,6 +435,73 @@ ROUTING_PROVIDER=osrm npm run dev
 The public server allows one request a second and is for testing only, so leave it off
 unless you are looking at the times.
 
+### Step 9 (optional). Answer an alert by text
+
+An alert SMS can end "Reply 1 if you can go, 2 if you cannot", and the reply takes the
+alert on or declines it, exactly as the app's buttons do. It is off until the API is
+given a secret for the address the replies come to.
+
+**Quickest: without Africa's Talking.** Postman can post a reply the way the gateway
+would. Start the API with the secret the Postman environment already holds:
+
+```bash
+SMS_INBOUND_TOKEN=local-text-replies-0123456789 npm run dev
+```
+
+Then run folder **1. Sign in** and folder **2c. Answering by text**. The texts the
+system sends back appear in the API terminal on lines starting `[LoggingSmsProvider]`.
+
+**The real thing: the Africa's Talking sandbox and its phone simulator.** This needs the
+ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.
+
+1. Make a secret for this run, and keep it to hand:
+
+   ```bash
+   openssl rand -hex 16
+   ```
+
+2. Sign in at [account.africastalking.com](https://account.africastalking.com) and open
+   the **Sandbox** app.
+
+3. **Create a shortcode.** In the sandbox, open **SMS**, then **Shortcodes**, then
+   **Create Shortcode**. Pick any free number, for example `12345`, and save it.
+
+4. **Point incoming messages at the API.** Still under **SMS**, open **SMS Callback
+   URLs**, then **Incoming Messages**, and enter, with your ngrok domain and the secret
+   from step 1:
+
+   ```
+   https://quiet-owl-1234.ngrok-free.app/api/v1/sms/inbound?token=<the secret>
+   ```
+
+5. **Start the API with real SMS, the shortcode and the secret**, all for this run only.
+   The sandbox username and API key are read from `backend/.env`, as in
+   [testing.md](testing.md):
+
+   ```bash
+   SMS_PROVIDER=africastalking AT_SHORTCODE=12345 SMS_INBOUND_TOKEN=<the secret> npm run dev
+   ```
+
+   And the tunnel, in another tab: `ngrok http --url=quiet-owl-1234.ngrok-free.app 3000`.
+
+6. **Open the simulator** at
+   [simulator.africastalking.com:1517](https://simulator.africastalking.com:1517) and
+   launch it with the family member's number, `+254700000030`. That account has no app
+   and no push address, so its alerts arrive by SMS.
+
+7. **Raise an alert as Grace** and let it reach tier 2: in the app or Postman, have Mary
+   decline it (folder 3 does this). The simulator's **Messages** shows the alert from
+   `12345`, ending "Reply 1 if you can go, 2 if you cannot."
+
+8. **Reply 1** in the simulator. Within a few seconds a text comes back with Grace's
+   number and address, the alert shows as taken by the family member on the console and
+   in Mary's app, and its trail says "by text".
+
+Sending from the shortcode is what makes the reply land in the right place: a person who
+answers a message answers the number it came from. Africa's Talking documents the
+sandbox and simulator in [How do I get started on the Africa's Talking
+Sandbox?](https://help.africastalking.com/en/articles/1170660-how-do-i-get-started-on-the-africa-s-talking-sandbox).
+
 ---
 
 ## The first run on a new machine, or after pulling changes
