@@ -204,7 +204,11 @@ void main() {
           json(
             emergencyBody(
               state: 'ACKNOWLEDGED',
-              acknowledgedBy: <String, dynamic>{'id': 'c1', 'name': 'Mary Otieno', 'role': 'CAREGIVER'},
+              acknowledgedBy: <String, dynamic>{
+                'id': 'c1',
+                'name': 'Mary Otieno',
+                'role': 'CAREGIVER',
+              },
             ),
           ),
         ];
@@ -235,7 +239,9 @@ void main() {
     test('never replaces a press that started while it was asking', () async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
         if (request.method == 'GET' && request.url.path.endsWith('/alerts')) {
-          return <http.Response>[json(<Map<String, dynamic>>[summaryBody()])];
+          return <http.Response>[
+            json(<Map<String, dynamic>>[summaryBody()]),
+          ];
         }
         return <http.Response>[json(emergencyBody())];
       });

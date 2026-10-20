@@ -627,15 +627,13 @@ void main() {
       final FakePositionSource source = FakePositionSource();
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
         if (request.url.path.endsWith('/preferences')) {
-          return <http.Response>[json(<String, dynamic>{'shareWayThere': true})];
+          return <http.Response>[
+            json(<String, dynamic>{'shareWayThere': true}),
+          ];
         }
         return <http.Response>[json(owned())];
       });
-      final WayThere way = WayThere(
-        api: t.api,
-        source: source,
-        every: const Duration(hours: 1),
-      );
+      final WayThere way = WayThere(api: t.api, source: source, every: const Duration(hours: 1));
       await way.follow('caregiver-1');
       final AlertDetailController controller = AlertDetailController(
         api: t.api,
