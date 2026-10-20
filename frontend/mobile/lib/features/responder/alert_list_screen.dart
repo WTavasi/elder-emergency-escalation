@@ -57,14 +57,12 @@ class _AlertListScreenState extends State<AlertListScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: MzaziSpace.s24),
             children: <Widget>[
+              // The only line under the title is the one that needs acting on: how many
+              // nobody has answered yet. Anything else here was stating the obvious.
               PageTitle(
                 'Alerts',
-                subtitle: !alerts.openOnly
-                    ? 'Everything you were part of'
-                    : waiting == 0
-                    ? 'Nobody is waiting.'
-                    : '$waiting waiting for somebody',
-                subtitleColor: alerts.openOnly && waiting > 0 ? theme.colorScheme.error : null,
+                subtitle: alerts.openOnly && waiting > 0 ? '$waiting waiting for somebody' : null,
+                subtitleColor: theme.colorScheme.error,
               ),
               _ViewSwitch(openOnly: alerts.openOnly, onChanged: alerts.setOpenOnly),
               if (alerts.error != null)

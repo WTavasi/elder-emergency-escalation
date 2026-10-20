@@ -309,8 +309,6 @@ class _WayThereSetting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
     return ListenableBuilder(
       listenable: way,
       builder: (BuildContext context, Widget? _) {
@@ -346,11 +344,6 @@ class _WayThereSetting extends StatelessWidget {
                   ),
                 ),
             ],
-            Text(
-              'Only for an emergency you took on, and only until you arrive. Your phone '
-              'shows a notice for as long as it is being shared.',
-              style: theme.textTheme.bodySmall,
-            ),
           ],
         );
       },

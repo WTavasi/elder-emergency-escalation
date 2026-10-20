@@ -520,13 +520,10 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
                       _writing ? 'What happened?' : 'How did it end?',
                       style: theme.textTheme.titleLarge,
                     ),
-                    const SizedBox(height: MzaziSpace.s4),
-                    Text(
-                      _writing
-                          ? 'A sentence is enough. It is kept with the emergency.'
-                          : 'This is kept with the emergency and counted in the reporting.',
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    if (_writing) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s4),
+                      Text('A sentence is enough.', style: theme.textTheme.bodySmall),
+                    ],
                   ],
                 ),
               ),
@@ -858,11 +855,7 @@ class _OnTheWay extends StatelessWidget {
           style: theme.textTheme.titleLarge,
         ),
         const SizedBox(height: MzaziSpace.s4),
-        Text(
-          '$elder sees how long you will be, and the rest of the circle sees where you '
-          'are. Sharing stops when you arrive.',
-          style: theme.textTheme.bodyMedium,
-        ),
+        Text('Sharing stops when you arrive.', style: theme.textTheme.bodyMedium),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(onPressed: way.stop, child: const Text('Stop sharing')),

@@ -79,12 +79,7 @@ class _EldersScreenState extends State<EldersScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: MzaziSpace.s24),
             children: <Widget>[
-              PageTitle(
-                'People',
-                subtitle: widget.isCaregiver
-                    ? 'The people you look after'
-                    : 'The people you are family to',
-              ),
+              const PageTitle('People'),
               const Divider(),
               if (_error != null)
                 Padding(
