@@ -18,9 +18,11 @@ class HelpProgress extends StatelessWidget {
   /// countdown ending and the first answer, which reads as "told".
   final Emergency? emergency;
 
-  /// Told, coming, here, done: the four things an elder waiting for help wants to know,
-  /// in the order they happen. "Done" is reached on the closed screen, not this one.
-  static const List<String> _steps = <String>['Told', 'Coming', 'Here', 'Done'];
+  /// Told, coming, here: the three things an elder waiting for help wants to know, in
+  /// the order they happen. There is no "done" step, because a closed emergency moves
+  /// the elder to its own screen and a fourth dot here could never light up. Three also
+  /// leaves each word a third of the width, which the elder's type size needs.
+  static const List<String> _steps = <String>['Told', 'Coming', 'Here'];
 
   @override
   Widget build(BuildContext context) {

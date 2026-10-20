@@ -40,53 +40,71 @@ class ProgressStepper extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: i == 0
-                              ? const SizedBox.shrink()
-                              : AnimatedContainer(
-                                  duration: move,
-                                  curve: MzaziEasing.standard,
-                                  height: MzaziStroke.rule,
-                                  color: i <= current ? done : waiting,
-                                ),
-                        ),
-                        AnimatedContainer(
-                          duration: move,
-                          curve: MzaziEasing.standard,
-                          width: i == current ? MzaziSpace.s24 : MzaziSpace.s16,
-                          height: i == current ? MzaziSpace.s24 : MzaziSpace.s16,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: i <= current ? done : theme.colorScheme.surface,
-                            border: Border.all(
-                              color: i <= current ? done : waiting,
-                              width: MzaziStroke.focus,
+                    // One height for every column's track, whatever the size of its dot.
+                    // Without it the current, larger dot made its column taller than the
+                    // rest, so the connecting line sat higher there and the bar looked
+                    // broken at every step.
+                    SizedBox(
+                      height: MzaziSpace.s24,
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: i == 0
+                                ? const SizedBox.shrink()
+                                : AnimatedContainer(
+                                    duration: move,
+                                    curve: MzaziEasing.standard,
+                                    height: MzaziStroke.rule,
+                                    color: i <= current ? done : waiting,
+                                  ),
+                          ),
+                          AnimatedContainer(
+                            duration: move,
+                            curve: MzaziEasing.standard,
+                            width: i == current ? MzaziSpace.s24 : MzaziSpace.s16,
+                            height: i == current ? MzaziSpace.s24 : MzaziSpace.s16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i <= current ? done : theme.colorScheme.surface,
+                              border: Border.all(
+                                color: i <= current ? done : waiting,
+                                width: MzaziStroke.focus,
+                              ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: i == steps.length - 1
-                              ? const SizedBox.shrink()
-                              : AnimatedContainer(
-                                  duration: move,
-                                  curve: MzaziEasing.standard,
-                                  height: MzaziStroke.rule,
-                                  color: i < current ? done : waiting,
-                                ),
-                        ),
-                      ],
+                          Expanded(
+                            child: i == steps.length - 1
+                                ? const SizedBox.shrink()
+                                : AnimatedContainer(
+                                    duration: move,
+                                    curve: MzaziEasing.standard,
+                                    height: MzaziStroke.rule,
+                                    color: i < current ? done : waiting,
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: MzaziSpace.s8),
-                    Text(
-                      steps[i],
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: i == current ? MzaziWeight.heading : null,
-                        color: i <= current
-                            ? theme.colorScheme.onSurface
-                            : theme.colorScheme.onSurfaceVariant,
+                    // One line, never broken inside a word. At the elder's size a word
+                    // like "Coming" can be wider than its share of a small phone, and
+                    // Flutter then breaks it letter by letter. Scaling down only ever
+                    // happens at the largest system text sizes; the words read the same.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s4),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          steps[i],
+                          maxLines: 1,
+                          softWrap: false,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: i == current ? MzaziWeight.heading : null,
+                            color: i <= current
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
                   ],

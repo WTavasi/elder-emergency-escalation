@@ -65,8 +65,11 @@ class _Home extends StatelessWidget {
         // Keyed on the account, so signing out and back in as somebody else builds a
         // fresh controller rather than inheriting the previous person's emergency.
         key: ValueKey<String>(auth.account!.id),
+        // Asks straight away whether an emergency is still open, so an elder who signs
+        // back in, or reopens the app, sees the help that is on its way rather than the
+        // button again.
         create: (BuildContext context) =>
-            AlertController(api: api, live: LiveUpdates.maybeOf(context)),
+            AlertController(api: api, live: LiveUpdates.maybeOf(context))..resumeLater(),
         child: ElderHomeScreen(api: api),
       ),
       // Everybody who responds to an emergency gets the same screen. The differences

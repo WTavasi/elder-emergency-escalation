@@ -847,7 +847,18 @@ class _OnTheWay extends StatelessWidget {
 
     if (way.isSharingFor(alert.eventId)) {
       final Journey? latest = way.journey ?? journey;
+      final Color live = theme.colorScheme.primary;
       children = <Widget>[
+        // A plain status line first, in the brand ink with the location mark, so it is
+        // clear at a glance that the phone is sharing right now.
+        Row(
+          children: <Widget>[
+            Icon(Icons.my_location, size: 20, color: live),
+            const SizedBox(width: MzaziSpace.s8),
+            Text('Sharing your location', style: theme.textTheme.labelLarge?.copyWith(color: live)),
+          ],
+        ),
+        const SizedBox(height: MzaziSpace.s8),
         Text(
           latest == null
               ? 'Finding where you are'
@@ -856,9 +867,17 @@ class _OnTheWay extends StatelessWidget {
         ),
         const SizedBox(height: MzaziSpace.s4),
         Text('Sharing stops when you arrive.', style: theme.textTheme.bodyMedium),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton(onPressed: way.stop, child: const Text('Stop sharing')),
+        const SizedBox(height: MzaziSpace.s12),
+        // A full button rather than a text link, in the error ink, because stopping
+        // takes the time away from somebody waiting for help. It asks first.
+        OutlinedButton.icon(
+          onPressed: () => unawaited(_confirmStop(context, way, elder)),
+          icon: const Icon(Icons.location_off_outlined),
+          label: const Text('Stop sharing'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: theme.colorScheme.error,
+            side: BorderSide(color: theme.colorScheme.error),
+          ),
         ),
       ];
     } else if (way.eventId == alert.eventId && way.problem != null) {
@@ -945,6 +964,37 @@ class _OnTheWay extends StatelessWidget {
       ),
     ),
   );
+
+  /// Stopping is a choice with a cost to somebody else, so it is said plainly before it
+  /// happens. The safe answer is the quiet one and keeps sharing.
+  static Future<void> _confirmStop(BuildContext context, WayThere way, String elder) async {
+    final ThemeData theme = Theme.of(context);
+    final bool? stop = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Stop sharing your way there?'),
+        content: Text(
+          '$elder will no longer see how long you will be, and the rest of the circle will '
+          'not see where you are. You can share again from this screen.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep sharing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
+            child: const Text('Stop sharing'),
+          ),
+        ],
+      ),
+    );
+    if (stop == true) way.stop();
+  }
 
   static String _capitalised(String text) =>
       text.isEmpty ? text : '${text[0].toUpperCase()}${text.substring(1)}';

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/location/way_there.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/responder/alert_detail_controller.dart';
 import 'package:mzazicare/features/responder/alert_detail_screen.dart';
@@ -618,6 +619,58 @@ void main() {
 
       expect(opened.single.queryParameters['query'], '-1.27,36.82');
       controller.dispose();
+    });
+
+    testWidgets('stopping the sharing asks first, and keeping it is the easy answer', (
+      WidgetTester tester,
+    ) async {
+      final FakePositionSource source = FakePositionSource();
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/preferences')) {
+          return <http.Response>[json(<String, dynamic>{'shareWayThere': true})];
+        }
+        return <http.Response>[json(owned())];
+      });
+      final WayThere way = WayThere(
+        api: t.api,
+        source: source,
+        every: const Duration(hours: 1),
+      );
+      await way.follow('caregiver-1');
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myId: 'caregiver-1',
+        wayThere: way,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sharing your location'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Stop sharing'));
+      await tester.tap(find.text('Stop sharing'));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop sharing your way there?'), findsOneWidget);
+
+      await tester.tap(find.text('Keep sharing'));
+      await tester.pumpAndSettle();
+      expect(way.isSharingFor('event-1'), isTrue);
+
+      await tester.tap(find.text('Stop sharing'));
+      await tester.pumpAndSettle();
+      // The dialog's own button, drawn above the page.
+      await tester.tap(find.text('Stop sharing').last);
+      await tester.pumpAndSettle();
+
+      expect(way.isSharingFor('event-1'), isFalse);
+      expect(find.text('Share my way there'), findsOneWidget);
+
+      controller.dispose();
+      way.dispose();
+      await source.close();
     });
 
     testWidgets('nothing about the way there once they have arrived', (WidgetTester tester) async {
