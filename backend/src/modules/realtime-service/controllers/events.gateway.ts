@@ -83,6 +83,38 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect, 
 
     const snapshot = toSnapshot(event);
     this.server.to([elderRoom(event.elderlyId), ADMIN_ROOM]).emit('emergency.updated', snapshot);
+
+    // Emergency responders are matched by area, not by chain, so they are in no elder's
+    // room. Anybody asked about this emergency from outside the chain hears about it too.
+    // Looked up after the fact and never awaited: a slow query must not hold up the
+    // escalation path, and a missed live update only means the next poll catches it.
+    void this.reachOutsideTheChain(event, snapshot);
+  }
+
+  private async reachOutsideTheChain(
+    event: EmergencyEvent,
+    snapshot: ReturnType<typeof toSnapshot>,
+  ): Promise<void> {
+    try {
+      const asked = await this.prisma.notification.findMany({
+        where: {
+          eventId: event.id,
+          recipient: { assignmentsAsCarer: { none: { elderlyId: event.elderlyId } } },
+        },
+        distinct: ['recipientId'],
+        select: { recipientId: true },
+      });
+      if (asked.length === 0 || !this.server) return;
+      this.server
+        .to(asked.map((row) => userRoom(row.recipientId)))
+        .emit('emergency.updated', snapshot);
+    } catch (error) {
+      this.logger.warn(
+        `Live update to responders outside the chain failed for ${event.id}: ${
+          error instanceof Error ? error.message : 'unknown'
+        }`,
+      );
+    }
   }
 
   /**

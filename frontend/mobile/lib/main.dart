@@ -9,6 +9,9 @@ import 'app.dart';
 import 'core/api/api_client.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/auth/session_store.dart';
+import 'core/live/live_updates.dart';
+import 'core/live/realtime_connection.dart';
+import 'core/push/push_registration.dart';
 
 /// Where the API is, when it was given at build time:
 ///
@@ -61,15 +64,41 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   _registerFontLicences();
 
-  final ApiClient api = ApiClient(baseUrl: resolveApiBaseUrl());
+  final String baseUrl = resolveApiBaseUrl();
+  final ApiClient api = ApiClient(baseUrl: baseUrl);
   final AuthController auth = AuthController(api: api, store: SessionStore());
 
+  // Both follow the session: opened, swapped or closed as people sign in, tokens
+  // rotate and people sign out. Neither is in the way of anything. With no socket the
+  // screens poll as they always have, and with no Firebase project the app never asks
+  // for notification permission.
+  final LiveUpdates live = LiveUpdates();
+  final RealtimeConnection realtime = RealtimeConnection(
+    url: realtimeUrlFor(baseUrl),
+    live: live,
+    // One ordinary request renews the tokens when the socket was refused for an
+    // expired one; the new session then reopens the socket through the listener below.
+    onRejected: () async {
+      if (auth.isSignedIn) await api.me();
+    },
+  );
+  final PushRegistration push = PushRegistration(api: api, live: live);
+
+  void followSession() {
+    realtime.follow(auth.session);
+    unawaited(push.follow(auth.session));
+  }
+
+  auth.addListener(followSession);
   unawaited(auth.restore());
 
   runApp(
-    ChangeNotifierProvider<AuthController>.value(
-      value: auth,
-      child: MzaziCareApp(api: api),
+    Provider<LiveUpdates>.value(
+      value: live,
+      child: ChangeNotifierProvider<AuthController>.value(
+        value: auth,
+        child: MzaziCareApp(api: api),
+      ),
     ),
   );
 }

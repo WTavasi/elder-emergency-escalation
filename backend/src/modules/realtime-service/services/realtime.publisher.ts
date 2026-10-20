@@ -7,15 +7,18 @@ import type { EmergencyEvent } from '@prisma/client';
  * are fetched over HTTP when someone opens an event. A socket message should be small
  * enough to be cheap to send to every responder screen on every change.
  */
+/**
+ * What a live update says: which emergency changed, and how. Never where it is or who
+ * the elder is beyond an id. A screen that needs more reloads the emergency over HTTP,
+ * where consent and visibility rules apply; the socket carries changes, not records,
+ * so a withdrawn consent has nothing here to leak.
+ */
 export interface EmergencySnapshot {
   eventId: string;
   elderlyId: string;
   state: string;
   severity: string;
   currentTier: number;
-  latitude: number;
-  longitude: number;
-  addressLabel: string | null;
   acknowledgedBy: string | null;
   triggeredAt: string;
   deadlineAt: string | null;
@@ -36,9 +39,6 @@ export function toSnapshot(event: EmergencyEvent): EmergencySnapshot {
     state: event.state,
     severity: event.severity,
     currentTier: event.currentTier,
-    latitude: Number(event.alertLatitude),
-    longitude: Number(event.alertLongitude),
-    addressLabel: event.alertAddressLabel,
     acknowledgedBy: event.acknowledgedBy,
     triggeredAt: event.triggeredAt.toISOString(),
     deadlineAt: event.currentTierDeadlineAt?.toISOString() ?? null,

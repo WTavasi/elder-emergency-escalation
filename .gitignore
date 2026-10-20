@@ -45,6 +45,9 @@ frontend/mobile/android/key.properties
 frontend/mobile/android/app/google-services.json
 frontend/mobile/ios/Runner/GoogleService-Info.plist
 frontend/mobile/lib/firebase_options.dart
+# The same values as build defines, which is how this app is given them. The example
+# beside it shows the shape and is committed.
+frontend/mobile/firebase.local.json
 
 # test and coverage
 coverage/

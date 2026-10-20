@@ -38,6 +38,18 @@ dependencies:
   # so no call permission is requested and the person holding the phone decides.
   url_launcher: ^6.3.2
 
+  # Live updates while the app is open. The server speaks Socket.IO 4 on /realtime,
+  # and this is the client for it; a plain WebSocket would mean reimplementing the
+  # handshake, rooms and reconnection the console already gets from socket.io-client.
+  socket_io_client: ^3.1.2
+
+  # Push while the app is closed. Started only when the build is given a Firebase
+  # project (see lib/core/push/firebase_config.dart), so a development build without
+  # one runs unchanged. Held on the 4.x line rather than 5.0, which was days old when
+  # this was added.
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

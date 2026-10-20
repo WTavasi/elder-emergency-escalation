@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/live/live_updates.dart';
 
 /// Where the elder's screen is in the emergency.
 enum AlertPhase {
@@ -36,7 +37,14 @@ class AlertController extends ChangeNotifier {
     required ApiClient api,
     this.cancelWindow = const Duration(seconds: 10),
     this.pollInterval = const Duration(seconds: 5),
-  }) : _api = api;
+    LiveUpdates? live,
+  }) : _api = api {
+    _live = LiveFollower(
+      live: live,
+      wants: (LiveChange change) => change.eventId == _emergency?.id,
+      refresh: _refresh,
+    )..start();
+  }
 
   final ApiClient _api;
 
@@ -45,6 +53,7 @@ class AlertController extends ChangeNotifier {
   /// the server decides whether a cancellation is accepted.
   final Duration cancelWindow;
   final Duration pollInterval;
+  late final LiveFollower _live;
 
   AlertPhase _phase = AlertPhase.idle;
   Emergency? _emergency;
@@ -141,22 +150,24 @@ class AlertController extends ChangeNotifier {
     });
   }
 
-  /// Polling, not a socket, and deliberately so at this stage.
+  /// The socket first, the poll behind it.
   ///
-  /// The elder's screen needs one fact: has somebody taken this on. A five second poll
-  /// answers that, costs one small request, and cannot leave the screen silently stale
-  /// because a socket dropped while the phone was in a pocket. The caregiver and
-  /// responder screens, which watch many emergencies at once, are where a socket earns
-  /// its complexity.
+  /// The elder's screen needs one fact: has somebody taken this on. The socket brings
+  /// that the moment it happens. The poll stays, slowed to a heartbeat while the socket
+  /// is up, because a socket can drop while the phone is in a pocket and the screen must
+  /// never sit on "help is coming" after help has arrived.
   void _startPolling() {
     _poll?.cancel();
-    _poll = Timer.periodic(pollInterval, (Timer _) => _refresh());
+    _poll = Timer.periodic(pollInterval, (Timer _) {
+      if (_live.shouldPoll) unawaited(_refresh());
+    });
     unawaited(_refresh());
   }
 
   Future<void> _refresh() async {
     final Emergency? raised = _emergency;
     if (raised == null) return;
+    _live.asked();
 
     try {
       final Emergency latest = await _api.alert(raised.id);
@@ -183,6 +194,7 @@ class AlertController extends ChangeNotifier {
   @override
   void dispose() {
     _stopTimers();
+    _live.dispose();
     super.dispose();
   }
 }

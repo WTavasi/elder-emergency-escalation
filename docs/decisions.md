@@ -402,3 +402,34 @@ is named in other people's records. It needs an explicit confirmation in the app
 the API, and is refused while an emergency is open. An administrator can reactivate the
 account; giving consent again after a withdrawal is a separate decision, not yet built.
 
+## An elder stays signed in, and signing out is one step away from the panic button
+
+Every other account's refresh token lasts 30 days, and a person who has not opened the
+app for a month signs in again. For an elder that rule fails silently: the phone still
+shows the button, the button no longer reaches anybody, and the elder may not remember a
+password that somebody else set up. So an elder's refresh token lasts ten years
+(`JWT_REFRESH_TTL_ELDER`), and every other protection still applies: it rotates on each
+use, a replayed token ends every session, and deactivation ends it at once.
+
+For the same reason the sign-out control left the elder's home screen. It sits on the
+elder's own page, behind the round button at the top, at the bottom of that page, and
+asks first, saying that the phone cannot ask for help while signed out.
+
+## The app is told about changes by socket and by push, and still polls
+
+The socket gives the app the console's speed. Push reaches a phone whose app is closed,
+and also arrives while it is open, so both feed the same hub and a screen does not care
+which spoke first. Neither replaces polling: a socket that reconnects does not replay
+what it missed, and a push can be delayed or dropped by the phone. The poll slows to
+every 30 seconds while the socket is up, which keeps a phone through a development
+tunnel well inside the free plan's request allowance, and returns to its old pace when
+the socket is down.
+
+The Firebase project is given to the app as build defines rather than as
+`google-services.json` and `GoogleService-Info.plist`. Nothing needs adding to Gradle,
+no configuration file can be committed by mistake, and a build without a project is the
+same build with push switched off: it never asks for notification permission.
+
+The server keeps one push address per account and moves an address to whoever
+registered it last, so a phone passed from one person to another never shows the first
+person's emergencies. Signing out clears it.

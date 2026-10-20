@@ -3,6 +3,9 @@
          API; a release build without it would install and then fail at the first
          request, which is a fault nobody finds until it is in somebody's hands. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13 and later ask before an app may show notifications. The app asks
+         once, after sign-in, and only in a build that was given a Firebase project. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="MzaziCare"

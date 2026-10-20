@@ -58,9 +58,7 @@ void main() {
     return seen;
   }
 
-  testWidgets('shows the account, with the phone number not editable', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('shows the account, with the phone number not editable', (WidgetTester tester) async {
     await pump(tester, (_) => json(<String, dynamic>{}));
 
     expect(find.text('My account'), findsOneWidget);

@@ -170,8 +170,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
   };
 
   String _withdrawTitle(ConsentKind kind) => switch (kind) {
-    ConsentKind.dataProcessing => _isElder ? 'Stop MzaziCare for you?' : 'Stop MzaziCare for $_name?',
-    ConsentKind.locationSharing => _isElder ? 'Stop sharing where you are?' : 'Stop sharing where $_name is?',
+    ConsentKind.dataProcessing =>
+      _isElder ? 'Stop MzaziCare for you?' : 'Stop MzaziCare for $_name?',
+    ConsentKind.locationSharing =>
+      _isElder ? 'Stop sharing where you are?' : 'Stop sharing where $_name is?',
     ConsentKind.contactSharing =>
       _isElder ? 'Stop sharing your phone number?' : "Stop sharing $_name's phone number?",
   };
@@ -247,10 +249,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
       children: <Widget>[
         Notice(message: error, isError: true),
         const SizedBox(height: MzaziSpace.s16),
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Go back'),
-        ),
+        OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Go back')),
       ],
     );
   }
@@ -278,8 +277,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
         ],
         Text(
           'In an emergency, the people helping you always see what they need to reach you. '
-          'You can change your mind at any time with the privacy button at the top of your '
-          'screen.',
+          'You can change your mind at any time. Tap the round button at the top of your '
+          'screen, then Privacy and consent.',
           style: theme.textTheme.bodyLarge,
         ),
         if (error != null) ...<Widget>[
@@ -334,9 +333,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
           const SizedBox(height: MzaziSpace.s8),
           Text(
             _status(item),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           if (item.active && view.canWithdraw) ...<Widget>[
             const SizedBox(height: MzaziSpace.s8),

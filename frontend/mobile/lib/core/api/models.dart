@@ -694,7 +694,9 @@ class ElderDetail {
               longitude: (home['longitude'] as num).toDouble(),
             )
           : null,
-      place: PlaceView.fromJson(json['place'] as Map<String, dynamic>? ?? const <String, dynamic>{}),
+      place: PlaceView.fromJson(
+        json['place'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      ),
       canEdit: json['canEdit'] as bool? ?? false,
       withheld: _strings(json['withheld']),
     );
@@ -753,8 +755,9 @@ class ConsentItem {
       kind: kind,
       active: json['active'] as bool? ?? false,
       givenByName: givenBy is Map<String, dynamic> ? givenBy['name'] as String? : null,
-      givenByRelationship:
-          givenBy is Map<String, dynamic> ? givenBy['relationship'] as String? : null,
+      givenByRelationship: givenBy is Map<String, dynamic>
+          ? givenBy['relationship'] as String?
+          : null,
       givenAt: _date(json['givenAt']),
       confirmedAt: _date(json['confirmedAt']),
       withdrawnAt: _date(json['withdrawnAt']),

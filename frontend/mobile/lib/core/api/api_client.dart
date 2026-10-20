@@ -208,10 +208,7 @@ class ApiClient {
     final Map<String, dynamic> body = await _send(
       'PATCH',
       '/auth/me',
-      body: <String, dynamic>{
-        'name': ?name,
-        if (clearEmail) 'email': null else 'email': ?email,
-      },
+      body: <String, dynamic>{'name': ?name, if (clearEmail) 'email': null else 'email': ?email},
     );
     final Account account = Account.fromJson(body);
     final Session? current = session;
@@ -278,7 +275,10 @@ class ApiClient {
             'longitude': home.longitude,
             'label': home.label,
           },
-        if (clearCareLevel) 'careLevel': null else if (careLevel != null) 'careLevel': careLevel.wire,
+        if (clearCareLevel)
+          'careLevel': null
+        else if (careLevel != null)
+          'careLevel': careLevel.wire,
       },
     );
     return ElderDetail.fromJson(body);
@@ -317,6 +317,12 @@ class ApiClient {
       session = null;
       onSessionChanged?.call(null);
     }
+  }
+
+  /// Tells the server where to send this account's push messages. Called once per
+  /// account on a phone, and again whenever the push service rotates the address.
+  Future<void> registerPushToken(String token) async {
+    await _send('PUT', '/auth/me/push-token', body: <String, dynamic>{'token': token});
   }
 
   Future<Account> me() async {

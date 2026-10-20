@@ -84,9 +84,7 @@ class _DetailsForm extends StatefulWidget {
 class _DetailsFormState extends State<_DetailsForm> {
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
   late final TextEditingController _name = TextEditingController(text: widget.account.name);
-  late final TextEditingController _email = TextEditingController(
-    text: widget.account.email ?? '',
-  );
+  late final TextEditingController _email = TextEditingController(text: widget.account.email ?? '');
   bool _busy = false;
   String? _error;
   String? _saved;
@@ -280,8 +278,7 @@ class _PasswordFormState extends State<_PasswordForm> {
             controller: _again,
             obscureText: true,
             decoration: const InputDecoration(labelText: 'New password again'),
-            validator: (String? v) =>
-                v == _next.text ? null : 'The two passwords are different.',
+            validator: (String? v) => v == _next.text ? null : 'The two passwords are different.',
           ),
           const SizedBox(height: MzaziSpace.s16),
           OutlinedButton.icon(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/live/live_updates.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -99,12 +100,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
       // no alerts is the good outcome, and it needs no picture to say so.
       return <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
-            MzaziSpace.s32,
-            MzaziSpace.s16,
-            0,
-          ),
+          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s32, MzaziSpace.s16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -129,12 +125,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
       for (final _Group group in _groups(alerts.alerts, byDay: !alerts.openOnly)) ...<Widget>[
         if (group.heading != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              MzaziSpace.s16,
-              MzaziSpace.s24,
-              MzaziSpace.s16,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
             child: SectionLabel(group.heading!),
           ),
         for (final AlertSummary alert in group.alerts) ...<Widget>[
@@ -168,7 +159,11 @@ class _AlertListScreenState extends State<AlertListScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => ChangeNotifierProvider<AlertDetailController>(
-          create: (_) => AlertDetailController(api: widget.api, eventId: alert.eventId),
+          create: (BuildContext context) => AlertDetailController(
+            api: widget.api,
+            eventId: alert.eventId,
+            live: LiveUpdates.maybeOf(context),
+          ),
           child: AlertDetailScreen(fallback: alert),
         ),
       ),
@@ -188,7 +183,18 @@ class _Group {
 
 const List<String> _weekdays = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const List<String> _months = <String>[
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "Today", "Yesterday", or a short date, for the history headings.

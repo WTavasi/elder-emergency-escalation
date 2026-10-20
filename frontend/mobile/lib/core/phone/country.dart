@@ -19,7 +19,6 @@ class Country {
 
   /// The flag, made from the two regional-indicator letters of the ISO code. It needs
   /// no images and every phone draws it.
-  String get flag => String.fromCharCodes(
-    iso.toUpperCase().codeUnits.map((int unit) => 0x1F1E6 + unit - 0x41),
-  );
+  String get flag =>
+      String.fromCharCodes(iso.toUpperCase().codeUnits.map((int unit) => 0x1F1E6 + unit - 0x41));
 }

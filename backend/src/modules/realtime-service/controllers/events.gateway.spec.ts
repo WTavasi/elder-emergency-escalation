@@ -19,10 +19,12 @@ const buildGateway = (
   verify: jest.Mock,
   assignments: Array<{ elderlyId: string }> = [],
   revoked = false,
+  askedOutsideTheChain: Array<{ recipientId: string }> = [],
 ): EventsGateway & { server: Server } => {
   const tokens = { verifyAccess: verify } as unknown as TokenService;
   const prisma = {
     careAssignment: { findMany: jest.fn().mockResolvedValue(assignments) },
+    notification: { findMany: jest.fn().mockResolvedValue(askedOutsideTheChain) },
   } as unknown as PrismaService;
 
   const revocations = {
@@ -171,13 +173,36 @@ describe('EventsGateway', () => {
         state: EventState.NOTIFIED,
         severity: Severity.ELEVATED,
         currentTier: 1,
-        latitude: -1.2833,
-        longitude: 36.7833,
-        addressLabel: 'Kileleshwa, Nairobi',
         acknowledgedBy: null,
         triggeredAt: '2026-09-14T10:00:00.000Z',
         deadlineAt: '2026-09-14T10:02:00.000Z',
       });
+    });
+
+    it('never carries where the emergency is: screens reload that, under consent rules', () => {
+      const gateway = buildGateway(jest.fn());
+      const emit = jest.fn();
+      gateway.server = { to: jest.fn().mockReturnValue({ emit }) } as unknown as Server;
+
+      gateway.emergencyUpdated(event());
+
+      const [, snapshot] = emit.mock.calls[0] as [string, Record<string, unknown>];
+      expect(snapshot).not.toHaveProperty('latitude');
+      expect(snapshot).not.toHaveProperty('addressLabel');
+    });
+
+    it('also reaches a responder asked by area, who is in no elder room', async () => {
+      const gateway = buildGateway(jest.fn(), [], false, [{ recipientId: 'responder-9' }]);
+      const emit = jest.fn();
+      const to = jest.fn().mockReturnValue({ emit });
+      gateway.server = { to } as unknown as Server;
+
+      gateway.emergencyUpdated(event());
+      // The lookup is deliberately not awaited by the escalation path; let it settle.
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(to).toHaveBeenLastCalledWith([userRoom('responder-9')]);
+      expect(emit).toHaveBeenCalledTimes(2);
     });
 
     it('stays silent before the server exists rather than throwing into the escalation path', () => {

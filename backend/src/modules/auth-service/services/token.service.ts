@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
-import type { Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { toSeconds } from '../../../shared/utils/duration';
 
 export interface AccessPayload {
@@ -32,12 +32,20 @@ export class TokenService {
     });
   }
 
-  async signRefresh(userId: string): Promise<{ token: string; jti: string }> {
+  /**
+   * An elder's refresh token lasts far longer than anybody else's (JWT_REFRESH_TTL_ELDER),
+   * so the panic button is never behind a sign-in screen after a quiet month.
+   */
+  async signRefresh(userId: string, role?: Role): Promise<{ token: string; jti: string }> {
     const jti = randomUUID();
     const payload: RefreshPayload = { sub: userId, jti, typ: 'refresh' };
+    const lifetime =
+      role === Role.ELDER
+        ? this.config.get<string>('JWT_REFRESH_TTL_ELDER', '3650d')
+        : this.config.getOrThrow<string>('JWT_REFRESH_TTL');
     const token = await this.jwt.signAsync(payload, {
       secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: toSeconds(this.config.getOrThrow<string>('JWT_REFRESH_TTL')),
+      expiresIn: toSeconds(lifetime),
     });
     return { token, jti };
   }

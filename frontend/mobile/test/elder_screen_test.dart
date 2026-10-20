@@ -7,27 +7,28 @@ import 'package:mzazicare/features/elders/elder_screen.dart';
 
 import 'support.dart';
 
-Map<String, dynamic> elderBody({
-  bool canEdit = true,
-  bool atHome = true,
-  bool withheld = false,
-}) => <String, dynamic>{
-  'id': 'elder-1',
-  'name': 'Grace Wanjiru',
-  'phone': withheld ? null : '+254700000010',
-  'withheld': withheld ? <String>['phone', 'location'] : <String>[],
-  'careLevel': 'ASSISTED',
-  'home': <String, dynamic>{'latitude': -1.2833, 'longitude': 36.7833, 'label': 'Kilimani, Nairobi'},
-  'place': <String, dynamic>{
-    'elderId': 'elder-1',
-    'withheld': withheld,
-    'isAtHome': atHome,
-    'latitude': atHome ? null : -1.3125,
-    'longitude': atHome ? null : 36.8269,
-    'label': atHome ? null : 'South B, Nairobi',
-  },
-  'canEdit': canEdit,
-};
+Map<String, dynamic> elderBody({bool canEdit = true, bool atHome = true, bool withheld = false}) =>
+    <String, dynamic>{
+      'id': 'elder-1',
+      'name': 'Grace Wanjiru',
+      'phone': withheld ? null : '+254700000010',
+      'withheld': withheld ? <String>['phone', 'location'] : <String>[],
+      'careLevel': 'ASSISTED',
+      'home': <String, dynamic>{
+        'latitude': -1.2833,
+        'longitude': 36.7833,
+        'label': 'Kilimani, Nairobi',
+      },
+      'place': <String, dynamic>{
+        'elderId': 'elder-1',
+        'withheld': withheld,
+        'isAtHome': atHome,
+        'latitude': atHome ? null : -1.3125,
+        'longitude': atHome ? null : 36.8269,
+        'label': atHome ? null : 'South B, Nairobi',
+      },
+      'canEdit': canEdit,
+    };
 
 Map<String, dynamic> chainBody({bool canEdit = true, bool withFamily = true}) => <String, dynamic>{
   'elderId': 'elder-1',
@@ -133,7 +134,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      calls.any((Exchange c) => c.method == 'DELETE' && c.path == '/api/v1/elders/elder-1/chain/assignment-2'),
+      calls.any(
+        (Exchange c) =>
+            c.method == 'DELETE' && c.path == '/api/v1/elders/elder-1/chain/assignment-2',
+      ),
       isTrue,
     );
     expect(find.text('Aisha Otieno'), findsNothing);

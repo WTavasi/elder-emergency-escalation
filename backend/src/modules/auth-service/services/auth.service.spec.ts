@@ -46,6 +46,7 @@ interface PrismaMock {
     findUnique: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    updateMany: jest.Mock;
   };
   consentRecord: { create: jest.Mock };
   chainInvitation: { findMany: jest.Mock; deleteMany: jest.Mock };
@@ -60,6 +61,7 @@ const buildPrisma = (): PrismaMock => {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn().mockResolvedValue(undefined),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     consentRecord: { create: jest.fn().mockResolvedValue(undefined) },
     chainInvitation: {
@@ -527,13 +529,35 @@ describe('AuthService', () => {
   });
 
   describe('logout', () => {
-    it('clears the stored fingerprint', async () => {
+    it('clears the stored fingerprint, and stops this phone receiving alerts', async () => {
       const prisma = buildPrisma();
       await buildService(prisma).logout('user-1');
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: expect.objectContaining({ refreshTokenHash: null }),
+        data: expect.objectContaining({ refreshTokenHash: null, pushToken: null }),
       });
+    });
+  });
+
+  describe('push tokens', () => {
+    it('registers this phone, and takes the token off any account that had it before', async () => {
+      const prisma = buildPrisma();
+      await buildService(prisma).registerPushToken('user-1', 'fcm-token-abcdefghijklmnop');
+
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { pushToken: 'fcm-token-abcdefghijklmnop', id: { not: 'user-1' } },
+        data: expect.objectContaining({ pushToken: null }),
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({ pushToken: 'fcm-token-abcdefghijklmnop' }),
+      });
+    });
+
+    it('can be cleared', async () => {
+      const prisma = buildPrisma();
+      await buildService(prisma).clearPushToken('user-1');
+      expect(prisma.user.update.mock.calls[0][0].data.pushToken).toBeNull();
     });
   });
 

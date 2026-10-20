@@ -94,9 +94,8 @@ abstract final class MzaziTheme {
   static double bodySize(AppAudience audience) =>
       audience.isLarge ? MzaziTypeElder.body : MzaziTypeStandard.body;
 
-  static double touchTarget(AppAudience audience) => audience.isLarge
-      ? MzaziA11y.elderMinTouchTarget
-      : MzaziA11y.standardMinTouchTarget;
+  static double touchTarget(AppAudience audience) =>
+      audience.isLarge ? MzaziA11y.elderMinTouchTarget : MzaziA11y.standardMinTouchTarget;
 
   static double cardRadius(AppAudience audience) =>
       audience.isLarge ? MzaziRadius.elderCard : MzaziRadius.card;

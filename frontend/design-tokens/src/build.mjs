@@ -119,6 +119,9 @@ function buildCss() {
       ([k, v]) => `  --radius-${kebab(k)}: ${v === 999 ? '999px' : v + 'px'};`,
     ),
     ...Object.entries(motion).map(([k, v]) => `  --motion-${kebab(k)}: ${v}ms;`),
+    ...Object.entries(tokens.easing).map(
+      ([k, v]) => `  --easing-${kebab(k)}: cubic-bezier(${v.join(', ')});`,
+    ),
     ...Object.entries(type.standard).map(([k, v]) => `  --font-size-${kebab(k)}: ${v}px;`),
     `  --font-sans: "${type.family.sans}", system-ui, -apple-system, "Segoe UI", sans-serif;`,
     `  --font-elder: "${type.family.elder}", "${type.family.sans}", system-ui, sans-serif;`,
@@ -169,6 +172,7 @@ function buildDart() {
 
   return [
     banner('//'),
+    "import 'package:flutter/animation.dart';",
     "import 'package:flutter/painting.dart';",
     '',
     dartColorClass('MzaziColorsLight', themes.light),
@@ -253,6 +257,19 @@ function buildDart() {
       .join('\n'),
     '}',
     '',
+    '/// Material 3 easing. Standard for movement within a screen, decelerate for what',
+    '/// enters, accelerate for what leaves.',
+    'class MzaziEasing {',
+    '  MzaziEasing._();',
+    '',
+    Object.entries(tokens.easing)
+      .map(
+        ([k, v]) =>
+          `  static const Cubic ${k} = Cubic(${v.map((n) => Number(n).toFixed(2)).join(', ')});`,
+      )
+      .join('\n'),
+    '}',
+    '',
     '/// Accessibility floors. These are asserted in widget tests, not just documented.',
     'class MzaziA11y {',
     '  MzaziA11y._();',
@@ -276,6 +293,7 @@ function buildTs() {
     radius: tokens.radius,
     elevation: tokens.elevation,
     motion: tokens.motion,
+    easing: tokens.easing,
   };
   return [
     banner('//'),

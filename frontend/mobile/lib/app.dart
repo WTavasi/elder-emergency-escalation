@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/api/api_client.dart';
 import 'core/api/models.dart';
 import 'core/auth/auth_controller.dart';
+import 'core/live/live_updates.dart';
 import 'core/theme/theme.dart';
 import 'core/widgets/sign_out_button.dart';
 import 'features/auth/sign_in_screen.dart';
@@ -64,7 +65,8 @@ class _Home extends StatelessWidget {
         // Keyed on the account, so signing out and back in as somebody else builds a
         // fresh controller rather than inheriting the previous person's emergency.
         key: ValueKey<String>(auth.account!.id),
-        create: (_) => AlertController(api: api),
+        create: (BuildContext context) =>
+            AlertController(api: api, live: LiveUpdates.maybeOf(context)),
         child: ElderHomeScreen(api: api),
       ),
       // Everybody who responds to an emergency gets the same screen. The differences
@@ -76,7 +78,8 @@ class _Home extends StatelessWidget {
       Role.familyMember ||
       Role.emergencyResponder => ChangeNotifierProvider<AlertsController>(
         key: ValueKey<String>(auth.account!.id),
-        create: (_) => AlertsController(api: api),
+        create: (BuildContext context) =>
+            AlertsController(api: api, live: LiveUpdates.maybeOf(context)),
         child: HomeShell(api: api, role: auth.account!.role),
       ),
       _ => const _ConsoleOnly(),
