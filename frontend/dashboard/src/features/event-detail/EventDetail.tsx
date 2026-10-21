@@ -186,6 +186,7 @@ export function EventDetail() {
                   ) : null}
                   <div className="timeline__actor">
                     {entry.actor ? `${entry.actor.name}, ${humanise(entry.actor.role)}` : 'system'}
+                    {byText(entry.detail) ? ', by text reply' : null}
                     {' at '}
                     {formatClock(entry.occurredAt)}
                   </div>
@@ -329,5 +330,12 @@ export function EventDetail() {
         </Modal>
       ) : null}
     </>
+  );
+}
+
+/** Whether this step was taken by replying to the alert SMS rather than in the app. */
+function byText(detail: unknown): boolean {
+  return (
+    typeof detail === 'object' && detail !== null && (detail as { via?: unknown }).via === 'sms'
   );
 }

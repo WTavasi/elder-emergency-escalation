@@ -74,7 +74,12 @@ export class AfricasTalkingSmsProvider implements SmsProvider {
     // the same environment would silently stop every message reaching the simulator.
     // A live account without one falls back to a shared shortcode, so omitting it is
     // always safe.
-    if (senderId && username !== 'sandbox') body.set('from', senderId);
+    //
+    // A shortcode wins over both, sandbox included: replying by text only works when the
+    // alert came from the number that receives the reply.
+    const shortcode = this.config.get<string>('AT_SHORTCODE');
+    if (shortcode) body.set('from', shortcode);
+    else if (senderId && username !== 'sandbox') body.set('from', senderId);
 
     // Node's fetch has no default timeout, so a connection that opens and then stalls
     // would hold this job until the queue's lock expired, minutes later. In an

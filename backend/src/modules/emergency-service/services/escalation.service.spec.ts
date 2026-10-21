@@ -399,6 +399,16 @@ describe('EscalationService', () => {
       expect(detail.locationCaptured).toBe(true);
     });
 
+    it('records whether the answer came from the app or a text reply', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+
+      await build(prisma).acknowledge('event-1', 'caregiver-1', undefined, 'sms');
+
+      const detail = prisma.auditLog.create.mock.calls[0][0].data.detail as { via: string };
+      expect(detail.via).toBe('sms');
+    });
+
     it('accepts an acknowledgement without a location rather than refusing it', async () => {
       const prisma = buildPrisma();
       prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
@@ -820,6 +830,16 @@ describe('EscalationService', () => {
       };
       expect(logged.detail.tier).toBe(1);
       expect(logged.detail.reason).toBe('Two hours away');
+    });
+
+    it('records a decline from the app as such unless told otherwise', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce(asked()).mockResolvedValueOnce([]);
+
+      await build(prisma).decline(event().id, 'caregiver-1');
+
+      const logged = prisma.auditLog.create.mock.calls[0][0].data as { detail: { via: string } };
+      expect(logged.detail.via).toBe('app');
     });
 
     it('accepts a decline with no reason given', async () => {

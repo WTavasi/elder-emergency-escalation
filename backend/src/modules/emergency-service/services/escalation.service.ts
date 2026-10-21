@@ -56,6 +56,9 @@ export interface ResponderLocation {
   longitude: number;
 }
 
+/** How a person answered an alert: in the app, or by replying to its SMS. */
+export type AnswerChannel = 'app' | 'sms';
+
 @Injectable()
 export class EscalationService {
   private readonly logger = new Logger(EscalationService.name);
@@ -471,11 +474,17 @@ export class EscalationService {
     await this.notifications.enqueue(created.map((row) => row.id));
   }
 
-  /** Someone takes ownership. Stops every pending timer for this emergency. */
+  /**
+   * Someone takes ownership. Stops every pending timer for this emergency.
+   *
+   * [via] is how they said so, the app or a reply to the alert SMS, kept in the audit
+   * entry so the evaluation can count how often a text was the way somebody answered.
+   */
   async acknowledge(
     eventId: string,
     userId: string,
     location?: ResponderLocation,
+    via: AnswerChannel = 'app',
   ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
 
@@ -536,6 +545,7 @@ export class EscalationService {
             tier: event.currentTier,
             secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
             locationCaptured: Boolean(location),
+            via,
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
         },
@@ -564,7 +574,12 @@ export class EscalationService {
    * closes an emergency: it removes one person from consideration and the chain
    * continues, which is the opposite of a veto.
    */
-  async decline(eventId: string, userId: string, reason?: string): Promise<EmergencyEvent> {
+  async decline(
+    eventId: string,
+    userId: string,
+    reason?: string,
+    via: AnswerChannel = 'app',
+  ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
 
     if (event.acknowledgedBy) {
@@ -604,6 +619,7 @@ export class EscalationService {
             tier: event.currentTier,
             reason: reason ?? null,
             secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
+            via,
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
         },

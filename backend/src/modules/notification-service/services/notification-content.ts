@@ -8,6 +8,11 @@ export interface NotificationContext {
   /** Human-readable place, for example "Kileleshwa, Nairobi". May be absent. */
   addressLabel: string | null;
   eventId: string;
+  /**
+   * Whether the SMS invites a reply ("1 to go, 2 if you cannot"). Only when replies can
+   * actually be read, so nobody is asked to answer a number that ignores them.
+   */
+  replyByText?: boolean;
 }
 
 export interface ComposedNotification {
@@ -19,6 +24,9 @@ export interface ComposedNotification {
 
 /** A single SMS segment. Longer messages split, cost more and arrive out of order. */
 export const SMS_LIMIT = 160;
+
+/** The two answers an alert SMS offers when replies are on. Digits, so any phone can send them. */
+export const REPLY_ASK = 'Reply 1 if you can go, 2 if you cannot.';
 
 const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
 
@@ -60,10 +68,15 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       return {
         title: `Still unanswered: ${firstName(name)} needs help`,
         body: `Nobody has responded to ${name}'s alert${at}. Open MzaziCare to respond.`,
-        sms: capSms(
-          `MzaziCare: ${name} raised an emergency alert${at} and nobody has responded yet. Please respond or call 999.`,
-          `MzaziCare: ${name} needs help and nobody has responded. Please respond or call 999.`,
-        ),
+        sms: context.replyByText
+          ? capSms(
+              `MzaziCare: nobody has answered ${name}'s alert${at} yet. ${REPLY_ASK} Or call 999.`,
+              `MzaziCare: ${name} still needs help. ${REPLY_ASK}`,
+            )
+          : capSms(
+              `MzaziCare: ${name} raised an emergency alert${at} and nobody has responded yet. Please respond or call 999.`,
+              `MzaziCare: ${name} needs help and nobody has responded. Please respond or call 999.`,
+            ),
         data: { ...data, action: 'respond' },
       };
 
@@ -108,10 +121,15 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       return {
         title: urgent ? `${firstName(name)} needs help now` : `${firstName(name)} needs help`,
         body: `${name} raised an emergency alert${at}. Open MzaziCare to respond.`,
-        sms: capSms(
-          `MzaziCare: ${name} raised an emergency alert${at}. Please respond, or call 999 if you cannot reach them.`,
-          `MzaziCare: ${name} raised an emergency alert. Please respond or call 999.`,
-        ),
+        sms: context.replyByText
+          ? capSms(
+              `MzaziCare: ${name} raised an emergency alert${at}. ${REPLY_ASK} Call 999 if you cannot reach them.`,
+              `MzaziCare: ${name} needs help. ${REPLY_ASK} Or call 999.`,
+            )
+          : capSms(
+              `MzaziCare: ${name} raised an emergency alert${at}. Please respond, or call 999 if you cannot reach them.`,
+              `MzaziCare: ${name} raised an emergency alert. Please respond or call 999.`,
+            ),
         data: { ...data, action: 'respond' },
       };
     }

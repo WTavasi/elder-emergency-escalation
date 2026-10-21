@@ -93,6 +93,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
 | POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
+| POST | `/api/v1/sms/inbound?token=` | the SMS gateway | A reply to an alert text, as Africa's Talking posts it (`from`, `text`, and others ignored). 404 unless `SMS_INBOUND_TOKEN` is set and matches |
 
 Every query is scoped to the caller's own care relationships, plus any emergency they
 were asked about outside them (an emergency responder matched by area). An emergency the
@@ -127,6 +128,20 @@ name its own coordinates could name coordinates that raise its own severity scor
 is an input to a safety decision. The optional `latitude` and `longitude` fields on the
 request are a fallback for an account whose home was never recorded, which registration
 does not yet require, and they come out once it does.
+
+**Answering by text.** With `SMS_INBOUND_TOKEN` set, every alert SMS ends "Reply 1 if
+you can go, 2 if you cannot." The gateway posts the reply to `/sms/inbound` with the token
+in the address. The sender is matched to an account by number; a number that belongs to
+nobody, or to a deactivated account, gets no answer at all. The reply applies to the
+newest alert still waiting on that person, and goes through the same acknowledge and
+decline as the app, so every rule below holds for it too. The first word is read: `1`,
+`yes`, `ndio` accept; `2`, `no`, `hapana` decline; anything else gets the two answers
+repeated. The person is texted back: on accepting, the elder's number and address (both
+disclosed during an open emergency); if somebody accepted first, who; if the alert moved
+past them, that it has. The audit entry carries `via: "sms"`. One phone may send six
+replies in ten minutes. The route always answers 200 once the token matches, because a
+gateway that sees an error sends the reply again. With `AT_SHORTCODE` set, every SMS is
+sent from that shortcode so the reply reaches the number that reads it.
 
 Declining is narrower than the rest. Only the people the **current tier** actually
 asked may decline, so a tier two contact cannot decline on tier one's behalf and

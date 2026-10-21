@@ -459,6 +459,7 @@ class TimelineEntry {
     this.toTier,
     this.recipients,
     this.outcome,
+    this.byText = false,
   });
 
   final String id;
@@ -476,6 +477,9 @@ class TimelineEntry {
   final int? toTier;
   final int? recipients;
   final String? outcome;
+
+  /// Answered by replying to the alert SMS rather than in the app.
+  final bool byText;
 
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final Object? actor = json['actor'];
@@ -495,6 +499,7 @@ class TimelineEntry {
       toTier: asInt(d['toTier']),
       recipients: asInt(d['recipients']),
       outcome: d['outcome'] as String?,
+      byText: d['via'] == 'sms',
     );
   }
 }

@@ -3,16 +3,16 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
-  Matches,
   IsInt,
   IsNotEmpty,
   IsOptional,
-  ValidateIf,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   MinLength,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -264,6 +264,26 @@ export class EnvSchema {
   @IsString()
   AT_SENDER_ID?: string;
 
+  /**
+   * The shortcode replies come back to. When set, every SMS is sent from it, sandbox
+   * included, so a person who answers an alert by text is answering the number that
+   * can read it. Created in the sandbox under SMS, Shortcodes; a live one is rented.
+   */
+  @IsOptional()
+  @Matches(/^\d{3,8}$/, { message: 'AT_SHORTCODE must be the digits of a shortcode' })
+  AT_SHORTCODE?: string;
+
+  /**
+   * The secret in the incoming-SMS callback address, /api/v1/sms/inbound?token=...,
+   * which is how a reply is known to come from the SMS gateway and not from anybody who
+   * found the address. Unset, replying by text is off: alerts do not offer it and the
+   * address answers 404 as if it did not exist.
+   */
+  @IsOptional()
+  @IsString()
+  @MinLength(16, { message: 'SMS_INBOUND_TOKEN must be at least 16 characters' })
+  SMS_INBOUND_TOKEN?: string;
+
   @IsOptional()
   @IsString()
   GOOGLE_MAPS_API_KEY?: string;
@@ -352,6 +372,7 @@ const SECRET_KEYS = new Set([
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
   'AT_API_KEY',
+  'SMS_INBOUND_TOKEN',
   'GOOGLE_MAPS_API_KEY',
 ]);
 
