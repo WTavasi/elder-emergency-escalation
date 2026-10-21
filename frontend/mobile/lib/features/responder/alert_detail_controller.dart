@@ -6,6 +6,8 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/location/way_there.dart';
+import '../../core/voice/voice_call.dart';
+import '../../core/voice/voice_room.dart';
 
 /// One emergency, and the four things a person can do about it.
 ///
@@ -22,6 +24,7 @@ class AlertDetailController extends ChangeNotifier {
     this.pollInterval = const Duration(seconds: 8),
     this.myId,
     this.wayThere,
+    this.voiceRoom,
     LiveUpdates? live,
   }) : _api = api {
     _live = LiveFollower(
@@ -43,6 +46,9 @@ class AlertDetailController extends ChangeNotifier {
 
   /// Sharing the way there, when the app has it. Null in a test that does not need it.
   final WayThere? wayThere;
+
+  /// How a voice room is made. Null means the real one; tests pass their own.
+  final VoiceRoom Function()? voiceRoom;
   late final LiveFollower _live;
 
   /// Set once sharing has been started from this screen, so a person who pressed
@@ -126,6 +132,17 @@ class AlertDetailController extends ChangeNotifier {
     wayThere?.stopFor(eventId);
     final String elder = _detail?.summary.elderName.split(' ').first ?? 'her';
     return _act(() => _api.arrived(eventId), 'Recorded that you are with $elder.');
+  }
+
+  /// A call with the elder in this emergency's voice room, not yet joined. The screen
+  /// that shows it owns it. On the earpiece to start, like any call held to the ear.
+  VoiceCall newCall() =>
+      VoiceCall(api: _api, eventId: eventId, speakerFirst: false, room: voiceRoom);
+
+  /// Whether talking through the app is offered: set up on the server, and still open.
+  bool get canTalk {
+    final AlertDetail? current = _detail;
+    return current != null && current.voice.available && current.summary.state.isOpen;
   }
 
   /// Whether the person holding this phone is the one who took it on.

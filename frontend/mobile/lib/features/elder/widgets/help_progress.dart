@@ -12,11 +12,14 @@ import '../../../core/widgets/progress_stepper.dart';
 /// The elder's copy of the emergency has no position in it, and a map is something to
 /// read, not something to wait with.
 class HelpProgress extends StatelessWidget {
-  const HelpProgress({required this.emergency, super.key});
+  const HelpProgress({required this.emergency, this.compact = false, super.key});
 
   /// The emergency as the elder's copy has it. Null only for the instant between the
   /// countdown ending and the first answer, which reads as "told".
   final Emergency? emergency;
+
+  /// Just the headline, the steps and the time, for when a call takes the space above.
+  final bool compact;
 
   /// Told, coming, here: the three things an elder waiting for help wants to know, in
   /// the order they happen. There is no "done" step, because a closed emergency moves
@@ -70,15 +73,17 @@ class HelpProgress extends StatelessWidget {
             ),
             const SizedBox(height: MzaziSpace.s12),
           ],
-          Text(detail, style: theme.textTheme.bodyLarge),
-          const Spacer(),
-          Text(
-            arrived
-                ? 'You do not need to do anything else.'
-                : 'Someone will call you. You do not need to do anything else.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall,
-          ),
+          if (!compact) ...<Widget>[
+            Text(detail, style: theme.textTheme.bodyLarge),
+            const Spacer(),
+            Text(
+              arrived
+                  ? 'You do not need to do anything else.'
+                  : 'Someone will call you. You do not need to do anything else.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

@@ -67,12 +67,14 @@ All three, in that order, and all three should be clean. `flutter analyze` is co
 to treat a warning as an error, so it either says "No issues found" or it has found
 something real.
 
-Expect about 175 tests across 23 files. They cover the API client's headers and its
+Expect about 195 tests across 25 files. They cover the API client's headers and its
 refresh path, the model parsing including the malformed cases, the elder's alert phases
 and what the elder sees while help is coming (who, how long, never where), sharing the
 way there (asked for location only when it is turned on, sends at once, stops on
 arrival, on a refusal and on signing out), "I'm here" and the arrival on the detail
-screen,
+screen, talking through the app (a token from the API, the microphone on, the elder's
+phone announcing who is joining and joining on the speaker by itself, "Not now", hanging
+up, a refused or dropped call), the timeline saying "by text",
 and the rule that one press raises exactly one emergency, the caregiver list ordering,
 each of the four actions with its refetch, sign-up, password reset, the profile, consent,
 live updates (a change refreshes only the screens it concerns, a burst becomes one

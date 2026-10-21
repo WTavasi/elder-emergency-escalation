@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/location/position_source.dart';
+import 'package:mzazicare/core/voice/voice_room.dart';
 
 /// A recorded exchange: what the client asked for, and what it was told.
 class Exchange {
@@ -227,3 +228,64 @@ class FakePositionSource implements PositionSource {
 
   Future<void> close() => readings.close();
 }
+
+/// A voice room that connects at once and lets a test say who is in it.
+class FakeVoiceRoom implements VoiceRoom {
+  FakeVoiceRoom({this.fails = false});
+
+  /// Refuse to connect, as an unreachable server or a refused microphone would.
+  final bool fails;
+
+  final StreamController<List<String>> _others = StreamController<List<String>>.broadcast();
+  final StreamController<void> _dropped = StreamController<void>.broadcast();
+
+  String? url;
+  String? token;
+  bool? microphone;
+  bool? speaker;
+  bool left = false;
+
+  @override
+  Stream<List<String>> get others => _others.stream;
+
+  @override
+  Stream<void> get dropped => _dropped.stream;
+
+  @override
+  Future<void> connect(String url, String token) async {
+    if (fails) throw StateError('could not reach the room');
+    this.url = url;
+    this.token = token;
+  }
+
+  @override
+  Future<void> setMicrophone(bool on) async {
+    microphone = on;
+  }
+
+  @override
+  Future<void> setSpeaker(bool on) async {
+    speaker = on;
+  }
+
+  /// Somebody joins or leaves.
+  void present(List<String> names) => _others.add(names);
+
+  /// The connection is lost.
+  void drop() => _dropped.add(null);
+
+  @override
+  Future<void> leave() async {
+    left = true;
+    await _others.close();
+    await _dropped.close();
+  }
+}
+
+/// What the API answers to a request to join a voice room.
+Map<String, dynamic> voiceAccessBody() => <String, dynamic>{
+  'url': 'wss://test.livekit.cloud',
+  'token': 'a.voice.token',
+  'room': 'emergency-event-1',
+  'expiresInSeconds': 3600,
+};

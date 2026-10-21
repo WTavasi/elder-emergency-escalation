@@ -37,6 +37,24 @@ const dateAndClock = new Intl.DateTimeFormat(undefined, {
   hour12: false,
 });
 
+/** "about 9 minutes" or "about 1 hour 15 minutes", for a time to arrival. */
+export function timeAway(seconds: number): string {
+  if (seconds < 60) return 'less than a minute';
+  const minutes = Math.round(seconds / 60);
+  const count = (n: number, unit: string): string => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  if (minutes < 60) return `about ${count(minutes, 'minute')}`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0
+    ? `about ${count(hours, 'hour')}`
+    : `about ${count(hours, 'hour')} ${count(rest, 'minute')}`;
+}
+
+/** "4.2 km" or "650 m". */
+export function distance(metres: number): string {
+  return metres < 1000 ? `${Math.round(metres / 10) * 10} m` : `${(metres / 1000).toFixed(1)} km`;
+}
+
 export function formatClock(iso: string): string {
   const at = new Date(iso);
   const sameDay = at.toDateString() === new Date().toDateString();

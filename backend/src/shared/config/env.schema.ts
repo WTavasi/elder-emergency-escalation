@@ -331,6 +331,24 @@ export class EnvSchema {
   ARRIVAL_RADIUS_METRES: number = 100;
 
   /**
+   * Talking in the app during an emergency, through LiveKit. All three or none: with
+   * any missing the feature is off, the alert says so, and the app shows no button.
+   * LIVEKIT_URL is what the app connects to, wss://<project>.livekit.cloud for LiveKit
+   * Cloud or ws://<this Mac's address>:7880 for a local `livekit-server --dev`.
+   */
+  @ValidateIf((env: EnvSchema) => Boolean(env.LIVEKIT_URL))
+  @Matches(/^wss?:\/\/\S+$/, { message: 'LIVEKIT_URL must start with ws:// or wss://' })
+  LIVEKIT_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  LIVEKIT_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  LIVEKIT_API_SECRET?: string;
+
+  /**
    * The OAuth client ID for Google sign-in on the console, from Google Cloud Console
    * (APIs & Services, Credentials, a Web application client). Not a secret: the console
    * shows it to every browser. Unset, the console offers no Google button.
@@ -373,6 +391,7 @@ const SECRET_KEYS = new Set([
   'JWT_REFRESH_SECRET',
   'AT_API_KEY',
   'SMS_INBOUND_TOKEN',
+  'LIVEKIT_API_SECRET',
   'GOOGLE_MAPS_API_KEY',
 ]);
 

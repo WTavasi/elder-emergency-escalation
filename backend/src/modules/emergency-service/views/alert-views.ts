@@ -1,5 +1,6 @@
 import type { AuditAction, EventOutcome, EventState, Role, Severity } from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
+import type { VoiceView } from '../services/voice.service';
 
 /**
  * What a list of emergencies looks like to a screen.
@@ -106,4 +107,6 @@ export interface AlertDetail extends AlertSummary {
    * old. The elder sees the time and the distance; their care circle also sees where.
    */
   journey: JourneyView | null;
+  /** Whether talking in the app is possible on this emergency, and who started it. */
+  voice: VoiceView;
 }

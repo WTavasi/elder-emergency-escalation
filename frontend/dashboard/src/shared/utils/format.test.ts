@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, formatOffset, humanise } from './format';
+import { distance, formatDuration, formatOffset, humanise, timeAway } from './format';
 
 describe('formatDuration', () => {
   it('stays in seconds below a minute, which is where most acknowledgements land', () => {
@@ -33,5 +33,22 @@ describe('humanise', () => {
   it('turns an enum into something a person reads', () => {
     expect(humanise('SEVERITY_EVALUATED')).toBe('severity evaluated');
     expect(humanise('EMERGENCY_RESPONDER')).toBe('emergency responder');
+  });
+});
+
+describe('timeAway', () => {
+  it('says minutes the way a person would, and hours past the hour', () => {
+    expect(timeAway(30)).toBe('less than a minute');
+    expect(timeAway(60)).toBe('about 1 minute');
+    expect(timeAway(540)).toBe('about 9 minutes');
+    expect(timeAway(3600)).toBe('about 1 hour');
+    expect(timeAway(4500)).toBe('about 1 hour 15 minutes');
+  });
+});
+
+describe('distance', () => {
+  it('keeps metres under a kilometre and one decimal above', () => {
+    expect(distance(648)).toBe('650 m');
+    expect(distance(4210)).toBe('4.2 km');
   });
 });

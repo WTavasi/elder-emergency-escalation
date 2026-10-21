@@ -444,6 +444,12 @@ class ApiClient {
     await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
   }
 
+  /// A token to join this emergency's voice room. The server allows it for the elder and
+  /// for anybody who could act on the emergency, and only while it is open.
+  Future<VoiceAccess> joinVoice(String id) async => VoiceAccess.fromJson(
+    await _send('POST', '/alerts/$id/voice', body: const <String, dynamic>{}),
+  );
+
   /// "I'm here." The person who took the emergency on is with the elder.
   Future<void> arrived(String id) async {
     await _send('POST', '/alerts/$id/arrived', body: const <String, dynamic>{});

@@ -873,8 +873,11 @@ export class EscalationService {
     return event;
   }
 
-  /** A participant is the elder, a member of their chain, or a covering responder. */
-  private async requireParticipant(event: EmergencyEvent, userId: string): Promise<void> {
+  /**
+   * A participant is the elder, a member of their chain, or a covering responder.
+   * Public so the voice room applies exactly the same rule as the buttons.
+   */
+  async requireParticipant(event: EmergencyEvent, userId: string): Promise<void> {
     if (event.elderlyId === userId) return;
 
     const assignment = await this.prisma.careAssignment.findFirst({

@@ -93,6 +93,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
 | POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
+| POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |
 | POST | `/api/v1/sms/inbound?token=` | the SMS gateway | A reply to an alert text, as Africa's Talking posts it (`from`, `text`, and others ignored). 404 unless `SMS_INBOUND_TOKEN` is set and matches |
 
 Every query is scoped to the caller's own care relationships, plus any emergency they
@@ -128,6 +129,14 @@ name its own coordinates could name coordinates that raise its own severity scor
 is an input to a safety decision. The optional `latitude` and `longitude` fields on the
 request are a fallback for an account whose home was never recorded, which registration
 does not yet require, and they come out once it does.
+
+**Talking through the app.** The detail view carries `voice`: `{ available, startedBy,
+startedAt }`. `available` is false when the server has no LiveKit project or the
+emergency is closed. `startedBy` is the first name of the first responder to join, and
+is what the elder's app waits for: when it appears, the app says who is joining and joins
+on the speaker after three seconds. Every join writes a `VOICE_JOINED` audit entry with
+`as: "elder" | "responder"`. The token allows one room and the microphone only, and lasts
+an hour; nothing said is recorded.
 
 **Answering by text.** With `SMS_INBOUND_TOKEN` set, every alert SMS ends "Reply 1 if
 you can go, 2 if you cannot." The gateway posts the reply to `/sms/inbound` with the token

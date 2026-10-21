@@ -191,6 +191,7 @@ class Emergency {
     this.acknowledgedByName,
     this.arrivedAt,
     this.journey,
+    this.voice = Voice.off,
   });
 
   final String id;
@@ -210,6 +211,9 @@ class Emergency {
   /// How long until they arrive, while they are sharing their way there. The elder's
   /// copy never carries a position: the server leaves the coordinates out for them.
   final Journey? journey;
+
+  /// Whether somebody has started talking to the elder through the app.
+  final Voice voice;
 
   bool get hasArrived => arrivedAt != null;
 
@@ -231,8 +235,50 @@ class Emergency {
           : null,
       arrivedAt: _date(json['arrivedAt']),
       journey: Journey.fromJson(json['journey']),
+      voice: Voice.fromJson(json['voice']),
     );
   }
+}
+
+/// Talking through the app during an emergency.
+class Voice {
+  const Voice({required this.available, this.startedBy, this.startedAt});
+
+  /// Nothing set up, or an emergency that is over.
+  static const Voice off = Voice(available: false);
+
+  /// The server has a voice service and the emergency is open.
+  final bool available;
+
+  /// First name of whoever first joined to talk to the elder. Null until somebody has.
+  final String? startedBy;
+  final DateTime? startedAt;
+
+  bool get hasStarted => available && startedBy != null;
+
+  static Voice fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return off;
+    return Voice(
+      available: json['available'] as bool? ?? false,
+      startedBy: json['startedBy'] as String?,
+      startedAt: _date(json['startedAt']),
+    );
+  }
+}
+
+/// What the phone needs to join an emergency's voice room.
+class VoiceAccess {
+  const VoiceAccess({required this.url, required this.token, required this.room});
+
+  final String url;
+  final String token;
+  final String room;
+
+  factory VoiceAccess.fromJson(Map<String, dynamic> json) => VoiceAccess(
+    url: json['url'] as String,
+    token: json['token'] as String,
+    room: json['room'] as String,
+  );
 }
 
 /// The person who took an emergency on, on their way there.
@@ -537,6 +583,7 @@ class AlertDetail {
     required this.timeline,
     required this.chain,
     this.journey,
+    this.voice = Voice.off,
   });
 
   final AlertSummary summary;
@@ -546,6 +593,9 @@ class AlertDetail {
 
   /// The person who took it on, on their way, while they share it.
   final Journey? journey;
+
+  /// Whether talking through the app is possible here, and who started it.
+  final Voice voice;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -565,6 +615,7 @@ class AlertDetail {
           .map((dynamic c) => ChainMember.fromJson(c as Map<String, dynamic>))
           .toList(),
       journey: Journey.fromJson(json['journey']),
+      voice: Voice.fromJson(json['voice']),
     );
   }
 }

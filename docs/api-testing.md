@@ -101,6 +101,7 @@ second way is the better one for a demonstration.
 | **2. An emergency, start to finish** | Grace raises an alert, Mary sees it in her list, opens it, takes it on and closes it |
 | **2b. On the way, and arriving** | Mary turns on sharing, takes Grace's alert on, shares a position about 2 km away (an ETA comes back), Grace sees the time but not the position, the family member sees both, Mary reaches the gate and it becomes ON_SCENE with the arrival time, then she closes it and turns sharing off |
 | **2c. Answering by text** | Grace raises an alert and Mary answers it by text with 1, as the SMS gateway would post it; the alert is hers, marked as answered by text; a second 1 changes nothing; a number nobody has gets no reply; a wrong secret finds nothing. Needs the API started with `SMS_INBOUND_TOKEN=local-text-replies-0123456789` (see [running.md](running.md), Step 9) |
+| **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([running.md](running.md), Step 10); without one the requests check for 503 instead |
 | **3. Declining moves it on** | Mary cannot come, so tier 2 is asked at once; the family member takes it on, calls in a responder and closes it |
 | **4. Withdrawing and reopening** | Grace withdraws inside the 10 second grace window; Mary reopens it because she could not reach her |
 

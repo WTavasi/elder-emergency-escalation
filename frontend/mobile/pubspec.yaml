@@ -57,6 +57,11 @@ dependencies:
   # mode on iOS. 14.1 was a month old when this was added.
   geolocator: ^14.1.1
 
+  # Talking to the elder through the app during an emergency (lib/core/voice/). LiveKit's
+  # client, over WebRTC, to a LiveKit room the API grants one emergency at a time. Audio
+  # only: the token allows the microphone and nothing else. 2.13 needs Dart 3.10.
+  livekit_client: ^2.13.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
