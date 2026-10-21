@@ -5,7 +5,7 @@ import { useAuth } from '../../shared/state/AuthContext';
 import { useCrumb } from '../../shared/state/Breadcrumb';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
-import type { AlertDetail, ChainMember } from '../../shared/api/types';
+import type { AlertDetail, ChainMember, Journey } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
@@ -16,7 +16,14 @@ import {
   Skeleton,
   StatePill,
 } from '../../shared/components/parts';
-import { formatClock, formatDuration, formatOffset, humanise } from '../../shared/utils/format';
+import {
+  distance,
+  formatClock,
+  formatDuration,
+  formatOffset,
+  humanise,
+  timeAway,
+} from '../../shared/utils/format';
 
 /**
  * Where one person on the chain stands. Worked out from the tier the emergency has
@@ -164,6 +171,8 @@ export function EventDetail() {
           : `Answered in ${formatDuration(alert.responseSeconds)}`}
         {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
       </p>
+
+      <OnTheWay alert={alert} />
 
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
@@ -328,6 +337,74 @@ export function EventDetail() {
             </tbody>
           </table>
         </Modal>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The person who took it on: how long until they are with the elder, where they are
+ * now, or when they arrived, and whether anybody has started talking to the elder in
+ * the app. Shown only while there is something to show. The position comes from the API
+ * for the care circle and the console alike, is a few seconds old at most, and is never
+ * stored; the link opens it in a map rather than putting a map on this page.
+ */
+function OnTheWay({ alert }: { alert: AlertDetail }) {
+  const open = OPEN_STATES.includes(alert.state);
+  const owner = alert.acknowledgedBy?.name.split(' ')[0];
+  const journey = alert.journey ?? null;
+  const caller = alert.voice?.startedBy ?? null;
+
+  const travelling = open && owner && !alert.arrivedAt && journey;
+  const arrived = owner && alert.arrivedAt;
+  if (!travelling && !arrived && !(open && caller)) return null;
+
+  return (
+    <section className="card stack" aria-labelledby="on-the-way-heading" aria-live="polite">
+      <h2 id="on-the-way-heading">{arrived ? 'With the elder' : 'On the way'}</h2>
+      {travelling && journey ? <Travelling owner={owner} journey={journey} /> : null}
+      {arrived && alert.arrivedAt ? (
+        <p>
+          {owner} arrived {formatClock(alert.arrivedAt)}
+          {alert.acknowledgedAt
+            ? `, ${formatDuration(
+                (Date.parse(alert.arrivedAt) - Date.parse(alert.acknowledgedAt)) / 1000,
+              )} after taking it on.`
+            : '.'}
+        </p>
+      ) : null}
+      {open && caller ? (
+        <p className="micro muted">
+          {caller} started a call in the app with {alert.elder.name.split(' ')[0]}.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
+  const how = journey.source === 'osrm' ? 'by road' : 'in a straight line';
+  const where =
+    journey.latitude !== null && journey.longitude !== null
+      ? `https://www.google.com/maps/search/?api=1&query=${journey.latitude},${journey.longitude}`
+      : null;
+
+  return (
+    <>
+      <p>
+        <strong>
+          {owner} is {timeAway(journey.etaSeconds)} away
+        </strong>
+      </p>
+      <p className="micro muted">
+        {distance(journey.distanceMetres)} {how}, updated {formatClock(journey.updatedAt)}.
+      </p>
+      {where ? (
+        <p>
+          <a href={where} target="_blank" rel="noopener noreferrer">
+            Where {owner} is now
+          </a>
+        </p>
       ) : null}
     </>
   );

@@ -101,11 +101,32 @@ export interface ChainMember {
   priorityOrder: number;
 }
 
+/** The person who took it on, on their way, while they share it. Never stored. */
+export interface Journey {
+  etaSeconds: number;
+  distanceMetres: number;
+  /** "osrm" for a route by road, "estimate" for the straight-line guess. */
+  source: 'osrm' | 'estimate';
+  updatedAt: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** Talking through the app: whether it is set up, and who started a call. */
+export interface VoiceState {
+  available: boolean;
+  startedBy: string | null;
+  startedAt: string | null;
+}
+
 export interface AlertDetail extends AlertSummary {
   severityFactors: SeverityBreakdown | null;
   chain: ChainMember[];
   timeline: AuditEntry[];
   deliveries: DeliveryAttempt[];
+  /** Optional, so a console a release ahead of the API still reads the page. */
+  journey?: Journey | null;
+  voice?: VoiceState;
 }
 
 /** The small message the socket pushes on every change. */
