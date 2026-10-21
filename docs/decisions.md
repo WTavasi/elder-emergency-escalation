@@ -508,3 +508,35 @@ Replying is off unless `SMS_INBOUND_TOKEN` is set, and the alert only offers it 
 is, so nobody is told to reply to a number that ignores them. Two-way SMS needs a
 shortcode. The sandbox gives one free with its simulator, which is what the demonstration
 uses; a live shortcode is rented, which is a deployment cost rather than a design change.
+
+## Talking to the elder goes through the app, and the elder's phone joins by itself
+
+A phone call needs the person called to reach the phone and answer it. For an elder who
+has fallen, or cannot get up, that is the step most likely to fail. So a responder can
+start a call inside the app, and the elder's phone, already open on the emergency it
+raised, joins on its own on the speaker. It says who is joining and buzzes for three
+seconds first, with "Not now" to stop it, so the first thing the elder hears is not a
+surprise; the responder's screen asks them to say who they are first. A large "End
+call" is there for the whole call.
+
+Opening a microphone without a press is the sharpest edge of this, so it is narrow. It
+happens only during an emergency the elder raised, only after somebody in their circle
+(the same participant rule as every button) asked to talk, only while the emergency is
+open, and every join is audited with who and when. The token allows the microphone and
+one room and nothing else. Nothing said is recorded, and the audio does not pass through
+this server.
+
+LiveKit carries the audio: an open-source WebRTC server, used here through LiveKit
+Cloud's free plan, with a local development server as the offline option. Its access
+token is a JWT signed with the project secret, so the API signs it with the JWT library
+it already has rather than adding a dependency for one token.
+
+The tone the plan described became a buzz and words on the screen. Flutter's system alert
+sound only plays on desktop operating systems, and a recorded chime would need an audio
+player whose audio session then has to be handed to the call. The buzz, the large text
+and the responder speaking first do the same job.
+
+The fallback is ringing with the phone's own dialler, which every alert already offers.
+An Africa's Talking conference call, which would reach a phone that was locked or had
+the app closed, does not work in their sandbox and needs a purchased voice number, so it
+is future work rather than part of this build.

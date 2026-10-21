@@ -502,6 +502,74 @@ answers a message answers the number it came from. Africa's Talking documents th
 sandbox and simulator in [How do I get started on the Africa's Talking
 Sandbox?](https://help.africastalking.com/en/articles/1170660-how-do-i-get-started-on-the-africa-s-talking-sandbox).
 
+### Step 10 (optional). Talk to the elder through the app
+
+A responder can press **Talk to Grace** on an alert. Grace's phone, if MzaziCare is open
+on it, says "Mary is joining to talk to you", buzzes for three seconds and joins on the
+speaker, so an elder who has fallen does not have to reach the phone and answer it. The
+audio goes through LiveKit. Nothing is recorded.
+
+**1. Get a LiveKit project (free, once).**
+
+1. Sign up at [cloud.livekit.io](https://cloud.livekit.io) and create a project. The
+   free plan includes 5,000 participant-minutes a month and stops at the limit rather
+   than charging.
+2. In the project, open **Settings**, then **API keys**, and create a key. Copy three
+   things: the project URL (it starts `wss://` and ends `.livekit.cloud`), the API key
+   and the API secret.
+3. Put them in `backend/.env`, which is never committed:
+
+   ```
+   LIVEKIT_URL=wss://<your project>.livekit.cloud
+   LIVEKIT_API_KEY=<the key>
+   LIVEKIT_API_SECRET=<the secret>
+   ```
+
+4. Restart the API. Any alert's detail now carries `"voice": { "available": true, ... }`.
+
+**2. Make a call.** Two devices on this Mac work: Grace on the iOS Simulator and Mary on
+the Android emulator. Use headphones, or two people in two rooms will whistle at each
+other through one Mac's speakers.
+
+1. On the Android emulator, let it hear the Mac's microphone: click **⋯** (Extended
+   controls), open **Microphone**, and turn on **Virtual microphone uses host audio
+   input**. The iOS Simulator uses the Mac's microphone already.
+2. Sign in as Grace on one and Mary on the other. Raise an alert as Grace and wait for
+   the countdown to finish.
+3. As Mary, open the alert and press **Talk to Grace**. Allow the microphone when asked.
+   The call screen says **Waiting for Grace to join**.
+4. On Grace's phone: **Mary is joining to talk to you**, three seconds, then **Talking
+   with Mary** and a large **End call**. The first time, the phone asks for the
+   microphone; allow it.
+5. Mary's screen now says **On the call with Grace**, with a timer, mute, speaker and the
+   red end button.
+6. On the console, the alert's page says Mary started a call, and the timeline shows each
+   join.
+
+**Without the internet: a LiveKit server on this Mac.**
+
+```bash
+brew install livekit
+livekit-server --dev --bind 0.0.0.0
+```
+
+and in `backend/.env`, with the Mac's Wi-Fi address from `ipconfig getifaddr en0`:
+
+```
+LIVEKIT_URL=ws://<that address>:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
+```
+
+The development server's key and secret are fixed and public, so it is for this Mac only.
+
+**What it does not do yet.** The elder's phone joins by itself only while MzaziCare is
+open on it, which it is from the moment help was asked for. A phone that was locked or
+had the app closed is reached the old way, by ringing. A conference call over the phone
+network (Africa's Talking voice) would cover that case; it needs a purchased voice
+number, because Africa's Talking voice does not work in the sandbox, and is written up
+as future work.
+
 ---
 
 ## The first run on a new machine, or after pulling changes
