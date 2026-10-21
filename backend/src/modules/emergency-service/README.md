@@ -27,6 +27,7 @@ console (`realtime-service`), or the elder's own record (`elder-service`).
 | POST | `/:id/decline` | asked at this tier | Cannot come; moves on at once if nobody else at the tier is left |
 | POST | `/:id/resolve` | participants | Close it with an outcome |
 | POST | `/:id/request-responder` | participants | Call in an emergency responder now |
+| POST | `/:id/voice` | participants, not an administrator | A token to join the emergency's voice room (`VoiceService`); the first responder to join is who the elder's screen names |
 | POST | `/sms/inbound?token=` | the SMS gateway | A reply of 1 or 2 to an alert text, handled as an acknowledgement or a decline (`SmsRepliesService`) |
 
 ## How escalation works

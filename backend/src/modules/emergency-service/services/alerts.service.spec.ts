@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import { AuditAction, CareLevel, EventState, Prisma, Role, Severity } from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
 import type { JourneyService } from './journey.service';
+import type { VoiceService } from './voice.service';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { SeverityService } from './severity.service';
@@ -157,6 +158,9 @@ const build = (
     new NoopRealtimePublisher(),
     config,
     { current: jest.fn().mockResolvedValue(null) } as unknown as JourneyService,
+    {
+      current: jest.fn().mockResolvedValue({ available: false, startedBy: null, startedAt: null }),
+    } as unknown as VoiceService,
   );
 
 describe('AlertsService', () => {

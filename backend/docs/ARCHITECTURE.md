@@ -183,6 +183,34 @@ In development both providers default to the logging ones: they write what would
 and report success, so the whole chain including the fallback can be exercised without
 credentials. The API refuses to start in production while either is still set to logging.
 
+### Answers that come back by text
+
+With `SMS_INBOUND_TOKEN` set, alert texts ask for "1" or "2", and Africa's Talking posts
+the reply to `POST /sms/inbound?token=`. The secret in the address is how the request is
+known to come from the gateway; without it the route is a 404. `SmsRepliesService`
+finds the account by number, the newest alert still waiting on that person, and calls
+the same `acknowledge` or `decline` as the app, so the conditional ownership write and
+the tier rule settle a text exactly as they settle a tap. The audit entry carries
+`via: "sms"`. Unknown numbers are never answered, each phone has six replies in ten
+minutes, and the route always answers 200 once the secret matches, because a gateway
+resends anything else.
+
+## Talking through the app
+
+A responder presses "Talk to Grace" and asks the API for a token (`POST
+/alerts/:id/voice`). The API applies the same participant rule as the buttons, refuses
+an administrator and a closed emergency, audits the join (`VOICE_JOINED`, who and when),
+remembers who started for two hours in Redis, and tells the elder's screen to re-read.
+The token is a LiveKit access token signed with the project secret: the account id as
+the identity, the first name to show, and a grant for one room, `emergency-<id>`, that
+allows the microphone and nothing else.
+
+The elder's screen, re-reading, finds `voice.startedBy`, buzzes for three seconds while
+it says who is joining, and joins the same room on the speaker. The audio goes between
+the phones and LiveKit; nothing passes through this server and nothing is recorded.
+Without `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` the feature is off
+and no screen offers it. Ringing with the phone's own dialler stays beside it.
+
 ## Live updates
 
 The administrator console and the Flutter app both connect to a Socket.IO namespace at

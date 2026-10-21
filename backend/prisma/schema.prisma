@@ -123,6 +123,8 @@ enum AuditAction {
   RESPONDER_REQUESTED
   /// EXTENSION. The owner reached the elder.
   ARRIVED
+  /// EXTENSION. Somebody joined the emergency's voice room. Who and when; never what was said.
+  VOICE_JOINED
   REOPENED
   RESOLVED
   CANCELLED

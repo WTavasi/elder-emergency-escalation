@@ -27,6 +27,7 @@ import {
 import { EscalationService } from './escalation.service';
 import { EscalationTimerService } from './escalation-timer.service';
 import { JourneyService } from './journey.service';
+import { VoiceService } from './voice.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
   REALTIME_PUBLISHER,
@@ -138,6 +139,7 @@ export class AlertsService {
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly config: ConfigService,
     private readonly journeys: JourneyService,
+    private readonly voice: VoiceService,
   ) {}
 
   /**
@@ -409,7 +411,7 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries, journey] = await Promise.all([
+    const [row, chain, logs, deliveries, journey, voice] = await Promise.all([
       this.prisma.emergencyEvent.findUniqueOrThrow({
         where: { id: eventId },
         include: SUMMARY_INCLUDE,
@@ -433,6 +435,7 @@ export class AlertsService {
         include: { recipient: { select: { id: true, name: true, role: true } } },
       }),
       this.journeys.current(eventId, event.elderlyId === userId),
+      this.voice.current(eventId, OPEN_STATES.includes(event.state)),
     ]);
 
     const triggeredAt = row.triggeredAt.getTime();
@@ -468,6 +471,7 @@ export class AlertsService {
         acknowledgedAt: delivery.acknowledgedAt?.toISOString() ?? null,
       })),
       journey,
+      voice,
     };
   }
 
