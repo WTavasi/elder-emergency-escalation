@@ -736,4 +736,91 @@ void main() {
       controller.dispose();
     });
   });
+
+  group('talking through the app', () {
+    Map<String, dynamic> withVoice({required bool available, String? startedBy}) =>
+        <String, dynamic>{
+          ...detailBody(
+            state: 'ACKNOWLEDGED',
+            acknowledgedBy: <String, dynamic>{
+              'id': 'caregiver-1',
+              'name': 'Peter Mwangi',
+              'role': 'CAREGIVER',
+            },
+          ),
+          'voice': <String, dynamic>{
+            'available': available,
+            'startedBy': startedBy,
+            'startedAt': startedBy == null ? null : '2026-10-21T10:00:00.000Z',
+          },
+        };
+
+    testWidgets('is not offered when the server has no voice service', (
+      WidgetTester tester,
+    ) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(withVoice(available: false))],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Talk to Grace'), findsNothing);
+      controller.dispose();
+    });
+
+    testWidgets('opens a call that waits for the elder, and hanging up comes back', (
+      WidgetTester tester,
+    ) async {
+      final FakeVoiceRoom room = FakeVoiceRoom();
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/voice')) {
+          return <http.Response>[json(voiceAccessBody())];
+        }
+        return <http.Response>[json(withVoice(available: true, startedBy: 'Peter'))];
+      });
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        voiceRoom: () => room,
+      );
+
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Peter has started a call.'), findsOneWidget);
+
+      await tester.tap(find.text('Talk to Grace'));
+      // Not pumpAndSettle: the call screen redraws its timer every second while the
+      // call is open, so it never settles. Enough for the page to slide in and join.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Waiting for Grace to join'), findsOneWidget);
+      expect(room.microphone, isTrue);
+      // A responder holds the phone to the ear to start with.
+      expect(room.speaker, isFalse);
+
+      room.present(<String>['Grace']);
+      await tester.pump();
+      expect(find.text('On the call with Grace'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('End'));
+      await tester.pumpAndSettle();
+
+      expect(room.left, isTrue);
+      expect(find.text('Talk to Grace'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      controller.dispose();
+    });
+  });
 }

@@ -79,8 +79,11 @@
 	<string>When you take an emergency on and have turned on Share my way there, MzaziCare shares where you are with the elder's care circle until you arrive, so they know how long you will be.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>MzaziCare only asks for your location while the app is in use. Sharing your way there carries on behind a maps app until you arrive, and never starts on its own.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>During an emergency, MzaziCare uses the microphone so you can talk with the person coming to help. Nothing you say is recorded.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>location</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>

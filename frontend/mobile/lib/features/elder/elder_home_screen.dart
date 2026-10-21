@@ -11,6 +11,7 @@ import '../../core/widgets/notice.dart';
 import '../consent/consent_screen.dart';
 import 'alert_controller.dart';
 import 'elder_me_screen.dart';
+import 'widgets/elder_call.dart';
 import 'widgets/help_progress.dart';
 import 'widgets/panic_button.dart';
 
@@ -111,7 +112,7 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
                 ),
               ],
               const SizedBox(height: MzaziSpace.s24),
-              Expanded(child: _Body(alerts: alerts)),
+              Expanded(child: _Body(alerts: alerts, api: widget.api)),
             ],
           ),
         ),
@@ -197,16 +198,17 @@ class _Header extends StatelessWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.alerts});
+  const _Body({required this.alerts, this.api});
 
   final AlertController alerts;
+  final ApiClient? api;
 
   @override
   Widget build(BuildContext context) {
     return switch (alerts.phase) {
       AlertPhase.idle || AlertPhase.raising => _Idle(alerts: alerts),
       AlertPhase.cancellable => _Cancellable(alerts: alerts),
-      AlertPhase.live => _Live(alerts: alerts),
+      AlertPhase.live => _Live(alerts: alerts, api: api),
       AlertPhase.cancelled => _Finished(
         alerts: alerts,
         headline: 'Cancelled',
@@ -311,12 +313,18 @@ class _Cancellable extends StatelessWidget {
 }
 
 class _Live extends StatelessWidget {
-  const _Live({required this.alerts});
+  const _Live({required this.alerts, this.api});
 
   final AlertController alerts;
+  final ApiClient? api;
 
   @override
-  Widget build(BuildContext context) => HelpProgress(emergency: alerts.emergency);
+  Widget build(BuildContext context) {
+    final ApiClient? client = api;
+    // Without an API, which only a test of the alert alone builds, there is no calling.
+    if (client == null) return HelpProgress(emergency: alerts.emergency);
+    return ElderCall(emergency: alerts.emergency, api: client);
+  }
 }
 
 class _Finished extends StatelessWidget {

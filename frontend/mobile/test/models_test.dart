@@ -193,4 +193,25 @@ void main() {
       expect(TimelineEntry.fromJson(entry(null)).byText, isFalse);
     });
   });
+
+  group('Voice', () {
+    test('reads who started a call', () {
+      final Voice voice = Voice.fromJson(<String, dynamic>{
+        'available': true,
+        'startedBy': 'Mary',
+        'startedAt': '2026-10-21T10:00:00.000Z',
+      });
+      expect(voice.hasStarted, isTrue);
+      expect(voice.startedBy, 'Mary');
+    });
+
+    test('is off when the server sends nothing, as an older one would', () {
+      expect(Voice.fromJson(null).available, isFalse);
+      expect(Voice.fromJson(null).hasStarted, isFalse);
+    });
+
+    test('has not started while nobody has joined', () {
+      expect(Voice.fromJson(<String, dynamic>{'available': true}).hasStarted, isFalse);
+    });
+  });
 }

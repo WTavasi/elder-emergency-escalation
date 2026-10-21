@@ -9,9 +9,11 @@ import '../../core/api/models.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/theme.dart';
+import '../../core/voice/voice_call.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
+import '../voice/call_screen.dart';
 import 'alert_detail_controller.dart';
 import 'widgets/call_button.dart';
 import 'widgets/directions_button.dart';
@@ -73,6 +75,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               journey: detail?.journey,
               open: widget.open,
             ),
+            if (controller.canTalk) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
+            ],
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               const SectionLabel('Where'),
@@ -694,6 +700,7 @@ class _WhatHappened extends StatelessWidget {
       'ESCALATED' => _escalated(entry),
       'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
       'ARRIVED' => '$who arrived',
+      'VOICE_JOINED' => '$who joined the call',
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
       'RESPONDER_REQUESTED' => '$who called for an emergency responder',
       'RESOLVED' => '$who closed it',
@@ -1026,6 +1033,52 @@ class _SeeWhere extends StatelessWidget {
       },
       icon: const Icon(Icons.near_me_outlined),
       label: Text('See where $name is'),
+    );
+  }
+}
+
+/// Talking to the elder through the app.
+///
+/// Beside ringing rather than instead of it. A phone call needs the elder to reach the
+/// phone and answer; this joins their phone by itself when MzaziCare is open on it, on the
+/// speaker, which is the case that matters for somebody who has fallen.
+class _Talk extends StatelessWidget {
+  const _Talk({required this.controller, required this.alert, this.startedBy});
+
+  final AlertDetailController controller;
+  final AlertSummary alert;
+  final String? startedBy;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String first = alert.elderName.split(' ').first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        OutlinedButton.icon(
+          onPressed: () {
+            // Made once, here, not in the route's builder, which can run more than once:
+            // a second call made there would be the one disposed, and the first would
+            // keep the microphone.
+            final VoiceCall call = controller.newCall();
+            unawaited(
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CallScreen(call: call, elderName: alert.elderName),
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.headset_mic_outlined),
+          label: Text('Talk to $first'),
+        ),
+        if (startedBy != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s4),
+          Text('$startedBy has started a call.', style: theme.textTheme.bodySmall),
+        ],
+      ],
     );
   }
 }
