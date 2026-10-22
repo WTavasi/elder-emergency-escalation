@@ -1,5 +1,6 @@
+import { useId } from 'react';
 import { Link } from 'react-router-dom';
-import type { AlertSummary, EventState, Severity } from '../api/types';
+import type { AlertSummary, AlertTrigger, EventState, Severity } from '../api/types';
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
 import { formatClock, formatDuration } from '../utils/format';
@@ -60,6 +61,25 @@ export function SeverityLabel({ severity, score }: { severity: Severity; score?:
       <Icon name={SEVERITY_GLYPH[severity]} size={16} />
       {severity.charAt(0) + severity.slice(1).toLowerCase()}
       {score === undefined ? null : <span className="mono muted"> {score}</span>}
+    </span>
+  );
+}
+
+/**
+ * Marks an emergency nobody pressed for: a daily check-in that went unanswered. Nothing
+ * for a press of the button, which is what every other row is, so the tag only appears
+ * where it changes what the reader should do (call first).
+ */
+export function TriggerTag({ trigger }: { trigger?: AlertTrigger }) {
+  const tipId = useId();
+  if (trigger !== 'MISSED_CHECK_IN') return null;
+  return (
+    <span className="tag" tabIndex={0} aria-describedby={tipId}>
+      Missed check-in
+      <span role="tooltip" id={tipId} className="tip">
+        Nobody pressed for help. The elder did not answer a daily check-in, so their care chain was
+        asked to call and check. It stays at the standard band.
+      </span>
     </span>
   );
 }
@@ -175,7 +195,10 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
     <tr>
       <td className={`urgency${live && !alert.acknowledgedBy ? ' urgency--live' : ''}`} />
       <td>
-        <Link to={`/emergencies/${alert.eventId}`}>{alert.elder.name}</Link>
+        <span className="row-inline">
+          <Link to={`/emergencies/${alert.eventId}`}>{alert.elder.name}</Link>
+          <TriggerTag trigger={alert.trigger} />
+        </span>
         <div className="micro">
           {alert.addressLabel ??
             (alert.withheld?.includes('location')

@@ -6,9 +6,11 @@ import { AlertsModule } from './modules/emergency-service/alerts.module';
 import { DashboardModule } from './modules/report-service/dashboard.module';
 import { EldersModule } from './modules/elder-service/elders.module';
 import { AuthModule } from './modules/auth-service/auth.module';
+import { CheckInsModule } from './modules/check-in-service/check-ins.module';
 import { JwtAuthGuard } from './modules/auth-service/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth-service/guards/roles.guard';
 import { EscalationModule } from './modules/emergency-service/escalation.module';
+import { SmsRepliesModule } from './modules/emergency-service/sms-replies.module';
 import { HealthModule } from './modules/health-service/health.module';
 import { NotificationsModule } from './modules/notification-service/notifications.module';
 import { PrismaModule } from './db/prisma.module';
@@ -34,6 +36,8 @@ import { validateEnv } from './shared/config/env.schema';
     NotificationsModule,
     EscalationModule,
     AlertsModule,
+    CheckInsModule,
+    SmsRepliesModule,
     EldersModule,
     DashboardModule,
     AdminModule,

@@ -71,11 +71,9 @@ class PushRegistration {
       if (_registeredFor != null) unawaited(_register(token));
     });
     // A push that arrives while the app is open is the same news the socket brings,
-    // and sometimes it gets here first.
-    _messages = _transport.messages.listen((Map<String, dynamic> data) {
-      final LiveChange? change = LiveChange.tryParse(data);
-      if (change != null) _live.publish(change);
-    });
+    // and sometimes it gets here first. A check-in has no emergency to point at, so it
+    // goes to the elder's screen on its own.
+    _messages = _transport.messages.listen(_live.publishPush);
     return true;
   }
 

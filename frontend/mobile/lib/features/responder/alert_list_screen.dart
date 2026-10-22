@@ -468,6 +468,20 @@ class _AlertRow extends StatelessWidget {
                       children: <Widget>[
                         StatePill(state: alert.state),
                         SeverityMark(severity: alert.severity, style: quiet),
+                        // Nobody pressed for help: the first thing to do is call.
+                        if (alert.fromMissedCheckIn)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(
+                                Icons.event_busy_outlined,
+                                size: (quiet?.fontSize ?? 14) * 1.2,
+                                color: quiet?.color,
+                              ),
+                              const SizedBox(width: MzaziSpace.s4),
+                              Text('Missed check-in', style: quiet),
+                            ],
+                          ),
                         if (_who(alert) case final String who) Text(who, style: quiet),
                       ],
                     ),

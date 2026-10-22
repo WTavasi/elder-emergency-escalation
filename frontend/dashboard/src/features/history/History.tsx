@@ -63,6 +63,7 @@ const COLUMNS: CsvColumn<AlertSummary>[] = [
   { header: 'Raised', value: (row) => row.triggeredAt },
   { header: 'Elder', value: (row) => row.elder.name },
   { header: 'Place', value: (row) => row.addressLabel },
+  { header: 'Raised by', value: (row) => row.trigger ?? 'PANIC' },
   { header: 'State', value: (row) => row.state },
   { header: 'Severity', value: (row) => row.severity },
   { header: 'Severity score', value: (row) => row.severityScore },

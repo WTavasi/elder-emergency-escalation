@@ -1,5 +1,14 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AuditAction, CareLevel, EventState, Prisma, Role, Severity } from '@prisma/client';
+import {
+  AlertTrigger,
+  AuditAction,
+  CareLevel,
+  EventOutcome,
+  EventState,
+  Prisma,
+  Role,
+  Severity,
+} from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
 import type { JourneyService } from './journey.service';
 import type { VoiceService } from './voice.service';
@@ -573,6 +582,122 @@ describe('AlertsService', () => {
     });
   });
 
+  describe('an alert raised by a missed check-in', () => {
+    it('is held at the standard band whatever the factors say, and never reviewed', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const created = await build(
+        prisma,
+        buildSeverity(Severity.CRITICAL),
+        buildEscalation(),
+        timers,
+      ).create('elder-1', {}, { trigger: AlertTrigger.MISSED_CHECK_IN });
+
+      expect(created.severity).toBe(Severity.STANDARD);
+      expect(prisma.emergencyEvent.create.mock.calls[0][0].data.trigger).toBe(
+        AlertTrigger.MISSED_CHECK_IN,
+      );
+      expect(timers.armSeverityReview).not.toHaveBeenCalled();
+    });
+
+    it('is recorded as raised by the system, not by the elder', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).create('elder-1', {}, { trigger: AlertTrigger.MISSED_CHECK_IN });
+
+      const entries = prisma.auditLog.createMany.mock.calls[0][0].data as Array<
+        Record<string, unknown>
+      >;
+      expect(entries[0].action).toBe(AuditAction.EVENT_CREATED);
+      expect(entries[0].actorId).toBeNull();
+      expect(entries[0].detail).toEqual({ trigger: AlertTrigger.MISSED_CHECK_IN });
+    });
+
+    it('a press of the button is still a panic alert', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).create('elder-1', {});
+      expect(prisma.emergencyEvent.create.mock.calls[0][0].data.trigger).toBe(AlertTrigger.PANIC);
+    });
+  });
+
+  describe('answerMissedCheckIn', () => {
+    const missed = (overrides: Record<string, unknown> = {}) =>
+      event({ trigger: AlertTrigger.MISSED_CHECK_IN, acknowledgedBy: null, ...overrides });
+
+    it('withdraws the alert when nobody has taken it on, and tells everyone', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const notifications = buildNotifications();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(missed());
+
+      const outcome = await build(
+        prisma,
+        buildSeverity(),
+        buildEscalation(),
+        timers,
+        notifications,
+      ).answerMissedCheckIn(event().id, 'elder-1');
+
+      expect(outcome).toBe('withdrawn');
+      expect(timers.cancelAll).toHaveBeenCalledWith(event().id);
+      const update = prisma.emergencyEvent.update.mock.calls[0][0];
+      expect(update.data.state).toBe(EventState.CANCELLED);
+      expect(update.data.outcome).toBe(EventOutcome.CANCELLED_BY_ELDER);
+      // Only if still nobody's: somebody taking it on in the same instant keeps it.
+      expect(update.where.acknowledgedBy).toBeNull();
+      const actions = (
+        prisma.auditLog.createMany.mock.calls[0][0].data as Array<Record<string, unknown>>
+      ).map((entry) => entry.action);
+      expect(actions).toEqual([AuditAction.CHECKED_IN_LATE, AuditAction.CANCELLED]);
+      expect(notifications.notifyCancellation).toHaveBeenCalledWith(event().id);
+    });
+
+    it('only notes the answer when somebody is already coming', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        missed({ state: EventState.ACKNOWLEDGED, acknowledgedBy: 'carer-1' }),
+      );
+
+      const outcome = await build(
+        prisma,
+        buildSeverity(),
+        buildEscalation(),
+        timers,
+      ).answerMissedCheckIn(event().id, 'elder-1');
+
+      expect(outcome).toBe('noted');
+      expect(timers.cancelAll).not.toHaveBeenCalled();
+      expect(prisma.emergencyEvent.update).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create.mock.calls[0][0].data.action).toBe(AuditAction.CHECKED_IN_LATE);
+    });
+
+    it('does nothing to an alert that is already over', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(missed({ state: EventState.RESOLVED }));
+
+      await expect(build(prisma).answerMissedCheckIn(event().id, 'elder-1')).resolves.toBe('noted');
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('never withdraws a press of the button, which only the elder can cancel', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ trigger: AlertTrigger.PANIC }));
+
+      await expect(build(prisma).answerMissedCheckIn(event().id, 'elder-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses an alert raised for another elder', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(missed({ elderlyId: 'elder-2' }));
+
+      await expect(build(prisma).answerMissedCheckIn(event().id, 'elder-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   describe('findOne', () => {
     it('gives an outsider a not-found rather than confirming the id exists', async () => {
       const prisma = buildPrisma();
@@ -683,6 +808,24 @@ describe('AlertsService', () => {
       const either = where.AND[0].OR;
       expect(either[0].elder.name).toEqual({ contains: 'grace', mode: 'insensitive' });
       expect(either[1].owner.name).toEqual({ contains: 'grace', mode: 'insensitive' });
+    });
+
+    it('finds missed check-ins by the words people would type', async () => {
+      for (const q of ['check-in', 'Missed', 'checkin']) {
+        const prisma = buildPrisma();
+        await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, { q });
+        const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
+          AND: Array<{ OR: Array<Record<string, unknown>> }>;
+        };
+        expect(where.AND[0].OR).toContainEqual({ trigger: AlertTrigger.MISSED_CHECK_IN });
+      }
+
+      const prisma = buildPrisma();
+      await build(prisma).findForUser('admin-1', Role.ADMINISTRATOR, { q: 'grace' });
+      const where = prisma.emergencyEvent.findMany.mock.calls[0][0].where as {
+        AND: Array<{ OR: unknown[] }>;
+      };
+      expect(where.AND[0].OR).toHaveLength(2);
     });
 
     it('keeps the scope when searching, rather than replacing it', async () => {

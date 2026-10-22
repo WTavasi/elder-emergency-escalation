@@ -1675,3 +1675,11 @@ legend {
 .prose ul {
   padding-left: var(--space-16);
 }
+
+/* A name with a small marker beside it, inside a table cell. */
+.row-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}

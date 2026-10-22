@@ -41,9 +41,14 @@ class LiveChange {
 /// old pace when it is not, so a dropped connection costs speed and never correctness.
 class LiveUpdates {
   final StreamController<LiveChange> _changes = StreamController<LiveChange>.broadcast();
+  final StreamController<void> _checkIns = StreamController<void>.broadcast();
   bool _connected = false;
 
   Stream<LiveChange> get changes => _changes.stream;
+
+  /// A daily check-in was just asked. Carries nothing: the elder's screen asks the API
+  /// what is waiting, the same as when it opens.
+  Stream<void> get checkIns => _checkIns.stream;
 
   /// Whether the socket is up right now. Only the socket sets this; a push arriving
   /// says nothing about whether the next one will.
@@ -53,9 +58,26 @@ class LiveUpdates {
     if (!_changes.isClosed) _changes.add(change);
   }
 
+  void checkInAsked() {
+    if (!_checkIns.isClosed) _checkIns.add(null);
+  }
+
+  /// Routes a push data payload: a check-in, or a change to an emergency.
+  void publishPush(Map<String, dynamic> data) {
+    if (data['type'] == 'check-in') {
+      checkInAsked();
+      return;
+    }
+    final LiveChange? change = LiveChange.tryParse(data);
+    if (change != null) publish(change);
+  }
+
   void connectionChanged(bool connected) => _connected = connected;
 
-  void dispose() => unawaited(_changes.close());
+  void dispose() {
+    unawaited(_changes.close());
+    unawaited(_checkIns.close());
+  }
 
   /// The app's hub, or none where a screen is built on its own, as in a widget test.
   /// None behaves exactly as the app did before live updates: polling at full pace.

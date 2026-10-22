@@ -28,6 +28,9 @@ so the folders match and the code inside them follows NestJS.
 | Live updates to the console | `realtime-service/` |
 | The reporting figures | `report-service/services/dashboard.service.ts` |
 | Accounts: listing, adding staff, deactivating | `admin-service/services/user-admin.service.ts` |
+| Daily check-ins: set-up, agreement, answers | `check-in-service/services/check-ins.service.ts` |
+| When check-ins are asked, reminded and raised | `check-in-service/services/check-in-clock.service.ts` |
+| Replies by text, from responders and elders | `emergency-service/services/sms-replies.service.ts`, wired in `emergency-service/sms-replies.module.ts` |
 | How long data is kept | `retention-service/workers/retention.service.ts` |
 | The health check | `health-service/` |
 | An environment variable | `shared/config/env.schema.ts` |
@@ -82,6 +85,11 @@ Tests sit beside the file they test as `<name>.spec.ts`. The end-to-end suite is
 - `elder-service` uses `auth-service` (passwords and phone codes) and
   `notification-service` (the "you were added" SMS) when a caregiver registers an elder
   or adds family.
+- `check-in-service` raises missed check-ins through `emergency-service`
+  (`AlertsService`) and asks through `notification-service` (push and SMS).
+- The text replies (`SmsRepliesModule`, inside `emergency-service`'s folder) use the
+  escalation service and `check-in-service`. They are a module of their own so that
+  `check-in-service` can depend on the alerts without the alerts depending back on it.
 
 Every other module stands alone. There are no cycles: `auth-service` writes the care
 assignments for invitations claimed at sign-up through `shared/utils/chain.ts` rather

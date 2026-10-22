@@ -23,11 +23,11 @@ npm test
 This runs both JavaScript workspaces. Expect roughly:
 
 ```
-Test Suites: 32 passed, 32 total          <- the API
-Tests:       280 passed, 280 total
+Test Suites: 53 passed, 53 total          <- the API
+Tests:       576 passed, 576 total
 
-Test Files  3 passed (3)                  <- the dashboard
-     Tests  16 passed (16)
+Test Files  6 passed (6)                  <- the dashboard
+     Tests  41 passed (41)
 ```
 
 The counts move as work lands. What matters is that nothing fails, not that the numbers
@@ -67,7 +67,7 @@ All three, in that order, and all three should be clean. `flutter analyze` is co
 to treat a warning as an error, so it either says "No issues found" or it has found
 something real.
 
-Expect about 195 tests across 25 files. They cover the API client's headers and its
+Expect about 225 tests across 28 files. They cover the API client's headers and its
 refresh path, the model parsing including the malformed cases, the elder's alert phases
 and what the elder sees while help is coming (who, how long, never where), sharing the
 way there (asked for location only when it is turned on, sends at once, stops on
@@ -80,8 +80,10 @@ each of the four actions with its refetch, sign-up, password reset, the profile,
 live updates (a change refreshes only the screens it concerns, a burst becomes one
 request, and the poll slows while the socket is up), push registration (once per
 account, again for the next person on the phone, never without a Firebase project), the
-elder's own page (signing out asks first), the shared components, and the accessibility
-floors.
+elder's own page (signing out asks first), the daily check-in (the question above the
+help button, agreeing to somebody else's set-up, a late answer withdrawing the alert it
+raised, setting it up and the last answers on the circle's page, "Missed check-in" on the
+caregiver's list and alert page), the shared components, and the accessibility floors.
 
 The accessibility file is the one worth understanding. It asserts the minimum touch
 target and body size against the constants in the generated token file rather than
@@ -103,8 +105,12 @@ docker compose up -d
 npm run test:integration -w @mzazicare/api
 ```
 
-Six tests against the real Postgres and the real Redis. Takes around twenty seconds,
-because it genuinely waits for Redis keys to expire.
+Eight escalation tests and six check-in tests against the real Postgres and the real Redis.
+Takes around twenty seconds, because the escalation file genuinely waits for Redis keys
+to expire. The check-in file drives the check-in clock by hand with the instant it should
+think it is: set up by a caregiver (nothing asked until the elder agrees), asked once
+however often the clock runs, reminded once, a standard alert raised at the deadline, and
+that alert withdrawn by a late answer.
 
 This is the one that matters. It is the only proof that the escalation timing is
 event-driven rather than polled. The suite fails immediately in `beforeAll` if Redis is

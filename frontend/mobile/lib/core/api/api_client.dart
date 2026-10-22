@@ -490,6 +490,53 @@ class ApiClient {
         ),
       );
 
+  /// An elder's daily check-in: how it is set up, and the last week of answers.
+  Future<CheckInsOverview> checkIns(String elderId) async =>
+      CheckInsOverview.fromJson(await _send('GET', '/elders/$elderId/check-ins'));
+
+  /// Sets it up, changes it, or turns it off. Anybody but the elder setting it up waits
+  /// for the elder to agree before anything is asked.
+  Future<CheckInsOverview> setCheckIns(
+    String elderId, {
+    required bool enabled,
+    required List<String> times,
+    int? graceMinutes,
+  }) async => CheckInsOverview.fromJson(
+    await _send(
+      'PUT',
+      '/elders/$elderId/check-ins',
+      body: <String, dynamic>{
+        'enabled': enabled,
+        'times': times,
+        'graceMinutes': ?graceMinutes,
+      },
+    ),
+  );
+
+  /// The elder's yes or no to a set-up somebody else made for them.
+  Future<ElderCheckIns> answerCheckInSetUp(String elderId, {required bool agree}) async =>
+      ElderCheckIns.fromJson(
+        await _send(
+          'POST',
+          '/elders/$elderId/check-ins/confirm',
+          body: <String, dynamic>{'agree': agree},
+        ),
+      );
+
+  /// The elder's own phone: a check-in to answer, and a set-up to agree to.
+  Future<ElderCheckIns> myCheckIns() async =>
+      ElderCheckIns.fromJson(await _send('GET', '/check-ins/mine'));
+
+  /// "I am all right."
+  Future<CheckInAnswer> answerCheckIn() async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/check-ins/answer',
+      body: const <String, dynamic>{},
+    );
+    return CheckInAnswer.parse(body['outcome']);
+  }
+
   void dispose() => _http.close();
 
   // ------------------------------------------------------------------ internals --

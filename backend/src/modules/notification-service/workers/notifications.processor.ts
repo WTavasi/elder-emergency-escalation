@@ -49,6 +49,7 @@ export class NotificationsProcessor extends WorkerHost {
       eventId: notification.eventId,
       // Offered only when a reply can be read, which is when the callback has a secret.
       replyByText: Boolean(this.config?.get<string>('SMS_INBOUND_TOKEN')),
+      trigger: notification.event.trigger,
     });
 
     const attempts = job.opts.attempts ?? 1;

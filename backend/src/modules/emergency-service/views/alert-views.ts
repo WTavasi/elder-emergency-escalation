@@ -1,4 +1,11 @@
-import type { AuditAction, EventOutcome, EventState, Role, Severity } from '@prisma/client';
+import type {
+  AlertTrigger,
+  AuditAction,
+  EventOutcome,
+  EventState,
+  Role,
+  Severity,
+} from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
 import type { VoiceView } from '../services/voice.service';
 
@@ -44,6 +51,8 @@ export interface AlertSummary {
    */
   withheld: Array<'phone' | 'location'>;
   triggeredAt: string;
+  /** "PANIC" when the elder pressed for help, "MISSED_CHECK_IN" for a daily check-in not answered. */
+  trigger: AlertTrigger;
   acknowledgedAt: string | null;
   /** When the person who took it on reached the elder. Kept if the emergency moves on. */
   arrivedAt: string | null;

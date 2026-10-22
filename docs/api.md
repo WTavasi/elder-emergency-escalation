@@ -85,7 +85,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
-| GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name and the name of whoever took it on; `from` and `to` bound the date; `offset` pages; the total is in `X-Total-Count` |
+| GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name and the name of whoever took it on, and "check-in" or "missed" also finds alerts raised by a missed check-in; `from` and `to` bound the date; `offset` pages; the total is in `X-Total-Count` |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
@@ -151,6 +151,16 @@ past them, that it has. The audit entry carries `via: "sms"`. One phone may send
 replies in ten minutes. The route always answers 200 once the token matches, because a
 gateway that sees an error sends the reply again. With `AT_SHORTCODE` set, every SMS is
 sent from that shortcode so the reply reaches the number that reads it.
+
+A reply from an **elder** is read as an answer to their daily check-in, not to an alert:
+a 1 answers it exactly as the button in the app does (below), and is thanked. Anything
+else is not taken as a call for help, because a mistyped reply must not become an
+emergency; the elder is told to press the help button or call 999.
+
+Every alert carries `trigger`: `PANIC` for a press of the button, `MISSED_CHECK_IN` for a
+daily check-in nobody answered. The second kind is held at the standard band whatever the
+severity factors say, has no severity review, and its texts say what happened ("did not
+answer today's check-in") rather than that the elder raised an alert.
 
 Declining is narrower than the rest. Only the people the **current tier** actually
 asked may decline, so a tier two contact cannot decline on tier one's behalf and
@@ -255,6 +265,38 @@ contact in `GEOCODER_CONTACT`; results cached for a day; searched on a button, n
 the person types; and the attribution returned with every result for the app to show. A
 busier deployment should set `GEOCODER_URL` to its own Nominatim.
 
+## Daily check-ins
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/elders/:id/check-ins` | the elder, their chain, an administrator | `{ schedule, recent, canEdit }`: the arrangement and the last seven check-ins |
+| PUT | `/api/v1/elders/:id/check-ins` | the elder or their chain | `{ enabled, times: ["09:00"], graceMinutes? }`. Up to three times a day, 10 to 120 minutes to answer (30 if not given). 30 changes an hour |
+| POST | `/api/v1/elders/:id/check-ins/confirm` | the elder | `{ agree }`: yes starts a set-up somebody else made; no turns it off |
+| GET | `/api/v1/check-ins/mine` | elder | `{ checkIn, waitingForAgreement }`: a check-in to answer, and a set-up to agree to |
+| POST | `/api/v1/check-ins/answer` | elder | "I am all right". Returns `{ outcome }`: `answered`, `withdrawn`, `noted` or `nothing` |
+
+Off unless somebody turns it on. Times are times of day in the elder's own time zone
+(`users.timezone`, Africa/Nairobi by default), so "09:00" is nine in the morning wherever
+the elder is. When the elder sets it up it starts at once. When anybody else does, or
+moves the times, nothing is asked until the elder agrees on their own phone
+(`waitingForElder: true` until then). Turning it off never needs anybody's agreement and
+removes any check-in still waiting.
+
+A one-minute clock (`CHECK_IN_TICK_MS`) does the rest. At each time it creates the day's
+check-in and asks the elder, by push if the phone has one and by SMS otherwise ("Reply 1
+if you are" when replies are on). Half way through the time to answer it asks once more.
+At the deadline it marks the check-in missed and raises an alert with
+`trigger: MISSED_CHECK_IN` through the ordinary escalation, or, if the elder already has
+an emergency open, links the check-in to that one. Nobody is asked in the middle of their
+own emergency. Each step is a conditional write, so two API instances, or a restart, never
+ask or alert twice.
+
+Answering a missed check-in late, while its alert is open, withdraws the alert if nobody
+has taken it on (`CHECKED_IN_LATE` and `CANCELLED` in the trail, and everybody who was told
+is told the elder answered), or notes the answer on the alert if somebody is already on
+the way (`CHECKED_IN_LATE` only; they still go). A press of the help button is never
+withdrawn this way.
+
 ## Reporting
 
 | Method | Path | Auth | Purpose |
@@ -302,8 +344,8 @@ Who receives a change:
 - anyone else who was asked about this emergency (an emergency responder matched by
   area, for instance), through their own `user:{id}` room.
 
-The message is a snapshot: `eventId`, `elderlyId`, `state`, `severity`, `currentTier`,
-`acknowledgedBy`, `triggeredAt`, `deadlineAt`. It never carries where the elder is.
+The message is a snapshot: `eventId`, `elderlyId`, `state`, `severity`, `trigger`,
+`currentTier`, `acknowledgedBy`, `triggeredAt`, `deadlineAt`, `arrivedAt`. It never carries where the elder is.
 Location is disclosed through the REST endpoints, which apply the consent rules for the
 person asking, so a client treats the message as a signal to re-read, not as the data
 to show. See [ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).

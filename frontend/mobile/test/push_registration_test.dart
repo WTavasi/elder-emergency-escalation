@@ -148,6 +148,28 @@ void main() {
     await transport.close();
   });
 
+  test('a check-in push tells the elder screen to look, and is not an emergency', () async {
+    final FakeTransport transport = FakeTransport();
+    final LiveUpdates live = LiveUpdates();
+    final PushRegistration push = PushRegistration(api: api, live: live, transport: transport);
+    final List<LiveChange> changes = <LiveChange>[];
+    int asked = 0;
+    final StreamSubscription<LiveChange> listening = live.changes.listen(changes.add);
+    final StreamSubscription<void> checkIns = live.checkIns.listen((_) => asked += 1);
+
+    await push.follow(sessionFor('elder-1'));
+    transport.inbox.add(<String, dynamic>{'type': 'check-in', 'checkInId': 'check-in-1'});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(asked, 1);
+    expect(changes, isEmpty);
+    await listening.cancel();
+    await checkIns.cancel();
+    push.dispose();
+    live.dispose();
+    await transport.close();
+  });
+
   group('Firebase configuration', () {
     test('is absent unless the build was given a project', () {
       const FirebaseConfig none = FirebaseConfig.fromEnvironment();

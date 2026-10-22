@@ -1,9 +1,11 @@
 import { ConflictException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { RedisService } from '../../../shared/redis/redis.service';
 import { AWAITING_STATES, OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { redactPhone } from '../../../shared/utils/redaction';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
+import { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import { capSms, REPLY_ASK } from '../../notification-service/services/notification-content';
 import { EscalationService } from './escalation.service';
 
@@ -19,7 +21,8 @@ export type ReplyOutcome =
   | 'declined'
   | 'taken'
   | 'moved-on'
-  | 'nothing-waiting';
+  | 'nothing-waiting'
+  | 'checked-in';
 
 /**
  * The words a reply is read as. The digits are what the alert asks for and are enough on
@@ -75,6 +78,7 @@ export class SmsRepliesService {
     private readonly redis: RedisService,
     private readonly escalation: EscalationService,
     private readonly sms: DirectSmsService,
+    private readonly checkIns: CheckInsService,
   ) {}
 
   async handle(from: string, text: string): Promise<ReplyOutcome> {
@@ -83,7 +87,7 @@ export class SmsRepliesService {
 
     const person = await this.prisma.user.findUnique({
       where: { phone },
-      select: { id: true, deactivatedAt: true },
+      select: { id: true, deactivatedAt: true, role: true },
     });
     if (!person || person.deactivatedAt) return 'ignored';
 
@@ -92,7 +96,12 @@ export class SmsRepliesService {
       return 'limited';
     }
 
-    const outcome = await this.answer(person.id, phone, readReply(text));
+    // An elder's reply is to their check-in, "are you all right?"; anybody else's is to an
+    // alert they were asked to answer.
+    const outcome =
+      person.role === Role.ELDER
+        ? await this.answerCheckIn(person.id, phone, readReply(text))
+        : await this.answer(person.id, phone, readReply(text));
     this.logger.log(`Text reply from ${redactPhone(phone)}: ${outcome}`);
     return outcome;
   }
@@ -168,6 +177,36 @@ export class SmsRepliesService {
       }
       throw error;
     }
+  }
+
+  /**
+   * An elder's reply to "are you all right? Reply 1 if you are". A 1 answers it, exactly
+   * as the button in the app does, including withdrawing an alert raised because it was
+   * missed. Anything else is not taken as a call for help, which would turn a mistyped
+   * reply into an emergency; the elder is told how to ask for help instead.
+   */
+  private async answerCheckIn(
+    elderId: string,
+    phone: string,
+    intent: ReplyIntent,
+  ): Promise<ReplyOutcome> {
+    if (intent !== 'accept') {
+      await this.sms.send(
+        phone,
+        'MzaziCare: if you need help, press the help button in MzaziCare or call 999. Reply 1 if you are all right.',
+      );
+      return 'unclear';
+    }
+
+    const outcome = await this.checkIns.answer(elderId, 'sms');
+    const text = {
+      answered: 'MzaziCare: thank you. Your family can see you are all right.',
+      withdrawn: 'MzaziCare: thank you. Your family has been told you are all right.',
+      noted: 'MzaziCare: thank you. Someone is already coming, and they know you answered.',
+      nothing: 'MzaziCare: there is nothing to answer just now. Thank you.',
+    }[outcome];
+    await this.sms.send(phone, text);
+    return outcome === 'nothing' ? 'nothing-waiting' : 'checked-in';
   }
 
   /** Says who already took the alert this person was asked about. False if nobody did. */

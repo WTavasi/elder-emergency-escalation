@@ -8,6 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
+import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
@@ -35,6 +36,9 @@ class _ElderScreenState extends State<ElderScreen> {
   String? _error;
   bool _busy = false;
 
+  /// Bumped on every reload, so pulling to refresh reloads the check-in section too.
+  int _loads = 0;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +54,7 @@ class _ElderScreenState extends State<ElderScreen> {
         _elder = elder;
         _chain = chain;
         _error = null;
+        _loads += 1;
       });
     } on Exception catch (error) {
       if (!mounted) return;
@@ -323,6 +328,13 @@ class _ElderScreenState extends State<ElderScreen> {
                   icon: const Icon(Icons.privacy_tip_outlined),
                   label: const Text('Privacy and consent'),
                 ),
+              ),
+              const SizedBox(height: MzaziSpace.s32),
+              CheckInSettings(
+                key: ValueKey<int>(_loads),
+                api: widget.api,
+                elderId: widget.elderId,
+                elderName: widget.elderName,
               ),
             ],
           ],

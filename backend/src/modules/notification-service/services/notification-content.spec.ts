@@ -1,4 +1,4 @@
-import { EventState, Severity } from '@prisma/client';
+import { AlertTrigger, EventState, Severity } from '@prisma/client';
 import {
   accountMessages,
   capSms,
@@ -139,6 +139,55 @@ describe('composeNotification, replying by text', () => {
 
   it('keeps 999 in the first alert', () => {
     expect(replying(EventState.TRIGGERED).sms).toContain('999');
+  });
+});
+
+describe('composeNotification, a missed check-in', () => {
+  const missed = (state: EventState, overrides = {}) =>
+    composeNotification({
+      ...base,
+      state,
+      trigger: AlertTrigger.MISSED_CHECK_IN,
+      ...overrides,
+    });
+
+  it('says nobody answered, not that the elder raised an alert', () => {
+    for (const state of [EventState.TRIGGERED, EventState.NOTIFIED, EventState.ESCALATED]) {
+      const message = missed(state);
+      expect(message.title).toContain('check-in');
+      expect(message.body).not.toContain('raised');
+      expect(message.sms).not.toContain('raised');
+      expect(message.data).toMatchObject({
+        action: 'respond',
+        trigger: AlertTrigger.MISSED_CHECK_IN,
+      });
+    }
+  });
+
+  it('asks for a call first', () => {
+    expect(missed(EventState.TRIGGERED).body).toContain('call');
+  });
+
+  it('offers the reply digits only when replies are read', () => {
+    expect(missed(EventState.TRIGGERED, { replyByText: true }).sms).toContain(REPLY_ASK);
+    expect(missed(EventState.TRIGGERED).sms).not.toContain('Reply');
+  });
+
+  it('says the elder answered when a late answer withdrew it, and still invites a call', () => {
+    const message = missed(EventState.CANCELLED);
+    expect(message.title).toBe('Grace answered the check-in');
+    expect(message.body).toContain('Call if you want to be sure');
+    expect(message.body).not.toContain('false alarm');
+  });
+
+  it('fits one segment with a long name', () => {
+    for (const state of [EventState.TRIGGERED, EventState.ESCALATED, EventState.CANCELLED]) {
+      const message = missed(state, {
+        replyByText: true,
+        elderName: 'Wilhelmina Nyakerario Moraa Kemunto Nyaboke',
+      });
+      expect(message.sms.length).toBeLessThanOrEqual(SMS_LIMIT);
+    }
   });
 });
 

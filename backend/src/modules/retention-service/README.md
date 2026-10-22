@@ -7,7 +7,8 @@ Deleting what the privacy notice says will be deleted, when it says.
 ## Scope
 
 **Owns:** a daily sweep that deletes closed emergencies past their retention window, then
-audit entries past their own shorter one. An open emergency is never deleted, whatever its
+audit entries past their own shorter one, then answered and missed daily check-ins past
+the audit window (a check-in still waiting is never deleted). An open emergency is never deleted, whatever its
 age, and the window counts from when an emergency closed rather than when it was raised.
 
 ## Run it by hand

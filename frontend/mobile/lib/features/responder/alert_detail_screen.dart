@@ -207,6 +207,16 @@ class _Header extends StatelessWidget {
             SeverityMark(severity: alert.severity, suffix: ' severity'),
           ],
         ),
+        if (alert.fromMissedCheckIn) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s12),
+          // Said first, because it changes what to do: nobody pressed for help, and a
+          // call settles most of these in a minute.
+          Text(
+            '${alert.elderName.split(' ').first} did not answer a daily check-in. Nobody '
+            'pressed for help, so call first.',
+            style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
+          ),
+        ],
         const SizedBox(height: MzaziSpace.s12),
         Text(
           'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
@@ -695,7 +705,10 @@ class _WhatHappened extends StatelessWidget {
     final String who = entry.actorName ?? 'Somebody';
 
     return switch (entry.action) {
+      'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
+        'The daily check-in went unanswered',
       'EVENT_CREATED' => '$who asked for help',
+      'CHECKED_IN_LATE' => '$who answered the check-in late',
       'TIER_DISPATCHED' => _dispatched(entry),
       'ESCALATED' => _escalated(entry),
       'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
@@ -704,6 +717,7 @@ class _WhatHappened extends StatelessWidget {
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
       'RESPONDER_REQUESTED' => '$who called for an emergency responder',
       'RESOLVED' => '$who closed it',
+      'CANCELLED' when entry.reason == 'checked-in-late' => 'Withdrawn: $who answered the check-in',
       'CANCELLED' => '$who withdrew it',
       'REOPENED' => '$who reopened it',
       // An action added on the server after this screen was written. Better a tidied

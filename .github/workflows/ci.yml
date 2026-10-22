@@ -203,7 +203,7 @@ jobs:
           npm run db:deploy -w @mzazicare/api
           npm run db:seed -w @mzazicare/api
 
-      - name: Escalation integration tests
+      - name: Escalation and check-in integration tests
         run: npm run test:integration -w @mzazicare/api
 
       # Enough to tell a broken environment from a broken test without a second run.

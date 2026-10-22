@@ -25,6 +25,7 @@ async function main(): Promise<void> {
 
     logger.log(`Closed emergencies deleted: ${outcome.eventsDeleted}`);
     logger.log(`Audit log entries deleted:  ${outcome.auditLogsDeleted}`);
+    logger.log(`Check-ins deleted:          ${outcome.checkInsDeleted}`);
     logger.log(`Emergencies kept until:     ${outcome.eventCutoff}`);
     logger.log(`Audit entries kept until:   ${outcome.auditCutoff}`);
   } finally {

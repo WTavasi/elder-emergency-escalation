@@ -1,16 +1,18 @@
 import type { ConfigService } from '@nestjs/config';
-import { EventState } from '@prisma/client';
+import { CheckInStatus, EventState } from '@prisma/client';
 import { RetentionService } from './retention.service';
 import type { PrismaService } from '../../../db/prisma.service';
 
 interface PrismaMock {
   emergencyEvent: { deleteMany: jest.Mock };
   auditLog: { deleteMany: jest.Mock };
+  checkIn: { deleteMany: jest.Mock };
 }
 
 const buildPrisma = (): PrismaMock => ({
   emergencyEvent: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
   auditLog: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+  checkIn: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
 });
 
 const build = (prisma: PrismaMock, settings: Record<string, unknown> = {}): RetentionService =>
@@ -64,6 +66,18 @@ describe('RetentionService', () => {
       };
 
       expect(where.occurredAt.lt).toEqual(new Date('2026-09-06T12:00:00.000Z'));
+    });
+
+    it('deletes old check-in answers with the audit window, never one still waiting', async () => {
+      const prisma = buildPrisma();
+      await build(prisma, { RETENTION_AUDIT_LOG_DAYS: 10 }).sweep(NOW);
+
+      const where = prisma.checkIn.deleteMany.mock.calls[0][0].where as {
+        status: { in: CheckInStatus[] };
+        dueAt: { lt: Date };
+      };
+      expect(where.dueAt.lt).toEqual(new Date('2026-09-06T12:00:00.000Z'));
+      expect(where.status.in).not.toContain(CheckInStatus.PENDING);
     });
 
     it('deletes the emergencies first, so the cascade does the bulk of the work', async () => {

@@ -5,7 +5,7 @@ building the escalation engine, the severity policy and the consent requirement 
 more than the six entities drawn there. Every difference is listed below so Chapter 4 can
 be brought back into agreement with the code rather than quietly diverging from it.
 
-Three new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
+Five new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
 removed, and no relationship in it changed.
 
 ## New tables
@@ -51,6 +51,30 @@ back. A separate table rather than a nullable `responder_id` on `care_assignment
 the chain itself free of half-people: every row dispatch reads is somebody who can
 actually be notified.
 
+### `check_in_schedules`
+
+One row per elder who has a daily check-in: whether it is on, the times of day (minutes
+after local midnight, up to three), how long the elder has to answer, who set it up, and
+when the elder agreed (`confirmed_at`, null while it waits for them). The elder is the
+primary key, because an elder has one arrangement or none.
+
+Justification: the times belong to the elder and are read every minute by the check-in
+clock, so they are data rather than configuration. `confirmed_at` is how the rule that
+the elder agrees to being checked on is enforced rather than merely stated: the clock only
+reads rows where it is set, and only asks times that fall after it.
+
+### `check_ins`
+
+One row per check-in actually asked: the elder, when it was due, when the reminder goes
+and when the circle is told, its status (`PENDING`, `ANSWERED`, `MISSED`), when and how
+it was answered, and the emergency it raised if it was missed. Unique per elder and due
+time, so two clocks cannot ask the same check-in twice.
+
+Justification: a missed check-in becomes an emergency, so the record of what was asked
+and when has to exist apart from that emergency, and it is what the circle's page shows
+as the last week of answers. Answered and missed rows are deleted with the audit log
+window; a pending one never is.
+
 ## New columns on existing tables
 
 | Table | Columns | Why |
@@ -65,6 +89,7 @@ actually be notified.
 | `users` | `deactivated_at` | An administrator closes an account without deleting it, because every account is named in emergency history that has to stay readable. Null means active. A deactivated account cannot sign in, its sessions end at once, and dispatch passes over its place in a chain. A timestamp rather than a boolean, so the record also says when access ended |
 | `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Reserved for declared cover hours. Not read in this build: the caregiver-cover severity factor was dropped because nothing lets a caregiver declare them. Kept so the factor can return without a migration |
 | `emergency_events` | `severity`, `severity_score`, `severity_factors` | The band, the score, and the factor values that produced it, so every escalation decision stays explainable |
+| `emergency_events` | `trigger` | `PANIC` for a press of the button, `MISSED_CHECK_IN` for a daily check-in nobody answered. The same lifecycle and chain for both; the trigger changes the wording, holds a missed check-in at the standard band, and lets a late answer withdraw it |
 | `emergency_events` | `severity_reviewed_at` | When severity was scored the second time, after the cancel window closed and "did not cancel" could count. Lets the review timer and the sweep both try, and only one succeed. Rows from before the column existed are marked reviewed at their trigger time |
 | `emergency_events` | `current_tier_deadline_at` | The durable copy of the Redis timer. Redis publishes an expiry once and never again, so without a recorded deadline a restart at the wrong moment would leave an emergency waiting on a timer that no longer exists |
 | `emergency_events` | `acknowledged_at`, `responder_requested_at` | Acknowledgement time is needed for the response-time measurements in Chapter 5. The request timestamp records a manual responder request superseding the automatic chain |
@@ -89,6 +114,8 @@ longitude pairs, with an optional human-readable address label on the alert.
 | `audit_logs(event_id, occurred_at)` | The event timeline, in order |
 | `care_assignments(elderly_id, priority_order)` unique | Two contacts cannot hold the same rank in one chain |
 | `care_assignments(elderly_id, responder_id)` unique | The same person cannot appear twice in one chain |
+| `check_ins(elder_id, due_at)` unique | One check-in per elder per time, whichever clock gets there first |
+| `check_ins(status, deadline_at)` | The clock's every-minute question: which pending check-ins are past their deadline |
 
 ## Suggested Chapter 4 revisions
 
@@ -104,3 +131,7 @@ longitude pairs, with an optional human-readable address label on the alert.
 4. Add `deactivated_at` (nullable timestamp) to the `users` entity in Figure 4.4, with a
    sentence in the narrative explaining that accounts are deactivated rather than deleted
    so emergency history keeps every name it refers to.
+5. Add `check_in_schedules` (one-to-one with an elder `users` row, plus a nullable foreign
+   key to the person who set it up) and `check_ins` (many per elder, with a nullable
+   foreign key to the `emergency_events` row it raised), and the `trigger` attribute on
+   `emergency_events`.

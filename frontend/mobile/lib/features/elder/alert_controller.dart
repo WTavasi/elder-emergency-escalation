@@ -101,6 +101,10 @@ class AlertController extends ChangeNotifier {
   /// [resume] without waiting, for a provider's create callback.
   void resumeLater() => unawaited(resume());
 
+  /// Looks again now, for a change this phone caused some other way: answering the
+  /// check-in that raised this alert withdraws it.
+  Future<void> checkNow() => _refresh();
+
   Future<void> raise() async {
     if (!canRaise) return;
 

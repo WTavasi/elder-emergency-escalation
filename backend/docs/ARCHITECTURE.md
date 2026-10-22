@@ -193,7 +193,11 @@ the same `acknowledge` or `decline` as the app, so the conditional ownership wri
 the tier rule settle a text exactly as they settle a tap. The audit entry carries
 `via: "sms"`. Unknown numbers are never answered, each phone has six replies in ten
 minutes, and the route always answers 200 once the secret matches, because a gateway
-resends anything else.
+resends anything else. A reply from an elder goes to their daily check-in instead (below):
+a 1 answers it, and nothing else is ever read as a call for help. The replies live in
+their own module, `SmsRepliesModule`, because they need both the escalation service and
+the check-ins, and the check-ins need the alerts; one module holding all three would be a
+cycle.
 
 ## Talking through the app
 
@@ -210,6 +214,30 @@ it says who is joining, and joins the same room on the speaker. The audio goes b
 the phones and LiveKit; nothing passes through this server and nothing is recorded.
 Without `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` the feature is off
 and no screen offers it. Ringing with the phone's own dialler stays beside it.
+
+## Daily check-ins
+
+An elder who agreed to it is asked "are you all right?" at their own times of day. The
+`CheckInClockService` runs once a minute and does three things, each a conditional write
+so that a second instance or an overlapping minute does nothing twice:
+
+1. **Ask.** For every agreed schedule, any time that fell due in the last ten minutes
+   (after the elder agreed, and while the elder has no emergency of their own open)
+   becomes a `check_ins` row, unique per elder and time, and is sent: push first, SMS when
+   the phone has no push address or the push fails.
+2. **Remind.** Half way to the deadline, a pending check-in nobody has answered is asked
+   once more.
+3. **Raise.** At the deadline, `PENDING` becomes `MISSED` once, and `AlertsService.create`
+   raises an alert with `trigger: MISSED_CHECK_IN`, held at the standard band with no
+   severity review. From there it is an ordinary emergency: the same dispatch, timers,
+   texts, replies and audit trail. If the elder already has an emergency open, the
+   check-in is linked to that one instead.
+
+The elder answers with one press (`POST /check-ins/answer`) or a reply of 1. An answer
+inside the time marks the check-in answered. An answer after the deadline, while the alert
+is open, withdraws it if nobody has taken it on (a conditional transition, like every
+withdrawal, so somebody accepting in the same instant keeps it) and tells everybody who
+was alerted, or records `CHECKED_IN_LATE` on it if somebody is already coming.
 
 ## Live updates
 
