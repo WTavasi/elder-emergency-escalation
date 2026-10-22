@@ -18,6 +18,8 @@ export interface EmergencySnapshot {
   elderlyId: string;
   state: string;
   severity: string;
+  /** PANIC for a press of the button, MISSED_CHECK_IN for a daily check-in nobody answered. */
+  trigger: string;
   currentTier: number;
   acknowledgedBy: string | null;
   triggeredAt: string;
@@ -39,6 +41,7 @@ export function toSnapshot(event: EmergencyEvent): EmergencySnapshot {
     elderlyId: event.elderlyId,
     state: event.state,
     severity: event.severity,
+    trigger: event.trigger,
     currentTier: event.currentTier,
     acknowledgedBy: event.acknowledgedBy,
     triggeredAt: event.triggeredAt.toISOString(),

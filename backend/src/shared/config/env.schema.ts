@@ -197,6 +197,17 @@ export class EnvSchema {
   @Min(1000)
   ESCALATION_SWEEP_INTERVAL_MS: number = 15_000;
 
+  /** Daily check-ins: the one-minute clock that asks, reminds and raises missed ones. */
+  @Transform(({ value }) => (value === undefined ? true : value === 'true' || value === true))
+  @IsBoolean()
+  CHECK_INS_ENABLED: boolean = true;
+
+  /** How often the check-in clock runs, milliseconds. A minute is plenty for a time of day. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1000)
+  CHECK_IN_TICK_MS: number = 60_000;
+
   /**
    * How long to wait for a notification provider before giving up, milliseconds.
    *

@@ -1,5 +1,6 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CheckInStatus } from '@prisma/client';
 import { CLOSED_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 
@@ -9,6 +10,7 @@ export interface RetentionOutcome {
   ranAt: string;
   eventsDeleted: number;
   auditLogsDeleted: number;
+  checkInsDeleted: number;
   eventCutoff: string;
   auditCutoff: string;
 }
@@ -25,7 +27,8 @@ export interface RetentionOutcome {
  * deleted first, and the schema cascades that to their audit logs and notifications, so
  * one delete removes everything about that emergency. A second pass then removes audit
  * logs that outlived their own, shorter window while their emergency is still retained,
- * which is the case the cascade cannot reach.
+ * which is the case the cascade cannot reach. Daily check-in answers go with the audit
+ * window: they are a record of what happened, and a week of them is all anybody looks at.
  *
  * An open emergency is never deleted, whatever its age. An emergency nobody ever closed
  * is a failure worth keeping the evidence of.
@@ -94,10 +97,19 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       where: { occurredAt: { lt: auditCutoff } },
     });
 
+    // A check-in still waiting is never touched: the clock is about to act on it.
+    const checkIns = await this.prisma.checkIn.deleteMany({
+      where: {
+        status: { in: [CheckInStatus.ANSWERED, CheckInStatus.MISSED] },
+        dueAt: { lt: auditCutoff },
+      },
+    });
+
     const outcome: RetentionOutcome = {
       ranAt: now.toISOString(),
       eventsDeleted: events.count,
       auditLogsDeleted: auditLogs.count,
+      checkInsDeleted: checkIns.count,
       eventCutoff: eventCutoff.toISOString(),
       auditCutoff: auditCutoff.toISOString(),
     };
@@ -105,8 +117,8 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
     // Logged at info even when nothing was deleted, because "the sweep ran and found
     // nothing" and "the sweep never ran" have to be distinguishable in the record.
     this.logger.log(
-      `Retention sweep: ${events.count} closed emergencies and ${auditLogs.count} audit ` +
-        `log entries deleted (events before ${eventCutoff.toISOString().slice(0, 10)}, ` +
+      `Retention sweep: ${events.count} closed emergencies, ${auditLogs.count} audit ` +
+        `log entries and ${checkIns.count} check-ins deleted (events before ${eventCutoff.toISOString().slice(0, 10)}, ` +
         `logs before ${auditCutoff.toISOString().slice(0, 10)})`,
     );
 

@@ -1,4 +1,4 @@
-import { EventState, Severity } from '@prisma/client';
+import { AlertTrigger, EventState, Severity } from '@prisma/client';
 
 export interface NotificationContext {
   state: EventState;
@@ -13,6 +13,8 @@ export interface NotificationContext {
    * actually be read, so nobody is asked to answer a number that ignores them.
    */
   replyByText?: boolean;
+  /** A daily check-in the elder did not answer, rather than the elder pressing for help. */
+  trigger?: AlertTrigger;
 }
 
 export interface ComposedNotification {
@@ -49,8 +51,24 @@ export function composeNotification(context: NotificationContext): ComposedNotif
     tier: String(context.tier),
   };
 
+  const missed = context.trigger === AlertTrigger.MISSED_CHECK_IN;
+
   switch (context.state) {
     case EventState.CANCELLED:
+      if (missed) {
+        // Withdrawn because the elder answered the check-in late. Still an invitation to
+        // call: "I am all right" pressed by somebody else is exactly what a check-in
+        // cannot rule out.
+        return {
+          title: `${firstName(name)} answered the check-in`,
+          body: `${name} answered late and says they are all right. Call if you want to be sure.`,
+          sms: capSms(
+            `MzaziCare: ${name} answered the check-in late and says they are all right. Call if you want to be sure.`,
+            `MzaziCare: ${firstName(name)} answered the check-in late and is all right.`,
+          ),
+          data: { ...data, action: 'view' },
+        };
+      }
       // The false alarm case. The caregiver was already told something was wrong, so
       // the correction has to reach them, and it has to invite a check rather than
       // closing the matter: an elder can cancel by mistake, or under pressure.
@@ -65,6 +83,23 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       };
 
     case EventState.ESCALATED:
+      if (missed) {
+        // Nobody raised an alarm, so the next tier is told what actually happened.
+        return {
+          title: `Still unanswered: ${firstName(name)} missed a check-in`,
+          body: `${name} did not answer the daily check-in and nobody has checked on them yet. Please call or go round.`,
+          sms: context.replyByText
+            ? capSms(
+                `MzaziCare: ${name} did not answer today's check-in and nobody has checked yet. ${REPLY_ASK}`,
+                `MzaziCare: ${firstName(name)} missed a check-in, nobody has checked. ${REPLY_ASK}`,
+              )
+            : capSms(
+                `MzaziCare: ${name} did not answer today's check-in and nobody has checked on them yet. Please call.`,
+                `MzaziCare: ${firstName(name)} missed a check-in and nobody has checked. Please call.`,
+              ),
+          data: { ...data, action: 'respond', trigger: AlertTrigger.MISSED_CHECK_IN },
+        };
+      }
       return {
         title: `Still unanswered: ${firstName(name)} needs help`,
         body: `Nobody has responded to ${name}'s alert${at}. Open MzaziCare to respond.`,
@@ -116,6 +151,24 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       };
 
     default: {
+      if (missed) {
+        // Said for what it is: nobody pressed for help, somebody did not answer. The ask
+        // is to call first, which settles most of these in a minute.
+        return {
+          title: `${firstName(name)} did not answer today's check-in`,
+          body: `${name} did not answer the daily check-in. Please call to check on them.`,
+          sms: context.replyByText
+            ? capSms(
+                `MzaziCare: ${name} did not answer today's check-in. Please call to check. ${REPLY_ASK}`,
+                `MzaziCare: ${firstName(name)} missed a check-in. Please call. ${REPLY_ASK}`,
+              )
+            : capSms(
+                `MzaziCare: ${name} did not answer today's check-in. Please call to check on them.`,
+                `MzaziCare: ${firstName(name)} missed a check-in. Please call to check.`,
+              ),
+          data: { ...data, action: 'respond', trigger: AlertTrigger.MISSED_CHECK_IN },
+        };
+      }
       // TRIGGERED and NOTIFIED: the first time this person is told.
       const urgent = context.severity === Severity.CRITICAL;
       return {

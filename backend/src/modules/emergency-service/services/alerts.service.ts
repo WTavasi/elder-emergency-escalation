@@ -8,17 +8,19 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  AlertTrigger,
   AuditAction,
   EventOutcome,
   EventState,
   Prisma,
   Role,
+  Severity,
   type EmergencyEvent,
-  type Severity,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { CONSENT_STATE_SELECT, disclosureFor } from '../../../shared/utils/consent';
 import {
+  AWAITING_STATES,
   INITIAL_STATE,
   OPEN_STATES,
   assertTransition,
@@ -115,6 +117,7 @@ function toSummary(row: SummaryRow, viewerId: string): AlertSummary {
       ...(shown.location ? [] : ['location' as const]),
     ],
     triggeredAt: row.triggeredAt.toISOString(),
+    trigger: row.trigger,
     acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
     arrivedAt: row.arrivedAt?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
@@ -150,8 +153,14 @@ export class AlertsService {
    * cancelled notification. Dispatch itself is queued by the escalation engine, so
    * this path does only what has to be durable before the caller hears back.
    */
-  async create(elderId: string, dto: CreateAlertDto): Promise<EmergencyEvent> {
+  async create(
+    elderId: string,
+    dto: CreateAlertDto,
+    options: { trigger?: AlertTrigger } = {},
+  ): Promise<EmergencyEvent> {
     const at = new Date();
+    // A missed daily check-in, raised by the system rather than pressed by the elder.
+    const missed = options.trigger === AlertTrigger.MISSED_CHECK_IN;
 
     const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
@@ -175,16 +184,26 @@ export class AlertsService {
       ),
     );
 
+    // A missed check-in is held at the standard band whatever the factors say. Not
+    // answering is a reason to look, not evidence of an emergency, and an elder who
+    // overslept should not set off the critical band's texts to everybody at once. The
+    // score is still recorded, so the reasoning stays readable.
+    const band = missed ? Severity.STANDARD : assessment.band;
+
     const event = await this.prisma.$transaction(async (tx) => {
       const created = await tx.emergencyEvent.create({
         data: {
+          trigger: options.trigger ?? AlertTrigger.PANIC,
+          // Nobody pressed anything, so there is no cancel window to close and no second
+          // look at severity to wait for.
+          severityReviewedAt: missed ? at : null,
           elderlyId: elderId,
           alertLatitude: new Prisma.Decimal(where.latitude),
           alertLongitude: new Prisma.Decimal(where.longitude),
           alertAddressLabel: where.addressLabel,
           state: INITIAL_STATE,
           currentTier: 1,
-          severity: assessment.band,
+          severity: band,
           severityScore: assessment.score,
           severityFactors: assessment as unknown as Prisma.InputJsonValue,
           triggeredAt: at,
@@ -195,9 +214,11 @@ export class AlertsService {
         data: [
           {
             eventId: created.id,
-            actorId: elderId,
+            // The system raised a missed check-in; the elder raised everything else.
+            actorId: missed ? null : elderId,
             action: AuditAction.EVENT_CREATED,
             newState: INITIAL_STATE,
+            detail: { trigger: options.trigger ?? AlertTrigger.PANIC },
             occurredAt: at,
           },
           {
@@ -215,7 +236,8 @@ export class AlertsService {
     });
 
     this.logger.log(
-      `Emergency ${event.id} raised, severity ${assessment.band} at score ${assessment.score}`,
+      `Emergency ${event.id} raised${missed ? ' for a missed check-in' : ''}, ` +
+        `severity ${band} at score ${assessment.score}`,
     );
 
     // Awaited on purpose. What this does is write durable state and arm a timer, not
@@ -228,10 +250,12 @@ export class AlertsService {
     // so a dispatch failure cannot skip it, and never allowed to fail the alert itself:
     // the escalation sweep reviews any emergency whose window closed unreviewed.
     try {
-      await this.timers.armSeverityReview(
-        event.id,
-        this.config.get<number>('CANCEL_GRACE_WINDOW', 10),
-      );
+      if (!missed) {
+        await this.timers.armSeverityReview(
+          event.id,
+          this.config.get<number>('CANCEL_GRACE_WINDOW', 10),
+        );
+      }
     } catch (error) {
       this.logger.warn(
         `Could not arm the severity review for ${event.id}; the sweep will pick it up`,
@@ -407,6 +431,83 @@ export class AlertsService {
     return reopened;
   }
 
+  /**
+   * The elder answered, late, the check-in a missed-check-in alert was raised for.
+   *
+   * While nobody has taken it on, it is withdrawn: the reason for it has gone, and
+   * everybody told is told so and asked to call, exactly as when an elder withdraws an
+   * alert they pressed. Once somebody has taken it on it stays with them, and the trail
+   * records that she answered, so the person on their way knows. Does nothing for an
+   * alert the elder pressed for: that is withdrawn by its own button, in its own window.
+   */
+  async answerMissedCheckIn(eventId: string, elderId: string): Promise<'withdrawn' | 'noted'> {
+    const event = await this.requireEvent(eventId);
+    if (event.elderlyId !== elderId || event.trigger !== AlertTrigger.MISSED_CHECK_IN) {
+      throw new ForbiddenException('That alert was not raised for a check-in of yours');
+    }
+    if (!OPEN_STATES.includes(event.state)) return 'noted';
+
+    const now = new Date();
+    const unowned = !event.acknowledgedBy && AWAITING_STATES.includes(event.state);
+
+    if (!unowned) {
+      await this.prisma.auditLog.create({
+        data: {
+          eventId,
+          actorId: elderId,
+          action: AuditAction.CHECKED_IN_LATE,
+          detail: {
+            secondsAfterTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
+          },
+          occurredAt: now,
+        },
+      });
+      this.realtime.emergencyUpdated(event);
+      return 'noted';
+    }
+
+    await this.timers.cancelAll(eventId);
+    const withdrawn = await this.prisma.$transaction(async (tx) => {
+      // Conditional on nobody owning it, like every withdrawal: somebody taking it on in
+      // the same instant keeps it.
+      const updated = await transitionEvent(
+        tx,
+        event,
+        EventState.CANCELLED,
+        {
+          currentTierDeadlineAt: null,
+          outcome: EventOutcome.CANCELLED_BY_ELDER,
+          resolvedAt: now,
+        },
+        { acknowledgedBy: null },
+      );
+      await tx.auditLog.createMany({
+        data: [
+          {
+            eventId,
+            actorId: elderId,
+            action: AuditAction.CHECKED_IN_LATE,
+            occurredAt: now,
+          },
+          {
+            eventId,
+            actorId: elderId,
+            action: AuditAction.CANCELLED,
+            previousState: event.state,
+            newState: EventState.CANCELLED,
+            detail: { reason: 'checked-in-late' },
+            occurredAt: now,
+          },
+        ],
+      });
+      return updated;
+    });
+
+    this.realtime.emergencyUpdated(withdrawn);
+    await this.notifications.notifyCancellation(eventId);
+    return 'withdrawn';
+  }
+
   /** One emergency in full, if the caller is part of it. */
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
@@ -538,6 +639,10 @@ export class AlertsService {
                 OR: [
                   { elder: { name: { contains: q, mode: 'insensitive' as const } } },
                   { owner: { name: { contains: q, mode: 'insensitive' as const } } },
+                  // "check-in" or "missed" finds the alerts no one pressed for.
+                  ...(/check.?in|missed/i.test(q)
+                    ? [{ trigger: AlertTrigger.MISSED_CHECK_IN }]
+                    : []),
                 ],
               },
             ],

@@ -3,6 +3,7 @@ import type { PrismaService } from '../../../db/prisma.service';
 import type { RedisService } from '../../../shared/redis/redis.service';
 import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { SMS_LIMIT } from '../../notification-service/services/notification-content';
+import type { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import type { EscalationService } from './escalation.service';
 import { normalisePhone, readReply, REPLY_LIMIT, SmsRepliesService } from './sms-replies.service';
 
@@ -55,15 +56,17 @@ function build(
     decline: jest.fn().mockResolvedValue({}),
   };
   const sms = { send: jest.fn().mockResolvedValue(true) };
+  const checkIns = { answer: jest.fn().mockResolvedValue('answered') };
 
   const service = new SmsRepliesService(
     prisma as unknown as PrismaService,
     redis as unknown as RedisService,
     escalation as unknown as EscalationService,
     sms as unknown as DirectSmsService,
+    checkIns as unknown as CheckInsService,
   );
   const sent = (): string[] => sms.send.mock.calls.map((call: unknown[]) => call[1] as string);
-  return { service, prisma, escalation, sms, sent };
+  return { service, prisma, escalation, sms, sent, checkIns };
 }
 
 describe('readReply', () => {
@@ -211,5 +214,37 @@ describe('SmsRepliesService', () => {
     expect(t.prisma.user.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { phone: '+254700000030' } }),
     );
+  });
+
+  describe('from an elder, answering a check-in', () => {
+    const ELDER = { id: 'elder-1', deactivatedAt: null, role: 'ELDER' };
+
+    it('a 1 answers it, through the same path as the button', async () => {
+      const t = build({ person: ELDER });
+
+      await expect(t.service.handle('+254700000010', '1')).resolves.toBe('checked-in');
+
+      expect(t.checkIns.answer).toHaveBeenCalledWith('elder-1', 'sms');
+      expect(t.escalation.acknowledge).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('all right');
+    });
+
+    it('a late 1 that withdrew the alert says the family was told', async () => {
+      const t = build({ person: ELDER });
+      t.checkIns.answer.mockResolvedValue('withdrawn');
+
+      await t.service.handle('+254700000010', 'ndio');
+
+      expect(t.sent()[0]).toContain('Your family has been told');
+    });
+
+    it('anything else is not taken as a call for help, and says how to ask for it', async () => {
+      const t = build({ person: ELDER });
+
+      await expect(t.service.handle('+254700000010', 'help')).resolves.toBe('unclear');
+
+      expect(t.checkIns.answer).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('call 999');
+    });
   });
 });

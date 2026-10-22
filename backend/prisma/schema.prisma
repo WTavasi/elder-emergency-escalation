@@ -125,6 +125,8 @@ enum AuditAction {
   ARRIVED
   /// EXTENSION. Somebody joined the emergency's voice room. Who and when; never what was said.
   VOICE_JOINED
+  /// EXTENSION. The elder answered the daily check-in this alert was raised for, late.
+  CHECKED_IN_LATE
   REOPENED
   RESOLVED
   CANCELLED
@@ -219,6 +221,9 @@ model User {
   invitationsAsElder ChainInvitation[] @relation("invitationElder")
   invitationsSent    ChainInvitation[] @relation("invitationSender")
   preferences        UserPreference?
+  checkInSchedule    CheckInSchedule?  @relation("checkInScheduleElder")
+  checkInSchedulesSet CheckInSchedule[] @relation("checkInScheduleSetBy")
+  checkIns           CheckIn[]
 
   @@index([role])
   @@map("users")
@@ -315,10 +320,16 @@ model EmergencyEvent {
   arrivedAt      DateTime? @map("arrived_at") @db.Timestamptz(3)
   resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
 
+  /// EXTENSION. What raised it: the elder pressing for help, or a daily check-in they
+  /// did not answer. A missed check-in is held at the standard band and has no cancel
+  /// window, because nobody pressed anything.
+  trigger AlertTrigger @default(PANIC)
+
   elder         User           @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
   owner         User?          @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
   notifications Notification[]
   auditLogs     AuditLog[]
+  checkIns      CheckIn[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -519,3 +530,88 @@ model UserPreference {
 
   @@map("user_preferences")
 }
+
+/// EXTENSION. What raised an emergency.
+enum AlertTrigger {
+  /// The elder pressed for help.
+  PANIC
+  /// The elder did not answer a daily check-in in time.
+  MISSED_CHECK_IN
+
+  @@map("alert_trigger")
+}
+
+/// EXTENSION. Where one daily check-in got to.
+enum CheckInStatus {
+  /// Asked, and waiting for the elder.
+  PENDING
+  /// The elder said they were all right.
+  ANSWERED
+  /// Not answered in time; an alert was raised.
+  MISSED
+
+  @@map("check_in_status")
+}
+
+/// EXTENSION. A daily "are you all right?" for an elder who chose it, or whose circle set
+/// it up and who then agreed. One per elder.
+model CheckInSchedule {
+  elderId String @id @map("elder_id") @db.Uuid
+
+  enabled Boolean @default(true)
+
+  /// Minutes after local midnight, in the elder's own time zone (users.timezone), one per
+  /// check-in a day. 540 is 09:00.
+  times Int[]
+
+  /// How long the elder has to answer before their circle is alerted. A reminder goes at
+  /// half of it.
+  graceMinutes Int @default(30) @map("grace_minutes")
+
+  /// Who set it up last: the elder, or somebody in their chain.
+  setById String? @map("set_by_id") @db.Uuid
+
+  /// When the elder agreed. Set at once when they set it up themselves; null while a set
+  /// up by somebody else waits for them, and nothing is sent until it is set.
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  elder User  @relation("checkInScheduleElder", fields: [elderId], references: [id], onDelete: Cascade)
+  setBy User? @relation("checkInScheduleSetBy", fields: [setById], references: [id], onDelete: SetNull)
+
+  @@map("check_in_schedules")
+}
+
+/// EXTENSION. One check-in: asked at dueAt, reminded at remindAt, missed at deadlineAt.
+model CheckIn {
+  id      String @id @default(uuid()) @map("check_in_id") @db.Uuid
+  elderId String @map("elder_id") @db.Uuid
+
+  dueAt      DateTime @map("due_at") @db.Timestamptz(3)
+  remindAt   DateTime @map("remind_at") @db.Timestamptz(3)
+  deadlineAt DateTime @map("deadline_at") @db.Timestamptz(3)
+
+  status     CheckInStatus @default(PENDING)
+  remindedAt DateTime?     @map("reminded_at") @db.Timestamptz(3)
+  answeredAt DateTime?     @map("answered_at") @db.Timestamptz(3)
+  /// "app" or "sms".
+  answeredVia String?   @map("answered_via") @db.VarChar(8)
+  missedAt    DateTime? @map("missed_at") @db.Timestamptz(3)
+
+  /// The alert raised when it was missed.
+  eventId String? @map("event_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  elder User            @relation(fields: [elderId], references: [id], onDelete: Cascade)
+  event EmergencyEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  // One check-in per elder per due time, which is what makes a second API instance, or
+  // a tick that overlaps the last, harmless.
+  @@unique([elderId, dueAt])
+  @@index([status, deadlineAt])
+  @@map("check_ins")
+}
+

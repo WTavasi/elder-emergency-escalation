@@ -84,6 +84,6 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
       },
     },
   ],
-  exports: [NotificationsService, DirectSmsService],
+  exports: [NotificationsService, DirectSmsService, PUSH_PROVIDER],
 })
 export class NotificationsModule {}

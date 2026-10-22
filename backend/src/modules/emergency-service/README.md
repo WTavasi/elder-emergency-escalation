@@ -9,10 +9,13 @@ about it once it is raised. The core of the project.
 
 **Owns:** raising, withdrawing and reopening an alert; the severity policy; dispatching
 each tier and escalating when a window runs out; acknowledging, declining, closing and
-calling in a responder.
+calling in a responder; reading text replies. An alert raised by a missed daily check-in
+(`trigger: MISSED_CHECK_IN`) goes through all of this unchanged, except that it is held at
+the standard band and a late answer can withdraw it (`AlertsService.answerMissedCheckIn`).
 
 **Does not own:** delivering a message (`notification-service`), live updates to the
-console (`realtime-service`), or the elder's own record (`elder-service`).
+console (`realtime-service`), the elder's own record (`elder-service`), or when a check-in
+is asked or missed (`check-in-service`).
 
 ## Endpoints
 
@@ -28,7 +31,7 @@ console (`realtime-service`), or the elder's own record (`elder-service`).
 | POST | `/:id/resolve` | participants | Close it with an outcome |
 | POST | `/:id/request-responder` | participants | Call in an emergency responder now |
 | POST | `/:id/voice` | participants, not an administrator | A token to join the emergency's voice room (`VoiceService`); the first responder to join is who the elder's screen names |
-| POST | `/sms/inbound?token=` | the SMS gateway | A reply of 1 or 2 to an alert text, handled as an acknowledgement or a decline (`SmsRepliesService`) |
+| POST | `/sms/inbound?token=` | the SMS gateway | A reply of 1 or 2 to an alert text, handled as an acknowledgement or a decline (`SmsRepliesService`); from an elder, a 1 answers their check-in |
 
 ## How escalation works
 
@@ -73,7 +76,9 @@ takes effect on the next alert with no restart.
 | `validation/` | The request shapes for each endpoint |
 | `views/alert-views.ts` | What the app and the console are allowed to see |
 | `models/severity.types.ts` | The inputs and outputs of the severity policy |
+| `sms-replies.module.ts`, `services/sms-replies.service.ts` | Text replies, in a module of their own because they need the check-ins as well as the escalation |
 
 ## Depends on
 
-`notification-service` to send messages, `realtime-service` to publish updates.
+`notification-service` to send messages, `realtime-service` to publish updates. The
+text replies also use `check-in-service`.
