@@ -25,7 +25,8 @@ Map<String, dynamic> profileBody({
   bool withArea = true,
 }) => <String, dynamic>{
   'status': status,
-  'training': <String>['FIRST_AID'],
+  // Nobody who has not applied has said what they can do.
+  'training': status == 'NOT_APPLIED' ? <String>[] : <String>['FIRST_AID'],
   'note': null,
   'area': withArea
       ? <String, dynamic>{'label': 'Kileleshwa, Nairobi', 'latitude': -1.28, 'longitude': 36.78}

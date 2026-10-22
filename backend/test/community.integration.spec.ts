@@ -29,7 +29,9 @@ describe('community volunteers, end to end', () => {
   let alerts: AlertsService;
 
   const suffix = Date.now().toString().slice(-7);
-  const home = { latitude: -1.2833, longitude: 36.7833 };
+  // Kisumu, well away from the seeded volunteers around Kileleshwa, so only the ones made
+  // here can be near enough to be asked.
+  const home = { latitude: -0.0917, longitude: 34.768 };
   const ids: Record<string, string> = {};
   let eventId = '';
 
