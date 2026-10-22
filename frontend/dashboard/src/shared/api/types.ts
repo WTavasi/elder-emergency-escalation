@@ -13,6 +13,9 @@ export type EventState =
 
 export type Severity = 'STANDARD' | 'ELEVATED' | 'CRITICAL';
 
+/** A press of the help button, or a daily check-in the elder did not answer. */
+export type AlertTrigger = 'PANIC' | 'MISSED_CHECK_IN';
+
 export type Role =
   'ELDER' | 'CAREGIVER' | 'FAMILY_MEMBER' | 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR';
 
@@ -35,6 +38,8 @@ export interface AlertSummary {
   state: EventState;
   severity: Severity;
   severityScore: number;
+  /** Optional, so a console a release ahead of the API still reads the page. */
+  trigger?: AlertTrigger;
   currentTier: number;
   outcome: string | null;
   /** What the person who closed it wrote. Always set when outcome is OTHER. */
@@ -135,6 +140,7 @@ export interface EmergencySnapshot {
   elderlyId: string;
   state: EventState;
   severity: Severity;
+  trigger?: AlertTrigger;
   currentTier: number;
   acknowledgedBy: string | null;
   triggeredAt: string;

@@ -15,6 +15,7 @@ import {
   SeverityLabel,
   Skeleton,
   StatePill,
+  TriggerTag,
 } from '../../shared/components/parts';
 import {
   distance,
@@ -142,6 +143,7 @@ export function EventDetail() {
         <div>
           <h1 className="title-with-tag">
             {alert.elder.name}
+            <TriggerTag trigger={alert.trigger} />
             {/*
               The short layer of the privacy notice, where the missing buttons would be:
               an administrator reads, the care chain acts.
@@ -156,6 +158,9 @@ export function EventDetail() {
           </h1>
           <p>
             Raised {formatClock(alert.triggeredAt)}
+            {alert.trigger === 'MISSED_CHECK_IN'
+              ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
+              : ''}
             {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
             {alert.withheld?.includes('location')
               ? '. Location withheld at the elder\u2019s request'
