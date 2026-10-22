@@ -9,6 +9,8 @@ import type { GoogleIdentityService } from './google-identity.service';
 import { WRONG_CODE, type PhoneVerificationService } from './phone-verification.service';
 import { TokenService } from './token.service';
 import type { PrismaService } from '../../../db/prisma.service';
+import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
+import { accountMessages } from '../../notification-service/services/notification-content';
 
 const secrets: Record<string, string | number> = {
   JWT_ACCESS_SECRET: 'access-secret-that-is-long-enough-for-tests',
@@ -91,10 +93,13 @@ const buildGoogle = (
   clientId,
 });
 
+const buildSms = () => ({ send: jest.fn().mockResolvedValue(true) });
+
 const buildService = (
   prisma: PrismaMock,
   verification = buildVerification(),
   google = buildGoogle(),
+  sms = buildSms(),
 ): AuthService =>
   new AuthService(
     prisma as unknown as PrismaService,
@@ -102,6 +107,7 @@ const buildService = (
     tokens,
     verification as unknown as PhoneVerificationService,
     google as unknown as GoogleIdentityService,
+    sms as unknown as DirectSmsService,
   );
 
 const signUp = {
@@ -428,6 +434,162 @@ describe('AuthService', () => {
         }),
       ).rejects.toThrow(WRONG_CODE);
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signing an elder in with a code', () => {
+    const elder = () =>
+      buildUser({ id: 'elder-1', role: Role.ELDER, phone: '+254700000010', name: 'Grace Wanjiku' });
+
+    it('asks for a sign-in code, never a sign-up one', async () => {
+      const verification = buildVerification();
+      await buildService(buildPrisma(), verification).startCodeSignIn('+254700000010');
+      expect(verification.start).toHaveBeenCalledWith('+254700000010', 'signin');
+    });
+
+    it("takes either a texted code or the caregiver's, and signs the elder in", async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      verification.consume.mockResolvedValue('pair');
+      prisma.user.findUnique.mockResolvedValue(elder());
+
+      const result = await buildService(prisma, verification).signInWithCode({
+        phone: '+254700000010',
+        code: '123456',
+      });
+
+      expect(verification.consume).toHaveBeenCalledWith('+254700000010', '123456', [
+        'signin',
+        'pair',
+      ]);
+      expect(result.user.role).toBe(Role.ELDER);
+      expect(result.refreshToken).toBeTruthy();
+    });
+
+    it('refuses anybody who is not an elder, as a wrong code', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      verification.consume.mockResolvedValue('signin');
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await expect(
+        buildService(prisma, verification).signInWithCode({
+          phone: '+254700000020',
+          code: '123456',
+        }),
+      ).rejects.toThrow(WRONG_CODE);
+    });
+
+    it('refuses a closed account, as a wrong code', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      verification.consume.mockResolvedValue('signin');
+      prisma.user.findUnique.mockResolvedValue({ ...elder(), deactivatedAt: new Date() });
+
+      await expect(
+        buildService(prisma, verification).signInWithCode({
+          phone: '+254700000010',
+          code: '123456',
+        }),
+      ).rejects.toThrow(WRONG_CODE);
+    });
+  });
+
+  describe('changing the phone number', () => {
+    it('needs the current password from anybody who has one', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await expect(
+        buildService(prisma, verification).startPhoneChange('user-1', {
+          phone: '+254700000099',
+          password: 'wrong',
+        }),
+      ).rejects.toThrow('Your current password is not right');
+      await expect(
+        buildService(prisma, verification).startPhoneChange('user-1', { phone: '+254700000099' }),
+      ).rejects.toThrow('Your current password is not right');
+      expect(verification.start).not.toHaveBeenCalled();
+    });
+
+    it('does not ask an elder for a password somebody else set', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      prisma.user.findUnique
+        .mockResolvedValueOnce(buildUser({ role: Role.ELDER, phone: '+254700000010' }))
+        .mockResolvedValueOnce(null);
+
+      await buildService(prisma, verification).startPhoneChange('user-1', {
+        phone: '+254700000099',
+      });
+
+      expect(verification.start).toHaveBeenCalledWith('+254700000099', 'change');
+    });
+
+    it('says so when the number is already theirs or somebody else has it', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      await expect(
+        buildService(prisma).startPhoneChange('user-1', {
+          phone: '+254700000020',
+          password: 'Dev!2026',
+        }),
+      ).rejects.toThrow('already the number on your account');
+
+      prisma.user.findUnique
+        .mockReset()
+        .mockResolvedValueOnce(buildUser())
+        .mockResolvedValueOnce({ id: 'someone-else' });
+      await expect(
+        buildService(prisma).startPhoneChange('user-1', {
+          phone: '+254700000099',
+          password: 'Dev!2026',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('moves the account, tells the old number and ends other sessions', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      const sms = buildSms();
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      prisma.user.update.mockImplementation((args: { data: Partial<User> }) =>
+        Promise.resolve(buildUser(args.data)),
+      );
+
+      const result = await buildService(prisma, verification, buildGoogle(), sms).changePhone(
+        'user-1',
+        { phone: '+254700000099', code: '123456' },
+      );
+
+      expect(verification.consume).toHaveBeenCalledWith('+254700000099', '123456', 'change');
+      expect(prisma.user.update.mock.calls[0][0].data).toEqual({ phone: '+254700000099' });
+      expect(prisma.chainInvitation.findMany).toHaveBeenCalledWith({
+        where: { phone: '+254700000099' },
+      });
+      expect(sms.send).toHaveBeenCalledWith('+254700000020', accountMessages.numberChanged());
+      expect(result.user.phone).toBe('+254700000099');
+      const rotated = prisma.user.update.mock.calls.find(
+        (call: [{ data: Record<string, unknown> }]) => 'refreshTokenHash' in call[0].data,
+      );
+      expect(rotated?.[0].data.refreshTokenHash).toBe(fingerprint(result.refreshToken));
+    });
+
+    it('changes nothing when the code is wrong', async () => {
+      const prisma = buildPrisma();
+      const verification = buildVerification();
+      const sms = buildSms();
+      verification.consume.mockRejectedValue(new BadRequestException(WRONG_CODE));
+
+      await expect(
+        buildService(prisma, verification, buildGoogle(), sms).changePhone('user-1', {
+          phone: '+254700000099',
+          code: '000000',
+        }),
+      ).rejects.toThrow(WRONG_CODE);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(sms.send).not.toHaveBeenCalled();
     });
   });
 

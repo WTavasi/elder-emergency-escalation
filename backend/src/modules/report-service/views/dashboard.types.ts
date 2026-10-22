@@ -52,6 +52,15 @@ export interface DataPolicy {
   };
 }
 
+/** What the privacy notice and the terms need from the server's settings. */
+export interface LegalFacts {
+  privacyVersion: string;
+  termsVersion: string;
+  retention: DataPolicy['retention'];
+  /** Null until the deployment names one. Never made up. */
+  contact: { name: string | null; email: string | null; address: string | null } | null;
+}
+
 /** One day of the window, in the deployment's own time zone. */
 export interface DailyPoint {
   /** YYYY-MM-DD. */

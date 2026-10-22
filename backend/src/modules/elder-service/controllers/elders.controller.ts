@@ -26,6 +26,7 @@ import { ChainService, type ChainView, type ElderSummary } from '../services/cha
 import { SetPlaceDto } from '../validation/set-place.dto';
 import { EldersService, type ElderDetail, type PlaceView } from '../services/elders.service';
 import { ConsentService, type ConsentView } from '../services/consent.service';
+import { ElderSignInService, type PairingCode } from '../services/elder-sign-in.service';
 import { GrantConsentDto, WithdrawConsentDto } from '../validation/withdraw-consent.dto';
 
 /**
@@ -42,7 +43,23 @@ export class EldersController {
     private readonly chains: ChainService,
     private readonly addresses: AddressSearchService,
     private readonly consents: ConsentService,
+    private readonly signIn: ElderSignInService,
   ) {}
+
+  /**
+   * A code the caregiver types into the elder's phone, with the elder's number, to sign
+   * it in. Lasts ten minutes; asking again replaces it. Limited because each one is five
+   * more guesses at the elder's account.
+   */
+  @Roles(Role.CAREGIVER)
+  @Throttle(10, 3600)
+  @Post(':id/sign-in-code')
+  signInCode(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PairingCode> {
+    return this.signIn.pairingCode(id, user.userId, user.role);
+  }
 
   /** What has been agreed about an elder, by whom, and what has been withdrawn. */
   @Roles(Role.ELDER, Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR)
