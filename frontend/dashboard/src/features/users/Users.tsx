@@ -17,6 +17,7 @@ const ROLES: { value: Role; label: string }[] = [
   { value: 'FAMILY_MEMBER', label: 'Family member' },
   { value: 'EMERGENCY_RESPONDER', label: 'Emergency responder' },
   { value: 'ADMINISTRATOR', label: 'Administrator' },
+  { value: 'COMMUNITY_RESPONDER', label: 'Community volunteer' },
 ];
 
 const ROLE_LABEL = Object.fromEntries(ROLES.map((role) => [role.value, role.label])) as Record<

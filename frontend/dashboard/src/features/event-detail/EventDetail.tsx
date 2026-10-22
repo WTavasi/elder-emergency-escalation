@@ -178,6 +178,7 @@ export function EventDetail() {
       </p>
 
       <OnTheWay alert={alert} />
+      <Volunteers alert={alert} />
 
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
@@ -382,6 +383,37 @@ function OnTheWay({ alert }: { alert: AlertDetail }) {
         <p className="micro muted">
           {caller} started a call in the app with {alert.elder.name.split(' ')[0]}.
         </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Community volunteers near the alert, when any were asked: how many, and the one going.
+ * They go beside the chain, so this never reads as somebody having taken it on.
+ */
+function Volunteers({ alert }: { alert: AlertDetail }) {
+  const volunteer = alert.volunteer ?? null;
+  if (!volunteer) return null;
+
+  return (
+    <section className="card stack" aria-labelledby="volunteers-heading" aria-live="polite">
+      <h2 id="volunteers-heading">Community volunteers</h2>
+      <p>
+        {volunteer.asked === 0
+          ? `Nobody available nearby when asked at ${formatClock(volunteer.askedAt)}.`
+          : `${volunteer.asked} nearby asked at ${formatClock(volunteer.askedAt)}.`}
+      </p>
+      {volunteer.name && volunteer.acceptedAt ? (
+        <p>
+          <strong>{volunteer.name}</strong> said they would go at{' '}
+          {formatClock(volunteer.acceptedAt)}
+          {volunteer.distanceMetres !== null ? `, ${distance(volunteer.distanceMetres)} away` : ''}
+          {volunteer.arrivedAt ? ` and arrived ${formatClock(volunteer.arrivedAt)}.` : '.'}
+          {volunteer.phone ? <span className="micro muted mono"> {volunteer.phone}</span> : null}
+        </p>
+      ) : volunteer.asked > 0 && OPEN_STATES.includes(alert.state) ? (
+        <p className="micro muted">None has said they will go yet.</p>
       ) : null}
     </section>
   );
