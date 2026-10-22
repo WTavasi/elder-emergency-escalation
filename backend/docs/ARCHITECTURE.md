@@ -239,6 +239,31 @@ is open, withdraws it if nobody has taken it on (a conditional transition, like 
 withdrawal, so somebody accepting in the same instant keeps it) and tells everybody who
 was alerted, or records `CHECKED_IN_LATE` on it if somebody is already coming.
 
+## Community volunteers
+
+`community-service` holds the volunteers: their applications, an administrator's vetting,
+their availability, and each emergency they were asked about (`volunteer_calls`). It
+calls nothing in the emergency service; the emergency service calls into it.
+
+`EscalationService` asks for volunteers, without waiting, in two places: when it
+dispatches any tier of a critical alert (and when a review raises an alert to critical),
+and when the responder tier finds no professional responder covering the place.
+`VolunteerCallsService.askNearby` checks the elder's `COMMUNITY_HELP` consent, claims the
+emergency's `volunteers_asked_at` with a conditional write so it happens once, picks the
+approved, available volunteers whose area contains the alert (nearest first, never the
+elder's own chain), writes their calls, and sends each a push or a text that says how far
+and how urgent, and nothing else.
+
+A volunteer accepting is a second conditional write, on `volunteer_id` being empty, so
+exactly one wins; the rest are stood down. The emergency's own state, owner and timers are
+untouched. Who and where are returned to that volunteer only while the emergency is open.
+Withdrawing gives the place back and asks the others again; closing the emergency, from
+`resolve`, a cancellation or a late check-in, stands everybody down.
+
+Volunteer messages go out directly, not through the notification queue: the queue writes
+messages from the emergency, name and address included, and anybody it writes a row for
+becomes someone who may open the emergency.
+
 ## Live updates
 
 The administrator console and the Flutter app both connect to a Socket.IO namespace at

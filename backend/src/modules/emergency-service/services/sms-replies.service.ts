@@ -6,6 +6,7 @@ import { AWAITING_STATES, OPEN_STATES } from '../../../shared/utils/event-lifecy
 import { redactPhone } from '../../../shared/utils/redaction';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { CheckInsService } from '../../check-in-service/services/check-ins.service';
+import { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 import { capSms, REPLY_ASK } from '../../notification-service/services/notification-content';
 import { EscalationService } from './escalation.service';
 
@@ -79,6 +80,7 @@ export class SmsRepliesService {
     private readonly escalation: EscalationService,
     private readonly sms: DirectSmsService,
     private readonly checkIns: CheckInsService,
+    private readonly volunteers: VolunteerCallsService,
   ) {}
 
   async handle(from: string, text: string): Promise<ReplyOutcome> {
@@ -98,10 +100,13 @@ export class SmsRepliesService {
 
     // An elder's reply is to their check-in, "are you all right?"; anybody else's is to an
     // alert they were asked to answer.
+    const intent = readReply(text);
     const outcome =
       person.role === Role.ELDER
-        ? await this.answerCheckIn(person.id, phone, readReply(text))
-        : await this.answer(person.id, phone, readReply(text));
+        ? await this.answerCheckIn(person.id, phone, intent)
+        : person.role === Role.COMMUNITY_RESPONDER
+          ? await this.answerAsVolunteer(person.id, phone, intent)
+          : await this.answer(person.id, phone, intent);
     this.logger.log(`Text reply from ${redactPhone(phone)}: ${outcome}`);
     return outcome;
   }
@@ -237,6 +242,26 @@ export class SmsRepliesService {
         : `MzaziCare: ${firstName(taken.event.owner.name)} is already going to ${elder}. Thank you.`;
     await this.sms.send(phone, text);
     return true;
+  }
+
+  /**
+   * A volunteer's reply to "Reply 1 if you can go". The same accept and decline as the
+   * app, and an acceptance is answered with who and where, since a volunteer who replied
+   * by text may have no app open to read it in.
+   */
+  private async answerAsVolunteer(
+    volunteerId: string,
+    phone: string,
+    intent: ReplyIntent,
+  ): Promise<ReplyOutcome> {
+    if (intent === 'unclear') {
+      await this.sms.send(phone, `MzaziCare: ${REPLY_ASK}`);
+      return 'unclear';
+    }
+    const { answer, text } = await this.volunteers.answerByText(volunteerId, intent);
+    if (answer === 'nothing') return this.nothingWaiting(phone);
+    if (text) await this.sms.send(phone, text);
+    return answer;
   }
 
   private async nothingWaiting(phone: string): Promise<ReplyOutcome> {

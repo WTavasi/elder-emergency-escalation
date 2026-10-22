@@ -160,6 +160,42 @@ const people = [
     coverageLongitude: 36.805,
     coverageRadiusKm: 6.0,
   },
+
+  // Community volunteers. Their area is their coverage, as for a responder.
+  {
+    phone: '+254700000050',
+    name: 'Daniel Ochieng',
+    role: 'COMMUNITY_RESPONDER',
+    coverageAreaName: 'Kileleshwa, Nairobi',
+    coverageLatitude: -1.285,
+    coverageLongitude: 36.785,
+    coverageRadiusKm: 2.0,
+  },
+  {
+    phone: '+254700000051',
+    name: 'Faith Akinyi',
+    role: 'COMMUNITY_RESPONDER',
+    coverageAreaName: 'Lavington, Nairobi',
+    coverageLatitude: -1.279,
+    coverageLongitude: 36.77,
+    coverageRadiusKm: 1.5,
+  },
+];
+
+/**
+ * Daniel is approved and available, about 270 m from Grace's home, so a critical alert
+ * of hers asks him. Faith has applied and waits in the console's vetting queue. Grace
+ * has not agreed to volunteers: turning that on is part of the demonstration.
+ */
+const volunteerProfiles = [
+  { phone: '+254700000050', status: 'APPROVED', training: ['FIRST_AID', 'CPR'], available: true },
+  {
+    phone: '+254700000051',
+    status: 'PENDING',
+    training: ['COMMUNITY_HEALTH_PROMOTER'],
+    available: false,
+    note: 'Community Health Promoter for Lavington since 2023.',
+  },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -327,6 +363,18 @@ async function main() {
     });
     byPhone[person.phone] = user;
     console.log(`  user      ${user.role.padEnd(20)} ${user.name}`);
+  }
+
+  for (const profile of volunteerProfiles) {
+    const { phone, ...data } = profile;
+    const user = byPhone[phone];
+    const fields = { note: null, reviewNote: null, ...data };
+    await prisma.volunteerProfile.upsert({
+      where: { userId: user.id },
+      update: fields,
+      create: { userId: user.id, ...fields },
+    });
+    console.log(`  volunteer ${user.name} ${data.status.toLowerCase()}`);
   }
 
   // Escalation chains. Priority order is the rank inside one elder's chain.

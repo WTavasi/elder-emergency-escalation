@@ -16,6 +16,7 @@ import {
   NotificationStatus,
   Prisma,
   Role,
+  Severity,
   type EmergencyEvent,
   type EscalationRule,
 } from '@prisma/client';
@@ -37,6 +38,10 @@ import {
   severityContextFor,
 } from '../models/severity-context';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
+import {
+  VolunteerCallsService,
+  type AskReason,
+} from '../../community-service/services/volunteer-calls.service';
 import {
   REALTIME_PUBLISHER,
   type RealtimePublisher,
@@ -70,7 +75,21 @@ export class EscalationService {
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly severity: SeverityService,
     private readonly config: ConfigService,
+    private readonly volunteers: VolunteerCallsService,
   ) {}
+
+  /**
+   * Asks community volunteers near the alert, beside the chain and never in its place.
+   * Not awaited: messages to a dozen phones must not hold up a dispatch, or the elder's
+   * own request when it is the first one. Asked once per emergency whoever calls first.
+   */
+  private askVolunteers(eventId: string, reason: AskReason): void {
+    void this.volunteers.askNearby(eventId, reason).catch((error: unknown) => {
+      this.logger.error(
+        `Asking volunteers for ${eventId} failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    });
+  }
 
   /**
    * Notifies one tier and arms its acknowledgement window.
@@ -91,7 +110,12 @@ export class EscalationService {
       return;
     }
 
-    const recipients = await this.recipientsFor(event, rule);
+    const { recipients, uncovered } = await this.recipientsFor(event, rule);
+
+    // Volunteers go out with a critical alert from its first tier, and with any alert
+    // that reaches the responder tier where no professional covers the place.
+    if (event.severity === Severity.CRITICAL) this.askVolunteers(eventId, 'critical');
+    else if (uncovered) this.askVolunteers(eventId, 'uncovered');
 
     if (recipients.length === 0) {
       // An empty tier must not stall the chain: an elder whose family member never
@@ -335,6 +359,9 @@ export class EscalationService {
     );
 
     if (band !== event.severity) await this.promote(reviewed, event.severity);
+    if (band === Severity.CRITICAL && event.severity !== Severity.CRITICAL) {
+      this.askVolunteers(eventId, 'critical');
+    }
   }
 
   /**
@@ -699,6 +726,7 @@ export class EscalationService {
     });
 
     this.realtime.emergencyUpdated(resolved);
+    void this.volunteers.eventClosed(eventId);
     return resolved;
   }
 
@@ -799,11 +827,16 @@ export class EscalationService {
    * the chain's own assigned responder is the fallback, because reaching the wrong
    * responder beats reaching nobody.
    */
-  private async recipientsFor(event: EmergencyEvent, rule: EscalationRule): Promise<string[]> {
+  private async recipientsFor(
+    event: EmergencyEvent,
+    rule: EscalationRule,
+  ): Promise<{ recipients: string[]; uncovered: boolean }> {
+    let uncovered = false;
     if (rule.responderRole === Role.EMERGENCY_RESPONDER) {
       const matched = await this.respondersCovering(event);
-      if (matched.length > 0) return matched;
+      if (matched.length > 0) return { recipients: matched, uncovered };
 
+      uncovered = true;
       this.logger.warn(
         `No responder covers the location of event ${event.id}; falling back to the assigned chain`,
       );
@@ -820,7 +853,7 @@ export class EscalationService {
       select: { responderId: true },
     });
 
-    return assignments.map((assignment) => assignment.responderId);
+    return { recipients: assignments.map((assignment) => assignment.responderId), uncovered };
   }
 
   private async respondersCovering(event: EmergencyEvent): Promise<string[]> {

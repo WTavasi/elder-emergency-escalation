@@ -286,6 +286,20 @@ export const accountMessages = {
     );
   },
 
+  /** A consent given after registration, by the elder or by a caregiver for them. */
+  consentGiven(byName: string, elderName: string, what: string, byElder: boolean): string {
+    const elder = firstName(elderName);
+    return byElder
+      ? capSms(
+          `${elder} has agreed to ${what} in MzaziCare. They can change this at any time.`,
+          `${elder} has agreed to ${what} in MzaziCare.`,
+        )
+      : capSms(
+          `${firstName(byName)} has agreed to ${what} for you in MzaziCare. Open MzaziCare to read it. You can say no at any time.`,
+          `${firstName(byName)} has agreed to ${what} for you. Open MzaziCare to read it.`,
+        );
+  },
+
   /** Consent to processing was withdrawn, which ends the service for that elder. */
   serviceEnded(byName: string, elderName: string, byElder: boolean): string {
     const elder = firstName(elderName);

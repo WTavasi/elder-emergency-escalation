@@ -80,5 +80,6 @@ takes effect on the next alert with no restart.
 
 ## Depends on
 
-`notification-service` to send messages, `realtime-service` to publish updates. The
-text replies also use `check-in-service`.
+`notification-service` to send messages, `realtime-service` to publish updates,
+`community-service` to ask volunteers and stand them down. The text replies also use
+`check-in-service` and `community-service`.

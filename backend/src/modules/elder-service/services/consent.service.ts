@@ -48,6 +48,7 @@ const SPOKEN: Record<ConsentType, string> = {
   [ConsentType.DATA_PROCESSING]: 'MzaziCare holding their information',
   [ConsentType.LOCATION_SHARING]: 'location sharing',
   [ConsentType.CONTACT_SHARING]: 'contact sharing',
+  [ConsentType.COMMUNITY_HELP]: 'help from nearby volunteers',
 };
 
 /** The relationship recorded when somebody consents for themselves. */
@@ -120,6 +121,95 @@ export class ConsentService {
     }
 
     return this.build(elder, true);
+  }
+
+  /**
+   * Giving a consent after registration: the elder for themselves, or a caregiver in
+   * their chain on their behalf. Help from community volunteers is the one that matters,
+   * since it is never given at registration; location and contact sharing can be given
+   * again after a withdrawal. Processing cannot: the account is closed once it goes.
+   *
+   * A caregiver's is recorded as given on the elder's behalf, so the elder is asked to
+   * read and confirm it at their next sign-in, exactly as at registration, and is told
+   * by text now. Giving what is already given changes nothing.
+   */
+  async grant(
+    elderId: string,
+    actorId: string,
+    actorRole: Role,
+    type: ConsentType,
+  ): Promise<ConsentView> {
+    const elder = await this.requireElder(elderId);
+    const relation = await this.relationTo(elderId, actorId, actorRole);
+    if (relation !== 'elder' && relation !== 'caregiver') {
+      throw new ForbiddenException(
+        'Only the person themselves or their caregiver can agree to this',
+      );
+    }
+    if (type === ConsentType.DATA_PROCESSING) {
+      throw new BadRequestException(
+        'This is given when the account is made, and withdrawing it closes the account.',
+      );
+    }
+
+    const active = await this.prisma.consentRecord.findFirst({
+      where: {
+        subjectId: elderId,
+        type,
+        withdrawnAt: null,
+        // The elder's own agreement counts over a caregiver's, so a caregiver giving what
+        // the elder already gave records nothing new.
+        ...(relation === 'elder' ? { grantedById: elderId } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (!active) {
+      const byElder = relation === 'elder';
+      await this.prisma.consentRecord.create({
+        data: {
+          subjectId: elderId,
+          grantedById: actorId,
+          type,
+          granted: true,
+          policyVersion: PRIVACY_POLICY_VERSION,
+          grantorRelationship: byElder ? SELF : 'caregiver',
+        },
+      });
+      this.logger.log(`Consent ${type} given for elder ${elderId} by ${relation}`);
+      await this.tellAboutGrant(elder, actorId, type, byElder);
+    }
+
+    return this.build(elder, true);
+  }
+
+  /** The other side learns of it by text, as for a withdrawal. */
+  private async tellAboutGrant(
+    elder: { id: string; name: string; phone: string },
+    actorId: string,
+    type: ConsentType,
+    byElder: boolean,
+  ): Promise<void> {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { name: true },
+    });
+    const text = accountMessages.consentGiven(
+      actor?.name ?? 'Someone',
+      elder.name,
+      SPOKEN[type],
+      byElder,
+    );
+
+    if (!byElder) {
+      await this.sms.send(elder.phone, text);
+      return;
+    }
+    const caregivers = await this.prisma.careAssignment.findMany({
+      where: { elderlyId: elder.id, responder: { role: Role.CAREGIVER, deactivatedAt: null } },
+      select: { responder: { select: { phone: true } } },
+    });
+    for (const { responder } of caregivers) await this.sms.send(responder.phone, text);
   }
 
   /**
@@ -255,14 +345,15 @@ export class ConsentService {
       };
     });
 
-    const everConfirmed = rows.some((row) => row.grantedById === elder.id);
-    const anythingActive = items.some((item) => item.active);
+    // Asked while anything active was agreed only on their behalf: at first, everything
+    // given at registration; later, a consent a caregiver gave for them since.
+    const unconfirmed = items.some((item) => item.active && item.confirmedAt === null);
 
     return {
       elderId: elder.id,
       elderName: elder.name,
       policyVersion: PRIVACY_POLICY_VERSION,
-      needsConfirmation: anythingActive && !everConfirmed,
+      needsConfirmation: unconfirmed,
       canWithdraw,
       items,
     };
