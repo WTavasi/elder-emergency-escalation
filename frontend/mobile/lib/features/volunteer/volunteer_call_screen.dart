@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../responder/widgets/call_button.dart';
@@ -138,27 +139,36 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: MzaziSpace.s24),
-        if (call.arrivedAt == null) ...<Widget>[
-          SwipeToConfirm(
-            label: 'Swipe when you are with $first',
-            enabled: !volunteer.busy,
-            onConfirmed: () =>
-                unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.arrived)),
-          ),
-          const SizedBox(height: MzaziSpace.s16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: volunteer.busy ? null : () => unawaited(_withdraw(volunteer)),
-              child: const Text('I can no longer go'),
-            ),
-          ),
-        ] else
-          Text(
-            'Their family can see you are there. Stay until someone from the family or the '
-            'emergency services takes over, if you can.',
-            style: theme.textTheme.bodyLarge,
-          ),
+        // The swipe fades and folds away once it lands, rather than vanishing.
+        FadeSwap(
+          child: call.arrivedAt == null
+              ? Column(
+                  key: const ValueKey<String>('going'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    SwipeToConfirm(
+                      label: 'Swipe when you are with $first',
+                      enabled: !volunteer.busy,
+                      onConfirmed: () =>
+                          unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.arrived)),
+                    ),
+                    const SizedBox(height: MzaziSpace.s16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: volunteer.busy ? null : () => unawaited(_withdraw(volunteer)),
+                        child: const Text('I can no longer go'),
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  'Their family can see you are there. Stay until someone from the family or the '
+                  'emergency services takes over, if you can.',
+                  key: const ValueKey<String>('arrived'),
+                  style: theme.textTheme.bodyLarge,
+                ),
+        ),
       ];
     }
 

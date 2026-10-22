@@ -40,6 +40,9 @@ class SwipeToConfirm extends StatefulWidget {
 class _SwipeToConfirmState extends State<SwipeToConfirm> {
   double _progress = 0;
   bool _dragging = false;
+
+  /// Swiped all the way: the knob shows a tick until it goes home, or the screen moves on.
+  bool _done = false;
   Timer? _home;
 
   void _confirm() {
@@ -53,7 +56,12 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
   void _returnHome() {
     _home?.cancel();
     _home = Timer(MzaziMotion.emphasized * 2, () {
-      if (mounted) setState(() => _progress = 0);
+      if (mounted) {
+        setState(() {
+          _progress = 0;
+          _done = false;
+        });
+      }
     });
   }
 
@@ -94,6 +102,7 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
                     setState(() {
                       _dragging = false;
                       _progress = meant ? 1 : 0;
+                      _done = meant;
                     });
                     if (meant) {
                       _confirm();
@@ -132,7 +141,14 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
                       height: height,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(shape: BoxShape.circle, color: fill),
-                      child: Icon(Icons.arrow_forward, color: theme.colorScheme.onPrimary),
+                      child: AnimatedSwitcher(
+                        duration: Motion.of(context, MzaziMotion.state),
+                        child: Icon(
+                          _done ? Icons.check : Icons.arrow_forward,
+                          key: ValueKey<bool>(_done),
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
                     ),
                   ),
                 ],

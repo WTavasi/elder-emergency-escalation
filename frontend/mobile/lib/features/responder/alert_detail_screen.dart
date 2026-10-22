@@ -10,6 +10,7 @@ import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
+import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
@@ -146,11 +147,20 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       // stays there while the trail above scrolls. It used to be halfway down the page.
       bottomNavigationBar: alert.state.isOpen
           ? _ActionBar(
-              child: _Actions(
-                controller: controller,
-                alert: alert,
-                canOpen: widget.canOpen,
-                open: widget.open,
+              // A step taken, such as the swipe on arriving, fades and folds away into
+              // what comes next instead of vanishing from under the thumb.
+              child: FadeSwap(
+                child: KeyedSubtree(
+                  key: ValueKey<String>(
+                    '${alert.isAnswered}-${controller.isOnTheWay}-${alert.arrivedAt != null}',
+                  ),
+                  child: _Actions(
+                    controller: controller,
+                    alert: alert,
+                    canOpen: widget.canOpen,
+                    open: widget.open,
+                  ),
+                ),
               ),
             )
           : null,
@@ -308,10 +318,13 @@ class _Actions extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
+                    style: StackedLabel.padding,
                     onPressed: busy ? null : () => _confirmDecline(context),
-                    icon: const Icon(Icons.do_not_disturb_on_outlined),
-                    label: const Text('I cannot come', textAlign: TextAlign.center),
+                    child: const StackedLabel(
+                      icon: Icons.do_not_disturb_on_outlined,
+                      label: 'I cannot come',
+                    ),
                   ),
                 ),
                 if (phone != null) ...<Widget>[
@@ -322,6 +335,7 @@ class _Actions extends StatelessWidget {
                       phone: phone,
                       canOpen: canOpen,
                       open: open,
+                      stacked: true,
                     ),
                   ),
                 ],
@@ -349,7 +363,8 @@ class _Actions extends StatelessWidget {
             onConfirmed: () => unawaited(controller.arrived()),
           ),
           const SizedBox(height: MzaziSpace.s8),
-          _callAndResponder(busy, phone),
+          _callAndResponder(context, busy, phone),
+          const SizedBox(height: MzaziSpace.s4),
           TextButton(
             onPressed: busy ? null : () => _chooseOutcome(context),
             child: const Text('Close this emergency'),
@@ -370,13 +385,13 @@ class _Actions extends StatelessWidget {
           ),
         ),
         const SizedBox(height: MzaziSpace.s8),
-        _callAndResponder(busy, phone),
+        _callAndResponder(context, busy, phone),
       ],
     );
   }
 
   /// Ringing her and calling in a responder, side by side.
-  Widget _callAndResponder(bool busy, String? phone) {
+  Widget _callAndResponder(BuildContext context, bool busy, String? phone) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -397,6 +412,7 @@ class _Actions extends StatelessWidget {
                     phone: phone,
                     canOpen: canOpen,
                     open: open,
+                    stacked: true,
                   ),
                 ),
                 const SizedBox(width: MzaziSpace.s8),
@@ -404,11 +420,16 @@ class _Actions extends StatelessWidget {
               Expanded(
                 // A different icon from Call Grace on purpose. Both labels start with
                 // "Call" and they do different things: one rings her, the other sends
-                // the emergency on through the system and rings nobody.
-                child: OutlinedButton.icon(
+                // the emergency on through the system and rings nobody. Both amber, the
+                // colour of an emergency waiting on a person; this one solid, because it
+                // is the bigger step.
+                child: FilledButton(
+                  style: CallStyle.strong(context).merge(StackedLabel.padding),
                   onPressed: busy ? null : controller.requestResponder,
-                  icon: const Icon(Icons.emergency),
-                  label: const Text('Call an emergency responder', textAlign: TextAlign.center),
+                  child: const StackedLabel(
+                    icon: Icons.emergency,
+                    label: 'Call an emergency responder',
+                  ),
                 ),
               ),
             ],
