@@ -133,7 +133,7 @@ class _CheckInSettingsState extends State<CheckInSettings> {
           trailing: canChange
               ? TextButton(
                   onPressed: _busy ? null : () => unawaited(_change()),
-                  child: Text((overview?.isOn ?? false) ? 'Change times' : 'Set up'),
+                  child: Text(overview.isOn ? 'Change times' : 'Set up'),
                 )
               : null,
         ),

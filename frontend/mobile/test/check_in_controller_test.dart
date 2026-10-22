@@ -11,13 +11,12 @@ import 'support.dart';
 
 /// A server with one check-in waiting until it is answered.
 class _Server {
-  _Server({this.outcome = 'answered', this.fails = false}) {
+  _Server({this.fails = false}) {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(_answer);
     api = t.api;
     calls = t.calls;
   }
 
-  final String outcome;
   final bool fails;
   late final ApiClient api;
   late final List<Exchange> calls;
@@ -31,7 +30,7 @@ class _Server {
     final String path = request.url.path;
     if (path.endsWith('/check-ins/answer')) {
       answered = true;
-      return <http.Response>[json(<String, dynamic>{'outcome': outcome})];
+      return <http.Response>[json(<String, dynamic>{'outcome': 'answered'})];
     }
     if (path.endsWith('/check-ins/confirm')) {
       agreement = null;
