@@ -112,7 +112,9 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
                 ),
               ],
               const SizedBox(height: MzaziSpace.s24),
-              Expanded(child: _Body(alerts: alerts, api: widget.api)),
+              Expanded(
+                child: _Body(alerts: alerts, api: widget.api),
+              ),
             ],
           ),
         ),

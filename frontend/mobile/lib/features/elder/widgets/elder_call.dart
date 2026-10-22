@@ -144,7 +144,9 @@ class _ElderCallState extends State<ElderCall> {
           Semantics(liveRegion: true, child: _panel(context, announcing, call)),
           const SizedBox(height: MzaziSpace.s24),
         ],
-        Expanded(child: HelpProgress(emergency: widget.emergency, compact: shown)),
+        Expanded(
+          child: HelpProgress(emergency: widget.emergency, compact: shown),
+        ),
       ],
     );
   }

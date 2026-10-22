@@ -622,9 +622,7 @@ void main() {
     });
 
     /// A caregiver who took Grace's alert on, sharing their way there, on the screen.
-    Future<({AlertDetailController controller, WayThere way})> sharing(
-      WidgetTester tester,
-    ) async {
+    Future<({AlertDetailController controller, WayThere way})> sharing(WidgetTester tester) async {
       final FakePositionSource source = FakePositionSource();
       addTearDown(source.close);
       final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
@@ -681,9 +679,7 @@ void main() {
       await finish(tester, t);
     });
 
-    testWidgets('stopping asks first, and keeping it changes nothing', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('stopping asks first, and keeping it changes nothing', (WidgetTester tester) async {
       final ({AlertDetailController controller, WayThere way}) t = await sharing(tester);
 
       await tester.tap(stopOnPage);
@@ -755,9 +751,7 @@ void main() {
           },
         };
 
-    testWidgets('is not offered when the server has no voice service', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('is not offered when the server has no voice service', (WidgetTester tester) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[json(withVoice(available: false))],
       );
