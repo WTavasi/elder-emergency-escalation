@@ -5,7 +5,7 @@ building the escalation engine, the severity policy and the consent requirement 
 more than the six entities drawn there. Every difference is listed below so Chapter 4 can
 be brought back into agreement with the code rather than quietly diverging from it.
 
-Five new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
+Seven new tables, one renamed concept, and a set of new columns. Nothing in Figure 4.4 was
 removed, and no relationship in it changed.
 
 ## New tables
@@ -75,6 +75,27 @@ and when has to exist apart from that emergency, and it is what the circle's pag
 as the last week of answers. Answered and missed rows are deleted with the audit log
 window; a pending one never is.
 
+### `volunteer_profiles`
+
+A community volunteer's application and standing: status (`PENDING`, `APPROVED`,
+`REJECTED`, `SUSPENDED`), the training they declare, a note, whether they are available
+now, when they applied, and who reviewed it, when and why. One row per volunteer, keyed on
+the user. Their area is the user's coverage columns, the same form a responder's takes.
+
+Justification: vetting is a decision about a person that has to be recorded and
+reversible, separate from the account itself. No certificate or ID number is kept.
+
+### `volunteer_calls`
+
+One volunteer asked about one emergency: the distance from their area to the alert,
+rounded, how they were reached, and what they said (`ASKED`, `ACCEPTED`, `DECLINED`,
+`STOOD_DOWN`, `WITHDRAWN`), when, and when they arrived. Unique per emergency and
+volunteer. Deleted with the emergency.
+
+Justification: kept apart from `notifications` on purpose. Everybody with a notification
+row may open the emergency; a volunteer must not until they accept, and what they are told
+before that is a distance, not the alert the queue would write.
+
 ## New columns on existing tables
 
 | Table | Columns | Why |
@@ -89,6 +110,7 @@ window; a pending one never is.
 | `users` | `deactivated_at` | An administrator closes an account without deleting it, because every account is named in emergency history that has to stay readable. Null means active. A deactivated account cannot sign in, its sessions end at once, and dispatch passes over its place in a chain. A timestamp rather than a boolean, so the record also says when access ended |
 | `care_assignments` | `cover_days_of_week`, `cover_start_minute`, `cover_end_minute` | Reserved for declared cover hours. Not read in this build: the caregiver-cover severity factor was dropped because nothing lets a caregiver declare them. Kept so the factor can return without a migration |
 | `emergency_events` | `severity`, `severity_score`, `severity_factors` | The band, the score, and the factor values that produced it, so every escalation decision stays explainable |
+| `emergency_events` | `volunteers_asked_at`, `volunteer_id`, `volunteer_accepted_at`, `volunteer_arrived_at` | When volunteers were asked (once), and the one who accepted first, set by a conditional write so two cannot both win. Separate from `acknowledged_by`, because a volunteer goes beside the chain and never takes the emergency on |
 | `emergency_events` | `trigger` | `PANIC` for a press of the button, `MISSED_CHECK_IN` for a daily check-in nobody answered. The same lifecycle and chain for both; the trigger changes the wording, holds a missed check-in at the standard band, and lets a late answer withdraw it |
 | `emergency_events` | `severity_reviewed_at` | When severity was scored the second time, after the cancel window closed and "did not cancel" could count. Lets the review timer and the sweep both try, and only one succeed. Rows from before the column existed are marked reviewed at their trigger time |
 | `emergency_events` | `current_tier_deadline_at` | The durable copy of the Redis timer. Redis publishes an expiry once and never again, so without a recorded deadline a restart at the wrong moment would leave an emergency waiting on a timer that no longer exists |
@@ -115,6 +137,8 @@ longitude pairs, with an optional human-readable address label on the alert.
 | `care_assignments(elderly_id, priority_order)` unique | Two contacts cannot hold the same rank in one chain |
 | `care_assignments(elderly_id, responder_id)` unique | The same person cannot appear twice in one chain |
 | `check_ins(elder_id, due_at)` unique | One check-in per elder per time, whichever clock gets there first |
+| `volunteer_calls(event_id, volunteer_id)` unique | A volunteer is asked about an emergency once |
+| `volunteer_profiles(status, available)` | Finding the approved, available volunteers to match against an alert |
 | `check_ins(status, deadline_at)` | The clock's every-minute question: which pending check-ins are past their deadline |
 
 ## Suggested Chapter 4 revisions
@@ -135,3 +159,7 @@ longitude pairs, with an optional human-readable address label on the alert.
    key to the person who set it up) and `check_ins` (many per elder, with a nullable
    foreign key to the `emergency_events` row it raised), and the `trigger` attribute on
    `emergency_events`.
+6. Add the `COMMUNITY_RESPONDER` role, the `COMMUNITY_HELP` consent type, and the
+   `volunteer_profiles` (one-to-one with a volunteer `users` row, with a nullable foreign
+   key to the reviewing administrator) and `volunteer_calls` (between `users` and
+   `emergency_events`) tables, with the four volunteer columns on `emergency_events`.

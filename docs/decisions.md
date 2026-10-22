@@ -578,3 +578,47 @@ write (one check-in per elder per time, pending to missed once), so a second API
 does nothing twice. Times are kept as minutes after midnight in the elder's time zone and
 turned into instants each day, so the clocks changing elsewhere, or an elder travelling,
 does not move nine in the morning.
+
+## Community volunteers go beside the chain, and learn who and where only by going
+
+Professional responders cover parts of a city, and a family can be an hour away. In many
+neighbourhoods the quickest help is a neighbour with first aid. Systems that already do
+this, such as GoodSAM in the UK and PulsePoint in the US, alert trained volunteers within
+a few hundred metres, and Kenya's Community Health Promoters are an existing pool of
+exactly that kind of person.
+
+Four decisions shape it.
+
+**Vetted before anything is sent.** Anybody can sign up as a volunteer in the app, which
+keeps joining easy, but nothing reaches them until an administrator approves the
+application in the console's vetting queue. The training is declared and checked off
+the system, by seeing a card or making a call; the system stores no certificate and no
+ID number, because it does not need them to make the decision and keeping them would be
+a liability. An administrator can suspend a volunteer at any time.
+
+**A home area and a switch, not a tracked phone.** A volunteer sets the place they help
+from (usually home) and how far they will go, from half a kilometre to five, and turns
+"available" on when they can help. They are matched by that area. Reading the phone's
+position would be more precise, but phones stop reporting in the background, so in
+practice it would only work with the app open, and it would build a location trail of
+private citizens. An area and a switch work with the app closed, by push or SMS, and
+store nothing about where anybody is.
+
+**Asked only when it adds something, and only for an elder who agreed.** Volunteers are
+asked with a critical alert, from its first tier, and when an alert reaches the responder
+tier where no professional responder covers the place. Not for every alert: a volunteer
+asked about everything learns to ignore it. The elder (or their caregiver, which the
+elder then confirms) must have agreed to it, recorded as a consent of its own, because
+it means a stranger is told their name and address. Withdrawing that consent stops it.
+
+**Beside the chain, never instead of it.** The first volunteer to accept is told who and
+where, the rest are stood down, and the elder and the circle are told who is coming.
+Accepting does not take the emergency on, stop a timer or change the emergency's state.
+A volunteer is a stranger to the family, and nothing a stranger presses should stop the
+family from being asked. The disclosure is also the price of going, not of being asked:
+before accepting, a volunteer is told how far and how urgent only, and once the emergency
+ends, the name and address disappear from their screen.
+
+Volunteers are not participants in the emergency. They cannot open the emergency's
+record, take it on, close it, join its voice room or share their way there; their routes
+are their own, and the emergency's are refused to them as to anybody outside it.

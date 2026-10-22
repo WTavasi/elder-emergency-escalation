@@ -15,7 +15,7 @@ the REST Client extension and a **Send Request** link appears above each one.
 | --- | --- | --- | --- |
 | GET | `/health` | none | Postgres and Redis checked separately; 503 if either is down |
 | POST | `/api/v1/auth/verify-phone` | none | Sends a six-digit sign-up code by SMS. Always 202, sent or not |
-| POST | `/api/v1/auth/register` | none | Sign-up for caregivers and family members, with the code |
+| POST | `/api/v1/auth/register` | none | Sign-up for caregivers, family members and community volunteers, with the code |
 | POST | `/api/v1/auth/login` | none | `{ phone, password }` or `{ email, password }`, returns both tokens |
 | POST | `/api/v1/auth/forgot-password` | none | Sends a six-digit reset code to a number with an account. Always 202 |
 | POST | `/api/v1/auth/reset-password` | none | `{ phone, code, newPassword }`; signs in and ends every other session |
@@ -218,7 +218,7 @@ says the person came back rather than losing that a stay ever happened.
 | --- | --- | --- | --- |
 | GET | `/api/v1/elders` | caregiver, family | The elders the caller looks after, with their own rank |
 | POST | `/api/v1/elders` | caregiver | Register an elder; the caregiver becomes tier one |
-| GET | `/api/v1/elders/address-search?q=` | caregiver, family, administrator | Coordinates for an address |
+| GET | `/api/v1/elders/address-search?q=` | caregiver, family, administrator, volunteer | Coordinates for an address |
 | GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
 | POST | `/api/v1/elders/:id/chain` | caregiver in that chain | Add a family member by phone |
 | DELETE | `/api/v1/elders/:id/chain/:entryId` | caregiver in that chain | Remove a family member, or withdraw a held place |
@@ -226,6 +226,7 @@ says the person came back rather than losing that a stay ever happened.
 | PATCH | `/api/v1/elders/:id` | caregiver in that chain | Change their home or care level (`careLevel: null` means not sure) |
 | GET | `/api/v1/elders/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
 | POST | `/api/v1/elders/:id/consent/confirm` | the elder | Agree, for themselves, to what was agreed on their behalf |
+| POST | `/api/v1/elders/:id/consent/grant` | the elder, caregiver in that chain | `{ type }`: give a consent after registration, such as `COMMUNITY_HELP`, or give back a withdrawn one. Never `DATA_PROCESSING`. A caregiver's is on the elder's behalf, so the elder is asked to confirm it, and is texted |
 | POST | `/api/v1/elders/:id/consent/withdraw` | the elder, caregiver in that chain | `{ type, confirm? }`. `confirm: true` is required for `DATA_PROCESSING` |
 
 **Withdrawn consent** is honoured everywhere data leaves the server, outside an
@@ -296,6 +297,53 @@ has taken it on (`CHECKED_IN_LATE` and `CANCELLED` in the trail, and everybody w
 is told the elder answered), or notes the answer on the alert if somebody is already on
 the way (`CHECKED_IN_LATE` only; they still go). A press of the help button is never
 withdrawn this way.
+
+## Community volunteers
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/volunteer/me` | volunteer | Their application: `status` (`NOT_APPLIED`, `PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED`), training, note, area, radius, `available`, `reviewNote` |
+| PUT | `/api/v1/volunteer/me` | volunteer | `{ training: ["FIRST_AID"], note?, area: { label, latitude, longitude }, radiusKm }`. Training from `FIRST_AID`, `CPR`, `COMMUNITY_HEALTH_PROMOTER`, `HEALTH_PROFESSIONAL`, `OTHER` (which needs the note); radius 0.5 to 5 km |
+| PUT | `/api/v1/volunteer/me/availability` | volunteer | `{ available }`. On only once approved |
+| GET | `/api/v1/volunteer/calls` | volunteer | The emergencies they were asked about, open first |
+| GET | `/api/v1/volunteer/calls/:eventId` | volunteer, if asked | One call. 404 for one they were not asked about |
+| POST | `/api/v1/volunteer/calls/:eventId/accept` | volunteer, if asked | "I can go". 409 if another volunteer already is |
+| POST | `/api/v1/volunteer/calls/:eventId/decline` | volunteer, if asked | "I cannot go" |
+| POST | `/api/v1/volunteer/calls/:eventId/withdraw` | the volunteer going | "I can no longer go"; the others are asked again |
+| POST | `/api/v1/volunteer/calls/:eventId/arrived` | the volunteer going | "I'm here" |
+| GET | `/api/v1/admin/volunteers?status=` | administrator | The vetting queue, waiting first and oldest at the top |
+| POST | `/api/v1/admin/volunteers/:id/review` | administrator | `{ decision: approve \| reject \| suspend, note? }`. A reason is needed to reject or suspend, and is texted to them |
+
+Anybody can sign up as a volunteer (`role: COMMUNITY_RESPONDER`); nothing is sent to them
+until an administrator approves the application. No certificate or ID number is stored:
+the training is declared and checked off the system. The area is the user's coverage
+columns, the same form an emergency responder's takes.
+
+**When volunteers are asked.** Only for an elder with an active `COMMUNITY_HELP`
+consent, and only approved volunteers who have switched themselves available, whose own
+area contains the place of the alert, and who are not already in the elder's chain;
+the nearest `VOLUNTEER_MAX_ASKED` (10). Asked once per emergency: with the first tier of a
+critical alert, when a review raises an alert to critical, or when an alert reaches the
+responder tier and no professional responder covers the place (beside the fallback to the
+chain's own responder). `VOLUNTEERS_ASKED` records how many and why.
+
+**What a volunteer is told.** Before accepting: how far (from the centre of their area,
+rounded), how urgent and how long ago. Never who or where. The first to accept, by a
+conditional write so two at once cannot both win, is given the elder's name, number,
+address and coordinates, and the rest are stood down. That disclosure lasts only while
+the emergency is open. A reply of 1 or 2 to the volunteer's text does the same as the
+app.
+
+**Beside the chain.** Accepting does not take the emergency on, stop a timer or change its
+state; the family is still asked. The alert detail carries `volunteer: { askedAt, asked,
+name, phone, distanceMetres, acceptedAt, arrivedAt }` (`null` when none were asked); the
+elder's copy has the first name and no number. Everybody already told about the emergency
+is texted who is going. Closing or withdrawing the emergency stands the volunteers down and
+thanks the one going. Audit actions: `VOLUNTEER_ACCEPTED`, `VOLUNTEER_WITHDREW`,
+`VOLUNTEER_ARRIVED`.
+
+Volunteers are never participants: they cannot open `/alerts/:id`, take an emergency on,
+decline, close, talk in the voice room or share their way there.
 
 ## Reporting
 

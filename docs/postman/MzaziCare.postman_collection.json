@@ -2223,6 +2223,816 @@
       "description": "Mary sets up a check-in, Grace agrees on her phone, both see it, and Grace turns it off. Needs folder 1 run first for the tokens and Grace's id."
     },
     {
+      "name": "2f. Community volunteers",
+      "item": [
+        {
+          "name": "Daniel signs in (volunteer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/login",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "login"]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{volunteerPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('volunteerToken', body.accessToken);",
+                  "pm.test('signed in as COMMUNITY_RESPONDER', () => pm.expect(body.user.role).to.eql('COMMUNITY_RESPONDER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel's application is approved",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/me",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "me"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('approved', () => pm.expect(pm.response.json().status).to.eql('APPROVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel is available",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/me/availability",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "me", "availability"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('available', () => pm.expect(pm.response.json().available).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary agrees to volunteers for Grace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent/grant",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent", "grant"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"COMMUNITY_HELP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Given on Grace's behalf, so Grace is texted and asked to confirm it at her next sign-in."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const item = pm.response.json().items.find((i) => i.type === 'COMMUNITY_HELP');",
+                  "pm.test('given', () => pm.expect(item.active).to.eql(true));",
+                  "pm.test('Grace is asked to confirm it', () => pm.expect(pm.response.json().needsConfirmation).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace confirms it herself",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent/confirm",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent", "confirm"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "pm.test('nothing left to confirm', () => pm.expect(pm.response.json().needsConfirmation).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace raises an alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel is asked, and told how far but not who or where",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/calls/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "calls", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Waits twelve seconds first: Grace's alert becomes critical when its ten-second cancel window closes, and that is when volunteers are asked."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["setTimeout(() => {}, 12000);"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const call = pm.response.json();",
+                  "pm.test('asked, about 270 m away', () => { pm.expect(call.status).to.eql('ASKED'); pm.expect(call.distanceMetres).to.be.below(400); });",
+                  "pm.test('nothing about who or where yet', () => pm.expect(call.elder).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel can go",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/calls/{{alertId}}/accept",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "calls", "{{alertId}}", "accept"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const call = pm.response.json();",
+                  "pm.test('accepted', () => pm.expect(call.status).to.eql('ACCEPTED'));",
+                  "pm.test('now told who and where', () => { pm.expect(call.elder.name).to.eql('Grace Wanjiru'); pm.expect(call.elder.addressLabel).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary sees Daniel on the alert, and it is still hers to take",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('the volunteer going', () => pm.expect(body.volunteer.name).to.eql('Daniel Ochieng'));",
+                  "pm.test('nobody has taken it on', () => pm.expect(body.acknowledgedBy).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A volunteer cannot open the emergency itself",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('refused with 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel is with Grace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/calls/{{alertId}}/arrived",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "calls", "{{alertId}}", "arrived"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('arrival recorded', () => pm.expect(pm.response.json().arrivedAt).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary takes it on",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daniel no longer sees who or where",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/calls/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "calls", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const call = pm.response.json();",
+                  "pm.test('over, and nothing about Grace left', () => { pm.expect(call.open).to.eql(false); pm.expect(call.elder).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The vetting queue shows Faith waiting",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/volunteers?status=PENDING",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "volunteers"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Faith is waiting', () => pm.expect(pm.response.json().map((v) => v.name)).to.include('Faith Akinyi'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A caregiver cannot see the queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/volunteers",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "volunteers"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('refused with 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tidy up: Daniel is unavailable",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/volunteer/me/availability",
+              "host": ["{{apiBase}}"],
+              "path": ["volunteer", "me", "availability"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{volunteerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tidy up: Mary withdraws volunteers for Grace again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/consent/withdraw",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "consent", "withdraw"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"COMMUNITY_HELP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Back to the default, so the next run starts from the same place."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 201', () => pm.response.to.have.status(201));"]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Daniel, a seeded volunteer near Grace, is asked about her alert, told how far but not who or where, accepts, and arrives; Mary still has the alert to take. Needs folder 1 run first, and the seed from this phase (npm run db:seed)."
+    },
+    {
       "name": "3. Declining moves it on",
       "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
       "item": [
