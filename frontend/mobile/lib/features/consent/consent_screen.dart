@@ -107,6 +107,39 @@ class _ConsentScreenState extends State<ConsentScreen> {
     if (done) Navigator.of(context).pop(true);
   }
 
+  /// Giving help from nearby volunteers, or giving back a consent that was withdrawn.
+  /// The elder for themselves; a caregiver on their behalf, which the elder is then asked
+  /// to confirm and is told about by text.
+  Future<void> _give(ConsentItem item) async {
+    final bool? sure = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(_giveTitle(item.kind)),
+        content: Text(_meaning(item.kind)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Agree'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || sure != true) return;
+
+    setState(() => _busy = true);
+    await _request(() => widget.api.grantConsent(widget.elderId, item.kind));
+  }
+
+  String _giveTitle(ConsentKind kind) => switch (kind) {
+    ConsentKind.communityHelp =>
+      _isElder ? 'Let nearby volunteers help you?' : 'Let nearby volunteers help $_name?',
+    _ => _isElder ? 'Agree to this again?' : 'Agree to this for $_name?',
+  };
+
   Future<void> _withdraw(ConsentItem item) async {
     final bool endsService = item.kind == ConsentKind.dataProcessing;
     final bool? sure = await showDialog<bool>(
@@ -149,6 +182,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
     ConsentKind.locationSharing => _isElder ? 'Sharing where you are' : 'Sharing where they are',
     ConsentKind.contactSharing =>
       _isElder ? 'Sharing your phone number' : 'Sharing their phone number',
+    ConsentKind.communityHelp =>
+      _isElder ? 'Help from volunteers near you' : 'Help from volunteers near them',
   };
 
   String _meaning(ConsentKind kind) => switch (kind) {
@@ -167,6 +202,16 @@ class _ConsentScreenState extends State<ConsentScreen> {
       _isElder
           ? 'The people who look after you can see your number and call you from the app.'
           : 'The people who look after them can see their number and call them from the app.',
+    ConsentKind.communityHelp =>
+      _isElder
+          ? 'When you need help urgently, or no emergency service covers your area, vetted '
+                'volunteers living near you can be asked to come too. The one who says they '
+                'will come is told your name, address and number. Your family is still asked '
+                'as before.'
+          : 'When they need help urgently, or no emergency service covers their area, vetted '
+                'volunteers living nearby can be asked to come too. The one who says they will '
+                'come is told their name, address and number. Their chain is still asked as '
+                'before.',
   };
 
   String _withdrawTitle(ConsentKind kind) => switch (kind) {
@@ -176,6 +221,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
       _isElder ? 'Stop sharing where you are?' : 'Stop sharing where $_name is?',
     ConsentKind.contactSharing =>
       _isElder ? 'Stop sharing your phone number?' : "Stop sharing $_name's phone number?",
+    ConsentKind.communityHelp =>
+      _isElder ? 'Stop asking volunteers to help you?' : 'Stop asking volunteers to help $_name?',
   };
 
   String _withdrawEffect(ConsentKind kind) => switch (kind) {
@@ -198,10 +245,17 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 'emergency, the people helping you can still call you.'
           : "Nobody looking after $_name will see their number any more. In an emergency, "
                 'the people helping can still call them.',
+    ConsentKind.communityHelp =>
+      _isElder
+          ? 'Volunteers will not be asked to come to you. Your family and the emergency '
+                'services are asked as before.'
+          : 'Volunteers will not be asked to come to $_name. Their chain and the emergency '
+                'services are asked as before.',
   };
 
   String _status(ConsentItem item) {
     final DateTime? withdrawn = item.withdrawnAt;
+    if (!item.active && item.givenAt == null) return 'Not agreed';
     if (!item.active) return withdrawn == null ? 'Withdrawn' : 'Withdrawn on ${_day(withdrawn)}';
 
     final DateTime? confirmed = item.confirmedAt;
@@ -220,8 +274,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
     final String relation = given?.givenByRelationship?.trim() ?? '';
     final String byWhom = relation.isEmpty ? who : '$who ($relation)';
-    return '$byWhom agreed to these for you when your account was made. Do you agree to '
-        'them yourself?';
+    return '$byWhom agreed to these for you. Do you agree to them yourself?';
   }
 
   @override
@@ -335,6 +388,22 @@ class _ConsentScreenState extends State<ConsentScreen> {
             _status(item),
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
+          // Help from volunteers is never given at registration, so it is agreed to here;
+          // location and contact sharing can be agreed to again once withdrawn.
+          if (!item.active && view.canWithdraw && item.kind != ConsentKind.dataProcessing)
+            ...<Widget>[
+              const SizedBox(height: MzaziSpace.s8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: target),
+                  child: FilledButton.tonal(
+                    onPressed: _busy ? null : () => unawaited(_give(item)),
+                    child: Text(_isElder ? 'Agree' : 'Agree for $_name'),
+                  ),
+                ),
+              ),
+            ],
           if (item.active && view.canWithdraw) ...<Widget>[
             const SizedBox(height: MzaziSpace.s8),
             Align(

@@ -12,7 +12,10 @@ enum Role {
   caregiver,
   familyMember,
   emergencyResponder,
-  administrator;
+  administrator,
+
+  /// A vetted volunteer, asked to go to an elder near them. Never takes an emergency on.
+  communityResponder;
 
   static Role parse(String value) => switch (value) {
     'ELDER' => Role.elder,
@@ -20,14 +23,25 @@ enum Role {
     'FAMILY_MEMBER' => Role.familyMember,
     'EMERGENCY_RESPONDER' => Role.emergencyResponder,
     'ADMINISTRATOR' => Role.administrator,
+    'COMMUNITY_RESPONDER' => Role.communityResponder,
     _ => throw FormatException('Unknown role: $value'),
   };
 
-  /// Whether this role takes emergencies on: everybody but the elder and the
-  /// administrator.
+  /// The name the API uses.
+  String get wire => switch (this) {
+    Role.elder => 'ELDER',
+    Role.caregiver => 'CAREGIVER',
+    Role.familyMember => 'FAMILY_MEMBER',
+    Role.emergencyResponder => 'EMERGENCY_RESPONDER',
+    Role.administrator => 'ADMINISTRATOR',
+    Role.communityResponder => 'COMMUNITY_RESPONDER',
+  };
+
+  /// Whether this role takes emergencies on: everybody but the elder, the administrator
+  /// and a community volunteer, who goes beside the chain and never takes one on.
   bool get responds => switch (this) {
     Role.caregiver || Role.familyMember || Role.emergencyResponder => true,
-    Role.elder || Role.administrator => false,
+    Role.elder || Role.administrator || Role.communityResponder => false,
   };
 }
 
@@ -147,13 +161,7 @@ class Account {
     'name': name,
     'phone': phone,
     'email': email,
-    'role': switch (role) {
-      Role.elder => 'ELDER',
-      Role.caregiver => 'CAREGIVER',
-      Role.familyMember => 'FAMILY_MEMBER',
-      Role.emergencyResponder => 'EMERGENCY_RESPONDER',
-      Role.administrator => 'ADMINISTRATOR',
-    },
+    'role': role.wire,
     if (home != null)
       'home': <String, dynamic>{
         'latitude': home!.latitude,
@@ -204,6 +212,7 @@ class Emergency {
     this.journey,
     this.voice = Voice.off,
     this.trigger = AlertTrigger.panic,
+    this.volunteer,
   });
 
   final String id;
@@ -230,6 +239,9 @@ class Emergency {
   /// A press of the button, or a check-in the elder did not answer.
   final AlertTrigger trigger;
 
+  /// A community volunteer, when any were asked. The elder's copy has the first name only.
+  final VolunteerOnAlert? volunteer;
+
   bool get hasArrived => arrivedAt != null;
 
   bool get fromMissedCheckIn => trigger == AlertTrigger.missedCheckIn;
@@ -254,6 +266,7 @@ class Emergency {
       journey: Journey.fromJson(json['journey']),
       voice: Voice.fromJson(json['voice']),
       trigger: AlertTrigger.parse(json['trigger']),
+      volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
     );
   }
 }
@@ -620,6 +633,7 @@ class AlertDetail {
     required this.chain,
     this.journey,
     this.voice = Voice.off,
+    this.volunteer,
   });
 
   final AlertSummary summary;
@@ -632,6 +646,9 @@ class AlertDetail {
 
   /// Whether talking through the app is possible here, and who started it.
   final Voice voice;
+
+  /// Community volunteers asked about it, and the one going.
+  final VolunteerOnAlert? volunteer;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -652,6 +669,7 @@ class AlertDetail {
           .toList(),
       journey: Journey.fromJson(json['journey']),
       voice: Voice.fromJson(json['voice']),
+      volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
     );
   }
 }
@@ -914,7 +932,11 @@ class ElderDetail {
 enum ConsentKind {
   dataProcessing('DATA_PROCESSING'),
   locationSharing('LOCATION_SHARING'),
-  contactSharing('CONTACT_SHARING');
+  contactSharing('CONTACT_SHARING'),
+
+  /// Vetted volunteers near the elder may be asked to go, and the one who accepts is
+  /// told their name and address.
+  communityHelp('COMMUNITY_HELP');
 
   const ConsentKind(this.wire);
 
@@ -1183,4 +1205,240 @@ enum CheckInAnswer {
     'noted' => CheckInAnswer.noted,
     _ => CheckInAnswer.nothing,
   };
+}
+
+/// Community volunteers on one emergency, as the elder and their circle see it.
+class VolunteerOnAlert {
+  const VolunteerOnAlert({
+    required this.asked,
+    this.name,
+    this.phone,
+    this.distanceMetres,
+    this.acceptedAt,
+    this.arrivedAt,
+  });
+
+  /// How many nearby were asked. Zero when nobody was available.
+  final int asked;
+
+  /// The one going. First name only on the elder's copy.
+  final String? name;
+
+  /// For the circle, to ring them. Never on the elder's copy.
+  final String? phone;
+  final int? distanceMetres;
+  final DateTime? acceptedAt;
+  final DateTime? arrivedAt;
+
+  bool get going => name != null && acceptedAt != null;
+  bool get hasArrived => going && arrivedAt != null;
+
+  static VolunteerOnAlert? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    return VolunteerOnAlert(
+      asked: (json['asked'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String?,
+      phone: json['phone'] as String?,
+      distanceMetres: (json['distanceMetres'] as num?)?.toInt(),
+      acceptedAt: _date(json['acceptedAt']),
+      arrivedAt: _date(json['arrivedAt']),
+    );
+  }
+}
+
+/// Where a volunteer's application stands.
+enum VolunteerStatus {
+  notApplied('NOT_APPLIED'),
+  pending('PENDING'),
+  approved('APPROVED'),
+  rejected('REJECTED'),
+  suspended('SUSPENDED');
+
+  const VolunteerStatus(this.wire);
+  final String wire;
+
+  static VolunteerStatus parse(Object? value) => VolunteerStatus.values
+      .firstWhere((VolunteerStatus status) => status.wire == value, orElse: () => notApplied);
+}
+
+/// What a volunteer says they can do.
+enum VolunteerTraining {
+  firstAid('FIRST_AID', 'First aid'),
+  cpr('CPR', 'CPR'),
+  communityHealthPromoter('COMMUNITY_HEALTH_PROMOTER', 'Community Health Promoter'),
+  healthProfessional('HEALTH_PROFESSIONAL', 'Health professional'),
+  other('OTHER', 'Something else');
+
+  const VolunteerTraining(this.wire, this.label);
+  final String wire;
+  final String label;
+
+  static VolunteerTraining? parse(Object? value) => VolunteerTraining.values
+      .where((VolunteerTraining kind) => kind.wire == value)
+      .firstOrNull;
+}
+
+/// A volunteer's own application and standing.
+class VolunteerProfile {
+  const VolunteerProfile({
+    required this.status,
+    required this.training,
+    required this.available,
+    this.note,
+    this.area,
+    this.radiusKm,
+    this.reviewNote,
+  });
+
+  static const VolunteerProfile none = VolunteerProfile(
+    status: VolunteerStatus.notApplied,
+    training: <VolunteerTraining>[],
+    available: false,
+  );
+
+  final VolunteerStatus status;
+  final List<VolunteerTraining> training;
+  final bool available;
+  final String? note;
+  final AddressMatch? area;
+  final double? radiusKm;
+
+  /// Why it was not approved, or was suspended, in the reviewer's words.
+  final String? reviewNote;
+
+  bool get approved => status == VolunteerStatus.approved;
+
+  factory VolunteerProfile.fromJson(Map<String, dynamic> json) {
+    final Object? area = json['area'];
+    return VolunteerProfile(
+      status: VolunteerStatus.parse(json['status']),
+      training: (json['training'] as List<dynamic>? ?? const <dynamic>[])
+          .map(VolunteerTraining.parse)
+          .whereType<VolunteerTraining>()
+          .toList(growable: false),
+      available: json['available'] as bool? ?? false,
+      note: json['note'] as String?,
+      area: area is Map<String, dynamic> && area['latitude'] is num && area['longitude'] is num
+          ? AddressMatch(
+              label: area['label'] as String? ?? '',
+              latitude: (area['latitude'] as num).toDouble(),
+              longitude: (area['longitude'] as num).toDouble(),
+            )
+          : null,
+      radiusKm: (json['radiusKm'] as num?)?.toDouble(),
+      reviewNote: json['reviewNote'] as String?,
+    );
+  }
+}
+
+/// What a volunteer said about one emergency.
+enum VolunteerCallStatus {
+  asked('ASKED'),
+  accepted('ACCEPTED'),
+  declined('DECLINED'),
+  stoodDown('STOOD_DOWN'),
+  withdrawn('WITHDRAWN');
+
+  const VolunteerCallStatus(this.wire);
+  final String wire;
+
+  static VolunteerCallStatus parse(Object? value) => VolunteerCallStatus.values.firstWhere(
+    (VolunteerCallStatus status) => status.wire == value,
+    orElse: () => asked,
+  );
+}
+
+/// Who and where, given only to the volunteer who accepted, and only while it is open.
+class VolunteerCallElder {
+  const VolunteerCallElder({
+    required this.name,
+    required this.phone,
+    required this.latitude,
+    required this.longitude,
+    this.addressLabel,
+  });
+
+  final String name;
+  final String phone;
+  final double latitude;
+  final double longitude;
+  final String? addressLabel;
+}
+
+/// One emergency a volunteer was asked about.
+class VolunteerCall {
+  const VolunteerCall({
+    required this.eventId,
+    required this.status,
+    required this.distanceMetres,
+    required this.severity,
+    required this.raisedAt,
+    required this.open,
+    required this.takenByAnother,
+    this.elder,
+    this.circleOwner,
+    this.acceptedAt,
+    this.arrivedAt,
+  });
+
+  final String eventId;
+  final VolunteerCallStatus status;
+  final int distanceMetres;
+  final Severity severity;
+  final DateTime raisedAt;
+  final bool open;
+  final bool takenByAnother;
+  final VolunteerCallElder? elder;
+
+  /// First name of somebody from the elder's circle who is also on the way.
+  final String? circleOwner;
+  final DateTime? acceptedAt;
+  final DateTime? arrivedAt;
+
+  bool get going => status == VolunteerCallStatus.accepted && open;
+
+  /// Still waiting for this volunteer's answer, with nobody else going.
+  bool get waiting =>
+      open &&
+      !takenByAnother &&
+      (status == VolunteerCallStatus.asked || status == VolunteerCallStatus.stoodDown);
+
+  static VolunteerCall? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? id = json['eventId'];
+    final DateTime? raised = _date(json['raisedAt']);
+    if (id is! String || raised == null) return null;
+    final Object? elder = json['elder'];
+    return VolunteerCall(
+      eventId: id,
+      status: VolunteerCallStatus.parse(json['status']),
+      distanceMetres: (json['distanceMetres'] as num?)?.toInt() ?? 0,
+      severity: Severity.parse(json['severity'] as String? ?? 'STANDARD'),
+      raisedAt: raised,
+      open: json['open'] as bool? ?? false,
+      takenByAnother: json['takenByAnother'] as bool? ?? false,
+      elder: elder is Map<String, dynamic>
+          ? VolunteerCallElder(
+              name: elder['name'] as String? ?? '',
+              phone: elder['phone'] as String? ?? '',
+              latitude: (elder['latitude'] as num?)?.toDouble() ?? 0,
+              longitude: (elder['longitude'] as num?)?.toDouble() ?? 0,
+              addressLabel: elder['addressLabel'] as String?,
+            )
+          : null,
+      circleOwner: json['circleOwner'] as String?,
+      acceptedAt: _date(json['acceptedAt']),
+      arrivedAt: _date(json['arrivedAt']),
+    );
+  }
+}
+
+/// "about 300 m", "about 1.2 km": how far, rounded, never where.
+String roughDistance(int metres) {
+  if (metres < 1000) {
+    final int rounded = ((metres / 50).round() * 50).clamp(50, 950);
+    return 'about $rounded m';
+  }
+  final String km = (metres / 1000).toStringAsFixed(1);
+  return 'about ${km.endsWith('.0') ? km.substring(0, km.length - 2) : km} km';
 }

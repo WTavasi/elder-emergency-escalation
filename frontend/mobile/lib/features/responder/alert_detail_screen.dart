@@ -75,6 +75,16 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               journey: detail?.journey,
               open: widget.open,
             ),
+            if (detail?.volunteer case final VolunteerOnAlert volunteer) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              _Volunteer(
+                volunteer: volunteer,
+                elderFirst: alert.elderName.split(' ').first,
+                open: alert.state.isOpen,
+                canOpen: widget.canOpen,
+                openLink: widget.open,
+              ),
+            ],
             if (controller.canTalk) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
@@ -709,6 +719,10 @@ class _WhatHappened extends StatelessWidget {
         'The daily check-in went unanswered',
       'EVENT_CREATED' => '$who asked for help',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
+      'VOLUNTEERS_ASKED' => 'Volunteers nearby were asked',
+      'VOLUNTEER_ACCEPTED' => '$who, a volunteer, said they would go',
+      'VOLUNTEER_WITHDREW' => '$who, a volunteer, could no longer go',
+      'VOLUNTEER_ARRIVED' => '$who, a volunteer, arrived',
       'TIER_DISPATCHED' => _dispatched(entry),
       'ESCALATED' => _escalated(entry),
       'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
@@ -823,6 +837,60 @@ class _Chain extends StatelessWidget {
             ),
             const Divider(),
           ],
+      ],
+    );
+  }
+}
+
+/// Community volunteers asked about this emergency, and the one going.
+///
+/// Said as going beside the chain, never as having taken it on: the buttons below are
+/// still the circle's to press, whoever else is on the way.
+class _Volunteer extends StatelessWidget {
+  const _Volunteer({
+    required this.volunteer,
+    required this.elderFirst,
+    required this.open,
+    this.canOpen,
+    this.openLink,
+  });
+
+  final VolunteerOnAlert volunteer;
+  final String elderFirst;
+  final bool open;
+  final CanOpen? canOpen;
+  final Open? openLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String? name = volunteer.name;
+    final String? phone = volunteer.phone;
+    final int? metres = volunteer.distanceMetres;
+
+    final String line = volunteer.going && name != null
+        ? volunteer.hasArrived
+              ? '$name, a vetted community volunteer, is with $elderFirst.'
+              : '$name, a vetted community volunteer${metres == null ? '' : ' ${roughDistance(metres)} away'}, is on the way.'
+        : volunteer.asked == 0
+        ? 'No volunteer was available nearby.'
+        : open
+        ? '${volunteer.asked} nearby ${volunteer.asked == 1 ? 'volunteer was' : 'volunteers were'} asked. None has said yet.'
+        : '${volunteer.asked} nearby ${volunteer.asked == 1 ? 'volunteer was' : 'volunteers were'} asked.';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SectionLabel('Community volunteers'),
+        const SizedBox(height: MzaziSpace.s12),
+        Text(line, style: theme.textTheme.bodyLarge),
+        if (open && volunteer.going && name != null && phone != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s12),
+          SizedBox(
+            width: double.infinity,
+            child: CallButton(name: name.split(' ').first, phone: phone, canOpen: canOpen, open: openLink),
+          ),
+        ],
       ],
     );
   }

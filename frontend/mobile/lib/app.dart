@@ -12,6 +12,8 @@ import 'features/elder/alert_controller.dart';
 import 'features/elder/elder_home_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/responder/alerts_controller.dart';
+import 'features/volunteer/volunteer_controller.dart';
+import 'features/volunteer/volunteer_home.dart';
 
 /// The app.
 ///
@@ -84,6 +86,14 @@ class _Home extends StatelessWidget {
         create: (BuildContext context) =>
             AlertsController(api: api, live: LiveUpdates.maybeOf(context)),
         child: HomeShell(api: api, role: auth.account!.role),
+      ),
+      // A volunteer is never in a chain and never takes an emergency on, so their app is
+      // their own: who near them needs help, and their application.
+      Role.communityResponder => ChangeNotifierProvider<VolunteerController>(
+        key: ValueKey<String>(auth.account!.id),
+        create: (BuildContext context) =>
+            VolunteerController(api: api, live: LiveUpdates.maybeOf(context)),
+        child: VolunteerHome(api: api),
       ),
       _ => const _ConsoleOnly(),
     };

@@ -129,7 +129,7 @@ class ApiClient {
         'phone': phone,
         'code': code,
         'password': password,
-        'role': role == Role.familyMember ? 'FAMILY_MEMBER' : 'CAREGIVER',
+        'role': role.wire,
         if (email != null && email.isNotEmpty) 'email': email,
         'acceptedPrivacyNotice': true,
       },
@@ -490,6 +490,77 @@ class ApiClient {
         ),
       );
 
+  /// Giving one consent after registration: help from nearby volunteers, say. The elder
+  /// for themselves, or their caregiver on their behalf, which the elder then confirms.
+  Future<ConsentView> grantConsent(String elderId, ConsentKind kind) async => ConsentView.fromJson(
+    await _send('POST', '/elders/$elderId/consent/grant', body: <String, dynamic>{'type': kind.wire}),
+  );
+
+  // ------------------------------------------------------------ volunteering --
+
+  /// The volunteer's own application and standing.
+  Future<VolunteerProfile> volunteerProfile() async =>
+      VolunteerProfile.fromJson(await _send('GET', '/volunteer/me'));
+
+  /// Sends or changes the application.
+  Future<VolunteerProfile> applyToVolunteer({
+    required List<VolunteerTraining> training,
+    required AddressMatch area,
+    required double radiusKm,
+    String? note,
+  }) async => VolunteerProfile.fromJson(
+    await _send(
+      'PUT',
+      '/volunteer/me',
+      body: <String, dynamic>{
+        'training': training.map((VolunteerTraining kind) => kind.wire).toList(),
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        'area': <String, dynamic>{
+          'label': area.label,
+          'latitude': area.latitude,
+          'longitude': area.longitude,
+        },
+        'radiusKm': radiusKm,
+      },
+    ),
+  );
+
+  /// "I'm available", or not.
+  Future<VolunteerProfile> setVolunteerAvailable(bool available) async =>
+      VolunteerProfile.fromJson(
+        await _send(
+          'PUT',
+          '/volunteer/me/availability',
+          body: <String, dynamic>{'available': available},
+        ),
+      );
+
+  /// The emergencies this volunteer was asked about, open ones first.
+  Future<List<VolunteerCall>> volunteerCalls() async {
+    final Object? body = await _sendRaw('GET', '/volunteer/calls');
+    if (body is! List<dynamic>) return const <VolunteerCall>[];
+    return body.map(VolunteerCall.fromJson).whereType<VolunteerCall>().toList(growable: false);
+  }
+
+  Future<VolunteerCall> volunteerCall(String eventId) async =>
+      _call(await _send('GET', '/volunteer/calls/$eventId'));
+
+  /// "I can go", "I cannot go", "I can no longer go", "I'm here".
+  Future<VolunteerCall> answerVolunteerCall(String eventId, VolunteerAnswer answer) async =>
+      _call(
+        await _send(
+          'POST',
+          '/volunteer/calls/$eventId/${answer.path}',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  static VolunteerCall _call(Map<String, dynamic> body) {
+    final VolunteerCall? call = VolunteerCall.fromJson(body);
+    if (call == null) throw const FormatException('Not a volunteer call');
+    return call;
+  }
+
   /// An elder's daily check-in: how it is set up, and the last week of answers.
   Future<CheckInsOverview> checkIns(String elderId) async =>
       CheckInsOverview.fromJson(await _send('GET', '/elders/$elderId/check-ins'));
@@ -683,4 +754,15 @@ class ApiClient {
     }
     return 'Something went wrong (error $statusCode).';
   }
+}
+
+/// What a volunteer can say about a call, and the route each takes.
+enum VolunteerAnswer {
+  accept('accept'),
+  decline('decline'),
+  withdraw('withdraw'),
+  arrived('arrived');
+
+  const VolunteerAnswer(this.path);
+  final String path;
 }

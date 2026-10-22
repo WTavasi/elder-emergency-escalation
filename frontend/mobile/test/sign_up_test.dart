@@ -115,4 +115,20 @@ void main() {
 
     expect(t.bodies.last['role'], 'FAMILY_MEMBER');
   });
+
+  testWidgets('a community volunteer signs up as one', (WidgetTester tester) async {
+    final ({List<Map<String, dynamic>> bodies, List<Exchange> calls}) t = await pump(tester);
+    await tester.tap(find.text('Volunteer'));
+    await tester.pump();
+    expect(find.textContaining('nobody asks you anything until an administrator'), findsOneWidget);
+    await fillDetails(tester);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.tap(find.text('Send me a code'));
+    await sendAndWait(tester);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
+    await tester.tap(find.text('Create my account'));
+    await tester.pumpAndSettle();
+
+    expect(t.bodies.last['role'], 'COMMUNITY_RESPONDER');
+  });
 }

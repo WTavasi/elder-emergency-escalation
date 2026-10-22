@@ -156,8 +156,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         children: <Widget>[
           const Notice(
             message:
-                'For caregivers and family members. An elder is registered by their caregiver, '
-                'from the caregiver\'s own account.',
+                'For caregivers, family members and community volunteers. An elder is '
+                'registered by their caregiver, from the caregiver\'s own account.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           Text('I am', style: theme.textTheme.titleMedium),
@@ -174,6 +174,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 label: Text('Family'),
                 icon: Icon(Icons.family_restroom),
               ),
+              ButtonSegment<Role>(
+                value: Role.communityResponder,
+                label: Text('Volunteer'),
+                icon: Icon(Icons.near_me_outlined),
+              ),
             ],
             selected: <Role>{_role},
             showSelectedIcon: false,
@@ -184,9 +189,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            _role == Role.caregiver
-                ? 'You look after somebody day to day and will be asked first. You can register them once your account exists.'
-                : 'A caregiver adds you to the person you are family to. Sign up with the number they used.',
+            switch (_role) {
+              Role.caregiver =>
+                'You look after somebody day to day and will be asked first. You can register them once your account exists.',
+              Role.communityResponder =>
+                'You can be asked to help older people living near you. You apply once your account exists, and nobody asks you anything until an administrator approves it.',
+              _ =>
+                'A caregiver adds you to the person you are family to. Sign up with the number they used.',
+            },
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: MzaziSpace.s24),
