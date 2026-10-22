@@ -277,8 +277,10 @@ class FakeVoiceRoom implements VoiceRoom {
   @override
   Future<void> leave() async {
     left = true;
-    await _others.close();
-    await _dropped.close();
+    // Not awaited, for the same reason as in the app: the close completes on the real
+    // clock, which a widget test's fake clock never reaches.
+    unawaited(_others.close());
+    unawaited(_dropped.close());
   }
 }
 

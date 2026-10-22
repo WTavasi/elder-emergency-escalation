@@ -144,15 +144,21 @@ class VoiceCall extends ChangeNotifier {
     _set(CallStatus.ended);
   }
 
+  /// Lets go of the room, and so the microphone, first and at once. The listeners are
+  /// cancelled without waiting: nothing depends on when that finishes, and a
+  /// microphone must never stay open behind bookkeeping. Waiting on them first was
+  /// also what kept the room open in widget tests, whose clock never ran the cancels.
   Future<void> _teardown() async {
-    for (final StreamSubscription<Object?> subscription in _subscriptions) {
-      await subscription.cancel();
-    }
-    _subscriptions.clear();
     final VoiceRoom? room = _room;
     _room = null;
+    final List<StreamSubscription<Object?>> listening =
+        List<StreamSubscription<Object?>>.of(_subscriptions);
+    _subscriptions.clear();
     _others = const <String>[];
     _since = null;
+    for (final StreamSubscription<Object?> subscription in listening) {
+      unawaited(subscription.cancel());
+    }
     await room?.leave();
   }
 
