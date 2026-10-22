@@ -570,6 +570,42 @@ network (Africa's Talking voice) would cover that case; it needs a purchased voi
 number, because Africa's Talking voice does not work in the sandbox, and is written up
 as future work.
 
+### Step 11 (optional). A daily check-in
+
+Grace can be asked "are you all right?" at times she chooses or agrees to. If she does
+not answer, Mary's chain is alerted as if she had pressed for help, worded as a missed
+check-in. Nothing to install: it runs inside the API, on a one-minute clock.
+
+**1. Set one up as Mary.**
+
+1. Sign in as Mary, open **Elders**, then Grace, and scroll to **Daily check-in**.
+2. Press **Set up**, turn on **Ask every day**, and remove 09:00 with its cross.
+3. Press **Add a time** and pick a time two minutes from now. Set **Time to answer** to
+   15 minutes (the shortest is 10, set with Postman) and press **Save**. The section
+   now says it is waiting for Grace to agree.
+
+**2. Agree as Grace.** Sign in as Grace. Above the help button: **Mary would like
+MzaziCare to check on you every day at ...**. Press **Yes, check on me**.
+
+**3. Answer it.** At the time, within a minute, Grace's screen shows **Are you all
+right?** with **I am all right**. Without push on this phone the screen looks every two
+minutes, so it can take that long; the API's terminal shows the text it would have sent
+(`Check-ins: 1 asked`). Press it, and Mary's page lists **Today ...: answered in the
+app**.
+
+**4. Miss one.** Set another time two minutes ahead (as Mary, and agree again as Grace,
+or as Grace on her own **You** page, which needs no agreement) and leave it. Half way
+through the time to answer she is asked again. At the deadline Mary gets an alert marked
+**Missed check-in**, and the console board shows the same tag. Grace's screen says her
+family was told; pressing **I am all right** now withdraws the alert, and Mary is told
+Grace answered. If Mary had pressed **I am on my way** first, the alert stays and only
+records the answer.
+
+**By text.** With replies on (Step 9), the check-in text ends "Reply 1 if you are". In
+the Africa's Talking simulator, from Grace's number, reply `1`.
+
+To stop the clock entirely for a run: `CHECK_INS_ENABLED=false npm run dev`.
+
 ---
 
 ## The first run on a new machine, or after pulling changes

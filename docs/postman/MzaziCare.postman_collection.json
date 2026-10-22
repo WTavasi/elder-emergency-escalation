@@ -1805,6 +1805,424 @@
       ]
     },
     {
+      "name": "2e. Daily check-ins",
+      "item": [
+        {
+          "name": "Mary sets up a check-in for Grace",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"times\": [\n    \"18:00\",\n    \"09:00\"\n  ],\n  \"graceMinutes\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Somebody other than the elder setting it up: nothing is asked until Grace says yes on her own phone."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('times in order', () => pm.expect(body.schedule.times).to.eql(['09:00', '18:00']));",
+                  "pm.test('waits for Grace to agree', () => pm.expect(body.schedule.waitingForElder).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace sees a set-up waiting for her",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/check-ins/mine",
+              "host": ["{{apiBase}}"],
+              "path": ["check-ins", "mine"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('names who set it up', () => pm.expect(pm.response.json().waitingForAgreement.setBy.name).to.include('Mary'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Only Grace can agree to it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins/confirm",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins", "confirm"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agree\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('refused with 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace agrees",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins/confirm",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins", "confirm"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agree\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nothing left to agree to', () => pm.expect(pm.response.json().waitingForAgreement).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary sees it on, with the last answers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('on and agreed', () => { pm.expect(body.schedule.enabled).to.eql(true); pm.expect(body.schedule.waitingForElder).to.eql(false); });",
+                  "pm.test('Mary may change it', () => pm.expect(body.canEdit).to.eql(true));",
+                  "pm.test('a list of recent check-ins', () => pm.expect(body.recent).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace says she is all right",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/check-ins/answer",
+              "host": ["{{apiBase}}"],
+              "path": ["check-ins", "answer"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "\"nothing\" unless a check-in is waiting right now. To see one asked, set a time a minute or two ahead (running.md, Step 11)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('an outcome', () => pm.expect(['answered', 'withdrawn', 'noted', 'nothing']).to.include(pm.response.json().outcome));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Four times a day is too many",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"times\": [\n    \"08:00\",\n    \"12:00\",\n    \"16:00\",\n    \"20:00\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('refused with 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The console can look but not change it",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false,\n  \"times\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('refused with 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace turns it off herself",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false,\n  \"times\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('off', () => pm.expect(pm.response.json().schedule.enabled).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Mary sets up a check-in, Grace agrees on her phone, both see it, and Grace turns it off. Needs folder 1 run first for the tokens and Grace's id."
+    },
+    {
       "name": "3. Declining moves it on",
       "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
       "item": [

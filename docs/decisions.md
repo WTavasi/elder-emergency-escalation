@@ -540,3 +540,41 @@ The fallback is ringing with the phone's own dialler, which every alert already 
 An Africa's Talking conference call, which would reach a phone that was locked or had
 the app closed, does not work in their sandbox and needs a purchased voice number, so it
 is future work rather than part of this build.
+
+## A daily check-in is opt-in twice, and a missed one is an ordinary alert
+
+The panic button only helps an elder who can press it. A check-in covers the case it
+cannot: once or twice a day the elder is asked "are you all right?", and if nobody
+answers, the care circle is told. Products that already do this for older people living
+alone, such as daily call services and wellness check-in apps, do it the same way: a
+fixed time, one easy answer, and a person called when the answer does not come.
+
+It is off until somebody turns it on, and when anybody other than the elder does, nothing
+is asked until the elder agrees on their own phone. A check-in is a form of watching, and
+the people being watched are the ones who decide that. Changing the times asks again for
+the same reason. Turning it off is never held up by anybody's agreement. At most three
+times a day: past that it stops being a check-in and becomes supervision.
+
+A missed check-in is not a new kind of emergency with its own machinery. It is an alert
+raised through the same path as a press of the button, so the chain, the timers, the
+texts, the replies, the console and the audit trail all apply without a second copy of
+any of them. What differs is said rather than built: the alert carries
+`trigger: MISSED_CHECK_IN`, its messages say "did not answer today's check-in" and ask for
+a call first, and it is held at the standard band. Somebody who slept through a reminder
+is the common case, and the critical band's "everybody at once" would teach the circle to
+ignore these.
+
+A late answer withdraws the alert only while nobody has taken it on. Once somebody is on
+their way the answer is recorded on the alert and they still go, because "I am all right"
+pressed late is exactly what a check-in cannot vouch for. A press of the help button can
+never be withdrawn this way. A reply to the check-in text is read the same way, and only a
+1 counts: anything else from an elder is answered with how to get help, never taken as a
+call for it.
+
+The clock is a one-minute interval reading the database, not a Redis key per check-in. A
+check-in is a time of day, a minute late is nothing for this question, and everything the
+clock acts on is in the database, so a restart loses nothing. Each step is a conditional
+write (one check-in per elder per time, pending to missed once), so a second API instance
+does nothing twice. Times are kept as minutes after midnight in the elder's time zone and
+turned into instants each day, so the clocks changing elsewhere, or an elder travelling,
+does not move nine in the morning.
