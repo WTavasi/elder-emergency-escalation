@@ -291,3 +291,37 @@ Map<String, dynamic> voiceAccessBody() => <String, dynamic>{
   'room': 'emergency-event-1',
   'expiresInSeconds': 3600,
 };
+
+/// A check-in as the API projects it. Due at nine on 22 October, Nairobi time.
+Map<String, dynamic> checkInBody({
+  String id = 'check-in-1',
+  String status = 'PENDING',
+  String dueAt = '2026-10-22T06:00:00.000Z',
+  String deadlineAt = '2026-10-22T06:30:00.000Z',
+  String? answeredAt,
+  String? answeredVia,
+  String? eventId,
+}) => <String, dynamic>{
+  'id': id,
+  'dueAt': dueAt,
+  'deadlineAt': deadlineAt,
+  'status': status,
+  'answeredAt': answeredAt ?? (status == 'ANSWERED' ? dueAt : null),
+  'answeredVia': answeredVia,
+  'eventId': eventId,
+};
+
+/// A check-in arrangement as the API projects it.
+Map<String, dynamic> checkInScheduleBody({
+  bool enabled = true,
+  List<String> times = const <String>['09:00'],
+  int graceMinutes = 30,
+  bool waitingForElder = false,
+  String? setByName = 'Mary Otieno',
+}) => <String, dynamic>{
+  'enabled': enabled,
+  'times': times,
+  'graceMinutes': graceMinutes,
+  'waitingForElder': waitingForElder,
+  'setBy': setByName == null ? null : <String, dynamic>{'id': 'carer-1', 'name': setByName},
+};

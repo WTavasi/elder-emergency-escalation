@@ -77,6 +77,17 @@ enum Severity {
   };
 }
 
+/// What raised an emergency: the elder pressing for help, or a daily check-in that
+/// nobody answered. Anything unrecognised reads as a press, which is what every alert
+/// was before check-ins existed.
+enum AlertTrigger {
+  panic,
+  missedCheckIn;
+
+  static AlertTrigger parse(Object? value) =>
+      value == 'MISSED_CHECK_IN' ? AlertTrigger.missedCheckIn : AlertTrigger.panic;
+}
+
 /// Where an emergency is raised from.
 class GeoPoint {
   const GeoPoint({required this.latitude, required this.longitude, this.addressLabel});
@@ -192,6 +203,7 @@ class Emergency {
     this.arrivedAt,
     this.journey,
     this.voice = Voice.off,
+    this.trigger = AlertTrigger.panic,
   });
 
   final String id;
@@ -215,7 +227,12 @@ class Emergency {
   /// Whether somebody has started talking to the elder through the app.
   final Voice voice;
 
+  /// A press of the button, or a check-in the elder did not answer.
+  final AlertTrigger trigger;
+
   bool get hasArrived => arrivedAt != null;
+
+  bool get fromMissedCheckIn => trigger == AlertTrigger.missedCheckIn;
 
   factory Emergency.fromJson(Map<String, dynamic> json) {
     // The create endpoint returns the raw row, whose id field is `id`, while the list
@@ -236,6 +253,7 @@ class Emergency {
       arrivedAt: _date(json['arrivedAt']),
       journey: Journey.fromJson(json['journey']),
       voice: Voice.fromJson(json['voice']),
+      trigger: AlertTrigger.parse(json['trigger']),
     );
   }
 }
@@ -381,6 +399,7 @@ class AlertSummary {
     this.responseSeconds,
     this.outcome,
     this.outcomeNote,
+    this.trigger = AlertTrigger.panic,
   });
 
   final String eventId;
@@ -428,6 +447,12 @@ class AlertSummary {
   /// What the person who closed it said happened. Always present for an OTHER outcome.
   final String? outcomeNote;
 
+  /// A press of the button, or a check-in the elder did not answer. A missed check-in
+  /// is read differently: nobody asked for help, so the first thing to do is call.
+  final AlertTrigger trigger;
+
+  bool get fromMissedCheckIn => trigger == AlertTrigger.missedCheckIn;
+
   bool get isAnswered => ownerName != null;
 
   factory AlertSummary.fromJson(Map<String, dynamic> json) {
@@ -455,6 +480,7 @@ class AlertSummary {
       responseSeconds: response is num ? response.toInt() : null,
       outcome: json['outcome'] as String?,
       outcomeNote: json['outcomeNote'] as String?,
+      trigger: AlertTrigger.parse(json['trigger']),
     );
   }
 }
@@ -506,6 +532,8 @@ class TimelineEntry {
     this.recipients,
     this.outcome,
     this.byText = false,
+    this.trigger,
+    this.reason,
   });
 
   final String id;
@@ -527,6 +555,12 @@ class TimelineEntry {
   /// Answered by replying to the alert SMS rather than in the app.
   final bool byText;
 
+  /// What raised it, on the entry that records the emergency being raised.
+  final AlertTrigger? trigger;
+
+  /// Why, where the server says: "checked-in-late" on a withdrawal by a late answer.
+  final String? reason;
+
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final Object? actor = json['actor'];
     final Object? detail = json['detail'];
@@ -546,6 +580,8 @@ class TimelineEntry {
       recipients: asInt(d['recipients']),
       outcome: d['outcome'] as String?,
       byText: d['via'] == 'sms',
+      trigger: d.containsKey('trigger') ? AlertTrigger.parse(d['trigger']) : null,
+      reason: d['reason'] as String?,
     );
   }
 }
@@ -974,3 +1010,177 @@ class ConsentView {
 }
 
 DateTime? _date(Object? value) => value is String ? DateTime.tryParse(value)?.toLocal() : null;
+
+/// Where one day's check-in stands.
+enum CheckInStatus {
+  pending,
+  answered,
+  missed;
+
+  static CheckInStatus parse(Object? value) => switch (value) {
+    'ANSWERED' => CheckInStatus.answered,
+    'MISSED' => CheckInStatus.missed,
+    _ => CheckInStatus.pending,
+  };
+}
+
+/// One "are you all right?", asked at one of the elder's times.
+class CheckIn {
+  const CheckIn({
+    required this.id,
+    required this.dueAt,
+    required this.deadlineAt,
+    required this.status,
+    this.answeredAt,
+    this.answeredVia,
+    this.eventId,
+  });
+
+  final String id;
+  final DateTime dueAt;
+
+  /// When the care circle is told if nobody has answered.
+  final DateTime deadlineAt;
+  final CheckInStatus status;
+  final DateTime? answeredAt;
+
+  /// "app" or "sms".
+  final String? answeredVia;
+
+  /// The alert raised when it was missed.
+  final String? eventId;
+
+  /// Missed, but answered afterwards.
+  bool get answeredLate => status == CheckInStatus.missed && answeredAt != null;
+
+  static CheckIn? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final DateTime? due = _date(json['dueAt']);
+    final DateTime? deadline = _date(json['deadlineAt']);
+    final Object? id = json['id'];
+    if (id is! String || due == null || deadline == null) return null;
+    return CheckIn(
+      id: id,
+      dueAt: due,
+      deadlineAt: deadline,
+      status: CheckInStatus.parse(json['status']),
+      answeredAt: _date(json['answeredAt']),
+      answeredVia: json['answeredVia'] as String?,
+      eventId: json['eventId'] as String?,
+    );
+  }
+}
+
+/// When an elder is asked, and by whose arrangement.
+class CheckInSchedule {
+  const CheckInSchedule({
+    required this.enabled,
+    required this.times,
+    required this.graceMinutes,
+    this.waitingForElder = false,
+    this.setByName,
+    this.setById,
+  });
+
+  final bool enabled;
+
+  /// "09:00", in the elder's own time zone, earliest first.
+  final List<String> times;
+
+  /// How long the elder has to answer before their circle is told.
+  final int graceMinutes;
+
+  /// Set up by somebody else and not yet agreed by the elder, so nothing is being asked.
+  final bool waitingForElder;
+  final String? setByName;
+  final String? setById;
+
+  /// "09:00", "09:00 and 18:00", "08:00, 13:00 and 20:00".
+  String get timesInWords {
+    if (times.isEmpty) return '';
+    if (times.length == 1) return times.first;
+    return '${times.sublist(0, times.length - 1).join(', ')} and ${times.last}';
+  }
+
+  static CheckInSchedule? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? setBy = json['setBy'];
+    return CheckInSchedule(
+      enabled: json['enabled'] as bool? ?? false,
+      times: (json['times'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<String>()
+          .toList(growable: false),
+      graceMinutes: (json['graceMinutes'] as num?)?.toInt() ?? 30,
+      waitingForElder: json['waitingForElder'] as bool? ?? false,
+      setByName: setBy is Map<String, dynamic> ? setBy['name'] as String? : null,
+      setById: setBy is Map<String, dynamic> ? setBy['id'] as String? : null,
+    );
+  }
+}
+
+/// An elder's check-ins as their circle sees them: the arrangement and the last week.
+class CheckInsOverview {
+  const CheckInsOverview({required this.schedule, required this.recent, required this.canEdit});
+
+  final CheckInSchedule? schedule;
+
+  /// Newest first.
+  final List<CheckIn> recent;
+
+  /// Whether the person asking may set it up or change it.
+  final bool canEdit;
+
+  bool get isOn => schedule?.enabled ?? false;
+
+  factory CheckInsOverview.fromJson(Map<String, dynamic> json) => CheckInsOverview(
+    schedule: CheckInSchedule.fromJson(json['schedule']),
+    recent: (json['recent'] as List<dynamic>? ?? const <dynamic>[])
+        .map(CheckIn.fromJson)
+        .whereType<CheckIn>()
+        .toList(growable: false),
+    canEdit: json['canEdit'] as bool? ?? false,
+  );
+}
+
+/// What the elder's own phone needs: a check-in to answer, and a set-up to agree to.
+class ElderCheckIns {
+  const ElderCheckIns({this.checkIn, this.waitingForAgreement});
+
+  static const ElderCheckIns none = ElderCheckIns();
+
+  /// Waiting for an answer, or missed with its alert still open.
+  final CheckIn? checkIn;
+
+  /// Somebody else's set-up, not yet agreed.
+  final CheckInSchedule? waitingForAgreement;
+
+  /// A check-in still inside its time to answer.
+  CheckIn? get waiting => checkIn?.status == CheckInStatus.pending ? checkIn : null;
+
+  factory ElderCheckIns.fromJson(Map<String, dynamic> json) => ElderCheckIns(
+    checkIn: CheckIn.fromJson(json['checkIn']),
+    waitingForAgreement: CheckInSchedule.fromJson(json['waitingForAgreement']),
+  );
+}
+
+/// What answering "I am all right" did.
+enum CheckInAnswer {
+  /// The check-in was waiting and is now answered.
+  answered,
+
+  /// It had been missed and its alert was withdrawn, because nobody had taken it on.
+  withdrawn,
+
+  /// It had been missed and somebody is already coming; they can see the answer.
+  noted,
+
+  /// There was nothing to answer.
+  nothing;
+
+  static CheckInAnswer parse(Object? value) => switch (value) {
+    'answered' => CheckInAnswer.answered,
+    'withdrawn' => CheckInAnswer.withdrawn,
+    'noted' => CheckInAnswer.noted,
+    _ => CheckInAnswer.nothing,
+  };
+}

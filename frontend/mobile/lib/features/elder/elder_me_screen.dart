@@ -7,9 +7,11 @@ import 'package:provider/provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
 
-/// The elder's own page: who this phone belongs to, their privacy, and signing out.
+/// The elder's own page: who this phone belongs to, their daily check-in, their privacy,
+/// and signing out.
 ///
 /// Signing out used to sit in the corner of the elder's home screen, next to the panic
 /// control. For an elder it is almost never wanted and it is costly when pressed by
@@ -81,42 +83,63 @@ class ElderMeScreen extends StatelessWidget {
       body: SafeArea(
         child: account == null
             ? const SizedBox.shrink()
-            : Padding(
-                padding: const EdgeInsets.all(MzaziSpace.s24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(account.name, style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: MzaziSpace.s4),
-                    Text(
-                      account.phone,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            // Scrolls when it has to, with large text on a small phone, and otherwise
+            // fills the screen so signing out stays at the bottom.
+            : LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) =>
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(MzaziSpace.s24),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (constraints.maxHeight - MzaziSpace.s24 * 2)
+                              .clamp(0, double.infinity)
+                              .toDouble(),
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Text(account.name, style: theme.textTheme.headlineSmall),
+                              const SizedBox(height: MzaziSpace.s4),
+                              Text(
+                                account.phone,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+                                ),
+                              ),
+                              const SizedBox(height: MzaziSpace.s32),
+                              CheckInSettings(
+                                api: api,
+                                elderId: account.id,
+                                elderName: account.name,
+                                forElder: true,
+                              ),
+                              const SizedBox(height: MzaziSpace.s32),
+                              SizedBox(
+                                height: MzaziA11y.elderMinTouchTarget,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => unawaited(_openConsent(context, auth, account)),
+                                  icon: const Icon(Icons.privacy_tip_outlined),
+                                  label: const Text('Privacy and consent'),
+                                ),
+                              ),
+                              const Spacer(),
+                              // Last, and plain. The one control on this page that takes the
+                              // panic button away, so it is the least prominent one.
+                              SizedBox(
+                                height: MzaziA11y.elderMinTouchTarget,
+                                child: TextButton.icon(
+                                  onPressed: () => unawaited(_signOut(context, auth)),
+                                  icon: const Icon(Icons.logout),
+                                  label: const Text('Sign out of this phone'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: MzaziSpace.s32),
-                    SizedBox(
-                      height: MzaziA11y.elderMinTouchTarget,
-                      child: OutlinedButton.icon(
-                        onPressed: () => unawaited(_openConsent(context, auth, account)),
-                        icon: const Icon(Icons.privacy_tip_outlined),
-                        label: const Text('Privacy and consent'),
-                      ),
-                    ),
-                    const Spacer(),
-                    // Last, and plain. The one control on this page that takes the
-                    // panic button away, so it is the least prominent one.
-                    SizedBox(
-                      height: MzaziA11y.elderMinTouchTarget,
-                      child: TextButton.icon(
-                        onPressed: () => unawaited(_signOut(context, auth)),
-                        icon: const Icon(Icons.logout),
-                        label: const Text('Sign out of this phone'),
-                      ),
-                    ),
-                  ],
-                ),
               ),
       ),
     );
