@@ -87,7 +87,8 @@ void main() {
 
   testWidgets('the terms say it does not replace 999 or 112', (WidgetTester tester) async {
     await pump(tester, const TermsScreen(), answer: json(facts()));
-    expect(find.text('Not a replacement for 999 or 112'), findsOneWidget);
+    // Section labels are set in capitals.
+    expect(find.text('NOT A REPLACEMENT FOR 999 OR 112'), findsOneWidget);
     expect(find.textContaining('call 999 or 112'), findsOneWidget);
   });
 }

@@ -68,7 +68,8 @@ void main() {
     await pump(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Who comes when you press for help'), findsOneWidget);
+    // Section labels are set in capitals.
+    expect(find.text('WHO COMES WHEN YOU PRESS FOR HELP'), findsOneWidget);
     expect(find.text('Mary Otieno'), findsOneWidget);
     expect(find.text('Caregiver, asked first'), findsOneWidget);
     expect(find.text('Call Mary'), findsOneWidget);
