@@ -6,6 +6,7 @@ import type {
   DashboardOverview,
   DataPolicy,
   EventState,
+  LegalFacts,
   NewUser,
   Session,
   Severity,
@@ -241,6 +242,8 @@ export const api = {
 
   /** Which sign-in methods the server offers beyond a password. */
   providers: (): Promise<SignInProviders> => request<SignInProviders>('/auth/providers', {}, false),
+  /** Public: the notice's versions, retention windows and data contact. */
+  legal: (): Promise<LegalFacts> => request<LegalFacts>('/legal', {}, false),
 
   async signOut(): Promise<void> {
     try {
