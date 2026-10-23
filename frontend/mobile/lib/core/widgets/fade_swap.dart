@@ -24,7 +24,8 @@ class FadeSwap extends StatelessWidget {
       switchOutCurve: MzaziEasing.accelerate,
       transitionBuilder: (Widget child, Animation<double> animation) => FadeTransition(
         opacity: animation,
-        child: SizeTransition(sizeFactor: animation, axisAlignment: -1, child: child),
+        // Folds from the top edge, so what is below moves up as it goes.
+        child: SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: child),
       ),
       layoutBuilder: (Widget? current, List<Widget> previous) => Stack(
         alignment: Alignment.topCenter,
