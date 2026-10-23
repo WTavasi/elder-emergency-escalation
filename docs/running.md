@@ -649,6 +649,43 @@ number.
 
 To stop asking volunteers for a run: `VOLUNTEERS_ENABLED=false npm run dev`.
 
+### Step 13 (optional). Signing in without a password, changing a number, and the notice
+
+Nothing to install. To name a data contact in the notice, add these to `backend/.env`
+and restart the API (leave them out and the notice says none is set):
+
+```
+DATA_CONTACT_NAME=MzaziCare data contact
+DATA_CONTACT_EMAIL=you@example.com
+```
+
+**1. Grace signs in with a code.** Sign Grace out (**You**, then **Sign out of this
+phone**). On the sign-in screen press **Elder? Sign in with a code**, type Grace's number
+and press **Text me a code**. The API terminal shows the text with the code. Type it and
+press **Sign in**.
+
+**2. Mary signs Grace's phone in.** Sign Grace out again. Sign in as Mary on the other
+device, open **People**, then Grace, then **Sign in Grace's phone** under **Their phone**.
+A six-digit code shows with a ten-minute countdown. On Grace's phone press **Elder? Sign
+in with a code**, type her number, press **I have a code from my caregiver**, and type
+Mary's code. Nothing is texted.
+
+**3. Change a number.** As Mary, open **My account**. Under **Your circles** she is asked
+first for Grace, and **Your record** shows what she has answered. Press **Change** beside
+the phone number, type a new number and her password, and press **Text a code to the new
+number**. Type the code from the API terminal and press **Change my number**. The old
+number is texted, and any other phone signed in as Mary is signed out. Change it back to
++254 700 000020 the same way before re-seeding: the seed finds accounts by number, so it
+would try to make a second Mary with the same email and stop.
+
+**4. Read the notice.** **Privacy notice** and **Terms of use** are under the sign-in
+form, under the agreement on sign-up, on **My account**, on Grace's **You** page and on
+the consent page. The retention figures and the contact come from the server. The
+console's **Privacy and data** panel says the same.
+
+**Grace's You page** is now a card: her name, number and home, then **Who comes when you
+press for help**, each carer a call away.
+
 ---
 
 ## The first run on a new machine, or after pulling changes
