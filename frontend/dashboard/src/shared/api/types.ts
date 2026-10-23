@@ -194,6 +194,14 @@ export interface DataPolicy {
   retention: { enabled: boolean; closedEmergencyDays: number; auditLogDays: number };
 }
 
+/** The public parts of the privacy notice that depend on the server's settings. */
+export interface LegalFacts extends DataPolicy {
+  privacyVersion: string;
+  termsVersion: string;
+  /** Null until the deployment names one. */
+  contact: { name: string | null; email: string | null; address: string | null } | null;
+}
+
 export interface DailyPoint {
   date: string;
   raised: number;

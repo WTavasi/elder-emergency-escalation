@@ -1,6 +1,7 @@
 import { Transform, Type, plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsIn,
   IsInt,
@@ -10,6 +11,7 @@ import {
   IsUrl,
   Matches,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateIf,
@@ -310,6 +312,25 @@ export class EnvSchema {
   @IsOptional()
   @IsString()
   GOOGLE_MAPS_API_KEY?: string;
+
+  /**
+   * Who answers questions about personal data on this server, named in the privacy
+   * notice in the app and the console. Unset, the notice says no contact has been set,
+   * rather than inventing one.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  DATA_CONTACT_NAME?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'DATA_CONTACT_EMAIL must be an email address' })
+  DATA_CONTACT_EMAIL?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  DATA_CONTACT_ADDRESS?: string;
 
   /**
    * Address search, for setting an elder's home. OpenStreetMap's public Nominatim by

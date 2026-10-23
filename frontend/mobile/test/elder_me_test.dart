@@ -17,7 +17,24 @@ void main() {
   Future<({AuthController auth, List<Exchange> calls})> pump(WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int index) => <http.Response>[
-        index == 0 ? json(sessionBody()) : http.Response('', 204),
+        if (index == 0)
+          json(sessionBody())
+        else if (request.url.path.endsWith('/auth/me/profile'))
+          json(<String, dynamic>{
+            'memberSince': '2026-09-01T08:00:00.000Z',
+            'circles': <Object>[],
+            'record': null,
+            'carers': <Object>[
+              <String, dynamic>{
+                'name': 'Mary Otieno',
+                'role': 'CAREGIVER',
+                'place': 1,
+                'phone': '+254700000020',
+              },
+            ],
+          })
+        else
+          http.Response('', 204),
       ],
     );
     final AuthController auth = AuthController(api: t.api, store: SessionStore());
@@ -43,6 +60,20 @@ void main() {
     expect(find.text('Grace Wanjiru'), findsOneWidget);
     expect(find.text('+254700000010'), findsOneWidget);
     expect(find.text('Privacy and consent'), findsOneWidget);
+  });
+
+  testWidgets('shows who comes when they press for help, each a call away', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester);
+    await tester.pumpAndSettle();
+
+    // Section labels are set in capitals.
+    expect(find.text('WHO COMES WHEN YOU PRESS FOR HELP'), findsOneWidget);
+    expect(find.text('Mary Otieno'), findsOneWidget);
+    expect(find.text('Caregiver, asked first'), findsOneWidget);
+    expect(find.text('Call Mary'), findsOneWidget);
+    expect(find.text('Privacy notice'), findsOneWidget);
   });
 
   testWidgets('asks before signing out, and staying changes nothing', (WidgetTester tester) async {

@@ -24,6 +24,7 @@ void main() {
     WidgetTester tester,
     http.Response Function(http.Request request) answer, {
     WayThere? way,
+    Map<String, dynamic>? profile,
   }) async {
     final List<({String method, String path, Map<String, dynamic>? body})> seen =
         <({String method, String path, Map<String, dynamic>? body})>[];
@@ -37,6 +38,21 @@ void main() {
 
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int index) {
       if (index == 0) return <http.Response>[json(caregiver)];
+      // The care profile loads with the page. Answered here and left out of what the
+      // tests see, which is what the person did.
+      if (request.url.path.endsWith('/auth/me/profile')) {
+        return <http.Response>[
+          json(
+            profile ??
+                <String, dynamic>{
+                  'memberSince': '2026-09-01T08:00:00.000Z',
+                  'circles': <Object>[],
+                  'record': <String, dynamic>{'answered': 0},
+                  'carers': <Object>[],
+                },
+          ),
+        ];
+      }
       seen.add((
         method: request.method,
         path: request.url.path,
@@ -62,7 +78,9 @@ void main() {
     return seen;
   }
 
-  testWidgets('shows the account, with the phone number not editable', (WidgetTester tester) async {
+  testWidgets('shows the account, with the phone number changed elsewhere', (
+    WidgetTester tester,
+  ) async {
     await pump(tester, (_) => json(<String, dynamic>{}));
 
     expect(find.text('My account'), findsOneWidget);
@@ -73,6 +91,84 @@ void main() {
       find.ancestor(of: find.text('Save changes'), matching: find.byType(FilledButton)),
     );
     expect(save.onPressed, isNull);
+  });
+
+  testWidgets('says where they stand in each circle and what they have done', (
+    WidgetTester tester,
+  ) async {
+    await pump(
+      tester,
+      (_) => json(<String, dynamic>{}),
+      profile: <String, dynamic>{
+        'memberSince': '2026-09-01T08:00:00.000Z',
+        'circles': <Object>[
+          <String, dynamic>{'elderId': 'elder-1', 'elderName': 'Grace Wanjiru', 'place': 1},
+        ],
+        'record': <String, dynamic>{
+          'answered': 3,
+          'medianResponseSeconds': 125,
+          'lastAnsweredAt': '2026-10-09T10:02:00.000Z',
+        },
+        'carers': <Object>[],
+      },
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Asked first for Grace Wanjiru'), findsOneWidget);
+    expect(find.text('You have answered 3 emergencies.'), findsOneWidget);
+    expect(find.text('You usually answer in about 2 minutes.'), findsOneWidget);
+    expect(find.text('Last answered on 9 October 2026.'), findsOneWidget);
+  });
+
+  testWidgets('moves the account to a new number with the password and a code', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> moved = sessionBody();
+    (moved['user'] as Map<String, dynamic>)
+      ..['id'] = 'carer-1'
+      ..['name'] = 'Mary Otieno'
+      ..['phone'] = '+254711000111'
+      ..['role'] = 'CAREGIVER'
+      ..remove('home');
+    final List<({String method, String path, Map<String, dynamic>? body})> seen = await pump(
+      tester,
+      (http.Request request) => request.url.path.endsWith('/auth/me/phone')
+          ? json(moved)
+          : http.Response('', 202),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'New phone number'), '0711000111');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'Dev!2026');
+    await tester.tap(find.text('Text a code to the new number'));
+    // Not pumpAndSettle while the resend countdown ticks.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(seen.first.path, '/api/v1/auth/me/phone/code');
+    expect(seen.first.body, <String, dynamic>{'phone': '+254711000111', 'password': 'Dev!2026'});
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
+    await tester.tap(find.text('Change my number'));
+    await tester.pump();
+    // The page closes, which stops its countdown, and then the profile can settle.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(seen.last.path, '/api/v1/auth/me/phone');
+    expect(seen.last.body, <String, dynamic>{'phone': '+254711000111', 'code': '123456'});
+    expect(find.text('+254711000111'), findsOneWidget);
+    expect(find.textContaining('Number changed'), findsOneWidget);
+  });
+
+  testWidgets('links the privacy notice and the terms', (WidgetTester tester) async {
+    await pump(tester, (_) => json(<String, dynamic>{}));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Privacy notice'), findsOneWidget);
+    expect(find.text('Terms of use'), findsOneWidget);
   });
 
   testWidgets('saves a new email address', (WidgetTester tester) async {

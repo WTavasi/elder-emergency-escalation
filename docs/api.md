@@ -28,6 +28,12 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
 | GET | `/api/v1/auth/me/preferences` | bearer | `{ shareWayThere }`, the defaults until something is changed |
 | PATCH | `/api/v1/auth/me/preferences` | bearer | Change any of them; only the named fields change |
+| POST | `/api/v1/auth/code` | none | `{ phone }`: texts an elder a sign-in code. Only an active elder's number is sent one. Always 202 |
+| POST | `/api/v1/auth/code/verify` | none | `{ phone, code }`: an elder signs in with a texted code or their caregiver's pairing code |
+| POST | `/api/v1/auth/me/phone/code` | bearer | `{ phone, password }`: a code to the number the account is moving to. No password for an elder. 409 if the number is taken |
+| POST | `/api/v1/auth/me/phone` | bearer | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends every other session |
+| GET | `/api/v1/auth/me/profile` | bearer | `{ memberSince, circles, record, carers }`: places in each circle and the response record; an elder gets their carers instead |
+| GET | `/api/v1/legal` | none | `{ privacyVersion, termsVersion, retention, contact }` for the privacy notice and terms. `contact` is null until `DATA_CONTACT_*` is set |
 | PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
 | DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
 
@@ -226,6 +232,7 @@ says the person came back rather than losing that a stay ever happened.
 | PATCH | `/api/v1/elders/:id` | caregiver in that chain | Change their home or care level (`careLevel: null` means not sure) |
 | GET | `/api/v1/elders/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
 | POST | `/api/v1/elders/:id/consent/confirm` | the elder | Agree, for themselves, to what was agreed on their behalf |
+| POST | `/api/v1/elders/:id/sign-in-code` | caregiver in that chain | `{ code, expiresInSeconds }`: a six-digit code, shown not texted, that signs the elder's phone in with their number. Ten minutes; asking again replaces it |
 | POST | `/api/v1/elders/:id/consent/grant` | the elder, caregiver in that chain | `{ type }`: give a consent after registration, such as `COMMUNITY_HELP`, or give back a withdrawn one. Never `DATA_PROCESSING`. A caregiver's is on the elder's behalf, so the elder is asked to confirm it, and is texted |
 | POST | `/api/v1/elders/:id/consent/withdraw` | the elder, caregiver in that chain | `{ type, confirm? }`. `confirm: true` is required for `DATA_PROCESSING` |
 

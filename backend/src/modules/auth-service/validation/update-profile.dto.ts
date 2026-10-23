@@ -1,9 +1,9 @@
 import { IsEmail, IsOptional, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 /**
- * The parts of an account its owner may change. The phone number is not one of them:
- * it is the sign-in handle and the number every chain calls, so changing it needs the
- * same SMS proof as signing up, which is a separate piece of work.
+ * The parts of an account its owner may change freely. The phone number is not one of
+ * them: it is the sign-in handle and the number every chain calls, so it changes through
+ * POST /auth/me/phone/code and POST /auth/me/phone, with a code to the new number.
  */
 export class UpdateProfileDto {
   @IsOptional()

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Role } from '@prisma/client';
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../../../db/prisma.service';
 import { RedisService } from '../../../shared/redis/redis.service';
@@ -17,11 +18,19 @@ export const RESEND_COOLDOWN_SECONDS = 30;
 export const WRONG_CODE = 'That code is wrong or has expired. Ask for a new one.';
 
 /**
- * What a code is for. A sign-up code goes only to a number with no account, and a
- * reset code only to a number with one, so the two never stand in for each other: each
- * is stored under its own key and checked against that key alone.
+ * What a code is for. Each is stored under its own key and checked against that key
+ * alone, so one never stands in for another.
+ *
+ * - signup: to a number with no account.
+ * - reset: to an active account, for a new password.
+ * - signin: to an active elder's account, which signs them in with no password.
+ * - change: to a number with no account, which a signed-in person is moving theirs to.
+ * - pair: never sent. A caregiver is shown it and types it into the elder's phone.
  */
-export type CodePurpose = 'signup' | 'reset';
+export type CodePurpose = 'signup' | 'reset' | 'signin' | 'change' | 'pair';
+
+/** What a pairing code shown to a caregiver lasts. Long enough to walk across a room. */
+export const PAIRING_TTL_SECONDS = 600;
 
 /**
  * Proving that whoever is signing up holds the phone number they typed.
@@ -93,7 +102,7 @@ export class PhoneVerificationService {
 
     const existing = await this.prisma.user.findUnique({
       where: { phone },
-      select: { id: true, deactivatedAt: true },
+      select: { id: true, deactivatedAt: true, role: true },
     });
     if (purpose === 'signup' && existing) {
       await this.sms.send(phone, accountMessages.alreadyRegistered());
@@ -109,26 +118,33 @@ export class PhoneVerificationService {
       this.logger.log(`No reset code sent to ${who}: no active account has that number`);
       return;
     }
+    // Signing in by code is for elders only. Everyone else has a password they chose,
+    // and a code by text alone is a weaker proof than that: it is only as safe as the
+    // SIM. For an elder the trade is worth it, because a forgotten password somebody
+    // else set up is what keeps them from the panic button.
+    if (
+      purpose === 'signin' &&
+      (!existing || existing.deactivatedAt || existing.role !== Role.ELDER)
+    ) {
+      this.logger.log(`No sign-in code sent to ${who}: no active elder has that number`);
+      return;
+    }
+    // The caller already checked, and was told; this is the race between that check and
+    // now, when somebody else took the number.
+    if (purpose === 'change' && existing) {
+      this.logger.log(`No change code sent to ${who}: it already has an account`);
+      return;
+    }
 
-    const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
     const ttl = this.ttlSeconds();
-    await this.redis.client
-      .multi()
-      .hset(PhoneVerificationService.codeKey(phone, purpose), {
-        hash: PhoneVerificationService.hash(phone, code),
-        attempts: '0',
-      })
-      .expire(PhoneVerificationService.codeKey(phone, purpose), ttl)
-      .exec();
+    const code = await this.store(phone, purpose, ttl);
 
     const minutes = Math.round(ttl / 60);
     const delivered = await this.sms.send(
       phone,
-      purpose === 'reset'
-        ? accountMessages.resetCode(code, minutes)
-        : accountMessages.verificationCode(code, minutes),
+      PhoneVerificationService.message(purpose, code, minutes),
     );
-    const what = purpose === 'reset' ? 'Password reset' : 'Sign-up';
+    const what = PhoneVerificationService.label(purpose);
     if (delivered) {
       this.logger.log(`${what} code sent to ${who}`);
     } else {
@@ -138,29 +154,91 @@ export class PhoneVerificationService {
   }
 
   /**
+   * A code for a caregiver to read out or type into the elder's phone, returned rather
+   * than sent. Not limited like a text, because it costs nothing and reaches nobody; the
+   * attempts on it are limited the same way. Asking again replaces the last one.
+   */
+  async issuePairing(phone: string): Promise<{ code: string; expiresInSeconds: number }> {
+    const code = await this.store(phone, 'pair', PAIRING_TTL_SECONDS);
+    this.logger.log(`Pairing code made for ${redactPhone(phone)}`);
+    return { code, expiresInSeconds: PAIRING_TTL_SECONDS };
+  }
+
+  /**
    * Checks a code and uses it up. Throws the same message for a wrong code, an expired
    * one and a number that was never sent one, because telling them apart would tell a
    * guesser which numbers are worth guessing at.
+   *
+   * Given more than one purpose, the code may be any of them, which is how an elder's
+   * one code box takes either a code by text or one from their caregiver. Every guess
+   * counts against each code that is waiting, so two codes give no extra guesses.
+   * Returns the purpose that matched.
    */
-  async consume(phone: string, code: string, purpose: CodePurpose = 'signup'): Promise<void> {
-    const key = PhoneVerificationService.codeKey(phone, purpose);
-    const stored = await this.redis.client.hget(key, 'hash');
-    if (!stored) throw new BadRequestException(WRONG_CODE);
-
-    const attempts = await this.redis.client.hincrby(key, 'attempts', 1);
-    if (attempts > MAX_ATTEMPTS) {
-      await this.redis.client.del(key);
-      throw new BadRequestException(WRONG_CODE);
-    }
-
+  async consume(
+    phone: string,
+    code: string,
+    purpose: CodePurpose | CodePurpose[] = 'signup',
+  ): Promise<CodePurpose> {
+    const purposes = Array.isArray(purpose) ? purpose : [purpose];
     const given = Buffer.from(PhoneVerificationService.hash(phone, code), 'hex');
-    const expected = Buffer.from(stored, 'hex');
-    if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
-      throw new BadRequestException(WRONG_CODE);
-    }
 
-    // Used once. A code that worked cannot be replayed for a second account.
-    await this.redis.client.del(key);
+    for (const each of purposes) {
+      const key = PhoneVerificationService.codeKey(phone, each);
+      const stored = await this.redis.client.hget(key, 'hash');
+      if (!stored) continue;
+
+      const attempts = await this.redis.client.hincrby(key, 'attempts', 1);
+      if (attempts > MAX_ATTEMPTS) {
+        await this.redis.client.del(key);
+        continue;
+      }
+
+      const expected = Buffer.from(stored, 'hex');
+      if (given.length === expected.length && timingSafeEqual(given, expected)) {
+        // Used once. A code that worked cannot be replayed for a second account.
+        await this.redis.client.del(key);
+        return each;
+      }
+    }
+    throw new BadRequestException(WRONG_CODE);
+  }
+
+  /** A fresh six-digit code, stored as a hash under its purpose with a lifetime. */
+  private async store(phone: string, purpose: CodePurpose, ttl: number): Promise<string> {
+    const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
+    const key = PhoneVerificationService.codeKey(phone, purpose);
+    await this.redis.client
+      .multi()
+      .hset(key, { hash: PhoneVerificationService.hash(phone, code), attempts: '0' })
+      .expire(key, ttl)
+      .exec();
+    return code;
+  }
+
+  private static message(purpose: CodePurpose, code: string, minutes: number): string {
+    switch (purpose) {
+      case 'reset':
+        return accountMessages.resetCode(code, minutes);
+      case 'signin':
+        return accountMessages.signInCode(code, minutes);
+      case 'change':
+        return accountMessages.changeNumberCode(code, minutes);
+      default:
+        return accountMessages.verificationCode(code, minutes);
+    }
+  }
+
+  private static label(purpose: CodePurpose): string {
+    switch (purpose) {
+      case 'reset':
+        return 'Password reset';
+      case 'signin':
+        return 'Sign-in';
+      case 'change':
+        return 'Number change';
+      default:
+        return 'Sign-up';
+    }
   }
 
   private ttlSeconds(): number {
@@ -168,7 +246,8 @@ export class PhoneVerificationService {
   }
 
   private static codeKey(phone: string, purpose: CodePurpose): string {
-    return purpose === 'reset' ? `reset:code:${phone}` : `verify:code:${phone}`;
+    // signup keeps the key it has always had, so codes already sent still work.
+    return `${purpose === 'signup' ? 'verify' : purpose}:code:${phone}`;
   }
 
   /** Salted with the number, so the same code for two numbers never hashes alike. */

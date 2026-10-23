@@ -9,6 +9,8 @@ import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/care_rings.dart';
 import '../../core/widgets/notice.dart';
+import '../legal/legal_screens.dart';
+import 'code_sign_in_screen.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -59,6 +61,16 @@ class _SignInScreenState extends State<SignInScreen> {
       MaterialPageRoute<void>(
         // Whatever was typed here is carried over, so nobody types their number twice.
         builder: (_) => ForgotPasswordScreen(country: _phone.country, number: _phone.text.text),
+      ),
+    );
+    auth.clearError();
+  }
+
+  Future<void> _signInWithCode() async {
+    final AuthController auth = context.read<AuthController>()..clearError();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => CodeSignInScreen(country: _phone.country, number: _phone.text.text),
       ),
     );
     auth.clearError();
@@ -135,6 +147,12 @@ class _SignInScreenState extends State<SignInScreen> {
                             onPressed: auth.isBusy ? null : () => unawaited(_forgotPassword()),
                             child: const Text('Forgot your password?'),
                           ),
+                          // An elder may never have known the password a caregiver set.
+                          TextButton.icon(
+                            onPressed: auth.isBusy ? null : () => unawaited(_signInWithCode()),
+                            icon: const Icon(Icons.pin_outlined),
+                            label: const Text('Elder? Sign in with a code'),
+                          ),
                         ],
                       ),
                     ),
@@ -147,6 +165,9 @@ class _SignInScreenState extends State<SignInScreen> {
                       onPressed: auth.isBusy ? null : () => unawaited(_createAccount()),
                       child: const Text('New here? Create an account'),
                     ),
+                    const SizedBox(height: MzaziSpace.s8),
+                    // Readable before an account exists, which is when it matters.
+                    const Center(child: LegalLinks()),
                   ],
                 ),
               ),

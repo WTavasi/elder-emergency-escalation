@@ -28,6 +28,9 @@ import { UpdateProfileDto } from '../validation/update-profile.dto';
 import { UpdatePreferencesDto } from '../validation/update-preferences.dto';
 import { PhoneVerificationService } from '../services/phone-verification.service';
 import { PreferencesService, type Preferences } from '../services/preferences.service';
+import { ProfileService, type Profile } from '../services/profile.service';
+import { CodeSignInDto } from '../validation/code-sign-in.dto';
+import { ChangePhoneDto, StartPhoneChangeDto } from '../validation/change-phone.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -35,6 +38,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly verification: PhoneVerificationService,
     private readonly preferences: PreferencesService,
+    private readonly profiles: ProfileService,
   ) {}
 
   /**
@@ -121,6 +125,27 @@ export class AuthController {
     return this.auth.signInWithGoogle(dto.idToken);
   }
 
+  /**
+   * Sends an elder a code to sign in with, instead of a password. Answers 202 with
+   * nothing either way, so it says nothing about who is registered or who is an elder.
+   */
+  @Public()
+  @Throttle(10, 3600)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('code')
+  startCodeSignIn(@Body() dto: StartVerificationDto): Promise<void> {
+    return this.auth.startCodeSignIn(dto.phone);
+  }
+
+  /** An elder signing in with a texted code or one from their caregiver. Limited like sign-in. */
+  @Public()
+  @Throttle(20, 300)
+  @HttpCode(HttpStatus.OK)
+  @Post('code/verify')
+  signInWithCode(@Body() dto: CodeSignInDto): Promise<AuthResult> {
+    return this.auth.signInWithCode(dto);
+  }
+
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
   logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
@@ -171,6 +196,34 @@ export class AuthController {
   @Delete('me/push-token')
   clearPushToken(@CurrentUser() user: AuthenticatedUser): Promise<void> {
     return this.auth.clearPushToken(user.userId);
+  }
+
+  /** Where this person stands, what they have done, and for an elder, who comes. */
+  @Get('me/profile')
+  profile(@CurrentUser() user: AuthenticatedUser): Promise<Profile> {
+    return this.profiles.get(user.userId);
+  }
+
+  /** A code to the number the account is moving to. Limited because each one is a text. */
+  @Throttle(5, 3600)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('me/phone/code')
+  startPhoneChange(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: StartPhoneChangeDto,
+  ): Promise<void> {
+    return this.auth.startPhoneChange(user.userId, dto);
+  }
+
+  /** Moves the account to the new number. Fresh tokens, because every other session ends. */
+  @Throttle(10, 300)
+  @HttpCode(HttpStatus.OK)
+  @Post('me/phone')
+  changePhone(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePhoneDto,
+  ): Promise<AuthResult> {
+    return this.auth.changePhone(user.userId, dto);
   }
 
   /** The signed-in person changing their own name or email. */

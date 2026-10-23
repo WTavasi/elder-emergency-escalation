@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { api } from '../../shared/api/client';
 import { Modal } from '../../shared/components/Modal';
 import { useLoader } from '../../shared/hooks/useLoader';
-import type { DataPolicy } from '../../shared/api/types';
+import type { DataPolicy, LegalFacts } from '../../shared/api/types';
 
 /**
  * What this console does with personal data, one link away from anywhere: under the
@@ -11,12 +11,15 @@ import type { DataPolicy } from '../../shared/api/types';
  * The full statement of a layered notice. The short layers are where the data is: the
  * view-only marker on an emergency, and the retention line under the history. Every
  * claim here is true of the build as it stands and nothing is promised that the code
- * does not enforce; the retention figures come from the server's own settings when an
- * administrator is signed in, and are described in general terms before.
+ * does not enforce; the retention figures and the data contact come from the server's
+ * own settings, and are described in general terms when they cannot be loaded.
  */
-export function PrivacyPanel({ onClose, signedIn }: { onClose: () => void; signedIn: boolean }) {
-  const fetcher = useCallback(() => (signedIn ? api.policy() : Promise.resolve(null)), [signedIn]);
-  const { data: policy } = useLoader<DataPolicy | null>(fetcher, 'Could not load the policy.');
+// signedIn stays in the props for the callers; the panel reads the same either way now
+// that the figures come from a public endpoint.
+export function PrivacyPanel({ onClose }: { onClose: () => void; signedIn: boolean }) {
+  // Public, so the figures and the contact are real before sign-in as well as after.
+  const fetcher = useCallback(() => api.legal(), []);
+  const { data: policy } = useLoader<LegalFacts>(fetcher, 'Could not load the policy.');
 
   return (
     <Modal
@@ -60,15 +63,42 @@ export function PrivacyPanel({ onClose, signedIn }: { onClose: () => void; signe
         <h3>How long records are kept</h3>
         <p>{retentionSentence(policy)}</p>
 
+        <h3>During an open emergency</h3>
+        <p>
+          If an elder has withdrawn location or contact sharing, the people answering an open
+          emergency still see their number, home and where the alert was raised, because protecting
+          a person&apos;s life is a lawful reason on its own (vital interests). Once the emergency
+          closes, the withdrawal applies again.
+        </p>
+
         <h3>What an administrator cannot do</h3>
         <p>
           Read every record, yes; act on a live emergency, no. Taking one on, declining and closing
           belong to the people in that elder&apos;s care chain, and the server refuses them from an
           administrator account rather than this screen merely hiding the buttons.
         </p>
+
+        <h3>Who to ask</h3>
+        <p>{contactSentence(policy)}</p>
+        {policy ? (
+          <p className="muted">
+            Privacy notice {policy.privacyVersion}. Terms of use {policy.termsVersion}.
+          </p>
+        ) : null}
       </div>
     </Modal>
   );
+}
+
+/** The data contact as the server names it, and never one made up. */
+export function contactSentence(policy: LegalFacts | null | undefined): string {
+  if (!policy) return 'The data contact could not be loaded.';
+  const parts = [policy.contact?.name, policy.contact?.email, policy.contact?.address].filter(
+    (part): part is string => Boolean(part?.trim()),
+  );
+  return parts.length > 0
+    ? parts.join(', ')
+    : 'No data contact has been set for this server yet. It is set with DATA_CONTACT_NAME, DATA_CONTACT_EMAIL and DATA_CONTACT_ADDRESS.';
 }
 
 /** The retention rule in one sentence, with the real figures when they are known. */

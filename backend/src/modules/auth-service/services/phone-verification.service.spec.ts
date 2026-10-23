@@ -106,7 +106,7 @@ describe('PhoneVerificationService', () => {
     await service.start(PHONE);
     const code = codeFrom(sms);
 
-    await expect(service.consume(PHONE, code)).resolves.toBeUndefined();
+    await expect(service.consume(PHONE, code)).resolves.toBe('signup');
     await expect(service.consume(PHONE, code)).rejects.toThrow(BadRequestException);
   });
 
@@ -157,7 +157,7 @@ describe('PhoneVerificationService', () => {
       expect(code).toMatch(/^\d{6}$/);
       expect((sms.send.mock.calls[0][1] as string).length).toBeLessThanOrEqual(160);
       expect(redis.hashes.has(`reset:code:${PHONE}`)).toBe(true);
-      await expect(service.consume(PHONE, code, 'reset')).resolves.toBeUndefined();
+      await expect(service.consume(PHONE, code, 'reset')).resolves.toBe('reset');
     });
 
     it('sends nothing to a deactivated account', async () => {
@@ -193,6 +193,88 @@ describe('PhoneVerificationService', () => {
       await service.start(PHONE, 'reset');
       await service.start(PHONE, 'reset');
       expect(sms.send).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('elder sign-in codes', () => {
+    const signInCodeFrom = (sms: { send: jest.Mock }): string =>
+      /^(\d{6}) is your MzaziCare sign-in code/.exec(sms.send.mock.calls[0][1] as string)?.[1] ??
+      '';
+
+    it('sends one to an active elder, and it signs in once', async () => {
+      const { service, prisma, sms } = build(true);
+      prisma.user.findUnique.mockResolvedValue({ id: 'e1', role: 'ELDER', deactivatedAt: null });
+      await service.start(PHONE, 'signin');
+
+      const code = signInCodeFrom(sms);
+      expect(code).toMatch(/^\d{6}$/);
+      expect((sms.send.mock.calls[0][1] as string).length).toBeLessThanOrEqual(160);
+      await expect(service.consume(PHONE, code, ['signin', 'pair'])).resolves.toBe('signin');
+      await expect(service.consume(PHONE, code, ['signin', 'pair'])).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('sends nothing to anybody who is not an elder, or to nobody', async () => {
+      const caregiver = build(true);
+      caregiver.prisma.user.findUnique.mockResolvedValue({
+        id: 'c1',
+        role: 'CAREGIVER',
+        deactivatedAt: null,
+      });
+      await caregiver.service.start(PHONE, 'signin');
+      expect(caregiver.sms.send).not.toHaveBeenCalled();
+
+      const nobody = build(false);
+      await nobody.service.start(PHONE, 'signin');
+      expect(nobody.sms.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pairing codes', () => {
+    it('are returned, never texted, and work in the same box as a texted code', async () => {
+      const { service, sms } = build(true);
+      const { code, expiresInSeconds } = await service.issuePairing(PHONE);
+
+      expect(code).toMatch(/^\d{6}$/);
+      expect(expiresInSeconds).toBe(600);
+      expect(sms.send).not.toHaveBeenCalled();
+      await expect(service.consume(PHONE, code, ['signin', 'pair'])).resolves.toBe('pair');
+    });
+
+    it('are not a sign-up or reset code', async () => {
+      const { service } = build(true);
+      const { code } = await service.issuePairing(PHONE);
+      await expect(service.consume(PHONE, code)).rejects.toThrow(BadRequestException);
+      await expect(service.consume(PHONE, code, 'reset')).rejects.toThrow(BadRequestException);
+    });
+
+    it('count every guess against each waiting code, so two codes give no extra guesses', async () => {
+      const { service } = build(true);
+      const { code } = await service.issuePairing(PHONE);
+      const wrong = code === '000000' ? '111111' : '000000';
+      for (let guess = 0; guess < MAX_ATTEMPTS; guess++) {
+        await expect(service.consume(PHONE, wrong, ['signin', 'pair'])).rejects.toThrow(
+          BadRequestException,
+        );
+      }
+      await expect(service.consume(PHONE, code, ['signin', 'pair'])).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('number change codes', () => {
+    it('go only to a number with no account', async () => {
+      const taken = build(true);
+      await taken.service.start(PHONE, 'change');
+      expect(taken.sms.send).not.toHaveBeenCalled();
+
+      const free = build(false);
+      await free.service.start(PHONE, 'change');
+      const text = free.sms.send.mock.calls[0][1] as string;
+      expect(text).toMatch(/^\d{6} is your code to move a MzaziCare account to this number/);
+      expect(text.length).toBeLessThanOrEqual(160);
     });
   });
 

@@ -12,6 +12,7 @@ import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
+import 'widgets/pairing_sheet.dart';
 
 /// One elder: where they are, their home, how much help they need, and who is asked,
 /// in order, when they need it.
@@ -179,6 +180,20 @@ class _ElderScreenState extends State<ElderScreen> {
     if (mounted) await _load();
   }
 
+  /// A code for the caregiver to type into the elder's phone, which signs it in.
+  Future<void> _signInTheirPhone() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => PairingSheet(
+        api: widget.api,
+        elderId: widget.elderId,
+        elderName: widget.elderName,
+      ),
+    );
+  }
+
   Future<void> _addFamily() async {
     final ChainView? updated = await showModalBottomSheet<ChainView>(
       context: context,
@@ -329,6 +344,23 @@ class _ElderScreenState extends State<ElderScreen> {
                   label: const Text('Privacy and consent'),
                 ),
               ),
+              // Only the caregiver: signing the phone in is signing in as the elder.
+              if (elder.canEdit) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s32),
+                const SectionLabel('Their phone'),
+                const _Fact(
+                  'Signed out, or a new phone? Sign it in with a code from here, with no '
+                  'password to remember.',
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : () => unawaited(_signInTheirPhone()),
+                    icon: const Icon(Icons.phonelink_lock_outlined),
+                    label: Text('Sign in ${widget.elderName.split(' ').first}\'s phone'),
+                  ),
+                ),
+              ],
               const SizedBox(height: MzaziSpace.s32),
               CheckInSettings(
                 key: ValueKey<int>(_loads),

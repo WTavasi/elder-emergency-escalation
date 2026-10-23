@@ -11,6 +11,8 @@ import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { claimInvitations } from '../../../shared/utils/chain';
 import { redactPhone } from '../../../shared/utils/redaction';
+import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
+import { accountMessages } from '../../notification-service/services/notification-content';
 import { PasswordService } from './password.service';
 import { GoogleIdentityService } from './google-identity.service';
 import { PhoneVerificationService, WRONG_CODE } from './phone-verification.service';
@@ -20,6 +22,8 @@ import type { RegisterDto } from '../validation/register.dto';
 import type { ResetPasswordDto } from '../validation/reset-password.dto';
 import type { ChangePasswordDto } from '../validation/change-password.dto';
 import type { UpdateProfileDto } from '../validation/update-profile.dto';
+import type { CodeSignInDto } from '../validation/code-sign-in.dto';
+import type { ChangePhoneDto, StartPhoneChangeDto } from '../validation/change-phone.dto';
 
 export interface UserSummary {
   id: string;
@@ -60,6 +64,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly verification: PhoneVerificationService,
     private readonly google: GoogleIdentityService,
+    private readonly sms: DirectSmsService,
   ) {}
 
   /**
@@ -298,6 +303,99 @@ export class AuthService {
       data: { passwordHash: this.passwords.hash(dto.newPassword) },
     });
     this.logger.log(`Password reset by code for ${redactPhone(user.phone)}; other sessions end`);
+    return this.issue(updated);
+  }
+
+  /**
+   * Sends an elder a sign-in code, and nobody else anything. Answered the same either
+   * way, like every other code request.
+   */
+  async startCodeSignIn(phone: string): Promise<void> {
+    await this.verification.start(phone, 'signin');
+  }
+
+  /**
+   * Signs an elder in with a code: one sent by text, or one their caregiver made.
+   *
+   * Elders only, checked again here because a pairing code is made for an elder but the
+   * account could have changed since. Anything else that is wrong reads as a wrong code.
+   */
+  async signInWithCode(dto: CodeSignInDto): Promise<AuthResult> {
+    const how = await this.verification.consume(dto.phone, dto.code, ['signin', 'pair']);
+
+    const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (!user || user.deactivatedAt || user.role !== Role.ELDER) {
+      throw new BadRequestException(WRONG_CODE);
+    }
+    this.logger.log(
+      `Elder ${redactPhone(user.phone)} signed in with ${how === 'pair' ? "a caregiver's" : 'a texted'} code`,
+    );
+    return this.issue(user);
+  }
+
+  /**
+   * The first half of moving an account to a new number: a code to that number.
+   *
+   * Unlike the public code requests this one can say what is wrong, because the caller is
+   * signed in and has, where they have one, just given their password.
+   */
+  async startPhoneChange(userId: string, dto: StartPhoneChangeDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Account no longer exists');
+
+    if (user.role !== Role.ELDER) {
+      if (!dto.password || !this.passwords.verify(dto.password, user.passwordHash)) {
+        throw new BadRequestException('Your current password is not right');
+      }
+    }
+    if (dto.phone === user.phone) {
+      throw new BadRequestException('That is already the number on your account');
+    }
+    const taken = await this.prisma.user.findUnique({
+      where: { phone: dto.phone },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException('Another account already uses that number');
+
+    await this.verification.start(dto.phone, 'change');
+  }
+
+  /**
+   * The second half: the code from the new number moves the account there.
+   *
+   * New tokens are issued, which ends any other session, as a password change does. The
+   * old number is told by text, so a change its holder did not make is noticed. Places
+   * in a chain that were waiting for the new number are taken, as at sign-up.
+   */
+  async changePhone(userId: string, dto: ChangePhoneDto): Promise<AuthResult> {
+    await this.verification.consume(dto.phone, dto.code, 'change');
+
+    const before = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!before) throw new UnauthorizedException('Account no longer exists');
+
+    let updated: User;
+    try {
+      updated = await this.prisma.$transaction(async (tx) => {
+        const moved = await tx.user.update({ where: { id: userId }, data: { phone: dto.phone } });
+        const places = await claimInvitations(tx, moved);
+        if (places > 0) {
+          this.logger.log(
+            `Account ${moved.id} took ${places} chain place(s) waiting for its new number`,
+          );
+        }
+        return moved;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Another account already uses that number');
+      }
+      throw error;
+    }
+
+    this.logger.log(
+      `Number changed from ${redactPhone(before.phone)} to ${redactPhone(dto.phone)}; other sessions end`,
+    );
+    await this.sms.send(before.phone, accountMessages.numberChanged());
     return this.issue(updated);
   }
 

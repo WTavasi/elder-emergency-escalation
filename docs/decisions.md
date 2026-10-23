@@ -622,3 +622,27 @@ ends, the name and address disappear from their screen.
 Volunteers are not participants in the emergency. They cannot open the emergency's
 record, take it on, close it, join its voice room or share their way there; their routes
 are their own, and the emergency's are refused to them as to anybody outside it.
+
+## An elder can sign in with a code, and nobody else can
+
+An elder is usually registered by a caregiver, who chooses the password. After a sign-out,
+a new phone or a reinstall, that password is the most likely thing to keep the elder from
+the help button, and asking an elder to remember a password somebody else set is a poor
+trade for the security it buys.
+
+So an elder can sign in with a six-digit code instead, in either of two ways. One is sent
+by text to their own number. The other is a pairing code their caregiver makes on the
+elder's page in the app and types into the elder's phone, which suits the usual case of a
+caregiver beside the elder setting up a phone. Both go into the same box. Each guess
+counts against every code waiting, so two codes give no extra guesses, and a pairing
+code lasts ten minutes and is never texted.
+
+Nobody else can sign in this way. A code by text is only as safe as the SIM it reaches,
+and everybody else chose their own password, so for them a text alone would weaken their
+account for no gain.
+
+Changing a phone number follows the same reasoning. The number is the sign-in handle and
+the number every chain rings, so it changes only with a code sent to the new number,
+after the current password for anybody who has one. An elder is not asked for the
+password; the text sent to the old number afterwards is their safeguard, as it is for
+everybody.

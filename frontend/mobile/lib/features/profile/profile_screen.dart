@@ -11,11 +11,14 @@ import '../../core/location/way_there.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
+import '../legal/legal_screens.dart';
+import 'change_phone_screen.dart';
 
-/// The signed-in person's own account: their details and their password.
+/// The signed-in person's care profile: where they stand in each circle, what they have
+/// done when asked, how they help, and their account.
 ///
-/// The phone number is shown but not editable. It is how they sign in and the number
-/// every chain calls, so changing it needs the same SMS proof as signing up.
+/// The phone number changes on its own screen, because it is how they sign in and the
+/// number every chain calls, so it needs a code sent to the new number.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -42,6 +45,8 @@ class ProfileScreen extends StatelessWidget {
                         // photo, and initials in a circle are a placeholder for one.
                         Text(account.name, style: theme.textTheme.titleLarge),
                         Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
+                        const SizedBox(height: MzaziSpace.s24),
+                        const _Standing(),
                         const SizedBox(height: MzaziSpace.s32),
                         _DetailsForm(account: account),
                         if (account.role.responds && WayThere.maybeOf(context) != null) ...<Widget>[
@@ -51,6 +56,9 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: MzaziSpace.s32),
                         const _PasswordForm(),
                         const SizedBox(height: MzaziSpace.s32),
+                        const SectionLabel('Privacy and terms'),
+                        const LegalLinks(),
+                        const SizedBox(height: MzaziSpace.s24),
                         const SectionLabel('This phone'),
                         const SizedBox(height: MzaziSpace.s16),
                         // Here rather than in a top bar, at the bottom of the account page,
@@ -106,6 +114,18 @@ class _DetailsFormState extends State<_DetailsForm> {
   bool get _changed =>
       _name.text.trim() != widget.account.name ||
       _email.text.trim() != (widget.account.email ?? '');
+
+  Future<void> _changePhone() async {
+    final bool? changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const ChangePhoneScreen()),
+    );
+    if (changed == true && mounted) {
+      setState(() {
+        _error = null;
+        _saved = 'Number changed. Any other phone signed in to this account will be signed out.';
+      });
+    }
+  }
 
   Future<void> _save() async {
     if (!(_form.currentState?.validate() ?? false)) return;
@@ -174,10 +194,25 @@ class _DetailsFormState extends State<_DetailsForm> {
           InputDecorator(
             decoration: const InputDecoration(
               labelText: 'Phone number',
-              helperText: 'You sign in with this number, so it cannot be changed here yet.',
+              helperText: 'You sign in with this number. Changing it needs a code.',
               helperMaxLines: 2,
             ),
-            child: Text(widget.account.phone, style: theme.textTheme.bodyLarge),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    widget.account.phone,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _busy ? null : () => unawaited(_changePhone()),
+                  child: const Text('Change'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: MzaziSpace.s16),
           FilledButton.icon(
@@ -348,6 +383,111 @@ class _WayThereSetting extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Where this person stands and what they have done: their place in each care circle
+/// and their own record of answering. Read from the emergencies themselves, so it
+/// cannot drift from what happened. Never a ranking against anybody else.
+class _Standing extends StatefulWidget {
+  const _Standing();
+
+  @override
+  State<_Standing> createState() => _StandingState();
+}
+
+class _StandingState extends State<_Standing> {
+  Profile? _profile;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final Profile profile = await context.read<AuthController>().profile();
+      if (mounted) setState(() => _profile = profile);
+    } on Exception {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  static String _place(int place) => switch (place) {
+    1 => 'Asked first',
+    2 => 'Asked second',
+    3 => 'Asked third',
+    _ => 'Asked number $place',
+  };
+
+  /// "about 2 minutes", "under a minute": how long, at the precision a person uses.
+  static String _duration(int seconds) {
+    if (seconds < 60) return 'under a minute';
+    final int minutes = (seconds / 60).round();
+    if (minutes < 60) return minutes == 1 ? 'about a minute' : 'about $minutes minutes';
+    final int hours = (minutes / 60).round();
+    return hours == 1 ? 'about an hour' : 'about $hours hours';
+  }
+
+  static String _day(DateTime when) {
+    const List<String> months = <String>[
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${when.day} ${months[when.month - 1]} ${when.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final Profile? profile = _profile;
+
+    if (profile == null) {
+      return _failed
+          ? Text('Your circles and record could not be loaded.', style: theme.textTheme.bodySmall)
+          : const SizedBox(height: MzaziSpace.s24);
+    }
+
+    final ResponseRecord? record = profile.record;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (profile.circles.isNotEmpty) ...<Widget>[
+          const SectionLabel('Your circles'),
+          const SizedBox(height: MzaziSpace.s8),
+          for (final CirclePlace circle in profile.circles)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s4),
+              child: Text(
+                '${_place(circle.place)} for ${circle.elderName}',
+                style: theme.textTheme.bodyLarge,
+              ),
+            ),
+          const SizedBox(height: MzaziSpace.s24),
+        ],
+        if (record != null) ...<Widget>[
+          const SectionLabel('Your record'),
+          const SizedBox(height: MzaziSpace.s8),
+          Text(
+            record.answered == 0
+                ? 'You have not taken an emergency on yet.'
+                : record.answered == 1
+                ? 'You have answered 1 emergency.'
+                : 'You have answered ${record.answered} emergencies.',
+            style: theme.textTheme.bodyLarge,
+          ),
+          if (record.medianResponseSeconds case final int seconds)
+            Text(
+              'You usually answer in ${_duration(seconds)}.',
+              style: theme.textTheme.bodyLarge,
+            ),
+          if (record.lastAnsweredAt case final DateTime last)
+            Text('Last answered on ${_day(last)}.', style: theme.textTheme.bodySmall),
+        ],
+      ],
     );
   }
 }

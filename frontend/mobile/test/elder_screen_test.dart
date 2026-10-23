@@ -71,6 +71,11 @@ void main() {
         removed = true;
         return <http.Response>[json(chainBody(withFamily: false))];
       }
+      if (path.endsWith('/sign-in-code')) {
+        return <http.Response>[
+          json(<String, dynamic>{'code': '482913', 'expiresInSeconds': 600}),
+        ];
+      }
       if (path.endsWith('/chain')) {
         return <http.Response>[json(chainBody(canEdit: canEdit, withFamily: !removed))];
       }
@@ -88,6 +93,29 @@ void main() {
     await tester.pumpAndSettle();
     return t.calls;
   }
+
+  testWidgets("her caregiver can sign her phone in with a code to type into it", (
+    WidgetTester tester,
+  ) async {
+    final List<Exchange> calls = await pump(tester);
+
+    await tester.tap(find.text("Sign in Grace's phone"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(calls.last.method, 'POST');
+    expect(calls.last.path, '/api/v1/elders/elder-1/sign-in-code');
+    expect(find.text('482 913'), findsOneWidget);
+    expect(find.textContaining('Works for 10:00'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.textContaining('Works for 9:58'), findsOneWidget);
+  });
+
+  testWidgets('nobody else in the circle is offered it', (WidgetTester tester) async {
+    await pump(tester, canEdit: false);
+    expect(find.text("Sign in Grace's phone"), findsNothing);
+  });
 
   testWidgets('shows where she is, her home, her care level and her chain', (
     WidgetTester tester,

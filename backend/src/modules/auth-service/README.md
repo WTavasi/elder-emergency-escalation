@@ -27,8 +27,13 @@ controller with `@Roles(...)`, from `shared/decorators/`.
 | POST | `/refresh` | anyone with a refresh token | Rotates it; a reused one ends every session. 60 per five minutes |
 | POST | `/logout` | signed in | Ends every session for the account |
 | GET | `/me` | signed in | The signed-in account |
-| PATCH | `/me` | signed in | Change your name or email. A phone number is not changed here: it is how the account is found and how codes reach it |
+| PATCH | `/me` | signed in | Change your name or email. The phone number changes through `/me/phone` below |
 | POST | `/change-password` | signed in | Needs the current password. Returns fresh tokens and ends every other session. 10 per five minutes |
+| POST | `/code` | anyone | Send an elder a sign-in code. Only an active elder's number is sent one. Always 202. 10 an hour per address |
+| POST | `/code/verify` | anyone with a code | An elder signs in with a texted code or one from their caregiver (`POST /elders/:id/sign-in-code`). 20 per five minutes |
+| POST | `/me/phone/code` | signed in | `{ phone, password }`: a code to the new number. Password needed by everyone but an elder. Says if the number is taken. 5 an hour |
+| POST | `/me/phone` | signed in | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends other sessions. 10 per five minutes |
+| GET | `/me/profile` | signed in | Places in each circle and the response record; for an elder, their carers with numbers |
 
 ## Sign-up codes
 
@@ -38,6 +43,16 @@ minutes to live, five wrong guesses, used once. One number is sent at most one c
 tried" instead of a code, and the endpoint answers the same either way, so it cannot be
 used to find out who is registered. `elder-service` uses the same codes when a caregiver
 registers an elder.
+
+Each purpose has its own key, so no code stands in for another: sign-up, reset, an
+elder's sign-in, a number change, and pairing. A pairing code is never texted: a
+caregiver is shown it in the app and types it into the elder's phone, and it lasts ten
+minutes. The elder's one code box takes either a texted code or a pairing code, and each
+guess counts against both, so having two waiting gives no extra guesses.
+
+Signing in by code is for elders only. Everybody else chose their password, and a code by
+text is only as safe as the SIM; for an elder, a forgotten password somebody else set is
+the bigger risk, because it keeps them from the help button.
 
 Reset codes work the same way the other way round: sent only to a number that has an
 account, and nothing to one that does not, with the same answer either way. They are

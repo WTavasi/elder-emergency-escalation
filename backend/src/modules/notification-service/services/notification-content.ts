@@ -232,6 +232,24 @@ export const accountMessages = {
    * number, so the person who asked learns nothing, and the owner learns that somebody
    * tried.
    */
+  /** An elder signing in with no password. Says so, so a code nobody asked for reads as a warning. */
+  signInCode(code: string, minutes: number): string {
+    return `${code} is your MzaziCare sign-in code. It expires in ${minutes} minutes. Do not share it with anyone who calls asking for it.`;
+  },
+
+  /** Sent to the new number when somebody moves their account to it. */
+  changeNumberCode(code: string, minutes: number): string {
+    return `${code} is your code to move a MzaziCare account to this number. It expires in ${minutes} minutes. If you did not ask for it, ignore this.`;
+  },
+
+  /**
+   * Sent to the old number once the account has moved, so a change nobody meant to make
+   * is noticed by the person who still holds the old phone.
+   */
+  numberChanged(): string {
+    return 'The phone number on your MzaziCare account has been changed, and this number no longer signs in to it. If you did not do this, tell your caregiver or an administrator.';
+  },
+
   alreadyRegistered(): string {
     return 'Somebody tried to create a MzaziCare account with this number, which already has one. If it was you, sign in instead. If not, you can ignore this.';
   },

@@ -10,6 +10,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
+import '../legal/legal_screens.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
 /// the button never offers something the server would quietly ignore.
@@ -250,11 +251,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           const SizedBox(height: MzaziSpace.s24),
           const _WhatWeKeep(),
+          const LegalLinks(),
           CheckboxListTile(
             value: _accepted,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
-            title: const Text('I have read what MzaziCare keeps about me, and I agree'),
+            title: const Text(
+              'I have read the privacy notice and the terms of use, and I agree',
+            ),
             subtitle: _showPrivacyError && !_accepted
                 ? Text(
                     'You need to agree before an account can be made.',
@@ -343,8 +347,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-/// What the account holds, said before anybody agrees to it. The full notice lives in
-/// the project documentation; this is the part a person needs at the moment of signing.
+/// What the account holds, said before anybody agrees to it: the part a person needs at
+/// the moment of signing. The full notice and the terms are one tap below it.
 class _WhatWeKeep extends StatelessWidget {
   const _WhatWeKeep();
 
@@ -365,7 +369,8 @@ class _WhatWeKeep extends StatelessWidget {
           'Closed emergencies are deleted after a year.\n\n'
           'Your phone number is shared only with the people in the same care circle, '
           'so they can call you during an emergency.\n\n'
-          'MzaziCare never reads your phone\'s location.',
+          'MzaziCare never tracks your phone\'s location. If you choose to share your way '
+          'to an emergency, it is used until you arrive and then forgotten.',
         ),
       ],
     );
