@@ -206,21 +206,27 @@ class _LegalPageState extends State<_LegalPage> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: SafeArea(
-        child: ListView(
+        // A scroll view over one column rather than a list, so the whole notice is laid
+        // out at once: it is short and fixed, a screen reader can move through all of it,
+        // and the last section (who to ask) exists before anybody scrolls to it.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s8, MzaziSpace.s16, MzaziSpace.s32),
-          children: <Widget>[
-            for (final _Section section in widget.sections(facts)) ...<Widget>[
-              SectionLabel(section.heading),
-              const SizedBox(height: MzaziSpace.s8),
-              for (final String paragraph in section.paragraphs) ...<Widget>[
-                Text(paragraph, style: theme.textTheme.bodyLarge),
-                const SizedBox(height: MzaziSpace.s12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              for (final _Section section in widget.sections(facts)) ...<Widget>[
+                SectionLabel(section.heading),
+                const SizedBox(height: MzaziSpace.s8),
+                for (final String paragraph in section.paragraphs) ...<Widget>[
+                  Text(paragraph, style: theme.textTheme.bodyLarge),
+                  const SizedBox(height: MzaziSpace.s12),
+                ],
+                const SizedBox(height: MzaziSpace.s16),
               ],
-              const SizedBox(height: MzaziSpace.s16),
+              if (facts != null)
+                Text('Version ${widget.version(facts)}', style: theme.textTheme.bodySmall),
             ],
-            if (facts != null)
-              Text('Version ${widget.version(facts)}', style: theme.textTheme.bodySmall),
-          ],
+          ),
         ),
       ),
     );
