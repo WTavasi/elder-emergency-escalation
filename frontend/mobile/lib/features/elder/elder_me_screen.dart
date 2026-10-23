@@ -78,7 +78,6 @@ class ElderMeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final AuthController auth = context.watch<AuthController>();
     final Account? account = auth.account;
 
