@@ -33,6 +33,11 @@ class SwipeToConfirm extends StatefulWidget {
   /// How far across counts as meant.
   static const double threshold = 0.85;
 
+  /// How long the tick holds with nothing else to go on before the knob goes back. The
+  /// usual end is sooner: the screen moves on and the slider fades away still ticked, or
+  /// the request fails and the slider is enabled again.
+  static const Duration holdTick = Duration(seconds: 4);
+
   @override
   State<SwipeToConfirm> createState() => _SwipeToConfirmState();
 }
@@ -51,18 +56,30 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
     widget.onConfirmed();
   }
 
-  /// Back to the start once the confirmation has shown, in case the screen stays: an
-  /// action that failed must be possible to take again.
+  /// Back to the start in case the screen stays, so an action that failed can be taken
+  /// again. Not straight away: going back while the request is still on its way would
+  /// look like the swipe had not been taken, just before the slider fades out.
   void _returnHome() {
     _home?.cancel();
-    _home = Timer(MzaziMotion.emphasized * 2, () {
-      if (mounted) {
-        setState(() {
-          _progress = 0;
-          _done = false;
-        });
-      }
-    });
+    _home = Timer(SwipeToConfirm.holdTick, _reset);
+  }
+
+  void _reset() {
+    _home?.cancel();
+    if (mounted && _done) {
+      setState(() {
+        _progress = 0;
+        _done = false;
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(SwipeToConfirm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Busy while the request ran, free again and still here: it did not take, so the
+    // knob goes back now for another try.
+    if (_done && !oldWidget.enabled && widget.enabled) _reset();
   }
 
   @override
@@ -77,7 +94,11 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
     final double height = widget.elder
         ? MzaziA11y.elderMinTouchTarget
         : MzaziA11y.standardMinTouchTarget + MzaziSpace.s8;
-    final Color fill = widget.enabled ? theme.colorScheme.primary : theme.colorScheme.outline;
+    // A ticked knob keeps its colour while the request runs, rather than greying out as
+    // if the swipe had been refused.
+    final Color fill = widget.enabled || _done
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outline;
 
     return Semantics(
       button: true,

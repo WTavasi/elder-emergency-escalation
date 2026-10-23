@@ -48,9 +48,35 @@ void main() {
       await tester.pumpAndSettle();
       expect(confirmed, 1);
 
-      // It returns to the start in case the screen stays, so the action can be retried.
+      // The tick holds while the screen catches up, rather than springing back.
       await tester.pump(const Duration(seconds: 1));
+      expect(find.byIcon(Icons.check), findsOneWidget);
+
+      // It returns to the start in case the screen stays, so the action can be retried.
+      await tester.pump(SwipeToConfirm.holdTick);
       await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byIcon(Icons.arrow_forward)).dx, lessThan(100));
+    });
+
+    testWidgets('goes back at once when the request ends and the slider is still here', (
+      WidgetTester tester,
+    ) async {
+      Widget slider({required bool enabled}) => host(
+        SwipeToConfirm(label: swipeLabel, enabled: enabled, onConfirmed: () {}),
+      );
+      await tester.pumpWidget(slider(enabled: true));
+      await tester.drag(find.byIcon(Icons.arrow_forward), const Offset(2000, 0));
+      await tester.pump();
+
+      // Busy: still ticked.
+      await tester.pumpWidget(slider(enabled: false));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.check), findsOneWidget);
+
+      // Free again and still on screen, so it failed: ready for another swipe.
+      await tester.pumpWidget(slider(enabled: true));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
       expect(tester.getTopLeft(find.byIcon(Icons.arrow_forward)).dx, lessThan(100));
     });
 
