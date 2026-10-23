@@ -9,7 +9,12 @@ const elder = { id: 'elder-1', name: 'Grace Wanjiru', phone: '+254700000010', ro
 const given = new Date('2026-10-01T09:00:00Z');
 
 /** What a caregiver records when registering an elder: all three, on her behalf. */
-const onHerBehalf = Object.values(ConsentType).map((type) => ({
+const REGISTRATION: ConsentType[] = [
+  ConsentType.DATA_PROCESSING,
+  ConsentType.LOCATION_SHARING,
+  ConsentType.CONTACT_SHARING,
+];
+const onHerBehalf = REGISTRATION.map((type) => ({
   type,
   subjectId: 'elder-1',
   grantedById: 'caregiver-1',
@@ -40,6 +45,8 @@ const buildPrisma = (rows = onHerBehalf) => {
     consentRecord: {
       findMany: jest.fn().mockResolvedValue(rows),
       createMany: jest.fn().mockResolvedValue({ count: 3 }),
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
@@ -68,7 +75,11 @@ describe('ConsentService', () => {
 
       expect(view.needsConfirmation).toBe(true);
       expect(view.canWithdraw).toBe(true);
-      expect(view.items).toHaveLength(3);
+      // One per kind, including help from volunteers, which nobody has given yet.
+      expect(view.items).toHaveLength(4);
+      expect(view.items.find((item) => item.type === ConsentType.COMMUNITY_HELP)?.active).toBe(
+        false,
+      );
       expect(view.items[0]).toMatchObject({
         active: true,
         givenBy: { name: 'Mary Otieno', relationship: 'daughter' },
@@ -119,6 +130,80 @@ describe('ConsentService', () => {
 
     it('is only for the elder herself', async () => {
       await expect(build().confirm('elder-1', 'caregiver-1')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('grant', () => {
+    it('lets the elder agree to volunteers herself, and tells her caregivers', async () => {
+      const prisma = buildPrisma();
+      const sms = buildSms();
+      await build(prisma, sms).grant('elder-1', 'elder-1', Role.ELDER, ConsentType.COMMUNITY_HELP);
+
+      expect(prisma.consentRecord.create.mock.calls[0][0].data).toMatchObject({
+        subjectId: 'elder-1',
+        grantedById: 'elder-1',
+        type: ConsentType.COMMUNITY_HELP,
+        grantorRelationship: 'self',
+      });
+      expect(sms.send).toHaveBeenCalledWith('+254700000020', expect.stringContaining('volunteers'));
+    });
+
+    it('records a caregiver as agreeing on her behalf, and texts her', async () => {
+      const prisma = buildPrisma();
+      const sms = buildSms();
+      await build(prisma, sms).grant(
+        'elder-1',
+        'caregiver-1',
+        Role.CAREGIVER,
+        ConsentType.COMMUNITY_HELP,
+      );
+
+      expect(prisma.consentRecord.create.mock.calls[0][0].data).toMatchObject({
+        grantedById: 'caregiver-1',
+        grantorRelationship: 'caregiver',
+      });
+      expect(sms.send).toHaveBeenCalledWith(elder.phone, expect.stringContaining('for you'));
+    });
+
+    it('asks her to confirm a consent given for her since she last confirmed', async () => {
+      const mine = onHerBehalf.map((row) => ({
+        ...row,
+        grantedById: 'elder-1',
+        grantorRelationship: 'self',
+      }));
+      const later = {
+        ...onHerBehalf[0],
+        type: ConsentType.COMMUNITY_HELP,
+        grantedAt: new Date('2026-10-20T09:00:00Z'),
+      };
+      const view = await build(buildPrisma([...onHerBehalf, ...mine, later])).view(
+        'elder-1',
+        'elder-1',
+        Role.ELDER,
+      );
+      expect(view.needsConfirmation).toBe(true);
+    });
+
+    it('records nothing new when it is already given', async () => {
+      const prisma = buildPrisma();
+      prisma.consentRecord.findFirst.mockResolvedValue({ id: 'consent-1' });
+      const sms = buildSms();
+      await build(prisma, sms).grant('elder-1', 'elder-1', Role.ELDER, ConsentType.COMMUNITY_HELP);
+
+      expect(prisma.consentRecord.create).not.toHaveBeenCalled();
+      expect(sms.send).not.toHaveBeenCalled();
+    });
+
+    it('never gives processing back, since withdrawing it closed the account', async () => {
+      await expect(
+        build().grant('elder-1', 'elder-1', Role.ELDER, ConsentType.DATA_PROCESSING),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('is for the elder and her caregiver, not the rest of the chain', async () => {
+      await expect(
+        build().grant('elder-1', 'family-1', Role.FAMILY_MEMBER, ConsentType.COMMUNITY_HELP),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

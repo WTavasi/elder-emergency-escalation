@@ -8,6 +8,7 @@ import type {
 } from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
 import type { VoiceView } from '../services/voice.service';
+import type { VolunteerOnAlert } from '../../community-service/services/volunteer-calls.service';
 
 /**
  * What a list of emergencies looks like to a screen.
@@ -118,4 +119,9 @@ export interface AlertDetail extends AlertSummary {
   journey: JourneyView | null;
   /** Whether talking in the app is possible on this emergency, and who started it. */
   voice: VoiceView;
+  /**
+   * Community volunteers, when any were asked: how many, and the one going. The elder
+   * sees the first name only; the circle also sees the number, to call them.
+   */
+  volunteer: VolunteerOnAlert | null;
 }

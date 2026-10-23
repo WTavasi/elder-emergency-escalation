@@ -4,6 +4,7 @@ import type { RedisService } from '../../../shared/redis/redis.service';
 import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { SMS_LIMIT } from '../../notification-service/services/notification-content';
 import type { CheckInsService } from '../../check-in-service/services/check-ins.service';
+import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 import type { EscalationService } from './escalation.service';
 import { normalisePhone, readReply, REPLY_LIMIT, SmsRepliesService } from './sms-replies.service';
 
@@ -57,6 +58,11 @@ function build(
   };
   const sms = { send: jest.fn().mockResolvedValue(true) };
   const checkIns = { answer: jest.fn().mockResolvedValue('answered') };
+  const volunteers = {
+    answerByText: jest
+      .fn()
+      .mockResolvedValue({ answer: 'accepted', text: 'MzaziCare: thank you.' }),
+  };
 
   const service = new SmsRepliesService(
     prisma as unknown as PrismaService,
@@ -64,9 +70,10 @@ function build(
     escalation as unknown as EscalationService,
     sms as unknown as DirectSmsService,
     checkIns as unknown as CheckInsService,
+    volunteers as unknown as VolunteerCallsService,
   );
   const sent = (): string[] => sms.send.mock.calls.map((call: unknown[]) => call[1] as string);
-  return { service, prisma, escalation, sms, sent, checkIns };
+  return { service, prisma, escalation, sms, sent, checkIns, volunteers };
 }
 
 describe('readReply', () => {
@@ -245,6 +252,41 @@ describe('SmsRepliesService', () => {
 
       expect(t.checkIns.answer).not.toHaveBeenCalled();
       expect(t.sent()[0]).toContain('call 999');
+    });
+  });
+
+  describe('from a community volunteer', () => {
+    const VOLUNTEER = { id: 'vol-1', deactivatedAt: null, role: 'COMMUNITY_RESPONDER' };
+
+    it('a 1 accepts the call, and the reply says who and where', async () => {
+      const t = build({ person: VOLUNTEER });
+
+      await expect(t.service.handle('+254711000001', '1')).resolves.toBe('accepted');
+
+      expect(t.volunteers.answerByText).toHaveBeenCalledWith('vol-1', 'accept');
+      expect(t.escalation.acknowledge).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toBe('MzaziCare: thank you.');
+    });
+
+    it('a 2 declines', async () => {
+      const t = build({ person: VOLUNTEER });
+      t.volunteers.answerByText.mockResolvedValue({ answer: 'declined', text: 'MzaziCare: ok' });
+
+      await expect(t.service.handle('+254711000001', 'hapana')).resolves.toBe('declined');
+      expect(t.volunteers.answerByText).toHaveBeenCalledWith('vol-1', 'decline');
+    });
+
+    it('anything else repeats the two answers', async () => {
+      const t = build({ person: VOLUNTEER });
+      await expect(t.service.handle('+254711000001', 'where?')).resolves.toBe('unclear');
+      expect(t.volunteers.answerByText).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('Reply 1');
+    });
+
+    it('nothing waiting is said so', async () => {
+      const t = build({ person: VOLUNTEER });
+      t.volunteers.answerByText.mockResolvedValue({ answer: 'nothing', text: null });
+      await expect(t.service.handle('+254711000001', '1')).resolves.toBe('nothing-waiting');
     });
   });
 });

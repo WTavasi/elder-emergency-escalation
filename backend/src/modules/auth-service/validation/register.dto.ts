@@ -12,14 +12,20 @@ import { Role } from '@prisma/client';
 import { E164, E164_MESSAGE } from './phone';
 
 /**
- * Self-registration is limited to caregivers and family members.
+ * Self-registration is limited to caregivers, family members and community volunteers.
  *
  * Elders are registered by a caregiver, because that is who actually sets the account
  * up and because the consent record has to name who consented on whose behalf.
  * Emergency responders and administrators are created by an administrator, since both
  * roles carry authority over other people's emergencies.
  */
-export const SELF_REGISTERABLE_ROLES = [Role.CAREGIVER, Role.FAMILY_MEMBER] as const;
+export const SELF_REGISTERABLE_ROLES = [
+  Role.CAREGIVER,
+  Role.FAMILY_MEMBER,
+  // Anybody may sign up to volunteer; nothing is sent to them until an administrator
+  // approves their application, which is what keeps this from being a way in.
+  Role.COMMUNITY_RESPONDER,
+] as const;
 
 export class RegisterDto {
   @IsString()
@@ -45,7 +51,8 @@ export class RegisterDto {
   password: string;
 
   @IsIn(SELF_REGISTERABLE_ROLES as unknown as string[], {
-    message: 'role must be CAREGIVER or FAMILY_MEMBER. Elders are registered by a caregiver.',
+    message:
+      'role must be CAREGIVER, FAMILY_MEMBER or COMMUNITY_RESPONDER. Elders are registered by a caregiver.',
   })
   role: (typeof SELF_REGISTERABLE_ROLES)[number];
 

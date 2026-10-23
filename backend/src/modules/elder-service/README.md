@@ -30,6 +30,7 @@ finding the coordinates of a home address, and recording a stay away from home.
 | DELETE | `/:id/place` | care circle, administrator | Back home |
 | GET | `/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
 | POST | `/:id/consent/confirm` | the elder | Agree, for themselves, to what was agreed on their behalf |
+| POST | `/:id/consent/grant` | the elder, caregiver in that chain | Give one consent after registration, `{ type }`: help from nearby volunteers, or one given back. Never processing. 20 an hour |
 | POST | `/:id/consent/withdraw` | the elder, caregiver in that chain | Withdraw one consent, `{ type, confirm? }`. 20 an hour |
 
 An elder cannot change any of this about themselves, deliberately.
@@ -86,7 +87,7 @@ columns on `users` for a stay.
 | `services/chain.service.ts` | Registering elders, the chain, adding and removing family |
 | `services/address-search.service.ts` | The geocoder, its rate slot and cache |
 | `services/elders.service.ts` | An elder's details, their home and care level, and stays away from home |
-| `services/consent.service.ts` | Viewing, confirming and withdrawing consent |
+| `services/consent.service.ts` | Viewing, confirming, giving and withdrawing consent |
 | `validation/` | The request shapes |
 
 ## Depends on

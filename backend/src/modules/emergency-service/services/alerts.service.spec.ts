@@ -12,6 +12,7 @@ import {
 import type { ConfigService } from '@nestjs/config';
 import type { JourneyService } from './journey.service';
 import type { VoiceService } from './voice.service';
+import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { SeverityService } from './severity.service';
@@ -151,12 +152,19 @@ const buildNotifications = () =>
     notifyCancellation: jest.fn().mockResolvedValue(undefined),
   }) as unknown as NotificationsService & { notifyCancellation: jest.Mock };
 
+const buildVolunteers = () =>
+  ({
+    onAlert: jest.fn().mockResolvedValue(null),
+    eventClosed: jest.fn().mockResolvedValue(undefined),
+  }) as unknown as VolunteerCallsService & { onAlert: jest.Mock; eventClosed: jest.Mock };
+
 const build = (
   prisma: PrismaMock,
   severity = buildSeverity(),
   escalation = buildEscalation(),
   timers = buildTimers(),
   notifications = buildNotifications(),
+  volunteers = buildVolunteers(),
 ): AlertsService =>
   new AlertsService(
     prisma as unknown as PrismaService,
@@ -170,6 +178,7 @@ const build = (
     {
       current: jest.fn().mockResolvedValue({ available: false, startedBy: null, startedAt: null }),
     } as unknown as VoiceService,
+    volunteers,
   );
 
 describe('AlertsService', () => {
@@ -393,6 +402,24 @@ describe('AlertsService', () => {
         'elder-1',
       );
       expect(notifications.notifyCancellation).toHaveBeenCalledWith(event().id);
+    });
+
+    it('stands down any volunteers who were asked', async () => {
+      const prisma = buildPrisma();
+      const volunteers = buildVolunteers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ triggeredAt: new Date(Date.now() - 2000) }),
+      );
+
+      await build(
+        prisma,
+        buildSeverity(),
+        buildEscalation(),
+        buildTimers(),
+        buildNotifications(),
+        volunteers,
+      ).cancel(event().id, 'elder-1');
+      expect(volunteers.eventClosed).toHaveBeenCalledWith(event().id);
     });
 
     it('refuses once the grace window has passed', async () => {
@@ -718,6 +745,25 @@ describe('AlertsService', () => {
       await expect(
         build(prisma).findOne(event().id, 'area-responder-1', Role.EMERGENCY_RESPONDER),
       ).resolves.toBeDefined();
+    });
+
+    it('carries the volunteer, named for the elder by first name only', async () => {
+      const prisma = buildPrisma();
+      const volunteers = buildVolunteers();
+      volunteers.onAlert.mockResolvedValue({ asked: 3, name: 'Joseph' });
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event());
+
+      const detail = await build(
+        prisma,
+        buildSeverity(),
+        buildEscalation(),
+        buildTimers(),
+        buildNotifications(),
+        volunteers,
+      ).findOne(event().id, 'elder-1', Role.ELDER);
+
+      expect(volunteers.onAlert).toHaveBeenCalledWith(event().id, true);
+      expect(detail.volunteer).toEqual({ asked: 3, name: 'Joseph' });
     });
 
     it('lets a chain member and an administrator through', async () => {

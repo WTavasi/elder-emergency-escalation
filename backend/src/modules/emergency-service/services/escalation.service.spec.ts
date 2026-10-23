@@ -16,6 +16,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { NotificationsService } from '../../notification-service/services/notifications.service';
 import { NoopRealtimePublisher } from '../../realtime-service/services/realtime.publisher';
+import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 
 const rule = (
   tierOrder: number,
@@ -149,11 +150,18 @@ const config = {
   get: (_key: string, fallback: unknown) => fallback,
 } as unknown as ConfigService;
 
+const buildVolunteers = () =>
+  ({
+    askNearby: jest.fn().mockResolvedValue(0),
+    eventClosed: jest.fn().mockResolvedValue(undefined),
+  }) as unknown as VolunteerCallsService & { askNearby: jest.Mock; eventClosed: jest.Mock };
+
 const build = (
   prisma: PrismaMock,
   timers = buildTimers(),
   notifications = buildNotifications(),
   severity = buildSeverity(),
+  volunteers = buildVolunteers(),
 ): EscalationService =>
   new EscalationService(
     prisma as unknown as PrismaService,
@@ -162,6 +170,7 @@ const build = (
     new NoopRealtimePublisher(),
     severity,
     config,
+    volunteers,
   );
 
 /** Every (recipient, tier, channel) the service decided to notify. */
@@ -321,6 +330,113 @@ describe('EscalationService', () => {
           expect.objectContaining({ recipientId: 'assigned-unit' }),
         ]);
       });
+    });
+  });
+
+  describe('community volunteers', () => {
+    it('are asked with a critical alert from its first tier', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ severity: Severity.CRITICAL }));
+      prisma.escalationRule.findMany.mockResolvedValue(CRITICAL_RULES);
+      const volunteers = buildVolunteers();
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).dispatchTier('event-1', 1, 'initial');
+
+      expect(volunteers.askNearby).toHaveBeenCalledWith('event-1', 'critical');
+    });
+
+    it('are not asked for an ordinary alert at the family tiers', async () => {
+      const volunteers = buildVolunteers();
+      await build(
+        buildPrisma(),
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).dispatchTier('event-1', 1, 'initial');
+
+      expect(volunteers.askNearby).not.toHaveBeenCalled();
+    });
+
+    it('are asked when no professional responder covers the place', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.careAssignment.findMany.mockResolvedValue([{ responderId: 'assigned-unit' }]);
+      const volunteers = buildVolunteers();
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).dispatchTier('event-1', 3, 'escalation');
+
+      expect(volunteers.askNearby).toHaveBeenCalledWith('event-1', 'uncovered');
+      // Beside the fallback, never instead of it.
+      expect(notified(prisma)).toEqual([expect.objectContaining({ recipientId: 'assigned-unit' })]);
+    });
+
+    it('are not asked when a professional responder covers the place', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findMany.mockResolvedValue([
+        {
+          id: 'unit-near',
+          coverageLatitude: -1.286,
+          coverageLongitude: 36.78,
+          coverageRadiusKm: 5,
+        },
+      ]);
+      const volunteers = buildVolunteers();
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).dispatchTier('event-1', 3, 'escalation');
+
+      expect(volunteers.askNearby).not.toHaveBeenCalled();
+    });
+
+    it('a dispatch never waits for them, nor fails because of them', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ severity: Severity.CRITICAL }));
+      prisma.escalationRule.findMany.mockResolvedValue(CRITICAL_RULES);
+      const volunteers = buildVolunteers();
+      volunteers.askNearby.mockRejectedValue(new Error('push provider down'));
+
+      await expect(
+        build(
+          prisma,
+          buildTimers(),
+          buildNotifications(),
+          buildSeverity(),
+          volunteers,
+        ).dispatchTier('event-1', 1, 'initial'),
+      ).resolves.toBeUndefined();
+      expect(notified(prisma).length).toBeGreaterThan(0);
+    });
+
+    it('are stood down when the emergency is closed', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.ACKNOWLEDGED }));
+      const volunteers = buildVolunteers();
+
+      await build(prisma, buildTimers(), buildNotifications(), buildSeverity(), volunteers).resolve(
+        'event-1',
+        'caregiver-1',
+        EventOutcome.HANDLED_AT_HOME,
+      );
+
+      expect(volunteers.eventClosed).toHaveBeenCalledWith('event-1');
     });
   });
 
@@ -654,12 +770,17 @@ describe('EscalationService', () => {
         .mockResolvedValueOnce([{ recipientId: 'caregiver-1' }])
         .mockResolvedValueOnce([]);
 
+      const volunteers = buildVolunteers();
       await build(
         prisma,
         timers,
         notifications,
         buildSeverity(Severity.CRITICAL, 75),
+        volunteers,
       ).reviewSeverity('event-1');
+
+      // Volunteers go out once it is critical, as they would have from the start.
+      expect(volunteers.askNearby).toHaveBeenCalledWith('event-1', 'critical');
 
       // The critical window is 60 seconds from when tier one was asked, about 50 left.
       const [, armedTier, seconds] = timers.arm.mock.calls[0] as [string, number, number];

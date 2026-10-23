@@ -31,15 +31,29 @@ class HelpProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final String? owner = emergency?.acknowledgedByName;
-    final bool arrived = emergency?.hasArrived ?? false;
+    final VolunteerOnAlert? volunteer = emergency?.volunteer;
+    final String? helperVolunteer = (volunteer?.going ?? false) ? volunteer?.name : null;
+    final bool arrived =
+        (emergency?.hasArrived ?? false) || (owner == null && (volunteer?.hasArrived ?? false));
+
+    // Somebody from the family first; a volunteer from nearby when nobody from the family
+    // has said yet. Either way the elder is told the one person coming, by name.
+    final String? coming = owner ?? helperVolunteer;
     final Journey? journey = emergency?.journey;
 
-    final int step = arrived ? 2 : (owner != null ? 1 : 0);
+    final int step = arrived ? 2 : (coming != null ? 1 : 0);
     final String headline = switch (step) {
-      2 => '${owner ?? 'Help'} is with you',
-      1 => '$owner is coming',
+      2 => '${coming ?? 'Help'} is with you',
+      1 => '$coming is coming',
       _ => 'Help is on the way',
     };
+    // Who the volunteer is, said once: in place of a family name when they are the one
+    // coming, and as well as it when both are.
+    final String? volunteerLine = helperVolunteer == null
+        ? null
+        : owner == null
+        ? '$helperVolunteer is a volunteer who lives near you. Your family has been told too.'
+        : '$helperVolunteer, a volunteer who lives near you, is ${(volunteer?.hasArrived ?? false) ? 'with you' : 'coming too'}.';
     // The time only, while they are on their way.
     final String? when = step == 1 && journey != null
         ? '${_capitalised(timeAway(journey.etaSeconds))} away.'
@@ -62,6 +76,10 @@ class HelpProgress extends StatelessWidget {
           // anything.
           ProgressStepper(steps: _steps, current: step),
           const SizedBox(height: MzaziSpace.s32),
+          if (volunteerLine != null) ...<Widget>[
+            Text(volunteerLine, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: MzaziSpace.s12),
+          ],
           if (when != null) ...<Widget>[
             // The one number on this screen, set large with figures of equal width so a
             // changing minute does not shift the words around it.

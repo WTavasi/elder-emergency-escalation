@@ -17,7 +17,12 @@ export type Severity = 'STANDARD' | 'ELEVATED' | 'CRITICAL';
 export type AlertTrigger = 'PANIC' | 'MISSED_CHECK_IN';
 
 export type Role =
-  'ELDER' | 'CAREGIVER' | 'FAMILY_MEMBER' | 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR';
+  | 'ELDER'
+  | 'CAREGIVER'
+  | 'FAMILY_MEMBER'
+  | 'EMERGENCY_RESPONDER'
+  | 'ADMINISTRATOR'
+  | 'COMMUNITY_RESPONDER';
 
 export const OPEN_STATES: EventState[] = [
   'TRIGGERED',
@@ -124,6 +129,43 @@ export interface VoiceState {
   startedAt: string | null;
 }
 
+/** Community volunteers on one emergency: how many were asked, and the one going. */
+export interface VolunteerOnAlert {
+  askedAt: string;
+  asked: number;
+  name: string | null;
+  phone: string | null;
+  distanceMetres: number | null;
+  acceptedAt: string | null;
+  arrivedAt: string | null;
+}
+
+export type VolunteerStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+
+export type VolunteerTraining =
+  'FIRST_AID' | 'CPR' | 'COMMUNITY_HEALTH_PROMOTER' | 'HEALTH_PROFESSIONAL' | 'OTHER';
+
+/** One application in the vetting queue. */
+export interface VolunteerApplication {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  status: VolunteerStatus;
+  training: VolunteerTraining[];
+  note: string | null;
+  area: { label: string; latitude: number; longitude: number } | null;
+  radiusKm: number | null;
+  available: boolean;
+  appliedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+  accepted: number;
+  arrived: number;
+  deactivated: boolean;
+}
+
 export interface AlertDetail extends AlertSummary {
   severityFactors: SeverityBreakdown | null;
   chain: ChainMember[];
@@ -132,6 +174,7 @@ export interface AlertDetail extends AlertSummary {
   /** Optional, so a console a release ahead of the API still reads the page. */
   journey?: Journey | null;
   voice?: VoiceState;
+  volunteer?: VolunteerOnAlert | null;
 }
 
 /** The small message the socket pushes on every change. */

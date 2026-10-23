@@ -26,7 +26,7 @@ import { ChainService, type ChainView, type ElderSummary } from '../services/cha
 import { SetPlaceDto } from '../validation/set-place.dto';
 import { EldersService, type ElderDetail, type PlaceView } from '../services/elders.service';
 import { ConsentService, type ConsentView } from '../services/consent.service';
-import { WithdrawConsentDto } from '../validation/withdraw-consent.dto';
+import { GrantConsentDto, WithdrawConsentDto } from '../validation/withdraw-consent.dto';
 
 /**
  * Where an elder is staying.
@@ -64,6 +64,18 @@ export class EldersController {
     return this.consents.confirm(id, user.userId);
   }
 
+  /** The elder, or a caregiver in their chain, giving one consent after registration. */
+  @Roles(Role.ELDER, Role.CAREGIVER)
+  @Throttle(20, 3600)
+  @Post(':id/consent/grant')
+  grantConsent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: GrantConsentDto,
+  ): Promise<ConsentView> {
+    return this.consents.grant(id, user.userId, user.role, dto.type);
+  }
+
   /** The elder, or a caregiver in their chain, withdrawing one consent. */
   @Roles(Role.ELDER, Role.CAREGIVER)
   @Throttle(20, 3600)
@@ -99,7 +111,7 @@ export class EldersController {
    * presses Search, never as they type, and limited per person, because the public
    * geocoder behind it allows one request a second for everyone together.
    */
-  @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR)
+  @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER, Role.ADMINISTRATOR, Role.COMMUNITY_RESPONDER)
   @Throttle(20, 300)
   @Get('address-search')
   searchAddress(@Query() query: AddressSearchDto): Promise<AddressSearchResult> {

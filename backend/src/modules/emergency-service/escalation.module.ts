@@ -11,9 +11,10 @@ import { RoutingService } from './services/routing.service';
 import { VoiceService } from './services/voice.service';
 import { NotificationsModule } from '../notification-service/notifications.module';
 import { SeverityModule } from './severity.module';
+import { CommunityModule } from '../community-service/community.module';
 
 @Module({
-  imports: [NotificationsModule, SeverityModule],
+  imports: [NotificationsModule, SeverityModule, CommunityModule],
   controllers: [EscalationController, JourneyController, VoiceController],
   providers: [
     EscalationService,

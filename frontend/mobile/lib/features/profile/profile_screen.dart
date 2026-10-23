@@ -75,6 +75,7 @@ class ProfileScreen extends StatelessWidget {
     Role.emergencyResponder => 'Emergency responder',
     Role.administrator => 'Administrator',
     Role.elder => 'Elder',
+    Role.communityResponder => 'Community volunteer',
   };
 }
 

@@ -234,6 +234,8 @@ Any seeded account, password `Dev!2026`. Which screen you get is decided by the 
 | `+254700000030` | family member, tier two for Grace | The same list |
 | `+254700000040` | emergency responder, tier three | The same list |
 | `+254700000001` | administrator | A note sending you to the web console |
+| `+254700000050` | Daniel Ochieng, community volunteer, approved, near Grace | Nearby: who near him needs help |
+| `+254700000051` | Faith Akinyi, community volunteer, waiting for approval | Nearby: "Thank you for applying" |
 
 The phone field has a country button in front of it, set to Kenya, so `0700000010`,
 `700000010` and `+254700000010` all sign in as Grace.
@@ -605,6 +607,47 @@ records the answer.
 the Africa's Talking simulator, from Grace's number, reply `1`.
 
 To stop the clock entirely for a run: `CHECK_INS_ENABLED=false npm run dev`.
+
+### Step 12 (optional). Community volunteers
+
+Daniel Ochieng is a seeded volunteer, approved, available, and about 270 m from Grace's
+home. Faith Akinyi has applied and is waiting. Nothing to install. Run
+`npm run db:seed` once after pulling this change, so both exist.
+
+**1. Vet Faith on the console.** Open **Volunteers**. Faith is under **Waiting**, with
+her training and area. Press **Approve** (she is texted; the API terminal shows the
+text), or **Do not approve** with a reason.
+
+**2. Let volunteers help Grace.** Grace has not agreed yet, which is the default.
+
+1. Sign in as Mary, open **People**, then Grace, then **Privacy and consent**.
+2. Under **Help from volunteers near them**, press **Agree for Grace**, then **Agree**.
+3. Sign in as Grace. Above the help button she is asked to read what was agreed for
+   her; press **Read it**, then **I agree**. (Grace can also turn it on herself from
+   her **You** page, then **Privacy and consent**.)
+
+**3. Raise an alert.** As Grace, press **Get help** and let the countdown run out. Ten
+seconds later her alert is scored critical (high dependency, not cancelled), and
+volunteers near her are asked. The API terminal shows `1 volunteer(s) asked
+(critical)`.
+
+**4. Answer as Daniel** on the second device or after signing out. **Nearby** shows
+**Someone about 300 m away**, marked **Urgent**, and nothing about who or where. Open
+it and press **I can go**: now Grace's name, address, **Get directions** and **Call
+Grace** appear. Swipe **when you are with Grace**.
+
+**5. Watch the others.** Mary's alert page shows **Community volunteers: Daniel Ochieng,
+a vetted community volunteer about 300 m away, is on the way**, with **Call Daniel**.
+Grace's screen says **Daniel is coming**. The console's alert page lists the volunteers
+asked and when Daniel accepted and arrived. Mary's buttons are unchanged: Daniel goes
+beside the chain, not instead of it. When Mary closes the alert, Daniel is thanked and
+his screen no longer shows Grace's details.
+
+**By text.** With replies on (Step 9), Daniel's text ends "Reply 1 if you can go". A
+reply of 1 from his number accepts and is answered with Grace's name, address and
+number.
+
+To stop asking volunteers for a run: `VOLUNTEERS_ENABLED=false npm run dev`.
 
 ---
 

@@ -7,6 +7,7 @@ import { DashboardModule } from './modules/report-service/dashboard.module';
 import { EldersModule } from './modules/elder-service/elders.module';
 import { AuthModule } from './modules/auth-service/auth.module';
 import { CheckInsModule } from './modules/check-in-service/check-ins.module';
+import { CommunityModule } from './modules/community-service/community.module';
 import { JwtAuthGuard } from './modules/auth-service/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth-service/guards/roles.guard';
 import { EscalationModule } from './modules/emergency-service/escalation.module';
@@ -37,6 +38,7 @@ import { validateEnv } from './shared/config/env.schema';
     EscalationModule,
     AlertsModule,
     CheckInsModule,
+    CommunityModule,
     SmsRepliesModule,
     EldersModule,
     DashboardModule,

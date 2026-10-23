@@ -27,6 +27,10 @@ enum Role {
   FAMILY_MEMBER
   EMERGENCY_RESPONDER
   ADMINISTRATOR
+  /// EXTENSION. A vetted volunteer who may be asked to go to an elder near their home
+  /// area: only while available, only for an elder who agreed, and told who and where
+  /// only once they accept.
+  COMMUNITY_RESPONDER
 
   @@map("role")
 }
@@ -127,6 +131,14 @@ enum AuditAction {
   VOICE_JOINED
   /// EXTENSION. The elder answered the daily check-in this alert was raised for, late.
   CHECKED_IN_LATE
+  /// EXTENSION. Community volunteers near the alert were asked, how many and why.
+  VOLUNTEERS_ASKED
+  /// EXTENSION. A community volunteer said they would go. The first one only.
+  VOLUNTEER_ACCEPTED
+  /// EXTENSION. The volunteer who accepted can no longer go.
+  VOLUNTEER_WITHDREW
+  /// EXTENSION. The volunteer reached the elder.
+  VOLUNTEER_ARRIVED
   REOPENED
   RESOLVED
   CANCELLED
@@ -138,6 +150,9 @@ enum ConsentType {
   DATA_PROCESSING
   LOCATION_SHARING
   CONTACT_SHARING
+  /// EXTENSION. Vetted community volunteers near the elder may be asked to go in an
+  /// emergency, and the one who accepts is told the elder's name and address.
+  COMMUNITY_HELP
 
   @@map("consent_type")
 }
@@ -224,6 +239,10 @@ model User {
   checkInSchedule    CheckInSchedule?  @relation("checkInScheduleElder")
   checkInSchedulesSet CheckInSchedule[] @relation("checkInScheduleSetBy")
   checkIns           CheckIn[]
+  volunteerProfile   VolunteerProfile? @relation("volunteerProfile")
+  volunteersReviewed VolunteerProfile[] @relation("volunteerReviewer")
+  volunteerCalls     VolunteerCall[]
+  volunteeredEvents  EmergencyEvent[]  @relation("eventVolunteer")
 
   @@index([role])
   @@map("users")
@@ -325,11 +344,21 @@ model EmergencyEvent {
   /// window, because nobody pressed anything.
   trigger AlertTrigger @default(PANIC)
 
-  elder         User           @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
-  owner         User?          @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
-  notifications Notification[]
-  auditLogs     AuditLog[]
-  checkIns      CheckIn[]
+  /// EXTENSION. Community volunteers. When they were asked (once per emergency), who
+  /// accepted first, and when that person accepted and arrived. A volunteer goes
+  /// alongside the chain: accepting does not take the emergency on or stop escalation.
+  volunteersAskedAt   DateTime? @map("volunteers_asked_at") @db.Timestamptz(3)
+  volunteerId         String?   @map("volunteer_id") @db.Uuid
+  volunteerAcceptedAt DateTime? @map("volunteer_accepted_at") @db.Timestamptz(3)
+  volunteerArrivedAt  DateTime? @map("volunteer_arrived_at") @db.Timestamptz(3)
+
+  elder          User            @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
+  owner          User?           @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  volunteer      User?           @relation("eventVolunteer", fields: [volunteerId], references: [id], onDelete: SetNull)
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  checkIns       CheckIn[]
+  volunteerCalls VolunteerCall[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -615,3 +644,88 @@ model CheckIn {
   @@map("check_ins")
 }
 
+// ---------------------------------------------------------------------------
+// Community volunteers. EXTENSION.
+// ---------------------------------------------------------------------------
+
+enum VolunteerStatus {
+  /// Applied, not yet looked at. Never asked.
+  PENDING
+  APPROVED
+  REJECTED
+  /// Approved once, stopped by an administrator. Never asked.
+  SUSPENDED
+
+  @@map("volunteer_status")
+}
+
+/// What a volunteer says they can do. Declared, checked by an administrator off the
+/// system; no certificate or ID number is stored.
+enum VolunteerTraining {
+  FIRST_AID
+  CPR
+  COMMUNITY_HEALTH_PROMOTER
+  HEALTH_PROFESSIONAL
+  OTHER
+
+  @@map("volunteer_training")
+}
+
+enum VolunteerCallStatus {
+  ASKED
+  ACCEPTED
+  DECLINED
+  /// Somebody else accepted, or the emergency ended, before this volunteer answered.
+  STOOD_DOWN
+  /// Accepted, then could not go.
+  WITHDRAWN
+
+  @@map("volunteer_call_status")
+}
+
+/// A volunteer's application and standing. Their home area is the user's coverage
+/// columns, the same physical form an emergency responder's area takes.
+model VolunteerProfile {
+  userId             String              @id @map("user_id") @db.Uuid
+  status             VolunteerStatus     @default(PENDING)
+  training           VolunteerTraining[]
+  /// What "other" means, or anything the volunteer wants the reviewer to know.
+  note               String?             @db.VarChar(300)
+  /// Asked only while true, and only while approved.
+  available          Boolean             @default(false)
+  availableChangedAt DateTime?           @map("available_changed_at") @db.Timestamptz(3)
+  appliedAt          DateTime            @default(now()) @map("applied_at") @db.Timestamptz(3)
+  reviewedAt         DateTime?           @map("reviewed_at") @db.Timestamptz(3)
+  reviewedById       String?             @map("reviewed_by_id") @db.Uuid
+  reviewNote         String?             @map("review_note") @db.VarChar(300)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user       User  @relation("volunteerProfile", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("volunteerReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, available])
+  @@map("volunteer_profiles")
+}
+
+/// One volunteer asked about one emergency, and what they said.
+model VolunteerCall {
+  id             String              @id @default(uuid()) @map("volunteer_call_id") @db.Uuid
+  eventId        String              @map("event_id") @db.Uuid
+  volunteerId    String              @map("volunteer_id") @db.Uuid
+  /// From the centre of the volunteer's area to the alert, rounded to 10 m. What the
+  /// volunteer is told before accepting, in place of where.
+  distanceMetres Int                 @map("distance_metres")
+  status         VolunteerCallStatus @default(ASKED)
+  askedAt        DateTime            @default(now()) @map("asked_at") @db.Timestamptz(3)
+  /// "push", "sms" or "none".
+  askedVia       String              @map("asked_via") @db.VarChar(8)
+  respondedAt    DateTime?           @map("responded_at") @db.Timestamptz(3)
+  arrivedAt      DateTime?           @map("arrived_at") @db.Timestamptz(3)
+
+  event     EmergencyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  volunteer User           @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, volunteerId])
+  @@index([volunteerId, askedAt])
+  @@map("volunteer_calls")
+}

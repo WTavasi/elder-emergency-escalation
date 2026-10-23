@@ -4,9 +4,10 @@ import { AlertsService } from './services/alerts.service';
 import { EscalationModule } from './escalation.module';
 import { NotificationsModule } from '../notification-service/notifications.module';
 import { SeverityModule } from './severity.module';
+import { CommunityModule } from '../community-service/community.module';
 
 @Module({
-  imports: [SeverityModule, EscalationModule, NotificationsModule],
+  imports: [SeverityModule, EscalationModule, NotificationsModule, CommunityModule],
   controllers: [AlertsController],
   providers: [AlertsService],
   exports: [AlertsService],

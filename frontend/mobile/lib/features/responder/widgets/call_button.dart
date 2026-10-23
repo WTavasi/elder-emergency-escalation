@@ -18,10 +18,21 @@ typedef Open = Future<bool> Function(Uri uri);
 /// the worst outcome, because the person tries again and then loses faith in every
 /// other button too. So when the device says no, the number is shown to dial by hand.
 class CallButton extends StatelessWidget {
-  const CallButton({required this.name, required this.phone, this.canOpen, this.open, super.key});
+  const CallButton({
+    required this.name,
+    required this.phone,
+    this.canOpen,
+    this.open,
+    this.stacked = false,
+    super.key,
+  });
 
   final String name;
   final String phone;
+
+  /// The icon above the label, for a button sharing a row with another, so the pair
+  /// lines up whatever each one's wording.
+  final bool stacked;
 
   /// Null means the real device. Tests pass their own to see what would be dialled.
   final CanOpen? canOpen;
@@ -36,10 +47,19 @@ class CallButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The icon is what separates this from "Call an emergency responder", which sends
+    // the emergency on through the system rather than ringing anybody.
+    final ButtonStyle style = CallStyle.soft(context);
+    if (stacked) {
+      return OutlinedButton(
+        style: style.merge(StackedLabel.padding),
+        onPressed: () => _call(context),
+        child: StackedLabel(icon: Icons.phone, label: 'Call $_firstName'),
+      );
+    }
     return OutlinedButton.icon(
+      style: style,
       onPressed: () => _call(context),
-      // The icon is what separates this from "Call an emergency responder", which sends
-      // the emergency on through the system rather than ringing anybody.
       icon: const Icon(Icons.phone),
       label: Text('Call $_firstName'),
     );
@@ -84,6 +104,60 @@ class CallButton extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Amber for the buttons that reach a person: the design language's colour for an
+/// emergency waiting on somebody, never the red kept for the emergency itself.
+///
+/// Soft for ringing somebody, solid for calling in a responder, which is the bigger step.
+/// Both from tokens, so the contrast gate checks them with every other pair.
+abstract final class CallStyle {
+  static bool _dark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+
+  static ButtonStyle soft(BuildContext context) {
+    final bool dark = _dark(context);
+    return OutlinedButton.styleFrom(
+      backgroundColor: dark ? MzaziColorsDark.callBg : MzaziColorsLight.callBg,
+      foregroundColor: dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg,
+      side: BorderSide(color: dark ? MzaziColorsDark.callBd : MzaziColorsLight.callBd),
+    );
+  }
+
+  static ButtonStyle strong(BuildContext context) {
+    final bool dark = _dark(context);
+    return FilledButton.styleFrom(
+      backgroundColor: dark ? MzaziColorsDark.callStrongBg : MzaziColorsLight.callStrongBg,
+      foregroundColor: dark ? MzaziColorsDark.callStrongFg : MzaziColorsLight.callStrongFg,
+    );
+  }
+}
+
+/// An icon above a centred label. Two of these side by side are the same shape whether
+/// one label is two words or five, which is what keeps a row of them even.
+class StackedLabel extends StatelessWidget {
+  const StackedLabel({required this.icon, required this.label, super.key});
+
+  final IconData icon;
+  final String label;
+
+  /// Even padding for a stacked button, top and bottom as well as the sides.
+  static const ButtonStyle padding = ButtonStyle(
+    padding: WidgetStatePropertyAll<EdgeInsetsGeometry>(
+      EdgeInsets.symmetric(vertical: MzaziSpace.s12, horizontal: MzaziSpace.s8),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon),
+        const SizedBox(height: MzaziSpace.s4),
+        Text(label, textAlign: TextAlign.center),
+      ],
     );
   }
 }

@@ -202,6 +202,18 @@ export class EnvSchema {
   @IsBoolean()
   CHECK_INS_ENABLED: boolean = true;
 
+  /** Community volunteers: whether any are ever asked. Off stops asking; applications still work. */
+  @Transform(({ value }) => (value === undefined ? true : value === 'true' || value === true))
+  @IsBoolean()
+  VOLUNTEERS_ENABLED: boolean = true;
+
+  /** The most volunteers asked about one emergency, nearest first. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  VOLUNTEER_MAX_ASKED: number = 10;
+
   /** How often the check-in clock runs, milliseconds. A minute is plenty for a time of day. */
   @Type(() => Number)
   @IsInt()

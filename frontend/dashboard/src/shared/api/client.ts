@@ -13,6 +13,8 @@ import type {
   UserPage,
   UserQuery,
   UserRow,
+  VolunteerApplication,
+  VolunteerStatus,
 } from './types';
 
 /**
@@ -284,6 +286,20 @@ export const api = {
       request('/admin/users/deactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
     reactivate: (ids: string[]): Promise<{ updated: number }> =>
       request('/admin/users/reactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
+  },
+
+  volunteers: {
+    list: (status?: VolunteerStatus): Promise<VolunteerApplication[]> =>
+      request<VolunteerApplication[]>(`/admin/volunteers${status ? `?status=${status}` : ''}`),
+    review: (
+      id: string,
+      decision: 'approve' | 'reject' | 'suspend',
+      note?: string,
+    ): Promise<VolunteerApplication> =>
+      request<VolunteerApplication>(`/admin/volunteers/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, ...(note ? { note } : {}) }),
+      }),
   },
 
   /** Coordinates for an address, through the API's rate-limited geocoder. */

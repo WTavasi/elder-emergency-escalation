@@ -28,6 +28,9 @@ so the folders match and the code inside them follows NestJS.
 | Live updates to the console | `realtime-service/` |
 | The reporting figures | `report-service/services/dashboard.service.ts` |
 | Accounts: listing, adding staff, deactivating | `admin-service/services/user-admin.service.ts` |
+| Community volunteers: applications, vetting, availability | `community-service/services/volunteers.service.ts` |
+| Who is asked as a volunteer, accepting, standing down | `community-service/services/volunteer-calls.service.ts` |
+| What a volunteer is told | `community-service/services/volunteer-content.ts` |
 | Daily check-ins: set-up, agreement, answers | `check-in-service/services/check-ins.service.ts` |
 | When check-ins are asked, reminded and raised | `check-in-service/services/check-in-clock.service.ts` |
 | Replies by text, from responders and elders | `emergency-service/services/sms-replies.service.ts`, wired in `emergency-service/sms-replies.module.ts` |
@@ -85,6 +88,8 @@ Tests sit beside the file they test as `<name>.spec.ts`. The end-to-end suite is
 - `elder-service` uses `auth-service` (passwords and phone codes) and
   `notification-service` (the "you were added" SMS) when a caregiver registers an elder
   or adds family.
+- `emergency-service` asks and stands down volunteers through `community-service`, which
+  sends through `notification-service` and calls nothing back.
 - `check-in-service` raises missed check-ins through `emergency-service`
   (`AlertsService`) and asks through `notification-service` (push and SMS).
 - The text replies (`SmsRepliesModule`, inside `emergency-service`'s folder) use the

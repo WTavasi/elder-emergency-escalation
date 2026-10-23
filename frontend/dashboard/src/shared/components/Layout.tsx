@@ -12,6 +12,7 @@ const SECTIONS: { to: string; label: string; icon: IconName }[] = [
   { to: '/history', label: 'History', icon: 'history' },
   { to: '/reporting', label: 'Reporting', icon: 'reporting' },
   { to: '/users', label: 'Users', icon: 'people' },
+  { to: '/volunteers', label: 'Volunteers', icon: 'personAdd' },
 ];
 
 const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
