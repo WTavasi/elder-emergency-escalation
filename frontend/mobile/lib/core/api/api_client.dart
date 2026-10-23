@@ -232,6 +232,66 @@ class ApiClient {
     onSessionChanged?.call(renewed);
   }
 
+  /// Asks for an elder's sign-in code by text. The answer is the same whoever the number
+  /// belongs to, so there is nothing to return.
+  Future<void> requestSignInCode(String phone) async {
+    await _send(
+      'POST',
+      '/auth/code',
+      body: <String, dynamic>{'phone': phone},
+      authenticated: false,
+    );
+  }
+
+  /// Signs an elder in with a texted code or one from their caregiver, as [signIn] does.
+  Future<Session> signInWithCode({required String phone, required String code}) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/auth/code/verify',
+      body: <String, dynamic>{'phone': phone, 'code': code},
+      authenticated: false,
+    );
+
+    final Session signedIn = Session.fromJson(body);
+    session = signedIn;
+    onSessionChanged?.call(signedIn);
+    return signedIn;
+  }
+
+  /// A code to the number the account is moving to. [password] is needed by everyone
+  /// but an elder.
+  Future<void> requestPhoneChange({required String phone, String? password}) async {
+    await _send(
+      'POST',
+      '/auth/me/phone/code',
+      body: <String, dynamic>{'phone': phone, 'password': ?password},
+    );
+  }
+
+  /// Moves the account to the new number and takes the fresh tokens, which end every
+  /// other session.
+  Future<void> changePhone({required String phone, required String code}) async {
+    final Map<String, dynamic> body = await _send(
+      'POST',
+      '/auth/me/phone',
+      body: <String, dynamic>{'phone': phone, 'code': code},
+    );
+    final Session renewed = Session.fromJson(body);
+    session = renewed;
+    onSessionChanged?.call(renewed);
+  }
+
+  Future<Profile> profile() async => Profile.fromJson(await _send('GET', '/auth/me/profile'));
+
+  /// Readable before anybody signs in, because the notice comes before the sign-up.
+  Future<LegalFacts> legal() async =>
+      LegalFacts.fromJson(await _send('GET', '/legal', authenticated: false));
+
+  /// A code for the caregiver to type into the elder's phone, with the elder's number.
+  Future<PairingCode> elderSignInCode(String elderId) async => PairingCode.fromJson(
+    await _send('POST', '/elders/$elderId/sign-in-code', body: const <String, dynamic>{}),
+  );
+
   Future<ElderDetail> elder(String id) async =>
       ElderDetail.fromJson(await _send('GET', '/elders/$id'));
 

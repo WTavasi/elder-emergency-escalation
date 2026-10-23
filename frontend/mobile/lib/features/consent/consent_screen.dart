@@ -7,6 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
+import '../legal/legal_screens.dart';
 
 /// Who is reading: the elder about themselves, or somebody in their care circle.
 enum ConsentAudience { elder, careCircle }
@@ -436,6 +437,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
             style: theme.textTheme.bodyMedium,
           ),
         ],
+        const SizedBox(height: MzaziSpace.s16),
+        // The whole notice, with what is kept, who sees it and for how long.
+        const LegalLinks(),
       ],
     );
   }

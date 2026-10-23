@@ -177,6 +177,58 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Asks for an elder's sign-in code by text. Returns why it could not be asked for,
+  /// or null, which does not mean a code is on its way.
+  Future<String?> requestSignInCode(String phone) => _attempt(() => _api.requestSignInCode(phone));
+
+  /// Signs an elder in with a code, by text or from their caregiver.
+  Future<bool> signInWithCode({required String phone, required String code}) async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _api.signInWithCode(phone: phone, code: code.trim());
+      return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
+    } on NetworkException catch (error) {
+      _error = error.message;
+      return false;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sends a code to the number the account is moving to. Returns why not, or null.
+  Future<String?> requestPhoneChange({required String phone, String? password}) =>
+      _attempt(() => _api.requestPhoneChange(phone: phone, password: password));
+
+  /// Moves the account to the new number. Returns why not, or null once it has moved.
+  Future<String?> changePhone({required String phone, required String code}) =>
+      _attempt(() => _api.changePhone(phone: phone, code: code.trim()));
+
+  /// The notice versions, retention windows and data contact, for the legal screens.
+  /// Readable signed out, because the notice comes before the sign-up.
+  Future<LegalFacts> legal() => _api.legal();
+
+  /// The signed-in person's places, record and, for an elder, carers.
+  Future<Profile> profile() => _api.profile();
+
+  /// Runs one call and turns its failure into the message to show, or null.
+  Future<String?> _attempt(Future<void> Function() call) async {
+    try {
+      await call();
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    } on NetworkException catch (error) {
+      return error.message;
+    }
+  }
+
   /// Clears a message left by a previous attempt, when the person moves screens.
   void clearError() {
     if (_error == null) return;

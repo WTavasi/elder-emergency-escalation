@@ -7,11 +7,15 @@ import 'package:provider/provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
+import '../legal/legal_screens.dart';
+import '../responder/widgets/call_button.dart';
 
-/// The elder's own page: who this phone belongs to, their daily check-in, their privacy,
-/// and signing out.
+/// The elder's own page, laid out like the emergency card a phone keeps: who this phone
+/// belongs to, where home is, who comes and how to ring them, their daily check-in,
+/// their privacy, and signing out.
 ///
 /// Signing out used to sit in the corner of the elder's home screen, next to the panic
 /// control. For an elder it is almost never wanted and it is costly when pressed by
@@ -51,7 +55,7 @@ class ElderMeScreen extends StatelessWidget {
         title: const Text('Sign out of this phone?'),
         content: const Text(
           'While you are signed out, this phone cannot ask for help. To sign back in you '
-          'will need your phone number and password.',
+          'will need a code sent by text, or one from your caregiver.',
         ),
         actions: <Widget>[
           TextButton(
@@ -99,15 +103,9 @@ class ElderMeScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              Text(account.name, style: theme.textTheme.headlineSmall),
-                              const SizedBox(height: MzaziSpace.s4),
-                              Text(
-                                account.phone,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-                                ),
-                              ),
+                              _IdCard(account: account),
+                              const SizedBox(height: MzaziSpace.s32),
+                              const _WhoComes(),
                               const SizedBox(height: MzaziSpace.s32),
                               CheckInSettings(
                                 api: api,
@@ -124,6 +122,9 @@ class ElderMeScreen extends StatelessWidget {
                                   label: const Text('Privacy and consent'),
                                 ),
                               ),
+                              const SizedBox(height: MzaziSpace.s8),
+                              const LegalLinks(),
+                              const SizedBox(height: MzaziSpace.s24),
                               const Spacer(),
                               // Last, and plain. The one control on this page that takes the
                               // panic button away, so it is the least prominent one.
@@ -142,6 +143,118 @@ class ElderMeScreen extends StatelessWidget {
                     ),
               ),
       ),
+    );
+  }
+}
+
+/// Name, number and home, set apart like the card a phone shows on its lock screen, so
+/// somebody helping can read it at a glance. Plain colours: red is kept for an emergency.
+class _IdCard extends StatelessWidget {
+  const _IdCard({required this.account});
+
+  final Account account;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String? home = account.home?.addressLabel;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(MzaziSpace.s16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(account.name, style: theme.textTheme.headlineSmall),
+            const SizedBox(height: MzaziSpace.s4),
+            Text(
+              account.phone,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              ),
+            ),
+            if (home != null && home.isNotEmpty) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s16),
+              Text('Home', style: theme.textTheme.labelLarge),
+              const SizedBox(height: MzaziSpace.s4),
+              Text(home, style: theme.textTheme.bodyLarge),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The elder's carers, in the order they are asked, each one press from a call. The
+/// same people the help button reaches, so the elder can ring one directly when it is
+/// not an emergency, or check who will come.
+class _WhoComes extends StatefulWidget {
+  const _WhoComes();
+
+  @override
+  State<_WhoComes> createState() => _WhoComesState();
+}
+
+class _WhoComesState extends State<_WhoComes> {
+  List<Carer>? _carers;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final Profile profile = await context.read<AuthController>().profile();
+      if (mounted) setState(() => _carers = profile.carers);
+    } on Exception {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  static String _role(Role role) => switch (role) {
+    Role.caregiver => 'Caregiver',
+    Role.familyMember => 'Family',
+    Role.emergencyResponder => 'Emergency responder',
+    _ => '',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Carer>? carers = _carers;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SectionLabel('Who comes when you press for help'),
+        const SizedBox(height: MzaziSpace.s8),
+        if (carers == null)
+          _failed
+              ? Text('This could not be loaded just now.', style: theme.textTheme.bodyLarge)
+              : const SizedBox(height: MzaziSpace.s24)
+        else if (carers.isEmpty)
+          Text('Nobody yet. Ask your caregiver to add someone.', style: theme.textTheme.bodyLarge)
+        else
+          for (final Carer carer in carers) ...<Widget>[
+            Text(carer.name, style: theme.textTheme.titleMedium),
+            Text(
+              carer.place == 1 ? '${_role(carer.role)}, asked first' : _role(carer.role),
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: MzaziSpace.s8),
+            SizedBox(
+              height: MzaziA11y.elderMinTouchTarget,
+              child: CallButton(name: carer.name, phone: carer.phone),
+            ),
+            const SizedBox(height: MzaziSpace.s16),
+          ],
+      ],
     );
   }
 }

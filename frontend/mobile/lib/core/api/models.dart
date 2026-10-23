@@ -1442,3 +1442,150 @@ String roughDistance(int metres) {
   final String km = (metres / 1000).toStringAsFixed(1);
   return 'about ${km.endsWith('.0') ? km.substring(0, km.length - 2) : km} km';
 }
+
+/// Where the signed-in person sits in one elder's chain. Place 1 is asked first.
+class CirclePlace {
+  const CirclePlace({required this.elderId, required this.elderName, required this.place});
+
+  final String elderId;
+  final String elderName;
+  final int place;
+}
+
+/// What the signed-in person has done when asked. Their own record, never a ranking.
+class ResponseRecord {
+  const ResponseRecord({
+    required this.answered,
+    this.medianResponseSeconds,
+    this.lastAnsweredAt,
+  });
+
+  final int answered;
+  final int? medianResponseSeconds;
+  final DateTime? lastAnsweredAt;
+}
+
+/// One of an elder's carers, in the order they are asked.
+class Carer {
+  const Carer({required this.name, required this.role, required this.place, required this.phone});
+
+  final String name;
+  final Role role;
+  final int place;
+  final String phone;
+}
+
+/// The account page's view: where a person stands, what they have done, and for an
+/// elder, who comes.
+class Profile {
+  const Profile({
+    required this.memberSince,
+    this.circles = const <CirclePlace>[],
+    this.record,
+    this.carers = const <Carer>[],
+  });
+
+  final DateTime? memberSince;
+  final List<CirclePlace> circles;
+  final ResponseRecord? record;
+  final List<Carer> carers;
+
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    final Object? record = json['record'];
+    return Profile(
+      memberSince: _date(json['memberSince']),
+      circles: <CirclePlace>[
+        for (final Object? row in _list(json['circles']))
+          if (row is Map<String, dynamic>)
+            CirclePlace(
+              elderId: row['elderId'] as String? ?? '',
+              elderName: row['elderName'] as String? ?? '',
+              place: (row['place'] as num?)?.toInt() ?? 1,
+            ),
+      ],
+      record: record is Map<String, dynamic>
+          ? ResponseRecord(
+              answered: (record['answered'] as num?)?.toInt() ?? 0,
+              medianResponseSeconds: (record['medianResponseSeconds'] as num?)?.toInt(),
+              lastAnsweredAt: _date(record['lastAnsweredAt']),
+            )
+          : null,
+      carers: <Carer>[
+        for (final Object? row in _list(json['carers']))
+          if (row is Map<String, dynamic>)
+            Carer(
+              name: row['name'] as String? ?? '',
+              role: Role.parse(row['role'] as String? ?? 'CAREGIVER'),
+              place: (row['place'] as num?)?.toInt() ?? 1,
+              phone: row['phone'] as String? ?? '',
+            ),
+      ],
+    );
+  }
+}
+
+/// A JSON list, or nothing: a field of the wrong shape reads as empty rather than throwing.
+List<Object?> _list(Object? value) => value is List<Object?> ? value : const <Object?>[];
+
+/// Who answers questions about personal data on this server. Any part may be unset.
+class DataContact {
+  const DataContact({this.name, this.email, this.address});
+
+  final String? name;
+  final String? email;
+  final String? address;
+}
+
+/// The parts of the privacy notice and terms that depend on how the server is set up.
+class LegalFacts {
+  const LegalFacts({
+    required this.privacyVersion,
+    required this.termsVersion,
+    required this.retentionEnabled,
+    required this.closedEmergencyDays,
+    required this.auditLogDays,
+    this.contact,
+  });
+
+  final String privacyVersion;
+  final String termsVersion;
+  final bool retentionEnabled;
+  final int closedEmergencyDays;
+  final int auditLogDays;
+
+  /// Null until the deployment names one.
+  final DataContact? contact;
+
+  factory LegalFacts.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> retention =
+        json['retention'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final Object? contact = json['contact'];
+    return LegalFacts(
+      privacyVersion: json['privacyVersion'] as String? ?? '',
+      termsVersion: json['termsVersion'] as String? ?? '',
+      retentionEnabled: retention['enabled'] as bool? ?? true,
+      closedEmergencyDays: (retention['closedEmergencyDays'] as num?)?.toInt() ?? 365,
+      auditLogDays: (retention['auditLogDays'] as num?)?.toInt() ?? 365,
+      contact: contact is Map<String, dynamic>
+          ? DataContact(
+              name: contact['name'] as String?,
+              email: contact['email'] as String?,
+              address: contact['address'] as String?,
+            )
+          : null,
+    );
+  }
+}
+
+/// A code a caregiver types into the elder's phone to sign it in.
+class PairingCode {
+  const PairingCode({required this.code, required this.expiresIn});
+
+  final String code;
+  final Duration expiresIn;
+
+  factory PairingCode.fromJson(Map<String, dynamic> json) => PairingCode(
+    code: json['code'] as String? ?? '',
+    expiresIn: Duration(seconds: (json['expiresInSeconds'] as num?)?.toInt() ?? 600),
+  );
+}
