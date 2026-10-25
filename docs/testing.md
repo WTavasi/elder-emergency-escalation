@@ -283,7 +283,8 @@ With the API running and the app started (Guide C in `running.md`), the sequence
 exercises everything:
 
 1. Sign in as Grace, `+254700000010`. You get the panic control at the larger type scale.
-2. Press it. The screen changes to a ten second countdown with a withdraw control.
+2. Press it. The phone vibrates and the screen turns yellow: a ten second countdown in a
+   ring that empties, with **I am all right, stop this** at the bottom.
 3. Let it run out. The screen says help is coming, and the dashboard board shows the
    emergency appear.
 4. On a second device or simulator, sign in as Mary, `+254700000020`, who is tier one for
@@ -299,6 +300,18 @@ Two refusals worth showing deliberately, because they are the access control wor
 declining from an account that was not asked at the current tier returns a 403 with the
 server's own wording, and acknowledging one somebody else has already taken returns a
 409.
+
+### When the phone cannot connect, by hand
+
+1. Sign in as Grace in the app with the API running, so the app saves her carers'
+   numbers on the phone.
+2. Stop the API (Ctrl+C in its terminal) and press the help button. After a moment the
+   screen says **Not sent yet** under a yellow **No connection** band, with Grace's
+   address and the ways to ask: **Text my family**, **Call Mary** and **Call 999**, and
+   **Text HELP to MzaziCare** too if the API was started with `AT_SHORTCODE` and
+   `SMS_INBOUND_TOKEN`. Each opens the phone's messages app or dialler, filled in.
+3. Start the API again. Within 15 seconds the alert goes through by itself and the
+   screen moves to the yellow ten-second countdown.
 
 ### Where the emergency is located, by hand
 

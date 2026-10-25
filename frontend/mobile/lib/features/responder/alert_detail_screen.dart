@@ -12,6 +12,7 @@ import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../voice/call_screen.dart';
@@ -445,41 +446,33 @@ class _Actions extends StatelessWidget {
   Future<void> _confirmDecline(BuildContext context) async {
     final TextEditingController reason = TextEditingController();
 
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Cannot come?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'The emergency will stop waiting on you and move on to the next person '
-              'straight away.',
-            ),
-            const SizedBox(height: MzaziSpace.s16),
-            TextField(
-              controller: reason,
-              maxLength: 200,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
-                hintText: 'At work, two hours away',
-              ),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Never mind'),
+    final bool? confirmed = await showPlatformAlert<bool>(
+      context,
+      title: 'Cannot come?',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'The emergency will stop waiting on you and move on to the next person '
+            'straight away.',
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('I cannot come'),
+          const SizedBox(height: MzaziSpace.s16),
+          TextField(
+            controller: reason,
+            maxLength: 200,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'Reason (optional)',
+              hintText: 'At work, two hours away',
+            ),
           ),
         ],
       ),
+      actions: const <AlertAction<bool>>[
+        AlertAction<bool>('Never mind', false),
+        AlertAction<bool>('I cannot come', true, primary: true),
+      ],
     );
 
     if (confirmed == true) {
@@ -697,7 +690,8 @@ class _WhatHappened extends StatelessWidget {
           DecoratedBox(
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.focus),
+                // A hairline: the spine of a timeline, not a stripe that colours the block.
+                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.hairline),
               ),
             ),
             child: Column(
@@ -738,7 +732,7 @@ class _WhatHappened extends StatelessWidget {
     return switch (entry.action) {
       'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
         'The daily check-in went unanswered',
-      'EVENT_CREATED' => '$who asked for help',
+      'EVENT_CREATED' => entry.byText ? '$who asked for help, by text' : '$who asked for help',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
       'VOLUNTEERS_ASKED' => 'Volunteers nearby were asked',
       'VOLUNTEER_ACCEPTED' => '$who, a volunteer, said they would go',
@@ -1078,30 +1072,17 @@ class _OnTheWay extends StatelessWidget {
   /// Stopping is a choice with a cost to somebody else, so it is said plainly before it
   /// happens. The safe answer is the quiet one and keeps sharing.
   static Future<void> _confirmStop(BuildContext context, WayThere way, String elder) async {
-    final ThemeData theme = Theme.of(context);
-    final bool? stop = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Stop sharing your way there?'),
-        content: Text(
-          '$elder will no longer see how long you will be, and the rest of the circle will '
-          'not see where you are. You can share again from this screen.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep sharing'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-              foregroundColor: theme.colorScheme.onError,
-            ),
-            child: const Text('Stop sharing'),
-          ),
-        ],
+    final bool? stop = await showPlatformAlert<bool>(
+      context,
+      title: 'Stop sharing your way there?',
+      content: Text(
+        '$elder will no longer see how long you will be, and the rest of the circle will '
+        'not see where you are. You can share again from this screen.',
       ),
+      actions: const <AlertAction<bool>>[
+        AlertAction<bool>('Keep sharing', false),
+        AlertAction<bool>('Stop sharing', true, primary: true, destructive: true),
+      ],
     );
     if (stop == true) way.stop();
   }

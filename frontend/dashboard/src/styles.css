@@ -11,8 +11,8 @@
  * that reads an elder's name and address, so it makes no third-party request at all;
  * the content security policy in the API denies one anyway.
  *
- * Source Sans 3 is one variable file covering the whole weight range, which is why the
- * face is declared once with a range rather than once per weight.
+ * Both faces are one variable file covering the whole weight range, which is why each
+ * is declared once with a range rather than once per weight.
  */
 @font-face {
   font-family: 'Source Sans 3';
@@ -23,17 +23,9 @@
 }
 
 @font-face {
-  font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Medium.ttf') format('truetype');
-  font-weight: 500;
+  font-family: 'Atkinson Hyperlegible Mono';
+  src: url('/fonts/AtkinsonHyperlegibleMono-Variable.ttf') format('truetype-variations');
+  font-weight: 200 800;
   font-style: normal;
   font-display: swap;
 }
@@ -90,6 +82,25 @@ h2 {
 
 a {
   color: var(--focus);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: from-font;
+}
+
+/*
+  The parts of the page the browser draws for us. Left alone, selection, the text caret
+  and scrollbars are the browser's own blue and grey, which belong to no design system;
+  here they take the tokens like everything else. Selection is gated against the text in
+  both themes. Scrollbars keep their full width, because a thin one is harder to grab.
+*/
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+:where(input, textarea, [contenteditable]) {
+  caret-color: var(--focus);
+}
+html {
+  scrollbar-color: var(--control) var(--surface-sunk);
 }
 
 /* A visible focus ring on every interactive element. Removing it would fail the
@@ -1166,17 +1177,14 @@ select {
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-left-width: 6px;
   border-radius: var(--radius-card);
 }
+/* The state pill at the start of the banner says what state it is in. While nobody has
+   taken it on, the whole outline turns red as well: red is spent on a person being
+   needed and nothing else. It used to be a thick coloured stripe down the left edge in
+   every state, which is decoration the design guidance rules out. */
 .banner--waiting {
-  border-left-color: var(--emergency-edge);
-}
-.banner--owned {
-  border-left-color: var(--pill-acknowledged-fg);
-}
-.banner--closed {
-  border-left-color: var(--pill-resolved-fg);
+  border-color: var(--emergency-edge);
 }
 .banner__main {
   display: flex;

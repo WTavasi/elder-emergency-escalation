@@ -9,14 +9,22 @@ Red is a state, not a brand colour. `red-700` and `red-600` appear only on the p
 control, on an event in `TRIGGERED` or `ESCALATED` state, and on a destructive
 confirmation. Never on navigation, headers, links, empty states, charts or brand bars.
 
+Yellow means "you can still act on this". The caution yellow appears on the elder's
+screen only, and only at two moments: the ten seconds in which a pressed alert can still
+be stopped, and the phone having no connection. It is never decoration.
+
 ## Colour
 
 Defined once in `frontend/design-tokens/tokens.json`. Consumed only through the generated
 outputs. No hex literals in widgets or components.
 
-Semantic hues are limited to three besides the emergency red: amber for waiting, blue
-for owned, green for closed. Blue is also the focus-ring colour. Escalation tiers get a
-number and a role name, never a colour of their own.
+Semantic hues are limited to four besides the emergency red: amber for waiting, blue
+for owned, green for closed, and the caution yellow above. Blue is also the focus-ring
+colour. Escalation tiers get a number and a role name, never a colour of their own.
+
+The caution yellow (`caution`) is the same in light and dark mode, because its job is
+to be seen, and the only ink on it is `onCaution`, the darkest one, at 12.7:1. The
+countdown ring's empty track is `cautionTrack`. All three are in the contrast gate.
 
 One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
 slightly deeper one, draws the rings behind the screens before sign-in, on the app and
@@ -27,7 +35,7 @@ emergency and nothing else.
 
 Two roles exist only to pass contrast where the brand colours cannot. `danger` is the
 red for text and thin marks: the brand red in light mode, a lighter red in dark mode,
-where the brand red is 2:1 against the background. Error text, the waiting rule and the
+where the brand red is 2:1 against the background. Error text, the waiting dot and the
 "waiting" state are all written in it. `control` is the outline of a field, at 3:1 or
 better against the page in both modes, as WCAG 1.4.11 asks of a control's boundary; the
 hairline colour it replaced was 1.3:1. Both are in the contrast gate.
@@ -54,19 +62,47 @@ also carries a glyph and a word.
 Swiss and utilitarian: the type and the spacing do the work boxes used to.
 
 - **No cards.** Lists run edge to edge, one row per item, divided by hairlines. Sections
-  start with a small-capitals label over a hairline (`SectionLabel`). Messages are a rule
-  down the left and the words beside it, not a filled box.
+  start with a small-capitals label over a hairline (`SectionLabel`). Messages are an
+  icon and the words beside it, not a filled box: an error mark in the text-safe red, an
+  information mark in ink.
+- **No side stripes.** A coloured border down the left or right edge of a row, a
+  message or a banner is decoration, and it is ruled out above a 1-point hairline. State
+  is said by a glyph and a word, and where it has to catch the eye down a list, by a dot
+  at the start of the row. The one vertical line allowed is a hairline that is structure:
+  the spine of the alert trail.
 - **One big thing per screen.** Each screen opens with its title at headline size, tight
   and left-aligned (`PageTitle`, or the elder's name on a detail screen), so the eye lands
   in the same place every time.
-- **Red means a person is needed.** An emergency nobody has answered gets a 4-point red
-  rule down its left edge in the list, and the waiting count in red under the title.
-  Nothing decorative is red after sign-in.
+- **Red means a person is needed.** An emergency nobody has answered gets a red dot at
+  the start of its row in the list, as an unread message does, and the waiting count in
+  red under the title. Nothing decorative is red after sign-in.
 - **Figures in the monospaced face**: ages, ranks in a chain, phone numbers, the
   countdown. They line up down a column and do not jitter as they change.
 - **The thumb decides placement.** The places a person goes most are along the bottom
   (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
-  screen. The top bar carries a back arrow and nothing else.
+  screen. The top bar carries a back arrow and nothing else. On the elder's screen this
+  is stricter: what is read sits at the top and what is pressed sits at the bottom. That
+  covers the help button, **I am all right, stop this**, and the ways to ask for help
+  without a connection. A control that undoes something, such as **stop trying**, is
+  kept away from the thumb so it is not pressed on the way to the others.
+- **Feedback is felt as well as seen.** Four vibrations and no more: a press that starts
+  something, something confirmed (the help button), a tick for each second of the
+  countdown, and something that needs attention (an alert arriving, a call joining).
+  Progress is said in words ("Sending…"), never shown as a bare spinner.
+- **On iPhone, iPhone's own alerts and switches.** A question or notice is iOS's alert
+  on iPhone and Material's everywhere else (`showPlatformAlert`), and switches are adaptive.
+  An elder's alert keeps the elder's face and sizes even in iOS's frame, because iOS sets
+  an alert at 17 points and the elder floor is 20. The iOS tint is the focus blue; a
+  destructive answer is iOS's red, which is a destructive confirmation and so allowed. The
+  care-level choice stays a Material dialog, because it is a form, not a question.
+- **Selected controls are ink, never the emergency red.** Material colours an "on"
+  switch, a ticked box, a chosen radio, a slider and a spinner from the primary colour,
+  and the primary colour here is the emergency red. The theme sets them all to ink, and
+  the caret to the focus blue, so red still means a person is needed.
+- **Light or dark is the person's choice.** The phone's setting is the default, and
+  **Screen** on every account page overrides it. Emergency colours do not change with
+  the mode: the help button keeps its red, with a brighter `emergencyEdge` around it in
+  dark mode where the red alone is 2:1 against the page, and the countdown stays yellow.
 - **Every control is a full touch target.** Text buttons, icon buttons and tabs are
   48 points in the standard scale and 72 in the elder scale, set in the theme so a new
   screen cannot forget. Text buttons are ink and underlined, never red, because red here
@@ -89,10 +125,20 @@ Dense, because it is read at a desk by somebody looking across many records at o
 - **Primary actions are ink**, not a brand colour. Red stays the emergency's alone; a
   worsening trend on the reporting screen is the one other place the warning red appears,
   and always with an arrow and a signed figure beside it.
+- **The parts the browser draws carry the design too.** Text selection takes the
+  `selection` token, gated against body text in both themes; the caret is the focus blue;
+  scrollbars are the control grey on the sunk surface, at full width so they are easy to
+  grab; links are underlined a little below the baseline. The app's fields follow the same
+  rule: Material would colour the caret and the selection with the emergency red.
+- **The status banner leads with the state pill**, and its outline turns red only while
+  nobody has taken the emergency on. It used to carry a thick coloured stripe down its
+  left edge in every state. The sidebar's current page is marked by a sunk background,
+  weight and a thin ink line beside it: a navigation affordance, not a coloured stripe.
 
 Tracking and line weights are tokens like everything else: `type.tracking` tightens
-large type and opens small capitals, `stroke` holds the hairline, the waiting rule and
-the focus ring.
+large type and opens small capitals, `stroke` holds the hairline, the heavier rule (the
+progress steps' connecting line and the help button's dark-mode edge) and the focus
+ring.
 
 The app follows this as of 1 October 2026 and the console as of 6 October 2026. Both use
 the same words: Waiting, Being handled, Escalated, Closed, Withdrawn. The console's
@@ -145,9 +191,9 @@ One family per audience, and it is a legibility decision rather than a stylistic
 
 | Audience | Face | Why |
 | --- | --- | --- |
-| Elder | Atkinson Hyperlegible, 700 throughout | Drawn by the Braille Institute for low vision. Its letterforms are deliberately differentiated, so b and d, 1 and l and I, and O and 0 cannot be confused. That is the single most useful property a face can have on a screen somebody reads in a panic |
+| Elder | Inclusive Sans, 700 throughout | Designed for accessibility and readability. A capital I, a lowercase l and a 1 cannot be confused, and the zero is slashed. That is the single most useful property a face can have on a screen somebody reads in a panic, and it is friendlier to read than the face it replaced (`docs/decisions.md`) |
 | Caregiver, responder, administrator | Source Sans 3 | Humanist, unremarkable in a good way, and one variable file covers every weight the interface needs |
-| Figures everywhere | IBM Plex Mono | Timers, scores and identifiers, where digits have to line up |
+| Figures everywhere | Atkinson Hyperlegible Mono | Timers, phone numbers and codes, where digits have to line up. From the Braille Institute's low-vision research, with a slashed zero |
 
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
@@ -176,9 +222,16 @@ property of the phone rather than of a decision. Recorded here because a design 
 that cannot be observed in the product is not a design language.
 
 Weight is a token (`type.weight`) rather than a per-widget choice, because the elder
-path's boldness is a decision about reading and has to be the same in both surfaces.
-Source Sans 3 is variable, so the app drives the weight axis with `fontVariations` as well
-as setting `fontWeight`; the dashboard declares one `@font-face` with a `200 900` range.
+path's boldness is a decision about reading and has to be the same in both surfaces. On the
+large-type screens the step above body is bold rather than semi-bold, so a button never reads
+lighter than the bold sentence next to it. All three faces are variable, so the app drives
+the weight axis with `fontVariations` as well as setting `fontWeight`, and changes a weight
+only through `weighted()`; the dashboard declares one `@font-face` per face with its range.
+
+None of the faces is on the list of overused interface fonts in the impeccable design
+guidance (Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica, Fraunces,
+Instrument Sans and Serif, Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk, Recoleta),
+and a new face should not be either.
 
 ## Accessibility floors, asserted in tests
 
@@ -193,9 +246,8 @@ as setting `fontWeight`; the dashboard declares one `@font-face` with a `200 900
 
 "Asserted in tests" is true of the app, where `test/accessibility_test.dart` compares
 against the constants in the generated token file rather than against numbers typed into
-the test, and of contrast everywhere, which the token build gates on 26 declared pairs.
-It is not yet true of the dashboard's touch targets, and no continuous integration job
-runs the app's tests, so that assertion currently depends on somebody running them.
+the test, and of contrast everywhere, which the token build gates on every declared pair.
+CI runs both. It is not yet true of the dashboard's touch targets.
 
 One caution learned the hard way: a floor computed in code is not a floor enforced in
 code. The panic control clamped its diameter to the elder minimum and then handed that
@@ -213,12 +265,18 @@ the action and its object; reduced-motion honoured.
   default, not bundled with the terms, separately revocable.
 - Privacy notice and terms of use are first-class screens, reachable from registration
   and settings.
-- No continuous or background location. One capture at trigger, one at acknowledgement.
+- No location is ever read from the elder's phone; an alert is placed at the registered
+  home or a stay the care circle recorded. A responder's phone shares where it is only
+  when they turn it on, after taking an emergency on, until they arrive, and only the
+  time they arrived is kept.
+- The carers' numbers kept on the elder's phone for asking without a connection live in
+  secure storage and are cleared at sign-out.
 - No health fields. Care level is an operational field set by a caregiver, not a diagnosis.
 - Retention windows are configuration, enforced by a scheduled job.
 - No third-party analytics, advertising or social pixels. One strictly necessary session
   cookie in the dashboard, disclosed in the privacy notice.
-- Firebase, Africa's Talking and Google Maps are named as processors in the privacy notice.
+- Firebase, Africa's Talking, LiveKit and the OpenStreetMap services are named as
+  processors in the privacy notice.
 - A named data contact with a real email and postal address appears in the privacy notice
   and the dashboard footer.
 

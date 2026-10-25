@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/widgets/platform_alert.dart';
 import 'call_button.dart' show Open;
 
 /// Opens directions to where the elder is, in whatever maps app the phone has.
@@ -56,29 +57,22 @@ class DirectionsButton extends StatelessWidget {
     }
 
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Get directions'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('No maps app could be opened. Search for this place instead:'),
-            const SizedBox(height: MzaziSpace.s12),
-            SelectableText(
-              addressLabel ?? '$latitude, $longitude',
-              style: Theme.of(dialogContext).textTheme.titleMedium,
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
+    await showPlatformAlert<void>(
+      context,
+      title: 'Get directions',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text('No maps app could be opened. Search for this place instead:'),
+          const SizedBox(height: MzaziSpace.s12),
+          SelectableText(
+            addressLabel ?? '$latitude, $longitude',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ],
       ),
+      actions: const <AlertAction<void>>[AlertAction<void>('Close', null)],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../theme/theme.dart';
 import 'motion.dart';
 
 /// Where an emergency has got to, as a row of steps.
@@ -98,12 +99,17 @@ class ProgressStepper extends StatelessWidget {
                           steps[i],
                           maxLines: 1,
                           softWrap: false,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: i == current ? MzaziWeight.heading : null,
-                            color: i <= current
-                                ? theme.colorScheme.onSurface
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
+                          // weighted rather than copyWith(fontWeight:), which leaves a
+                          // variable font's weight axis where it was.
+                          style:
+                              (i == current
+                                      ? theme.textTheme.bodyMedium?.weighted(MzaziWeight.heading)
+                                      : theme.textTheme.bodyMedium)
+                                  ?.copyWith(
+                                    color: i <= current
+                                        ? theme.colorScheme.onSurface
+                                        : theme.colorScheme.onSurfaceVariant,
+                                  ),
                         ),
                       ),
                     ),

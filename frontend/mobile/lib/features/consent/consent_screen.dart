@@ -6,6 +6,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../legal/legal_screens.dart';
 
@@ -112,22 +113,14 @@ class _ConsentScreenState extends State<ConsentScreen> {
   /// The elder for themselves; a caregiver on their behalf, which the elder is then asked
   /// to confirm and is told about by text.
   Future<void> _give(ConsentItem item) async {
-    final bool? sure = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(_giveTitle(item.kind)),
-        content: Text(_meaning(item.kind)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Not now'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Agree'),
-          ),
-        ],
-      ),
+    final bool? sure = await showPlatformAlert<bool>(
+      context,
+      title: _giveTitle(item.kind),
+      content: Text(_meaning(item.kind)),
+      actions: const <AlertAction<bool>>[
+        AlertAction<bool>('Not now', false),
+        AlertAction<bool>('Agree', true),
+      ],
     );
     if (!mounted || sure != true) return;
 
@@ -143,22 +136,14 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   Future<void> _withdraw(ConsentItem item) async {
     final bool endsService = item.kind == ConsentKind.dataProcessing;
-    final bool? sure = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(_withdrawTitle(item.kind)),
-        content: Text(_withdrawEffect(item.kind)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep it'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(endsService ? 'Stop MzaziCare' : 'Withdraw'),
-          ),
-        ],
-      ),
+    final bool? sure = await showPlatformAlert<bool>(
+      context,
+      title: _withdrawTitle(item.kind),
+      content: Text(_withdrawEffect(item.kind)),
+      actions: <AlertAction<bool>>[
+        const AlertAction<bool>('Keep it', false),
+        AlertAction<bool>(endsService ? 'Stop MzaziCare' : 'Withdraw', true, destructive: true),
+      ],
     );
     if (!mounted) return;
     if (sure != true) return;

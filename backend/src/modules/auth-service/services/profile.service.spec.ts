@@ -1,10 +1,12 @@
+import type { ConfigService } from '@nestjs/config';
 import { Role } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import { ProfileService } from './profile.service';
 
 const at = (iso: string) => new Date(iso);
 
-function build(role: Role) {
+function build(role: Role, env: Record<string, string> = {}) {
+  const config = { get: jest.fn((key: string) => env[key]) };
   const prisma = {
     user: {
       findUnique: jest
@@ -14,7 +16,13 @@ function build(role: Role) {
     careAssignment: { findMany: jest.fn().mockResolvedValue([]) },
     emergencyEvent: { findMany: jest.fn().mockResolvedValue([]) },
   };
-  return { prisma, service: new ProfileService(prisma as unknown as PrismaService) };
+  return {
+    prisma,
+    service: new ProfileService(
+      prisma as unknown as PrismaService,
+      config as unknown as ConfigService,
+    ),
+  };
 }
 
 describe('ProfileService', () => {
@@ -76,6 +84,31 @@ describe('ProfileService', () => {
     ]);
     const query = prisma.careAssignment.findMany.mock.calls[0][0] as { where: unknown };
     expect(query.where).toEqual({ elderlyId: 'u1', responder: { deactivatedAt: null } });
+  });
+
+  it('tells an elder where to text HELP when this server reads texts', async () => {
+    const { service } = build(Role.ELDER, {
+      AT_SHORTCODE: '12345',
+      SMS_INBOUND_TOKEN: 'a-long-enough-secret',
+    });
+
+    const profile = await service.get('u1');
+
+    expect(profile.helpByText).toEqual({ number: '12345', word: 'HELP' });
+  });
+
+  it('offers no number to text when nothing would read it', async () => {
+    // A shortcode alone sends; without the inbound callback nobody reads what comes back.
+    const { service } = build(Role.ELDER, { AT_SHORTCODE: '12345' });
+    expect((await service.get('u1')).helpByText).toBeNull();
+  });
+
+  it('offers texting for help to nobody but an elder', async () => {
+    const { service } = build(Role.CAREGIVER, {
+      AT_SHORTCODE: '12345',
+      SMS_INBOUND_TOKEN: 'a-long-enough-secret',
+    });
+    expect((await service.get('u1')).helpByText).toBeNull();
   });
 
   it('takes the middle of an even list as the mean of the two middle values', () => {

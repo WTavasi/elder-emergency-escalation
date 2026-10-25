@@ -7,6 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
@@ -137,27 +138,19 @@ class _ElderScreenState extends State<ElderScreen> {
   }
 
   Future<void> _remove(ChainPlace place) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(place.isInvited ? 'Withdraw the invitation?' : 'Remove ${place.name}?'),
-        content: Text(
-          place.isInvited
-              ? 'The place held for ${place.phone} is released. Nothing is sent to them.'
-              : '${place.name} will no longer be asked when ${widget.elderName} needs help. '
-                    'They will get an SMS saying so.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep them'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(place.isInvited ? 'Withdraw' : 'Remove'),
-          ),
-        ],
+    final bool? confirmed = await showPlatformAlert<bool>(
+      context,
+      title: place.isInvited ? 'Withdraw the invitation?' : 'Remove ${place.name}?',
+      content: Text(
+        place.isInvited
+            ? 'The place held for ${place.phone} is released. Nothing is sent to them.'
+            : '${place.name} will no longer be asked when ${widget.elderName} needs help. '
+                  'They will get an SMS saying so.',
       ),
+      actions: <AlertAction<bool>>[
+        const AlertAction<bool>('Keep them', false),
+        AlertAction<bool>(place.isInvited ? 'Withdraw' : 'Remove', true, destructive: true),
+      ],
     );
     if (confirmed == true) {
       await _act(() async => widget.api.removeFromChain(widget.elderId, place.id));

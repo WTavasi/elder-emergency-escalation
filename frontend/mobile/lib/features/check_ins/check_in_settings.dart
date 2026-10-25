@@ -275,7 +275,7 @@ class _CheckInSheetState extends State<CheckInSheet> {
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s16),
-            SwitchListTile(
+            SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('Ask every day'),
               value: _enabled,

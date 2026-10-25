@@ -5,8 +5,15 @@ import type { DirectSmsService } from '../../notification-service/services/direc
 import { SMS_LIMIT } from '../../notification-service/services/notification-content';
 import type { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
+import type { AlertsService } from './alerts.service';
 import type { EscalationService } from './escalation.service';
-import { normalisePhone, readReply, REPLY_LIMIT, SmsRepliesService } from './sms-replies.service';
+import {
+  asksForHelp,
+  normalisePhone,
+  readReply,
+  REPLY_LIMIT,
+  SmsRepliesService,
+} from './sms-replies.service';
 
 const FAMILY = { id: 'family-1', deactivatedAt: null };
 
@@ -29,6 +36,7 @@ function build(
     person?: Record<string, unknown> | null;
     asked?: Record<string, unknown> | null;
     taken?: Record<string, unknown> | null;
+    open?: Record<string, unknown> | null;
     count?: number;
   } = {},
 ) {
@@ -45,6 +53,8 @@ function build(
         .mockResolvedValueOnce(options.asked === undefined ? ASKED : options.asked)
         .mockResolvedValueOnce(options.taken === undefined ? null : options.taken),
     },
+    // The elder's emergency still open, if there is one, when they text HELP.
+    emergencyEvent: { findFirst: jest.fn().mockResolvedValue(options.open ?? null) },
   };
   const pipeline = {
     incr: jest.fn().mockReturnThis(),
@@ -63,6 +73,7 @@ function build(
       .fn()
       .mockResolvedValue({ answer: 'accepted', text: 'MzaziCare: thank you.' }),
   };
+  const alerts = { create: jest.fn().mockResolvedValue({ id: 'event-2' }) };
 
   const service = new SmsRepliesService(
     prisma as unknown as PrismaService,
@@ -71,9 +82,10 @@ function build(
     sms as unknown as DirectSmsService,
     checkIns as unknown as CheckInsService,
     volunteers as unknown as VolunteerCallsService,
+    alerts as unknown as AlertsService,
   );
   const sent = (): string[] => sms.send.mock.calls.map((call: unknown[]) => call[1] as string);
-  return { service, prisma, escalation, sms, sent, checkIns, volunteers };
+  return { service, prisma, escalation, sms, sent, checkIns, volunteers, alerts };
 }
 
 describe('readReply', () => {
@@ -94,6 +106,23 @@ describe('readReply', () => {
     expect(readReply('')).toBe('unclear');
     expect(readReply('who is this?')).toBe('unclear');
     expect(readReply('12')).toBe('unclear');
+  });
+});
+
+describe('asksForHelp', () => {
+  it('reads the word the app tells an elder to send, and what people type anyway', () => {
+    expect(asksForHelp('HELP')).toBe(true);
+    expect(asksForHelp('  help me!  ')).toBe(true);
+    expect(asksForHelp('SOS')).toBe(true);
+    expect(asksForHelp('Msaada')).toBe(true);
+    expect(asksForHelp('saidia tafadhali')).toBe(true);
+  });
+
+  it('does not read help into anything else', () => {
+    expect(asksForHelp('')).toBe(false);
+    expect(asksForHelp('1')).toBe(false);
+    expect(asksForHelp('I do not need help')).toBe(false);
+    expect(asksForHelp('helpful')).toBe(false);
   });
 });
 
@@ -248,10 +277,59 @@ describe('SmsRepliesService', () => {
     it('anything else is not taken as a call for help, and says how to ask for it', async () => {
       const t = build({ person: ELDER });
 
-      await expect(t.service.handle('+254700000010', 'help')).resolves.toBe('unclear');
+      await expect(t.service.handle('+254700000010', 'who is this')).resolves.toBe('unclear');
 
       expect(t.checkIns.answer).not.toHaveBeenCalled();
+      expect(t.alerts.create).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('reply HELP');
       expect(t.sent()[0]).toContain('call 999');
+    });
+  });
+
+  describe('from an elder, asking for help', () => {
+    const ELDER = { id: 'elder-1', deactivatedAt: null, role: 'ELDER' };
+
+    it('HELP raises the same alert the button does, marked as texted', async () => {
+      const t = build({ person: ELDER });
+
+      await expect(t.service.handle('+254700000010', 'HELP')).resolves.toBe('raised');
+
+      expect(t.alerts.create).toHaveBeenCalledWith('elder-1', {}, { via: 'sms' });
+      expect(t.checkIns.answer).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('we have told the people who look after you');
+      expect(t.sent()[0].length).toBeLessThanOrEqual(SMS_LIMIT);
+    });
+
+    it('in Swahili too', async () => {
+      const t = build({ person: ELDER });
+      await expect(t.service.handle('+254700000010', 'msaada')).resolves.toBe('raised');
+      expect(t.alerts.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not raise a second while one is open, and says who is coming', async () => {
+      const t = build({ person: ELDER, open: { owner: { name: 'Mary Otieno' } } });
+
+      await expect(t.service.handle('+254700000010', 'help')).resolves.toBe('already-raised');
+
+      expect(t.alerts.create).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('Mary is coming to you');
+    });
+
+    it('says they have been told when nobody has answered yet', async () => {
+      const t = build({ person: ELDER, open: { owner: null } });
+
+      await expect(t.service.handle('+254700000010', 'SOS')).resolves.toBe('already-raised');
+
+      expect(t.alerts.create).not.toHaveBeenCalled();
+      expect(t.sent()[0]).toContain('already been told');
+    });
+
+    it('is only read from an elder: anybody else texting HELP raises nothing', async () => {
+      const t = build();
+
+      await t.service.handle('+254700000030', 'help');
+
+      expect(t.alerts.create).not.toHaveBeenCalled();
     });
   });
 

@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/theme/appearance.dart';
+import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
@@ -15,7 +17,7 @@ import '../responder/widgets/call_button.dart';
 
 /// The elder's own page, laid out like the emergency card a phone keeps: who this phone
 /// belongs to, where home is, who comes and how to ring them, their daily check-in,
-/// their privacy, and signing out.
+/// how the screen looks, their privacy, and signing out.
 ///
 /// Signing out used to sit in the corner of the elder's home screen, next to the panic
 /// control. For an elder it is almost never wanted and it is costly when pressed by
@@ -49,25 +51,17 @@ class ElderMeScreen extends StatelessWidget {
 
   Future<void> _signOut(BuildContext context, AuthController auth) async {
     final NavigatorState navigator = Navigator.of(context);
-    final bool? sure = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Sign out of this phone?'),
-        content: const Text(
-          'While you are signed out, this phone cannot ask for help. To sign back in you '
-          'will need a code sent by text, or one from your caregiver.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Stay signed in'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Sign out'),
-          ),
-        ],
+    final bool? sure = await showPlatformAlert<bool>(
+      context,
+      title: 'Sign out of this phone?',
+      content: const Text(
+        'While you are signed out, this phone cannot ask for help. To sign back in you '
+        'will need a code sent by text, or one from your caregiver.',
       ),
+      actions: const <AlertAction<bool>>[
+        AlertAction<bool>('Stay signed in', false),
+        AlertAction<bool>('Sign out', true, destructive: true),
+      ],
     );
     if (sure != true) return;
 
@@ -80,6 +74,7 @@ class ElderMeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthController auth = context.watch<AuthController>();
     final Account? account = auth.account;
+    final AppearanceController? appearance = AppearanceController.maybeOf(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('You')),
@@ -112,6 +107,11 @@ class ElderMeScreen extends StatelessWidget {
                                 elderName: account.name,
                                 forElder: true,
                               ),
+                              if (appearance != null) ...<Widget>[
+                                const SizedBox(height: MzaziSpace.s32),
+                                const SectionLabel('Screen'),
+                                AppearancePicker(controller: appearance),
+                              ],
                               const SizedBox(height: MzaziSpace.s32),
                               SizedBox(
                                 height: MzaziA11y.elderMinTouchTarget,

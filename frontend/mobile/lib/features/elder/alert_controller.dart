@@ -14,6 +14,10 @@ enum AlertPhase {
   /// The request is in flight. The control is disabled so it cannot be sent twice.
   raising,
 
+  /// The press could not reach MzaziCare. The screen offers other ways to ask, texting
+  /// and calling, while the alert is tried again in the background.
+  unreachable,
+
   /// Raised, and still inside the window in which it can be withdrawn.
   cancellable,
 
@@ -37,6 +41,7 @@ class AlertController extends ChangeNotifier {
     required ApiClient api,
     this.cancelWindow = const Duration(seconds: 10),
     this.pollInterval = const Duration(seconds: 5),
+    this.retryInterval = const Duration(seconds: 15),
     LiveUpdates? live,
   }) : _api = api {
     _live = LiveFollower(
@@ -53,6 +58,9 @@ class AlertController extends ChangeNotifier {
   /// the server decides whether a cancellation is accepted.
   final Duration cancelWindow;
   final Duration pollInterval;
+
+  /// How often an alert that could not be sent is tried again.
+  final Duration retryInterval;
   late final LiveFollower _live;
 
   AlertPhase _phase = AlertPhase.idle;
@@ -61,6 +69,8 @@ class AlertController extends ChangeNotifier {
   int _secondsLeft = 0;
   Timer? _countdown;
   Timer? _poll;
+  Timer? _retry;
+  bool _retrying = false;
   bool _disposed = false;
 
   AlertPhase get phase => _phase;
@@ -81,6 +91,9 @@ class AlertController extends ChangeNotifier {
   /// and back in, the window to withdraw has almost certainly passed, and the server
   /// decides that anyway. Does nothing if a press has already started in the meantime.
   Future<void> resume() async {
+    // Back in front with an alert still waiting to be sent: the connection may be back.
+    if (_phase == AlertPhase.unreachable) return _tryAgain();
+
     try {
       final List<AlertSummary> open = await _api.alerts(open: true, limit: 1);
       if (_disposed || open.isEmpty || _phase != AlertPhase.idle) return;
@@ -124,11 +137,83 @@ class AlertController extends ChangeNotifier {
       _phase = AlertPhase.idle;
       _error = failure.message;
       notifyListeners();
-    } on NetworkException catch (failure) {
+    } on NetworkException {
+      _becomeUnreachable();
+    }
+  }
+
+  /// The press did not reach the server, which on a phone means no data or no signal.
+  ///
+  /// The help button is not offered again, because pressing it again would fail the same
+  /// way and teach the elder that the button does not work. The screen offers texting and
+  /// calling instead, and the alert is tried again in the background, so that the moment
+  /// a connection comes back the chain starts as if the press had just happened.
+  void _becomeUnreachable() {
+    _phase = AlertPhase.unreachable;
+    _error = null;
+    notifyListeners();
+    _retry?.cancel();
+    _retry = Timer.periodic(retryInterval, (Timer _) => unawaited(_tryAgain()));
+  }
+
+  /// One more attempt at an alert that could not be sent.
+  ///
+  /// Looks for an open emergency first. The elder may have texted HELP meanwhile, which
+  /// raises one on the server, and a second from here would ask everybody twice.
+  Future<void> _tryAgain() async {
+    if (_retrying || _phase != AlertPhase.unreachable) return;
+    _retrying = true;
+    try {
+      final List<AlertSummary> open = await _api.alerts(open: true, limit: 1);
+      if (_disposed || _phase != AlertPhase.unreachable) return;
+      if (open.isNotEmpty) {
+        final Emergency latest = await _api.alert(open.first.eventId);
+        if (_disposed || _phase != AlertPhase.unreachable) return;
+        if (latest.state.isOpen) {
+          _stopRetrying();
+          _emergency = latest;
+          _phase = AlertPhase.live;
+          notifyListeners();
+          _startPolling();
+          return;
+        }
+      }
+
+      final Emergency raised = await _api.raiseAlert();
+      if (_disposed) return;
+      // Raised, even if "stop trying" was pressed while the request was travelling: an
+      // emergency now exists, and the elder is shown it with the usual chance to stop it
+      // rather than left not knowing their family has been told.
+      _stopRetrying();
+      _emergency = raised;
+      _startCancelWindow();
+    } on ApiException catch (failure) {
+      // The server was reached and said no, so trying again will not help. Back to the
+      // button, with the reason, which is the same as a refused first press.
+      if (_disposed || _phase != AlertPhase.unreachable) return;
+      _stopRetrying();
       _phase = AlertPhase.idle;
       _error = failure.message;
       notifyListeners();
+    } on NetworkException {
+      // Still no connection. The next tick tries again.
+    } finally {
+      _retrying = false;
     }
+  }
+
+  /// The elder no longer needs the alert sent: they reached somebody another way, or
+  /// pressed by mistake. Back to the help button.
+  void stopTrying() {
+    if (_phase != AlertPhase.unreachable) return;
+    _stopRetrying();
+    _phase = AlertPhase.idle;
+    notifyListeners();
+  }
+
+  void _stopRetrying() {
+    _retry?.cancel();
+    _retry = null;
   }
 
   Future<void> cancel() async {
@@ -224,6 +309,7 @@ class AlertController extends ChangeNotifier {
     _countdown = null;
     _poll?.cancel();
     _poll = null;
+    _stopRetrying();
   }
 
   @override

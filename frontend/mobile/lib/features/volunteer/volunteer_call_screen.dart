@@ -8,6 +8,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../responder/widgets/call_button.dart';
 import '../responder/widgets/directions_button.dart';
@@ -36,24 +37,16 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
   }
 
   Future<void> _withdraw(VolunteerController volunteer) async {
-    final bool? sure = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('You can no longer go?'),
-        content: const Text(
-          'The other volunteers nearby will be asked again. If you can, call to say so.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('I am still going'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('I cannot go'),
-          ),
-        ],
+    final bool? sure = await showPlatformAlert<bool>(
+      context,
+      title: 'You can no longer go?',
+      content: const Text(
+        'The other volunteers nearby will be asked again. If you can, call to say so.',
       ),
+      actions: const <AlertAction<bool>>[
+        AlertAction<bool>('I am still going', false),
+        AlertAction<bool>('I cannot go', true, destructive: true),
+      ],
     );
     if (sure == true && mounted) {
       await volunteer.answer(widget.eventId, VolunteerAnswer.withdraw);

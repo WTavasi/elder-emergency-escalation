@@ -196,7 +196,7 @@ system into an unusable one.
 ## Colour is defined once
 
 `frontend/design-tokens/tokens.json` is the only place a colour exists. Every consumer reads a
-generated file, and the generator recomputes 26 declared WCAG pairs and exits non-zero
+generated file, and the generator recomputes every declared WCAG pair and exits non-zero
 if one regresses, so an inaccessible palette fails CI rather than shipping.
 
 A hard-coded hex anywhere in an app is the one value that gate cannot check, which is
@@ -300,7 +300,7 @@ touches nothing else. Calling the system event-driven is still accurate: nothing
 decide when to escalate, and the sweep is a reconciliation against a recorded deadline
 rather than the mechanism by which escalation happens.
 
-## The fonts are bundled, and one of them was chosen for low vision
+## The fonts are bundled, and the elder's was chosen for legibility first
 
 Before this the token file named IBM Plex Sans and Archivo and no font file existed in the
 repository. Both surfaces asked for faces that were never loaded and fell back to the
@@ -309,19 +309,38 @@ design language described type that the product never showed.
 
 Three faces now ship with the build:
 
-**Atkinson Hyperlegible for the elder path.** Drawn by the Braille Institute specifically
-for low vision, with letterforms deliberately differentiated so that b and d, 1 and l and
-I, and O and 0 cannot be mistaken for one another. For an interface an older person reads
-under stress, that property is worth more than any amount of visual character, and it is a
-choice that can be justified from the literature rather than from taste. Weight 700
-throughout, which is a reading decision and therefore a token rather than a per-widget
-choice.
+**Inclusive Sans for the elder path.** Designed by Olivia King for accessibility and
+readability. A capital I, a lowercase l and a 1 cannot be mistaken for one another, and the
+zero is slashed, so O and 0 differ too. For an interface an older person reads under stress,
+that property is worth more than any amount of visual character. Weight 700 throughout,
+which is a reading decision and therefore a token rather than a per-widget choice.
 
 **Source Sans 3 for everybody else**, as one variable file covering 200 to 900. Smaller
 than three static weights would be, and it means headings are separated from body text by
 weight rather than by a fourth family.
 
-**IBM Plex Mono for figures**, where digits have to line up.
+**Atkinson Hyperlegible Mono for figures**, where digits have to line up: the countdown,
+phone numbers, codes. The Braille Institute's monospace, from the same low-vision research
+as Atkinson Hyperlegible, with a slashed zero.
+
+The elder face was Atkinson Hyperlegible until 25 October 2026, and the figures were IBM
+Plex Mono. Atkinson was the more defensible choice on paper, being drawn for low vision with
+published research behind it, but it read as plain and slightly dated. Five faces were set
+side by side at the elder's real sizes: Atkinson Hyperlegible, its 2025 successor Atkinson
+Hyperlegible Next, Lexend, Inclusive Sans and Andika. The test was the help button, a
+bold 22pt sentence, and the letters most often confused. Every caregiver-side candidate
+tried at the same time (Figtree, Red Hat Text, Public Sans, Onest, Hanken Grotesk) drew
+I and l identically, which ruled them out for the elder. Lexend sets wider, so the
+elder's lines wrap sooner, and Andika's bold is weak. Inclusive Sans kept every distinction
+that mattered and was the most appealing to read, so it replaced Atkinson. The trade is
+stated plainly: it is designed for legibility but has less published research behind it
+than Atkinson. None of the faces is on the list of overused interface fonts that the
+impeccable design guidance asks projects to avoid.
+
+One consequence of the change: the old elder face came in only regular and bold, so the
+theme's semi-bold step rendered bold on its own. Inclusive Sans has a real 600, which put
+buttons and labels lighter than the bold sentence beside them. On the large-type screens
+the step above body is therefore bold, set in the theme rather than per widget.
 
 Bundled and self-hosted rather than fetched. The console displays an elder's name and
 address, so it makes no third-party request at all, and the API's content security policy
@@ -329,9 +348,11 @@ would refuse one. The cost is about a megabyte in the app, which for an emergenc
 application is the right trade: it means the elder screen's legibility is a property of a
 decision rather than of whatever the phone happens to have installed.
 
-Two implementation notes that were not obvious. A variable font carries weight as an axis
-rather than as separate files, so the theme sets `fontVariations` as well as `fontWeight`;
-setting only the latter leaves the axis at its default and every weight renders the same.
+Two implementation notes that were not obvious. All three faces are variable fonts, which
+carry weight as an axis rather than as separate files, so the theme sets `fontVariations`
+as well as `fontWeight`; setting only the latter leaves the axis at its default and every
+weight renders the same. Anywhere else a weight changes, it goes through the theme's
+`weighted()` rather than `copyWith(fontWeight:)`, for the same reason.
 And the licence text is bundled as an asset and registered with Flutter's licence page,
 because bundling a font is distributing it and the Open Font Licence requires the licence
 to travel with it.
@@ -508,6 +529,102 @@ Replying is off unless `SMS_INBOUND_TOKEN` is set, and the alert only offers it 
 is, so nobody is told to reply to a number that ignores them. Two-way SMS needs a
 shortcode. The sandbox gives one free with its simulator, which is what the demonstration
 uses; a live shortcode is rented, which is a deployment cost rather than a design change.
+
+## An elder with no data can text HELP
+
+The help button needs the internet. In Kenya a phone with airtime but no data bundle is
+ordinary, and so is a weak signal that carries a text but not a request. Before this, an
+elder in that position pressed the button, read a socket error, and had nothing else to
+press. A text of "help" was deliberately answered with instructions, so that a mistyped
+reply to a check-in could not become an emergency.
+
+HELP from an elder's number now raises the same alert the button does, through the same
+code. SOS, MSAADA and SAIDIA are read too, because that is what a frightened person types
+in English and Swahili. The risk the old rule guarded against is kept small in two ways.
+Only the first word is read, so a sentence that merely mentions help further in does
+nothing. And only an elder's number can raise one, because a responder replying "help"
+is asking a question, not reporting an emergency.
+
+Three details were decided rather than inherited:
+
+- **No cancel window.** A text cannot be withdrawn, so the severity is scored once and
+  never reviewed. Reviewing it would count "did not cancel" in full, the factor that
+  reads as "may not be able to reach the phone", for somebody who has just used it.
+- **One emergency at a time.** A second HELP, or the gateway retrying the first, while one
+  is open is answered with who is coming rather than raising another.
+- **The app only offers it when it will be read.** The shortcode reaches the app through
+  the elder's profile only when both `AT_SHORTCODE` and `SMS_INBOUND_TOKEN` are set.
+  Telling somebody to text a number nothing listens on is worse than not offering it,
+  because they would wait for an answer that never comes.
+
+## No connection is a state of the elder's screen, not an error on it
+
+When the press cannot reach the server, the screen says so in plain words ("Not sent
+yet"), shows the elder's address, and offers the other ways to ask:
+
+1. text HELP to MzaziCare, which escalates through the whole chain;
+2. text the family directly, which reaches them even when MzaziCare cannot;
+3. call the first carer or 999.
+
+The help button is not offered again, because pressing it again would fail the same way
+and teach the elder that it does not work. Each way opens the phone's own messages app
+or dialler with everything filled in, so it is two presses, this one and send. The app
+never sends a text itself: that would need the SMS permission, which Google Play allows
+only for default messaging apps, and it would take the last word away from the person
+holding the phone.
+
+The alert is tried again every 15 seconds in the background. Before each try the app
+asks for an open emergency first, so an alert that a HELP text already raised is picked
+up rather than raised twice. When one goes through, the elder gets the usual ten
+seconds to stop it, since they may have reached somebody another way meanwhile.
+
+The carers' numbers and the shortcode are fetched whenever the app opens with a
+connection and kept on the phone, in the Keychain or Keystore like the session, because
+they are other people's numbers. They are cleared at sign-out. The address on this
+screen is the registered home from the session; the phone is still never asked where it
+is.
+
+The direct text to the family bypasses the escalation and the audit log. That is the
+cost of a route that works when MzaziCare cannot be reached, and it is why texting
+MzaziCare comes first whenever it is available.
+
+## The ten seconds are felt and seen, and the alert still goes at the press
+
+Apple's and Android's emergency SOS count down before they call, and nothing leaves the
+phone until the count ends. That pattern was considered and not followed: the alert
+goes to the first tier at the press, for the reason in "An escalated alert can still be
+cancelled inside the window" and in `AlertsService.create`. Ten seconds on every real
+emergency is a worse trade than an occasional withdrawn one.
+
+What was taken from them is how the countdown is told. The screen turns caution yellow,
+the seconds left sit inside a ring that empties, and the phone taps lightly once a
+second. That is three channels for whoever is holding the phone, so it can be followed
+without reading and felt with the phone face down. The way out, **I am all right, stop
+this**, sits at the bottom in the darkest ink on the screen. It is not red, because
+stopping an alert is not an emergency.
+
+## The elder's screen is laid out for one hand
+
+The help button sat in the middle of the screen with its explanation underneath, which
+put its centre near the top third on a tall phone, out of comfortable reach of a thumb.
+Now the words are above and the button is at the bottom. Every other thing an elder
+presses on that screen is at the bottom too: stopping an alert, the ways to ask without a
+connection, going back to the button. This follows how the SOS controls in phones and
+personal-safety apps are placed. The one exception is **stop trying**, which undoes
+something and so is kept away from the thumb.
+
+## Light or dark is the person's choice, and the emergency colours are not
+
+The app followed the phone's setting and nothing else. That stays the default, but it
+is one setting for every app, and an older person may read one mode more easily in this
+app alone, or have the phone set up by somebody who prefers the other. So every account
+page has **Screen**: Same as this phone, Light or Dark. It is kept on the phone rather
+than the account, because it is about the screen in front of them.
+
+What does not change with the mode is what an emergency looks like. The brand red is
+about 2:1 against the dark page, under the 3:1 a control's outline needs, so in dark
+mode the help button carries a brighter red edge, gated against the page. The countdown
+is the same yellow in both modes, with the same dark ink.
 
 ## Talking to the elder goes through the app, and the elder's phone joins by itself
 

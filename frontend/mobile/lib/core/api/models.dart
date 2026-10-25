@@ -1473,6 +1473,45 @@ class Carer {
   final Role role;
   final int place;
   final String phone;
+
+  /// First name only, as a person would say it: "Call Mary".
+  String get firstName {
+    final String trimmed = name.trim();
+    return trimmed.isEmpty ? name : trimmed.split(RegExp(r'\s+')).first;
+  }
+
+  factory Carer.fromJson(Map<String, dynamic> json) => Carer(
+    name: json['name'] as String? ?? '',
+    role: Role.parse(json['role'] as String? ?? 'CAREGIVER'),
+    place: (json['place'] as num?)?.toInt() ?? 1,
+    phone: json['phone'] as String? ?? '',
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'name': name,
+    'role': role.wire,
+    'place': place,
+    'phone': phone,
+  };
+}
+
+/// Where an elder texts to ask for help when the app cannot reach the server: a
+/// shortcode, and the word to send. The server offers it only when it reads texts.
+class HelpByText {
+  const HelpByText({required this.number, required this.word});
+
+  final String number;
+  final String word;
+
+  static HelpByText? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final String? number = json['number'] as String?;
+    final String? word = json['word'] as String?;
+    if (number == null || number.isEmpty || word == null || word.isEmpty) return null;
+    return HelpByText(number: number, word: word);
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'number': number, 'word': word};
 }
 
 /// The account page's view: where a person stands, what they have done, and for an
@@ -1483,12 +1522,17 @@ class Profile {
     this.circles = const <CirclePlace>[],
     this.record,
     this.carers = const <Carer>[],
+    this.helpByText,
   });
 
   final DateTime? memberSince;
   final List<CirclePlace> circles;
   final ResponseRecord? record;
   final List<Carer> carers;
+
+  /// For an elder, where to text for help without data. Null for everybody else, and
+  /// when the server cannot read texts.
+  final HelpByText? helpByText;
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     final Object? record = json['record'];
@@ -1512,14 +1556,9 @@ class Profile {
           : null,
       carers: <Carer>[
         for (final Object? row in _list(json['carers']))
-          if (row is Map<String, dynamic>)
-            Carer(
-              name: row['name'] as String? ?? '',
-              role: Role.parse(row['role'] as String? ?? 'CAREGIVER'),
-              place: (row['place'] as num?)?.toInt() ?? 1,
-              phone: row['phone'] as String? ?? '',
-            ),
+          if (row is Map<String, dynamic>) Carer.fromJson(row),
       ],
+      helpByText: HelpByText.fromJson(json['helpByText']),
     );
   }
 }

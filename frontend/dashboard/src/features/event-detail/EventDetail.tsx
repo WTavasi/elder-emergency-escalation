@@ -201,7 +201,11 @@ export function EventDetail() {
                   ) : null}
                   <div className="timeline__actor">
                     {entry.actor ? `${entry.actor.name}, ${humanise(entry.actor.role)}` : 'system'}
-                    {byText(entry.detail) ? ', by text reply' : null}
+                    {byText(entry.detail)
+                      ? entry.action === 'EVENT_CREATED'
+                        ? ', by texting HELP'
+                        : ', by text reply'
+                      : null}
                     {' at '}
                     {formatClock(entry.occurredAt)}
                   </div>
@@ -447,7 +451,10 @@ function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
   );
 }
 
-/** Whether this step was taken by replying to the alert SMS rather than in the app. */
+/**
+ * Whether this step was taken by text rather than in the app: replying to an alert SMS,
+ * or, for the alert itself, the elder texting HELP from a phone with no data.
+ */
 function byText(detail: unknown): boolean {
   return (
     typeof detail === 'object' && detail !== null && (detail as { via?: unknown }).via === 'sms'

@@ -93,8 +93,9 @@ Tests sit beside the file they test as `<name>.spec.ts`. The end-to-end suite is
 - `check-in-service` raises missed check-ins through `emergency-service`
   (`AlertsService`) and asks through `notification-service` (push and SMS).
 - The text replies (`SmsRepliesModule`, inside `emergency-service`'s folder) use the
-  escalation service and `check-in-service`. They are a module of their own so that
-  `check-in-service` can depend on the alerts without the alerts depending back on it.
+  escalation service, the alerts service (an elder texting HELP) and `check-in-service`.
+  They are a module of their own so that `check-in-service` can depend on the alerts
+  without the alerts depending back on it.
 
 Every other module stands alone. There are no cycles: `auth-service` writes the care
 assignments for invitations claimed at sign-up through `shared/utils/chain.ts` rather

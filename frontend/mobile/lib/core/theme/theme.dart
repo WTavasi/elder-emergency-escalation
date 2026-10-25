@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
@@ -44,6 +45,7 @@ abstract final class MzaziTheme {
     emergency: MzaziColorsLight.emergency,
     onEmergency: MzaziColorsLight.onEmergency,
     focus: MzaziColorsLight.focus,
+    selection: MzaziColorsLight.selection,
   );
 
   static ThemeData dark(AppAudience audience) => _build(
@@ -61,19 +63,56 @@ abstract final class MzaziTheme {
     emergency: MzaziColorsDark.emergency,
     onEmergency: MzaziColorsDark.onEmergency,
     focus: MzaziColorsDark.focus,
+    selection: MzaziColorsDark.selection,
   );
+
+  /// The same theme laid on the caution yellow, for the screen that says "you can still
+  /// stop this": the elder's ten seconds to withdraw an alert.
+  ///
+  /// The yellow is the same in light and dark mode, because its job is to be seen, so the
+  /// one ink that reads on it is the same in both too. Every text style, icon and control
+  /// takes that ink.
+  static ThemeData caution(ThemeData base) {
+    const Color ink = MzaziColorsLight.onCaution;
+    const Color paper = MzaziColorsLight.caution;
+    return base.copyWith(
+      scaffoldBackgroundColor: paper,
+      canvasColor: paper,
+      textTheme: base.textTheme.apply(bodyColor: ink, displayColor: ink),
+      iconTheme: base.iconTheme.copyWith(color: ink),
+      colorScheme: base.colorScheme.copyWith(
+        surface: paper,
+        onSurface: ink,
+        onSurfaceVariant: ink,
+        outline: ink,
+      ),
+      // The ink first, then the rest of the base style: merge keeps the receiver's values
+      // and only fills what it leaves unset, so the other way round the base colour wins.
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: ink).merge(base.iconButtonTheme.style),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: ink).merge(base.textButtonTheme.style),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: ink,
+          side: const BorderSide(color: ink, width: MzaziStroke.focus),
+        ).merge(base.outlinedButtonTheme.style),
+      ),
+    );
+  }
 
   /// One text style, with the weight declared twice on purpose.
   ///
-  /// Source Sans 3 is a variable font: weight is an axis inside one file rather than a
+  /// All three faces are variable fonts: weight is an axis inside one file rather than a
   /// separate file per weight. `fontVariations` is what moves that axis, and
   /// `fontWeight` is what every other part of the framework reads, including the
   /// fallback face when a glyph is missing. Setting only the first would leave the rest
   /// of the framework thinking the text is regular; setting only the second would leave
   /// the axis at its default and the text would come out the same weight everywhere.
-  ///
-  /// Harmless for the static faces. Atkinson Hyperlegible and IBM Plex Mono have no
-  /// `wght` axis, so the variation is ignored and the real weights are used.
+  /// For the same reason a change of weight anywhere else goes through [weighted], never
+  /// `copyWith(fontWeight:)`.
   static TextStyle _text({
     required String family,
     required double size,
@@ -115,15 +154,16 @@ abstract final class MzaziTheme {
     required Color emergency,
     required Color onEmergency,
     required Color focus,
+    required Color selection,
   }) {
     final bool elder = audience.isLarge;
     final double body = bodySize(audience);
     final double target = touchTarget(audience);
 
-    // One family per audience. The elder face is Atkinson Hyperlegible, drawn for low
-    // vision; everybody else gets Source Sans 3. Headings are separated from body text by
-    // weight rather than by a third family, which is one fewer file to bundle and one
-    // fewer way for two faces to disagree.
+    // One family per audience. The elder face is Inclusive Sans, designed for
+    // accessibility and readability; everybody else gets Source Sans 3. Headings are
+    // separated from body text by weight rather than by a third family, which is one fewer
+    // file to bundle and one fewer way for two faces to disagree.
     final String family = elder ? MzaziFont.elder : MzaziFont.sans;
 
     // The elder path is bold throughout, which is a legibility decision rather than a
@@ -132,6 +172,11 @@ abstract final class MzaziTheme {
     final FontWeight bodyWeight = audience == AppAudience.elder
         ? MzaziWeight.elderBody
         : MzaziWeight.body;
+
+    // The step above body. On the large-type screens it is bold rather than semi-bold:
+    // the elder face has a real 600, and next to bold body text a 600 label or button
+    // reads lighter than the sentence beside it, which is the wrong way round.
+    final FontWeight strong = elder ? MzaziWeight.heading : MzaziWeight.strong;
 
     final TextTheme textTheme = TextTheme(
       displayLarge: _text(
@@ -153,7 +198,7 @@ abstract final class MzaziTheme {
       titleLarge: _text(
         family: family,
         size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.2,
         tracking: MzaziTracking.title,
         color: text,
@@ -170,24 +215,18 @@ abstract final class MzaziTheme {
         tracking: MzaziTracking.title,
         color: text,
       ),
-      titleMedium: _text(
-        family: family,
-        size: body,
-        weight: MzaziWeight.strong,
-        height: 1.4,
-        color: text,
-      ),
+      titleMedium: _text(family: family, size: body, weight: strong, height: 1.4, color: text),
       titleSmall: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.4,
         color: text,
       ),
       labelMedium: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         color: text,
       ),
       bodyLarge: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
@@ -197,7 +236,7 @@ abstract final class MzaziTheme {
       labelSmall: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.3,
         tracking: MzaziTracking.eyebrow,
         color: textSoft,
@@ -205,7 +244,7 @@ abstract final class MzaziTheme {
       labelLarge: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.body,
-        weight: MzaziWeight.strong,
+        weight: strong,
         color: text,
       ),
       bodySmall: _text(
@@ -393,6 +432,54 @@ abstract final class MzaziTheme {
         errorBorder: outline(danger),
         focusedErrorBorder: outline(danger, MzaziStroke.focus),
         errorStyle: textTheme.bodySmall?.copyWith(color: danger),
+      ),
+      // Material colours every selected control from the primary colour, which here is the
+      // emergency red: an "on" switch, a ticked box, a chosen radio, a slider, a spinner.
+      // None of those is an emergency. They take the ink, as primary actions do, so red
+      // keeps its one meaning. On iPhone an adaptive switch stays the platform's own green,
+      // because the Material switch theme is not applied to it.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? surface : control,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : surfaceSunk,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : control,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.selected) ? text : Colors.transparent,
+        ),
+        checkColor: WidgetStatePropertyAll<Color>(surface),
+        side: BorderSide(color: control, width: MzaziStroke.hairline * 2),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : control,
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: text,
+        thumbColor: text,
+        inactiveTrackColor: line,
+        activeTickMarkColor: surface,
+        inactiveTickMarkColor: control,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: text, linearTrackColor: line),
+      // iOS-style controls (dialog actions, the adaptive switch's focus) take their tint from
+      // here rather than from the primary colour, for the same reason.
+      cupertinoOverrideTheme: CupertinoThemeData(primaryColor: focus),
+      // Material takes the cursor and the selection from the primary colour, which here is
+      // the emergency red, so every field had a red caret. The focus blue and the gated
+      // selection colour instead.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: focus,
+        selectionColor: selection,
+        selectionHandleColor: focus,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: text,

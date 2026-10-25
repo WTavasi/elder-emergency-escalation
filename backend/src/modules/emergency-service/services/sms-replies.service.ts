@@ -7,7 +7,12 @@ import { redactPhone } from '../../../shared/utils/redaction';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
-import { capSms, REPLY_ASK } from '../../notification-service/services/notification-content';
+import {
+  capSms,
+  HELP_WORD,
+  REPLY_ASK,
+} from '../../notification-service/services/notification-content';
+import { AlertsService } from './alerts.service';
 import { EscalationService } from './escalation.service';
 
 /** What a reply asks for. */
@@ -23,7 +28,9 @@ export type ReplyOutcome =
   | 'taken'
   | 'moved-on'
   | 'nothing-waiting'
-  | 'checked-in';
+  | 'checked-in'
+  | 'raised'
+  | 'already-raised';
 
 /**
  * The words a reply is read as. The digits are what the alert asks for and are enough on
@@ -49,6 +56,26 @@ export function readReply(text: string): ReplyIntent {
   return 'unclear';
 }
 
+/**
+ * The words an elder texts to ask for help. [HELP_WORD] is the one the app tells them to
+ * send; the rest are what a frightened person types anyway, in English and Swahili.
+ */
+const HELP = new Set([HELP_WORD.toLowerCase(), 'sos', 'msaada', 'saidia']);
+
+/**
+ * Whether a text from an elder asks for help. Read by the first word alone, like a
+ * reply, so "Help me" counts and a sentence that merely mentions help further in does
+ * not.
+ */
+export function asksForHelp(text: string): boolean {
+  const first = text
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)[0]
+    ?.replace(/[.!,?]+$/, '');
+  return !!first && HELP.has(first);
+}
+
 /** An international number from whatever the gateway sent: spaces gone, a + in front. */
 export function normalisePhone(raw: string): string | null {
   const digits = raw.replace(/[\s()-]/g, '');
@@ -69,6 +96,9 @@ const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
  * The sender is known only by their number, which the gateway reports and the callback
  * secret vouches for. A number that belongs to nobody gets no answer at all, so the
  * service cannot be used to learn who is registered or run up a bill.
+ *
+ * It is also how an elder whose phone has no data asks for help: HELP texted to the same
+ * number raises the same alert the button does.
  */
 @Injectable()
 export class SmsRepliesService {
@@ -81,6 +111,7 @@ export class SmsRepliesService {
     private readonly sms: DirectSmsService,
     private readonly checkIns: CheckInsService,
     private readonly volunteers: VolunteerCallsService,
+    private readonly alerts: AlertsService,
   ) {}
 
   async handle(from: string, text: string): Promise<ReplyOutcome> {
@@ -98,12 +129,14 @@ export class SmsRepliesService {
       return 'limited';
     }
 
-    // An elder's reply is to their check-in, "are you all right?"; anybody else's is to an
-    // alert they were asked to answer.
+    // An elder's text asks for help or answers their check-in, "are you all right?";
+    // anybody else's is a reply to an alert they were asked to answer.
     const intent = readReply(text);
     const outcome =
       person.role === Role.ELDER
-        ? await this.answerCheckIn(person.id, phone, intent)
+        ? asksForHelp(text)
+          ? await this.raiseByText(person.id, phone)
+          : await this.answerCheckIn(person.id, phone, intent)
         : person.role === Role.COMMUNITY_RESPONDER
           ? await this.answerAsVolunteer(person.id, phone, intent)
           : await this.answer(person.id, phone, intent);
@@ -185,10 +218,43 @@ export class SmsRepliesService {
   }
 
   /**
+   * HELP from an elder: the panic button for a phone with no data. The app offers it
+   * when it cannot reach the server, ready written, so the elder only presses send.
+   *
+   * One emergency at a time. A second HELP, or the gateway retrying the first, while one
+   * is still open is answered with where that one has got to rather than raising another
+   * and asking everybody twice.
+   */
+  private async raiseByText(elderId: string, phone: string): Promise<ReplyOutcome> {
+    const open = await this.prisma.emergencyEvent.findFirst({
+      where: { elderlyId: elderId, state: { in: OPEN_STATES } },
+      orderBy: { triggeredAt: 'desc' },
+      select: { owner: { select: { name: true } } },
+    });
+    if (open) {
+      await this.sms.send(
+        phone,
+        open.owner
+          ? `MzaziCare: ${firstName(open.owner.name)} is coming to you. Stay where you are if you can.`
+          : 'MzaziCare: the people who look after you have already been told. Someone will call you.',
+      );
+      return 'already-raised';
+    }
+
+    await this.alerts.create(elderId, {}, { via: 'sms' });
+    await this.sms.send(
+      phone,
+      'MzaziCare: we have told the people who look after you. Someone will call you. If you can, call 999 too.',
+    );
+    return 'raised';
+  }
+
+  /**
    * An elder's reply to "are you all right? Reply 1 if you are". A 1 answers it, exactly
    * as the button in the app does, including withdrawing an alert raised because it was
-   * missed. Anything else is not taken as a call for help, which would turn a mistyped
-   * reply into an emergency; the elder is told how to ask for help instead.
+   * missed. HELP is read before this, by [raiseByText]. Anything else is not taken as a
+   * call for help, which would turn a mistyped reply into an emergency; the elder is told
+   * how to ask for help instead.
    */
   private async answerCheckIn(
     elderId: string,
@@ -198,7 +264,7 @@ export class SmsRepliesService {
     if (intent !== 'accept') {
       await this.sms.send(
         phone,
-        'MzaziCare: if you need help, press the help button in MzaziCare or call 999. Reply 1 if you are all right.',
+        `MzaziCare: if you need help, reply ${HELP_WORD}, press the help button in MzaziCare or call 999. Reply 1 if you are all right.`,
       );
       return 'unclear';
     }

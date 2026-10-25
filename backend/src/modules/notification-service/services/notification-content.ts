@@ -30,6 +30,13 @@ export const SMS_LIMIT = 160;
 /** The two answers an alert SMS offers when replies are on. Digits, so any phone can send them. */
 export const REPLY_ASK = 'Reply 1 if you can go, 2 if you cannot.';
 
+/**
+ * The word an elder texts to ask for help when the app has no data. Here, beside the
+ * other words texts are built from, because the elder's app is told it (through their
+ * profile) and the text replies read it.
+ */
+export const HELP_WORD = 'HELP';
+
 const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
 
 /**

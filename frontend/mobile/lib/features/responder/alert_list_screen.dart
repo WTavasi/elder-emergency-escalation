@@ -410,7 +410,7 @@ class _Tab extends StatelessWidget {
 }
 
 /// One alert: who and how long ago on the first line, its state and band on the second,
-/// where on the third. A red rule on the left edge while nobody has answered.
+/// where on the third. A red dot leads the row while nobody has answered.
 class _AlertRow extends StatelessWidget {
   const _AlertRow({required this.alert, required this.onOpen});
 
@@ -429,16 +429,33 @@ class _AlertRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            // The rule is backed by the word "Waiting" beside the glyph, so colour is
-            // never the only thing saying it.
-            Container(
-              width: MzaziStroke.rule,
-              color: needsSomebody ? theme.colorScheme.error : Colors.transparent,
+            // The mark that catches the eye down a list, as an unread dot does in mail.
+            // It used to be a red rule down the left edge, which the design guidance this
+            // app follows rules out as decoration. The column is kept on every row, so
+            // names line up whether or not the dot is there, and the word "Waiting" beside
+            // the glyph below says the same thing, so colour is never the only signal.
+            SizedBox(
+              width: MzaziSpace.s32,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: MzaziSpace.s16 + MzaziSpace.s4),
+                  child: needsSomebody
+                      ? ExcludeSemantics(
+                          child: Icon(
+                            Icons.circle,
+                            size: MzaziSpace.s12,
+                            color: theme.colorScheme.error,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
             ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  MzaziSpace.s12,
+                  0,
                   MzaziSpace.s16,
                   MzaziSpace.s16,
                   MzaziSpace.s16,

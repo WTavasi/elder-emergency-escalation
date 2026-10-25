@@ -158,11 +158,16 @@ export class AlertsService {
   async create(
     elderId: string,
     dto: CreateAlertDto,
-    options: { trigger?: AlertTrigger } = {},
+    options: { trigger?: AlertTrigger; via?: 'app' | 'sms' } = {},
   ): Promise<EmergencyEvent> {
     const at = new Date();
     // A missed daily check-in, raised by the system rather than pressed by the elder.
     const missed = options.trigger === AlertTrigger.MISSED_CHECK_IN;
+    // Texted HELP from a phone with no data. A text cannot be withdrawn, so there is no
+    // cancel window, and not cancelling says nothing about whether they can reach the
+    // phone: they just used it.
+    const texted = options.via === 'sms';
+    const windowless = missed || texted;
 
     const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
@@ -196,9 +201,9 @@ export class AlertsService {
       const created = await tx.emergencyEvent.create({
         data: {
           trigger: options.trigger ?? AlertTrigger.PANIC,
-          // Nobody pressed anything, so there is no cancel window to close and no second
-          // look at severity to wait for.
-          severityReviewedAt: missed ? at : null,
+          // Nothing was pressed in the app, so there is no cancel window to close and no
+          // second look at severity to wait for.
+          severityReviewedAt: windowless ? at : null,
           elderlyId: elderId,
           alertLatitude: new Prisma.Decimal(where.latitude),
           alertLongitude: new Prisma.Decimal(where.longitude),
@@ -220,7 +225,10 @@ export class AlertsService {
             actorId: missed ? null : elderId,
             action: AuditAction.EVENT_CREATED,
             newState: INITIAL_STATE,
-            detail: { trigger: options.trigger ?? AlertTrigger.PANIC },
+            detail: {
+              trigger: options.trigger ?? AlertTrigger.PANIC,
+              ...(texted ? { via: 'sms' } : {}),
+            },
             occurredAt: at,
           },
           {
@@ -238,7 +246,7 @@ export class AlertsService {
     });
 
     this.logger.log(
-      `Emergency ${event.id} raised${missed ? ' for a missed check-in' : ''}, ` +
+      `Emergency ${event.id} raised${missed ? ' for a missed check-in' : texted ? ' by text' : ''}, ` +
         `severity ${band} at score ${assessment.score}`,
     );
 
@@ -252,7 +260,7 @@ export class AlertsService {
     // so a dispatch failure cannot skip it, and never allowed to fail the alert itself:
     // the escalation sweep reviews any emergency whose window closed unreviewed.
     try {
-      if (!missed) {
+      if (!windowless) {
         await this.timers.armSeverityReview(
           event.id,
           this.config.get<number>('CANCEL_GRACE_WINDOW', 10),

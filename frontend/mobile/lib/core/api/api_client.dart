@@ -694,10 +694,12 @@ class ApiClient {
   /// In a debug build the message names the address that was tried. Nearly every
   /// "could not reach" during development is the app pointed at the wrong address for
   /// the device it is on, and naming it turns a twelve second mystery into a one line
-  /// fix. A release build keeps to the plain sentence.
+  /// fix. A release build keeps to the plain sentence: the exception's own text, a
+  /// SocketException and an errno, means nothing to the person holding the phone.
   String _unreachable(Object error) {
-    final String where = kDebugMode ? ' at ${Uri.parse(baseUrl).origin}' : '';
-    return 'Could not reach MzaziCare$where. Check the connection. ($error)';
+    if (!kDebugMode) return 'Could not reach MzaziCare. Check the connection.';
+    return 'Could not reach MzaziCare at ${Uri.parse(baseUrl).origin}. '
+        'Check the connection. ($error)';
   }
 
   /// The decoded body, whatever JSON shape it is.
