@@ -17,7 +17,8 @@ nothing on its own and does not replace emergency services.
 
 **For the elder** (the Flutter app, at large type sizes):
 
-- One large help button at the bottom of the screen, within reach of a thumb.
+- One large help button that turns into the countdown in the same place when pressed.
+  What the elder can do next sits at the bottom, within reach of a thumb.
 - Ten seconds to stop an alert pressed by mistake: the screen turns yellow, a ring
   empties around the seconds left, and the phone taps once a second.
 - When the phone has no data, the app offers other ways to ask: texting HELP to

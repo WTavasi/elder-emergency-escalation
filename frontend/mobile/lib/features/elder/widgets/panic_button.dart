@@ -19,26 +19,27 @@ import '../../../core/widgets/motion.dart';
 /// Overflowing its parent is the lesser fault. A panic button painting a few points
 /// outside its box is untidy; a panic button rendered as a dot is the feature failing.
 ///
-/// It sits where [alignment] puts it in the space it is given. The elder's screen puts
-/// it at the bottom, in the reach of a thumb holding the phone in one hand, the way the
-/// SOS controls on phones and in safety apps are placed.
-///
 /// A press is felt as well as seen: one firm vibration the moment it registers, before
 /// the screen changes to the countdown, so somebody who cannot read the screen still
 /// knows it took.
 class PanicButton extends StatelessWidget {
-  const PanicButton({
-    required this.onPressed,
-    required this.label,
-    this.enabled = true,
-    this.alignment = Alignment.center,
-    super.key,
-  });
+  const PanicButton({required this.onPressed, required this.label, this.enabled = true, super.key});
 
   final VoidCallback onPressed;
   final String label;
   final bool enabled;
-  final AlignmentGeometry alignment;
+
+  /// How big the circle is in the space it is given: as large as fits, up to 420
+  /// points, and never below the elder touch target.
+  ///
+  /// The countdown's ring takes its size from here too, so pressing the button turns the
+  /// red disc into a ring of exactly the same size in exactly the same place.
+  static double diameterFor(Size available) {
+    final double side = available.shortestSide;
+    return side.isFinite
+        ? side.clamp(MzaziA11y.elderMinTouchTarget, 420.0)
+        : MzaziA11y.elderMinTouchTarget;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +47,9 @@ class PanicButton extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final double available = constraints.biggest.shortestSide;
-        final double diameter = available.isFinite
-            ? available.clamp(MzaziA11y.elderMinTouchTarget, 420.0)
-            : MzaziA11y.elderMinTouchTarget;
+        final double diameter = diameterFor(constraints.biggest);
 
-        return Align(
-          alignment: alignment,
+        return Center(
           child: Semantics(
             button: true,
             enabled: enabled,
@@ -60,8 +57,6 @@ class PanicButton extends StatelessWidget {
             // reads very differently from "Get help" alone.
             label: 'Get help now. Alerts the people who look after you.',
             child: OverflowBox(
-              // The box fills the space it is given, so the circle is placed inside it.
-              alignment: alignment,
               minWidth: diameter,
               maxWidth: diameter,
               minHeight: diameter,

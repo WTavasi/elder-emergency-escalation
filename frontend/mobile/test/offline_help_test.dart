@@ -362,21 +362,73 @@ void main() {
       matching: find.byWidgetPredicate((Widget w) => w is FilledButton),
     );
 
-    testWidgets('puts the help button in the lower half, under the words that explain it', (
+    // A small phone, a 6.1 inch one, a large one, and the 6.1 inch one with large text.
+    for (final (Size size, double textScale) in <(Size, double)>[
+      (const Size(360, 640), 1.0),
+      (const Size(393, 760), 1.0),
+      (const Size(430, 860), 1.0),
+      (const Size(393, 760), 1.3),
+    ]) {
+      testWidgets(
+        'turns the help button into the countdown ring in the same place, at the same size '
+        '(${size.width.toInt()}x${size.height.toInt()}, text x$textScale)',
+        (WidgetTester tester) async {
+          tester.platformDispatcher.textScaleFactorTestValue = textScale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+            (http.Request request, int i) => <http.Response>[json(emergencyBody())],
+          );
+          final AlertController alerts = await show(tester, api: t.api, withApi: false, size: size);
+
+          final Rect button = tester.getRect(
+            find.descendant(of: find.byType(PanicButton), matching: find.byType(InkWell)),
+          );
+          final Rect words = tester.getRect(find.textContaining('Press the red circle'));
+          // In the middle of the screen, with its explanation underneath.
+          expect(button.center.dy, inInclusiveRange(size.height / 3, size.height * 2 / 3));
+          expect(words.top, greaterThanOrEqualTo(button.bottom));
+
+          await tester.tap(find.text('Get\nhelp'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+
+          final Rect ring = tester.getRect(
+            find
+                .descendant(of: find.byType(CountdownRing), matching: find.byType(CustomPaint))
+                .first,
+          );
+          expect(ring.left, closeTo(button.left, 0.5));
+          expect(ring.top, closeTo(button.top, 0.5));
+          expect(ring.width, closeTo(button.width, 0.5));
+          expect(ring.height, closeTo(button.height, 0.5));
+          // And the way out below it, on screen.
+          expect(
+            tester.getRect(find.text('I am all right, stop this')).bottom,
+            lessThanOrEqualTo(size.height),
+          );
+          await done(tester, alerts);
+        },
+      );
+    }
+
+    testWidgets('on the smallest phones, scrolls rather than shrink the button to a dot', (
       WidgetTester tester,
     ) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int i) => <http.Response>[json(<String, dynamic>{})],
+        (http.Request request, int i) => <http.Response>[json(emergencyBody())],
       );
-      final AlertController alerts = await show(tester, api: t.api, withApi: false);
+      final AlertController alerts = await show(
+        tester,
+        api: t.api,
+        withApi: false,
+        size: const Size(320, 568),
+      );
 
+      expect(tester.takeException(), isNull);
       final Rect button = tester.getRect(
         find.descendant(of: find.byType(PanicButton), matching: find.byType(InkWell)),
       );
-      final Rect words = tester.getRect(find.textContaining('Press the red circle'));
-
-      expect(button.center.dy, greaterThan(860 / 2));
-      expect(words.bottom, lessThanOrEqualTo(button.top));
+      expect(button.width, greaterThanOrEqualTo(MzaziA11y.elderMinTouchTarget * 2));
       await done(tester, alerts);
     });
 

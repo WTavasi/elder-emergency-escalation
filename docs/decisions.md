@@ -603,15 +603,31 @@ without reading and felt with the phone face down. The way out, **I am all right
 this**, sits at the bottom in the darkest ink on the screen. It is not red, because
 stopping an alert is not an emergency.
 
-## The elder's screen is laid out for one hand
+## The help button becomes the countdown in the same place
 
-The help button sat in the middle of the screen with its explanation underneath, which
-put its centre near the top third on a tall phone, out of comfortable reach of a thumb.
-Now the words are above and the button is at the bottom. Every other thing an elder
-presses on that screen is at the bottom too: stopping an alert, the ways to ask without a
-connection, going back to the button. This follows how the SOS controls in phones and
-personal-safety apps are placed. The one exception is **stop trying**, which undoes
-something and so is kept away from the thumb.
+Personal-safety apps tend to put their SOS control low on the screen, in easy reach of a
+thumb, and for a while the help button moved to the bottom for that reason. It went back
+to the middle, with its explanation underneath, for continuity: the elder's screen
+replaces what was pressed with what happened next, in place. A button at the bottom broke
+that, because the eye had to jump from the bottom of the screen to its centre at the
+moment of pressing.
+
+It then went one step further: the help button and the countdown's ring are now the same
+size in exactly the same place, so the press turns the red disc into the ring where it
+was. They share one layout and one sizing rule. The band above the circle is held at the
+height of the countdown's heading ("Help is on the way" and its sentence), the band
+below at the height of the button's explanation, both measured from the real text at the
+phone's width and text size, so the circle's slot is the same on both screens. The cost
+is that the idle screen keeps the heading's space empty above the button, which sits a
+little below the centre, and the button is the countdown ring's size rather than as large
+as the screen allows: about 270 points on a 360-wide Android phone and 320 on a 6.1 inch
+iPhone. On the smallest phones, where the words would leave a circle under 144 points,
+the screen scrolls rather than shrinking the button further. The one thing that can still
+shift the circle on the idle screen is a check-in question or an error above the button.
+
+Everything the elder does after pressing is at the bottom: stopping an alert, the ways to
+ask without a connection, going back to the button. The one exception is **stop trying**,
+which undoes something and so is kept away from the thumb.
 
 ## Light or dark is the person's choice, and the emergency colours are not
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../../core/widgets/motion.dart';
+import 'panic_button.dart';
 
 /// The seconds left to stop an alert, as a number inside a ring that empties.
 ///
@@ -26,10 +27,9 @@ class CountdownRing extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final double side = math.min(
-          constraints.biggest.shortestSide.isFinite ? constraints.biggest.shortestSide : 240,
-          280,
-        );
+        // The help button's size, from the help button's rule, so the ring sits exactly
+        // where the button was.
+        final double side = PanicButton.diameterFor(constraints.biggest);
 
         return Center(
           child: SizedBox.square(
