@@ -54,9 +54,9 @@ String resolveApiBaseUrl({String configured = configuredApiBaseUrl, TargetPlatfo
 void _registerFontLicences() {
   LicenseRegistry.addLicense(() async* {
     for (final (String name, String path) in <(String, String)>[
-      ('Atkinson Hyperlegible', 'assets/fonts/OFL-AtkinsonHyperlegible.txt'),
+      ('Inclusive Sans', 'assets/fonts/OFL-InclusiveSans.txt'),
       ('Source Sans 3', 'assets/fonts/OFL-SourceSans3.txt'),
-      ('IBM Plex Mono', 'assets/fonts/OFL-IBMPlexMono.txt'),
+      ('Atkinson Hyperlegible Mono', 'assets/fonts/OFL-AtkinsonHyperlegibleMono.txt'),
     ]) {
       final String text = await rootBundle.loadString(path);
       yield LicenseEntryWithLineBreaks(<String>[name], text);

@@ -102,15 +102,14 @@ abstract final class MzaziTheme {
 
   /// One text style, with the weight declared twice on purpose.
   ///
-  /// Source Sans 3 is a variable font: weight is an axis inside one file rather than a
+  /// All three faces are variable fonts: weight is an axis inside one file rather than a
   /// separate file per weight. `fontVariations` is what moves that axis, and
   /// `fontWeight` is what every other part of the framework reads, including the
   /// fallback face when a glyph is missing. Setting only the first would leave the rest
   /// of the framework thinking the text is regular; setting only the second would leave
   /// the axis at its default and the text would come out the same weight everywhere.
-  ///
-  /// Harmless for the static faces. Atkinson Hyperlegible and IBM Plex Mono have no
-  /// `wght` axis, so the variation is ignored and the real weights are used.
+  /// For the same reason a change of weight anywhere else goes through [weighted], never
+  /// `copyWith(fontWeight:)`.
   static TextStyle _text({
     required String family,
     required double size,
@@ -157,10 +156,10 @@ abstract final class MzaziTheme {
     final double body = bodySize(audience);
     final double target = touchTarget(audience);
 
-    // One family per audience. The elder face is Atkinson Hyperlegible, drawn for low
-    // vision; everybody else gets Source Sans 3. Headings are separated from body text by
-    // weight rather than by a third family, which is one fewer file to bundle and one
-    // fewer way for two faces to disagree.
+    // One family per audience. The elder face is Inclusive Sans, designed for
+    // accessibility and readability; everybody else gets Source Sans 3. Headings are
+    // separated from body text by weight rather than by a third family, which is one fewer
+    // file to bundle and one fewer way for two faces to disagree.
     final String family = elder ? MzaziFont.elder : MzaziFont.sans;
 
     // The elder path is bold throughout, which is a legibility decision rather than a
@@ -169,6 +168,11 @@ abstract final class MzaziTheme {
     final FontWeight bodyWeight = audience == AppAudience.elder
         ? MzaziWeight.elderBody
         : MzaziWeight.body;
+
+    // The step above body. On the large-type screens it is bold rather than semi-bold:
+    // the elder face has a real 600, and next to bold body text a 600 label or button
+    // reads lighter than the sentence beside it, which is the wrong way round.
+    final FontWeight strong = elder ? MzaziWeight.heading : MzaziWeight.strong;
 
     final TextTheme textTheme = TextTheme(
       displayLarge: _text(
@@ -190,7 +194,7 @@ abstract final class MzaziTheme {
       titleLarge: _text(
         family: family,
         size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.2,
         tracking: MzaziTracking.title,
         color: text,
@@ -210,21 +214,21 @@ abstract final class MzaziTheme {
       titleMedium: _text(
         family: family,
         size: body,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.4,
         color: text,
       ),
       titleSmall: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.4,
         color: text,
       ),
       labelMedium: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         color: text,
       ),
       bodyLarge: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
@@ -234,7 +238,7 @@ abstract final class MzaziTheme {
       labelSmall: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: MzaziWeight.strong,
+        weight: strong,
         height: 1.3,
         tracking: MzaziTracking.eyebrow,
         color: textSoft,
@@ -242,7 +246,7 @@ abstract final class MzaziTheme {
       labelLarge: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.body,
-        weight: MzaziWeight.strong,
+        weight: strong,
         color: text,
       ),
       bodySmall: _text(

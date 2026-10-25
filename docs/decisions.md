@@ -300,7 +300,7 @@ touches nothing else. Calling the system event-driven is still accurate: nothing
 decide when to escalate, and the sweep is a reconciliation against a recorded deadline
 rather than the mechanism by which escalation happens.
 
-## The fonts are bundled, and one of them was chosen for low vision
+## The fonts are bundled, and the elder's was chosen for legibility first
 
 Before this the token file named IBM Plex Sans and Archivo and no font file existed in the
 repository. Both surfaces asked for faces that were never loaded and fell back to the
@@ -309,19 +309,38 @@ design language described type that the product never showed.
 
 Three faces now ship with the build:
 
-**Atkinson Hyperlegible for the elder path.** Drawn by the Braille Institute specifically
-for low vision, with letterforms deliberately differentiated so that b and d, 1 and l and
-I, and O and 0 cannot be mistaken for one another. For an interface an older person reads
-under stress, that property is worth more than any amount of visual character, and it is a
-choice that can be justified from the literature rather than from taste. Weight 700
-throughout, which is a reading decision and therefore a token rather than a per-widget
-choice.
+**Inclusive Sans for the elder path.** Designed by Olivia King for accessibility and
+readability. A capital I, a lowercase l and a 1 cannot be mistaken for one another, and the
+zero is slashed, so O and 0 differ too. For an interface an older person reads under stress,
+that property is worth more than any amount of visual character. Weight 700 throughout,
+which is a reading decision and therefore a token rather than a per-widget choice.
 
 **Source Sans 3 for everybody else**, as one variable file covering 200 to 900. Smaller
 than three static weights would be, and it means headings are separated from body text by
 weight rather than by a fourth family.
 
-**IBM Plex Mono for figures**, where digits have to line up.
+**Atkinson Hyperlegible Mono for figures**, where digits have to line up: the countdown,
+phone numbers, codes. The Braille Institute's monospace, from the same low-vision research
+as Atkinson Hyperlegible, with a slashed zero.
+
+The elder face was Atkinson Hyperlegible until 25 October 2026, and the figures were IBM
+Plex Mono. Atkinson was the more defensible choice on paper, being drawn for low vision with
+published research behind it, but it read as plain and slightly dated. Five faces were set
+side by side at the elder's real sizes: Atkinson Hyperlegible, its 2025 successor Atkinson
+Hyperlegible Next, Lexend, Inclusive Sans and Andika. The test was the help button, a
+bold 22pt sentence, and the letters most often confused. Every caregiver-side candidate
+tried at the same time (Figtree, Red Hat Text, Public Sans, Onest, Hanken Grotesk) drew
+I and l identically, which ruled them out for the elder. Lexend sets wider, so the
+elder's lines wrap sooner, and Andika's bold is weak. Inclusive Sans kept every distinction
+that mattered and was the most appealing to read, so it replaced Atkinson. The trade is
+stated plainly: it is designed for legibility but has less published research behind it
+than Atkinson. None of the faces is on the list of overused interface fonts that the
+impeccable design guidance asks projects to avoid.
+
+One consequence of the change: the old elder face came in only regular and bold, so the
+theme's semi-bold step rendered bold on its own. Inclusive Sans has a real 600, which put
+buttons and labels lighter than the bold sentence beside them. On the large-type screens
+the step above body is therefore bold, set in the theme rather than per widget.
 
 Bundled and self-hosted rather than fetched. The console displays an elder's name and
 address, so it makes no third-party request at all, and the API's content security policy
@@ -329,9 +348,11 @@ would refuse one. The cost is about a megabyte in the app, which for an emergenc
 application is the right trade: it means the elder screen's legibility is a property of a
 decision rather than of whatever the phone happens to have installed.
 
-Two implementation notes that were not obvious. A variable font carries weight as an axis
-rather than as separate files, so the theme sets `fontVariations` as well as `fontWeight`;
-setting only the latter leaves the axis at its default and every weight renders the same.
+Two implementation notes that were not obvious. All three faces are variable fonts, which
+carry weight as an axis rather than as separate files, so the theme sets `fontVariations`
+as well as `fontWeight`; setting only the latter leaves the axis at its default and every
+weight renders the same. Anywhere else a weight changes, it goes through the theme's
+`weighted()` rather than `copyWith(fontWeight:)`, for the same reason.
 And the licence text is bundled as an asset and registered with Flutter's licence page,
 because bundling a font is distributing it and the Open Font Licence requires the licence
 to travel with it.

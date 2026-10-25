@@ -33,12 +33,10 @@ void main() {
   // elder will see. The test font draws every letter as a full square, which makes a
   // line of text nearly twice as wide as it really is.
   setUpAll(() async {
-    final FontLoader elder = FontLoader('Atkinson Hyperlegible')
-      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Regular.ttf'))
-      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Bold.ttf'));
-    final FontLoader mono = FontLoader('IBM Plex Mono')
-      ..addFont(rootBundle.load('assets/fonts/IBMPlexMono-Regular.ttf'))
-      ..addFont(rootBundle.load('assets/fonts/IBMPlexMono-Medium.ttf'));
+    final FontLoader elder = FontLoader(MzaziFont.elder)
+      ..addFont(rootBundle.load('assets/fonts/InclusiveSans-Variable.ttf'));
+    final FontLoader mono = FontLoader(MzaziFont.mono)
+      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegibleMono-Variable.ttf'));
     await Future.wait(<Future<void>>[elder.load(), mono.load()]);
   });
 

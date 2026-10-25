@@ -11,8 +11,8 @@
  * that reads an elder's name and address, so it makes no third-party request at all;
  * the content security policy in the API denies one anyway.
  *
- * Source Sans 3 is one variable file covering the whole weight range, which is why the
- * face is declared once with a range rather than once per weight.
+ * Both faces are one variable file covering the whole weight range, which is why each
+ * is declared once with a range rather than once per weight.
  */
 @font-face {
   font-family: 'Source Sans 3';
@@ -23,17 +23,9 @@
 }
 
 @font-face {
-  font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  src: url('/fonts/IBMPlexMono-Medium.ttf') format('truetype');
-  font-weight: 500;
+  font-family: 'Atkinson Hyperlegible Mono';
+  src: url('/fonts/AtkinsonHyperlegibleMono-Variable.ttf') format('truetype-variations');
+  font-weight: 200 800;
   font-style: normal;
   font-display: swap;
 }

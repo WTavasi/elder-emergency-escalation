@@ -165,9 +165,9 @@ One family per audience, and it is a legibility decision rather than a stylistic
 
 | Audience | Face | Why |
 | --- | --- | --- |
-| Elder | Atkinson Hyperlegible, 700 throughout | Drawn by the Braille Institute for low vision. Its letterforms are deliberately differentiated, so b and d, 1 and l and I, and O and 0 cannot be confused. That is the single most useful property a face can have on a screen somebody reads in a panic |
+| Elder | Inclusive Sans, 700 throughout | Designed for accessibility and readability. A capital I, a lowercase l and a 1 cannot be confused, and the zero is slashed. That is the single most useful property a face can have on a screen somebody reads in a panic, and it is friendlier to read than the face it replaced (`docs/decisions.md`) |
 | Caregiver, responder, administrator | Source Sans 3 | Humanist, unremarkable in a good way, and one variable file covers every weight the interface needs |
-| Figures everywhere | IBM Plex Mono | Timers, scores and identifiers, where digits have to line up |
+| Figures everywhere | Atkinson Hyperlegible Mono | Timers, phone numbers and codes, where digits have to line up. From the Braille Institute's low-vision research, with a slashed zero |
 
 Headings are separated from body text by weight, not by a fourth family. All three faces
 are SIL Open Font Licence.
@@ -196,9 +196,16 @@ property of the phone rather than of a decision. Recorded here because a design 
 that cannot be observed in the product is not a design language.
 
 Weight is a token (`type.weight`) rather than a per-widget choice, because the elder
-path's boldness is a decision about reading and has to be the same in both surfaces.
-Source Sans 3 is variable, so the app drives the weight axis with `fontVariations` as well
-as setting `fontWeight`; the dashboard declares one `@font-face` with a `200 900` range.
+path's boldness is a decision about reading and has to be the same in both surfaces. On the
+large-type screens the step above body is bold rather than semi-bold, so a button never reads
+lighter than the bold sentence next to it. All three faces are variable, so the app drives
+the weight axis with `fontVariations` as well as setting `fontWeight`, and changes a weight
+only through `weighted()`; the dashboard declares one `@font-face` per face with its range.
+
+None of the faces is on the list of overused interface fonts in the impeccable design
+guidance (Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica, Fraunces,
+Instrument Sans and Serif, Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk, Recoleta),
+and a new face should not be either.
 
 ## Accessibility floors, asserted in tests
 
