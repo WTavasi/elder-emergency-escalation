@@ -31,7 +31,7 @@ is asked or missed (`check-in-service`).
 | POST | `/:id/resolve` | participants | Close it with an outcome |
 | POST | `/:id/request-responder` | participants | Call in an emergency responder now |
 | POST | `/:id/voice` | participants, not an administrator | A token to join the emergency's voice room (`VoiceService`); the first responder to join is who the elder's screen names |
-| POST | `/sms/inbound?token=` | the SMS gateway | A reply of 1 or 2 to an alert text, handled as an acknowledgement or a decline (`SmsRepliesService`); from an elder, a 1 answers their check-in |
+| POST | `/sms/inbound?token=` | the SMS gateway | A reply of 1 or 2 to an alert text, handled as an acknowledgement or a decline (`SmsRepliesService`); from an elder, HELP raises an alert and a 1 answers their check-in |
 
 ## How escalation works
 

@@ -646,6 +646,37 @@ describe('AlertsService', () => {
     });
   });
 
+  describe('an alert raised by texting HELP', () => {
+    it('is a panic alert at the band the factors give, with no cancel window to review', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      const created = await build(
+        prisma,
+        buildSeverity(Severity.CRITICAL),
+        buildEscalation(),
+        timers,
+      ).create('elder-1', {}, { via: 'sms' });
+
+      const data = prisma.emergencyEvent.create.mock.calls[0][0].data;
+      expect(data.trigger).toBe(AlertTrigger.PANIC);
+      expect(created.severity).toBe(Severity.CRITICAL);
+      // A text cannot be withdrawn, so "did not cancel" must never be counted for it.
+      expect(data.severityReviewedAt).toBeInstanceOf(Date);
+      expect(timers.armSeverityReview).not.toHaveBeenCalled();
+    });
+
+    it('is recorded as raised by the elder, by text', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).create('elder-1', {}, { via: 'sms' });
+
+      const entries = prisma.auditLog.createMany.mock.calls[0][0].data as Array<
+        Record<string, unknown>
+      >;
+      expect(entries[0].actorId).toBe('elder-1');
+      expect(entries[0].detail).toEqual({ trigger: AlertTrigger.PANIC, via: 'sms' });
+    });
+  });
+
   describe('answerMissedCheckIn', () => {
     const missed = (overrides: Record<string, unknown> = {}) =>
       event({ trigger: AlertTrigger.MISSED_CHECK_IN, acknowledgedBy: null, ...overrides });

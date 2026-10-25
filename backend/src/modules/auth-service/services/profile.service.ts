@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { HELP_WORD } from '../../notification-service/services/notification-content';
 
 /** Where this person sits in one elder's chain. Place 1 is asked first. */
 export interface CirclePlace {
@@ -26,6 +28,14 @@ export interface Carer {
   phone: string;
 }
 
+/** Where an elder texts to ask for help when the app cannot reach the server. */
+export interface HelpByText {
+  /** The shortcode the gateway reads texts from. */
+  number: string;
+  /** The word to send. */
+  word: string;
+}
+
 export interface Profile {
   memberSince: string;
   /** Every chain this person is in. Empty for an elder. */
@@ -34,6 +44,11 @@ export interface Profile {
   record: ResponseRecord | null;
   /** The elder's own chain, for their card. Empty for everyone else. */
   carers: Carer[];
+  /**
+   * For an elder, where to text HELP, which the app keeps on the phone for when there is
+   * no data. Null for everyone else, and whenever this server cannot read texts.
+   */
+  helpByText: HelpByText | null;
 }
 
 /**
@@ -45,7 +60,10 @@ export interface Profile {
  */
 @Injectable()
 export class ProfileService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async get(userId: string): Promise<Profile> {
     const user = await this.prisma.user.findUnique({
@@ -60,11 +78,29 @@ export class ProfileService {
         circles: [],
         record: null,
         carers: await this.carers(user.id),
+        helpByText: this.helpByText(),
       };
     }
 
     const [circles, record] = await Promise.all([this.circles(user.id), this.record(user.id)]);
-    return { memberSince: user.createdAt.toISOString(), circles, record, carers: [] };
+    return {
+      memberSince: user.createdAt.toISOString(),
+      circles,
+      record,
+      carers: [],
+      helpByText: null,
+    };
+  }
+
+  /**
+   * Offered only when a text would be read: a shortcode to send it to, and the inbound
+   * callback switched on. Telling an elder to text a number nothing is listening on would
+   * be worse than not offering it, because they would wait for an answer that never comes.
+   */
+  private helpByText(): HelpByText | null {
+    const number = this.config.get<string>('AT_SHORTCODE');
+    const listening = this.config.get<string>('SMS_INBOUND_TOKEN');
+    return number && listening ? { number, word: HELP_WORD } : null;
   }
 
   private async circles(userId: string): Promise<CirclePlace[]> {

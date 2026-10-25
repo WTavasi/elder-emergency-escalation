@@ -32,7 +32,7 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/code/verify` | none | `{ phone, code }`: an elder signs in with a texted code or their caregiver's pairing code |
 | POST | `/api/v1/auth/me/phone/code` | bearer | `{ phone, password }`: a code to the number the account is moving to. No password for an elder. 409 if the number is taken |
 | POST | `/api/v1/auth/me/phone` | bearer | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends every other session |
-| GET | `/api/v1/auth/me/profile` | bearer | `{ memberSince, circles, record, carers }`: places in each circle and the response record; an elder gets their carers instead |
+| GET | `/api/v1/auth/me/profile` | bearer | `{ memberSince, circles, record, carers, helpByText }`: places in each circle and the response record; an elder gets their carers instead, and `helpByText` (`{ number, word }`, or null) for asking for help by SMS |
 | GET | `/api/v1/legal` | none | `{ privacyVersion, termsVersion, retention, contact }` for the privacy notice and terms. `contact` is null until `DATA_CONTACT_*` is set |
 | PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
 | DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
@@ -100,7 +100,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 | POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |
-| POST | `/api/v1/sms/inbound?token=` | the SMS gateway | A reply to an alert text, as Africa's Talking posts it (`from`, `text`, and others ignored). 404 unless `SMS_INBOUND_TOKEN` is set and matches |
+| POST | `/api/v1/sms/inbound?token=` | the SMS gateway | A reply to an alert text, or HELP from an elder, as Africa's Talking posts it (`from`, `text`, and others ignored). 404 unless `SMS_INBOUND_TOKEN` is set and matches |
 
 Every query is scoped to the caller's own care relationships, plus any emergency they
 were asked about outside them (an emergency responder matched by area). An emergency the
@@ -158,10 +158,22 @@ replies in ten minutes. The route always answers 200 once the token matches, bec
 gateway that sees an error sends the reply again. With `AT_SHORTCODE` set, every SMS is
 sent from that shortcode so the reply reaches the number that reads it.
 
-A reply from an **elder** is read as an answer to their daily check-in, not to an alert:
-a 1 answers it exactly as the button in the app does (below), and is thanked. Anything
-else is not taken as a call for help, because a mistyped reply must not become an
-emergency; the elder is told to press the help button or call 999.
+A text from an **elder** either asks for help or answers their daily check-in:
+
+- **HELP** (also `sos`, `msaada`, `saidia`, read by the first word) raises the same alert
+  the panic button does. It is the elder's way to ask for help from a phone with no data,
+  and the app offers it, already written, when it cannot reach the server. There is no
+  cancel window, because a text cannot be withdrawn, so the severity is scored once and
+  never reviewed. If an emergency is already open, no second one is raised: the elder is
+  told who is coming, or that the people who look after them have already been told. The
+  audit entry carries `via: "sms"`. The elder's app learns the number to text from
+  `helpByText` in `/auth/me/profile`, which is set only when both `AT_SHORTCODE` and
+  `SMS_INBOUND_TOKEN` are, so nobody is told to text a number nothing reads.
+- A **1** answers their check-in exactly as the button in the app does (below), and is
+  thanked.
+- Anything else is not taken as a call for help, because a mistyped reply must not
+  become an emergency; the elder is told to reply HELP, press the help button or call
+  999.
 
 Every alert carries `trigger`: `PANIC` for a press of the button, `MISSED_CHECK_IN` for a
 daily check-in nobody answered. The second kind is held at the standard band whatever the
