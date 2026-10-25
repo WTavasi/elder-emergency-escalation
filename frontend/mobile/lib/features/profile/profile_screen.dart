@@ -362,7 +362,7 @@ class _WayThereSetting extends StatelessWidget {
           children: <Widget>[
             const SectionLabel('On the way'),
             const SizedBox(height: MzaziSpace.s8),
-            SwitchListTile(
+            SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('Share my way there'),
               subtitle: const Text(

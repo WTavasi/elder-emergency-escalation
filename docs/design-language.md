@@ -89,6 +89,16 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   something, something confirmed (the help button), a tick for each second of the
   countdown, and something that needs attention (an alert arriving, a call joining).
   Progress is said in words ("Sending…"), never shown as a bare spinner.
+- **On iPhone, iPhone's own alerts and switches.** A question or notice is iOS's alert
+  on iPhone and Material's everywhere else (`showPlatformAlert`), and switches are adaptive.
+  An elder's alert keeps the elder's face and sizes even in iOS's frame, because iOS sets
+  an alert at 17 points and the elder floor is 20. The iOS tint is the focus blue; a
+  destructive answer is iOS's red, which is a destructive confirmation and so allowed. The
+  care-level choice stays a Material dialog, because it is a form, not a question.
+- **Selected controls are ink, never the emergency red.** Material colours an "on"
+  switch, a ticked box, a chosen radio, a slider and a spinner from the primary colour,
+  and the primary colour here is the emergency red. The theme sets them all to ink, and
+  the caret to the focus blue, so red still means a person is needed.
 - **Light or dark is the person's choice.** The phone's setting is the default, and
   **Screen** on every account page overrides it. Emergency colours do not change with
   the mode: the help button keeps its red, with a brighter `emergencyEdge` around it in

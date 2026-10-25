@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
@@ -214,13 +215,7 @@ abstract final class MzaziTheme {
         tracking: MzaziTracking.title,
         color: text,
       ),
-      titleMedium: _text(
-        family: family,
-        size: body,
-        weight: strong,
-        height: 1.4,
-        color: text,
-      ),
+      titleMedium: _text(family: family, size: body, weight: strong, height: 1.4, color: text),
       titleSmall: _text(
         family: family,
         size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
@@ -438,6 +433,46 @@ abstract final class MzaziTheme {
         focusedErrorBorder: outline(danger, MzaziStroke.focus),
         errorStyle: textTheme.bodySmall?.copyWith(color: danger),
       ),
+      // Material colours every selected control from the primary colour, which here is the
+      // emergency red: an "on" switch, a ticked box, a chosen radio, a slider, a spinner.
+      // None of those is an emergency. They take the ink, as primary actions do, so red
+      // keeps its one meaning. On iPhone an adaptive switch stays the platform's own green,
+      // because the Material switch theme is not applied to it.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? surface : control,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : surfaceSunk,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : control,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.selected) ? text : Colors.transparent,
+        ),
+        checkColor: WidgetStatePropertyAll<Color>(surface),
+        side: BorderSide(color: control, width: MzaziStroke.hairline * 2),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => states.contains(WidgetState.selected) ? text : control,
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: text,
+        thumbColor: text,
+        inactiveTrackColor: line,
+        activeTickMarkColor: surface,
+        inactiveTickMarkColor: control,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: text, linearTrackColor: line),
+      // iOS-style controls (dialog actions, the adaptive switch's focus) take their tint from
+      // here rather than from the primary colour, for the same reason.
+      cupertinoOverrideTheme: CupertinoThemeData(primaryColor: focus),
       // Material takes the cursor and the selection from the primary colour, which here is
       // the emergency red, so every field had a red caret. The focus blue and the gated
       // selection colour instead.

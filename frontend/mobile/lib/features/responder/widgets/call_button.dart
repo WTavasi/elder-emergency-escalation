@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/widgets/platform_alert.dart';
+
 /// Whether this device can open a link, and opening it. Split out so a test can see what
 /// would have been dialled without a phone, and so a simulator's answer can be faked.
 typedef CanOpen = Future<bool> Function(Uri uri);
@@ -79,31 +81,23 @@ class CallButton extends StatelessWidget {
     }
 
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text('Call $_firstName'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('This device cannot place calls. Dial this number from a phone:'),
-            const SizedBox(height: MzaziSpace.s12),
-            // Selectable, so it can be copied into another app rather than retyped.
-            SelectableText(
-              phone,
-              style: Theme.of(dialogContext).textTheme.titleLarge
-                  ?.copyWith(fontFamily: MzaziFont.mono),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
+    await showPlatformAlert<void>(
+      context,
+      title: 'Call $_firstName',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text('This device cannot place calls. Dial this number from a phone:'),
+          const SizedBox(height: MzaziSpace.s12),
+          // Selectable, so it can be copied into another app rather than retyped.
+          SelectableText(
+            phone,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
           ),
         ],
       ),
+      actions: const <AlertAction<void>>[AlertAction<void>('Close', null)],
     );
   }
 }

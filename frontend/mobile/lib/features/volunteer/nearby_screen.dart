@@ -102,7 +102,7 @@ class _Standing extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SwitchListTile(
+          SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             title: Text('Available to help', style: theme.textTheme.titleMedium),
             subtitle: Text(
