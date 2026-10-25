@@ -499,6 +499,21 @@ ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.
    number and address, the alert shows as taken by the family member on the console and
    in Mary's app, and its trail says "by text".
 
+**As the elder: text HELP.** With the same setup, the elder can raise an alert by text,
+which is what the app offers when it cannot connect. Without Africa's Talking, post it
+the way the gateway would:
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/sms/inbound?token=local-text-replies-0123456789" \
+  -H 'Content-Type: application/json' -d '{"from":"+254700000010","text":"HELP"}'
+```
+
+In the simulator, launch it with Grace's number, `+254700000010`, and send `HELP` to
+`12345`. Either way an alert appears on the console marked as raised by text, the chain
+is asked as usual, and Grace is texted back that the people who look after her have been
+told. A second HELP while it is open answers with who is coming rather than raising
+another.
+
 Sending from the shortcode is what makes the reply land in the right place: a person who
 answers a message answers the number it came from. Africa's Talking documents the
 sandbox and simulator in [How do I get started on the Africa's Talking

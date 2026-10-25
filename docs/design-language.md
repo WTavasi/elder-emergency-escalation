@@ -9,14 +9,22 @@ Red is a state, not a brand colour. `red-700` and `red-600` appear only on the p
 control, on an event in `TRIGGERED` or `ESCALATED` state, and on a destructive
 confirmation. Never on navigation, headers, links, empty states, charts or brand bars.
 
+Yellow means "you can still act on this". The caution yellow appears on the elder's
+screen only, and only at two moments: the ten seconds in which a pressed alert can still
+be stopped, and the phone having no connection. It is never decoration.
+
 ## Colour
 
 Defined once in `frontend/design-tokens/tokens.json`. Consumed only through the generated
 outputs. No hex literals in widgets or components.
 
-Semantic hues are limited to three besides the emergency red: amber for waiting, blue
-for owned, green for closed. Blue is also the focus-ring colour. Escalation tiers get a
-number and a role name, never a colour of their own.
+Semantic hues are limited to four besides the emergency red: amber for waiting, blue
+for owned, green for closed, and the caution yellow above. Blue is also the focus-ring
+colour. Escalation tiers get a number and a role name, never a colour of their own.
+
+The caution yellow (`caution`) is the same in light and dark mode, because its job is
+to be seen, and the only ink on it is `onCaution`, the darkest one, at 12.7:1. The
+countdown ring's empty track is `cautionTrack`. All three are in the contrast gate.
 
 One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
 slightly deeper one, draws the rings behind the screens before sign-in, on the app and
@@ -66,7 +74,19 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   countdown. They line up down a column and do not jitter as they change.
 - **The thumb decides placement.** The places a person goes most are along the bottom
   (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
-  screen. The top bar carries a back arrow and nothing else.
+  screen. The top bar carries a back arrow and nothing else. On the elder's screen this
+  is stricter: what is read sits at the top and what is pressed sits at the bottom. That
+  covers the help button, **I am all right, stop this**, and the ways to ask for help
+  without a connection. A control that undoes something, such as **stop trying**, is
+  kept away from the thumb so it is not pressed on the way to the others.
+- **Feedback is felt as well as seen.** Four vibrations and no more: a press that starts
+  something, something confirmed (the help button), a tick for each second of the
+  countdown, and something that needs attention (an alert arriving, a call joining).
+  Progress is said in words ("Sending…"), never shown as a bare spinner.
+- **Light or dark is the person's choice.** The phone's setting is the default, and
+  **Screen** on every account page overrides it. Emergency colours do not change with
+  the mode: the help button keeps its red, with a brighter `emergencyEdge` around it in
+  dark mode where the red alone is 2:1 against the page, and the countdown stays yellow.
 - **Every control is a full touch target.** Text buttons, icon buttons and tabs are
   48 points in the standard scale and 72 in the elder scale, set in the theme so a new
   screen cannot forget. Text buttons are ink and underlined, never red, because red here
@@ -193,9 +213,8 @@ as setting `fontWeight`; the dashboard declares one `@font-face` with a `200 900
 
 "Asserted in tests" is true of the app, where `test/accessibility_test.dart` compares
 against the constants in the generated token file rather than against numbers typed into
-the test, and of contrast everywhere, which the token build gates on 26 declared pairs.
-It is not yet true of the dashboard's touch targets, and no continuous integration job
-runs the app's tests, so that assertion currently depends on somebody running them.
+the test, and of contrast everywhere, which the token build gates on every declared pair.
+CI runs both. It is not yet true of the dashboard's touch targets.
 
 One caution learned the hard way: a floor computed in code is not a floor enforced in
 code. The panic control clamped its diameter to the elder minimum and then handed that
@@ -213,12 +232,18 @@ the action and its object; reduced-motion honoured.
   default, not bundled with the terms, separately revocable.
 - Privacy notice and terms of use are first-class screens, reachable from registration
   and settings.
-- No continuous or background location. One capture at trigger, one at acknowledgement.
+- No location is ever read from the elder's phone; an alert is placed at the registered
+  home or a stay the care circle recorded. A responder's phone shares where it is only
+  when they turn it on, after taking an emergency on, until they arrive, and only the
+  time they arrived is kept.
+- The carers' numbers kept on the elder's phone for asking without a connection live in
+  secure storage and are cleared at sign-out.
 - No health fields. Care level is an operational field set by a caregiver, not a diagnosis.
 - Retention windows are configuration, enforced by a scheduled job.
 - No third-party analytics, advertising or social pixels. One strictly necessary session
   cookie in the dashboard, disclosed in the privacy notice.
-- Firebase, Africa's Talking and Google Maps are named as processors in the privacy notice.
+- Firebase, Africa's Talking, LiveKit and the OpenStreetMap services are named as
+  processors in the privacy notice.
 - A named data contact with a real email and postal address appears in the privacy notice
   and the dashboard footer.
 
