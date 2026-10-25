@@ -80,5 +80,11 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="tel"/>
         </intent>
+        <!-- The messages app, for an elder asking for help by text when the phone cannot
+             reach MzaziCare. Declared for the same reason as the dialer above. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="sms"/>
+        </intent>
     </queries>
 </manifest>

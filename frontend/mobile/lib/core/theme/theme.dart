@@ -63,6 +63,43 @@ abstract final class MzaziTheme {
     focus: MzaziColorsDark.focus,
   );
 
+  /// The same theme laid on the caution yellow, for the screen that says "you can still
+  /// stop this": the elder's ten seconds to withdraw an alert.
+  ///
+  /// The yellow is the same in light and dark mode, because its job is to be seen, so the
+  /// one ink that reads on it is the same in both too. Every text style, icon and control
+  /// takes that ink.
+  static ThemeData caution(ThemeData base) {
+    const Color ink = MzaziColorsLight.onCaution;
+    const Color paper = MzaziColorsLight.caution;
+    return base.copyWith(
+      scaffoldBackgroundColor: paper,
+      canvasColor: paper,
+      textTheme: base.textTheme.apply(bodyColor: ink, displayColor: ink),
+      iconTheme: base.iconTheme.copyWith(color: ink),
+      colorScheme: base.colorScheme.copyWith(
+        surface: paper,
+        onSurface: ink,
+        onSurfaceVariant: ink,
+        outline: ink,
+      ),
+      // The ink first, then the rest of the base style: merge keeps the receiver's values
+      // and only fills what it leaves unset, so the other way round the base colour wins.
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: ink).merge(base.iconButtonTheme.style),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: ink).merge(base.textButtonTheme.style),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: ink,
+          side: const BorderSide(color: ink, width: MzaziStroke.focus),
+        ).merge(base.outlinedButtonTheme.style),
+      ),
+    );
+  }
+
   /// One text style, with the weight declared twice on purpose.
   ///
   /// Source Sans 3 is a variable font: weight is an axis inside one file rather than a

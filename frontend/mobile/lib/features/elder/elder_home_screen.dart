@@ -1,38 +1,68 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
+import '../../core/offline/help_card.dart';
+import '../../core/offline/sms_link.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/notice.dart';
 import '../consent/consent_screen.dart';
+import '../responder/widgets/call_button.dart';
 import 'alert_controller.dart';
 import 'check_in_controller.dart';
 import 'elder_me_screen.dart';
+import 'offline_help.dart';
+import 'widgets/countdown_ring.dart';
 import 'widgets/elder_call.dart';
 import 'widgets/help_progress.dart';
 import 'widgets/panic_button.dart';
 
 /// The elder's whole app.
 ///
-/// One screen with four states rather than four screens. Navigation is one more thing
+/// One screen with five states rather than five screens. Navigation is one more thing
 /// to understand at the worst possible moment, and a person who has just pressed for
 /// help should not have to recognise that they are somewhere new: the thing they
 /// pressed is replaced, in place, by what happened next.
+///
+/// Laid out for one hand. The help button sits at the bottom, where a thumb holding the
+/// phone reaches it, and so does whatever the elder can do next: stop the alert, text
+/// for help, go back. What is only read sits above.
 class ElderHomeScreen extends StatefulWidget {
-  const ElderHomeScreen({this.api, this.checkInPoll = const Duration(minutes: 2), super.key});
+  const ElderHomeScreen({
+    this.api,
+    this.checkInPoll = const Duration(minutes: 2),
+    this.helpCards,
+    this.canOpenLink,
+    this.openLink,
+    super.key,
+  });
 
-  /// For the consent question, the daily check-in and the privacy page. Without it,
-  /// which only a test that exercises the alert alone does, none of them appears.
+  /// For the consent question, the daily check-in, the privacy page and the ways to ask
+  /// for help without a connection. Without it, which only a test that exercises the
+  /// alert alone does, none of them appears.
   final ApiClient? api;
 
   /// How often to look for a check-in when no push says one is waiting. Null for a test
   /// that drives it by hand.
   final Duration? checkInPoll;
+
+  /// Where the numbers for asking without a connection are kept. Null means the phone's
+  /// secure storage.
+  final HelpCardStore? helpCards;
+
+  /// The phone's dialler and messages app. Null means the real ones; tests pass their
+  /// own to see what would have been opened.
+  final CanOpen? canOpenLink;
+  final Open? openLink;
 
   @override
   State<ElderHomeScreen> createState() => _ElderHomeScreenState();
@@ -46,13 +76,22 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
   CheckInController? _checkIns;
   AppLifecycleListener? _lifecycle;
 
+  /// The ways to ask for help without MzaziCare, kept on the phone.
+  OfflineHelp? _offline;
+
   @override
   void initState() {
     super.initState();
     unawaited(_checkConsent());
 
     final ApiClient? api = widget.api;
-    final String? elderId = context.read<AuthController>().account?.id;
+    final Account? account = context.read<AuthController>().account;
+    final String? elderId = account?.id;
+    if (api != null && account != null) {
+      _offline = OfflineHelp(api: api, account: account, store: widget.helpCards)
+        ..addListener(_offlineChanged);
+      unawaited(_offline!.load());
+    }
     if (api != null && elderId != null) {
       _checkIns = CheckInController(
         api: api,
@@ -72,7 +111,13 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
     _lifecycle?.dispose();
     _checkIns?.removeListener(_checkInsChanged);
     _checkIns?.dispose();
+    _offline?.removeListener(_offlineChanged);
+    _offline?.dispose();
     super.dispose();
+  }
+
+  void _offlineChanged() {
+    if (mounted) setState(() {});
   }
 
   void _lookAgain() {
@@ -146,36 +191,99 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
     final AuthController auth = context.watch<AuthController>();
     final ConsentView? toConfirm = _toConfirm;
     final bool idle = alerts.phase == AlertPhase.idle || alerts.phase == AlertPhase.raising;
+    final bool counting = alerts.phase == AlertPhase.cancellable;
+    final bool unreachable = alerts.phase == AlertPhase.unreachable;
     final CheckInController? checkIns = _checkIns;
     final CheckInSchedule? toAgree = checkIns?.mine.waitingForAgreement;
 
-    return Scaffold(
+    final Widget screen = Scaffold(
       body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (unreachable) const _NoConnectionBand(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(MzaziSpace.s24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    _Header(name: auth.account?.name ?? '', onMe: _openMe),
+                    if (toConfirm != null && idle) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s16),
+                      _ConsentQuestion(
+                        onRead: () => unawaited(_openConsent(initial: toConfirm)),
+                        onLater: () => setState(() => _toConfirm = null),
+                      ),
+                    ],
+                    if (checkIns != null && toAgree != null && idle) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s16),
+                      _CheckInSetUpQuestion(
+                        schedule: toAgree,
+                        busy: checkIns.busy,
+                        onYes: () => unawaited(checkIns.agree(yes: true)),
+                        onNo: () => unawaited(checkIns.agree(yes: false)),
+                      ),
+                    ],
+                    const SizedBox(height: MzaziSpace.s24),
+                    Expanded(
+                      child: _Body(
+                        alerts: alerts,
+                        api: widget.api,
+                        checkIns: checkIns,
+                        offline: _offline,
+                        account: auth.account,
+                        canOpenLink: widget.canOpenLink,
+                        openLink: widget.openLink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!counting) return screen;
+
+    // The ten seconds to stop an alert are the one time this screen turns yellow, in
+    // light and dark mode alike, so it reads as "something is happening and you can
+    // still stop it" before a word is read. Dark status bar icons, to read on yellow.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Theme(data: MzaziTheme.caution(Theme.of(context)), child: screen),
+    );
+  }
+}
+
+/// Across the top while the phone cannot reach MzaziCare: yellow, like every other
+/// "this did not go through", and worded for somebody who does not know what a server
+/// is.
+class _NoConnectionBand extends StatelessWidget {
+  const _NoConnectionBand();
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    const Color ink = MzaziColorsLight.onCaution;
+
+    return Semantics(
+      liveRegion: true,
+      child: ColoredBox(
+        color: MzaziColorsLight.caution,
         child: Padding(
-          padding: const EdgeInsets.all(MzaziSpace.s24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s24, vertical: MzaziSpace.s12),
+          child: Row(
             children: <Widget>[
-              _Header(name: auth.account?.name ?? '', onMe: _openMe),
-              if (toConfirm != null && idle) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s16),
-                _ConsentQuestion(
-                  onRead: () => unawaited(_openConsent(initial: toConfirm)),
-                  onLater: () => setState(() => _toConfirm = null),
-                ),
-              ],
-              if (checkIns != null && toAgree != null && idle) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s16),
-                _CheckInSetUpQuestion(
-                  schedule: toAgree,
-                  busy: checkIns.busy,
-                  onYes: () => unawaited(checkIns.agree(yes: true)),
-                  onNo: () => unawaited(checkIns.agree(yes: false)),
-                ),
-              ],
-              const SizedBox(height: MzaziSpace.s24),
+              const Icon(Icons.signal_cellular_connected_no_internet_4_bar, color: ink),
+              const SizedBox(width: MzaziSpace.s12),
               Expanded(
-                child: _Body(alerts: alerts, api: widget.api, checkIns: checkIns),
+                child: Text(
+                  'No connection',
+                  style: theme.textTheme.titleMedium?.copyWith(color: ink),
+                ),
               ),
             ],
           ),
@@ -262,11 +370,23 @@ class _Header extends StatelessWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.alerts, this.api, this.checkIns});
+  const _Body({
+    required this.alerts,
+    this.api,
+    this.checkIns,
+    this.offline,
+    this.account,
+    this.canOpenLink,
+    this.openLink,
+  });
 
   final AlertController alerts;
   final ApiClient? api;
   final CheckInController? checkIns;
+  final OfflineHelp? offline;
+  final Account? account;
+  final CanOpen? canOpenLink;
+  final Open? openLink;
 
   @override
   Widget build(BuildContext context) {
@@ -274,6 +394,14 @@ class _Body extends StatelessWidget {
 
     return switch (alerts.phase) {
       AlertPhase.idle || AlertPhase.raising => _Idle(alerts: alerts, checkIns: checkIns),
+      AlertPhase.unreachable => _Unreachable(
+        alerts: alerts,
+        card: offline?.card,
+        message: offline?.familyMessage,
+        home: account?.home?.addressLabel,
+        canOpen: canOpenLink,
+        open: openLink,
+      ),
       AlertPhase.cancellable => _Cancellable(alerts: alerts),
       AlertPhase.live => _Live(alerts: alerts, api: api, checkIns: checkIns),
       // Withdrawn by answering the check-in late, rather than by pressing "stop".
@@ -310,6 +438,8 @@ class _Idle extends StatelessWidget {
     final CheckIn? waiting = checking?.mine.waiting;
     final CheckInAnswer? answered = checking?.answer;
 
+    final bool sending = alerts.phase == AlertPhase.raising;
+
     return Column(
       children: <Widget>[
         if (error != null) ...<Widget>[
@@ -329,28 +459,67 @@ class _Idle extends StatelessWidget {
           const Notice(message: 'Thank you. Your family can see you are all right.'),
           const SizedBox(height: MzaziSpace.s16),
         ],
-        Expanded(
-          child: PanicButton(label: 'Get\nhelp', enabled: alerts.canRaise, onPressed: alerts.raise),
+        // Read first, then pressed: the words above, the button below them at the bottom
+        // of the screen, where the thumb of the hand holding the phone already is.
+        Semantics(
+          liveRegion: sending,
+          child: Text(
+            sending ? 'Sending your alert…' : 'Press the red circle and the people who look after you will be told straight away.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge,
+          ),
         ),
         const SizedBox(height: MzaziSpace.s24),
-        Text(
-          'Press the red circle and the people who look after you will be told straight away.',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyLarge,
+        Expanded(
+          child: PanicButton(
+            // Words, not a spinner, while the request travels: the button greys and says
+            // what it is doing, so a second press is not needed to find out.
+            label: sending ? 'Sending…' : 'Get\nhelp',
+            enabled: alerts.canRaise,
+            alignment: Alignment.bottomCenter,
+            onPressed: alerts.raise,
+          ),
         ),
       ],
     );
   }
 }
 
-class _Cancellable extends StatelessWidget {
+/// The ten seconds in which a pressed alert can still be withdrawn.
+///
+/// The alert has already gone: tier one is told at the press, because ten seconds on
+/// every real emergency is a worse trade than an occasional withdrawn one. So the screen
+/// says help is on the way and offers the way out, rather than counting down to sending
+/// as a phone's SOS does.
+///
+/// It is told three ways at once, for whoever is holding the phone: the screen turns
+/// yellow, a ring empties around the seconds left, and the phone gives a light tap each
+/// second, which can be felt with the phone face down or the screen unread. The way out
+/// is at the bottom, under the thumb, in the darkest ink on the screen.
+class _Cancellable extends StatefulWidget {
   const _Cancellable({required this.alerts});
 
   final AlertController alerts;
 
   @override
+  State<_Cancellable> createState() => _CancellableState();
+}
+
+class _CancellableState extends State<_Cancellable> {
+  late int _felt = widget.alerts.secondsLeft;
+
+  @override
+  void didUpdateWidget(covariant _Cancellable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final int left = widget.alerts.secondsLeft;
+    if (left != _felt && left > 0) unawaited(Haptics.tick());
+    _felt = left;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final AlertController alerts = widget.alerts;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -369,35 +538,226 @@ class _Cancellable extends StatelessWidget {
             ],
           ),
         ),
-        const Spacer(),
-        // The number is the thing being read under pressure, so it is set at display
-        // size in the monospaced face, where a changing digit does not move the ones
-        // beside it.
-        Center(
-          child: Text(
-            '${alerts.secondsLeft}',
-            style: theme.textTheme.displayLarge?.copyWith(
-              fontFamily: MzaziFont.mono,
-              // The theme's own timer colour. It was the light one in both modes, which
-              // put the number an elder reads under pressure at 2.3:1 in dark mode.
-              color: theme.brightness == Brightness.dark
-                  ? MzaziColorsDark.timer
-                  : MzaziColorsLight.timer,
-            ),
-            semanticsLabel: '${alerts.secondsLeft} seconds left to stop this',
+        const SizedBox(height: MzaziSpace.s24),
+        Expanded(
+          child: CountdownRing(
+            secondsLeft: alerts.secondsLeft,
+            total: alerts.cancelWindow.inSeconds,
           ),
         ),
-        const Spacer(),
+        const SizedBox(height: MzaziSpace.s24),
         SizedBox(
           height: MzaziA11y.elderMinTouchTarget,
-          child: OutlinedButton(
+          child: FilledButton(
             onPressed: alerts.cancel,
+            // The inverse of the screen: yellow on the dark ink, at 12.7:1, so the one
+            // thing to press is the heaviest thing on it. Not red: stopping an alert is
+            // not an emergency.
+            style: FilledButton.styleFrom(
+              backgroundColor: MzaziColorsLight.onCaution,
+              foregroundColor: MzaziColorsLight.caution,
+            ),
             // Says what it does, in the words the person would use. "Cancel" alone is
             // ambiguous when the thing on screen is already called a cancellation.
             child: const Text('I am all right, stop this'),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The press did not reach MzaziCare, and the other ways to ask for help.
+///
+/// Nothing on this screen needs the internet. Texting HELP to MzaziCare's shortcode
+/// raises the full alert through the gateway when the phone has signal but no data.
+/// Texting the family reaches them directly even when MzaziCare cannot, and calling
+/// needs nothing but signal. Each opens the phone's own messages app or dialler with
+/// everything filled in, so it is two presses: this one, and send or call.
+///
+/// The address is shown because it is the first thing anybody on the other end of a
+/// call will ask, and it is on the phone already.
+///
+/// The alert keeps being tried in the background meanwhile, and the screen moves on by
+/// itself when it goes through.
+class _Unreachable extends StatelessWidget {
+  const _Unreachable({
+    required this.alerts,
+    this.card,
+    this.message,
+    this.home,
+    this.canOpen,
+    this.open,
+  });
+
+  final AlertController alerts;
+  final HelpCard? card;
+  final String? message;
+  final String? home;
+  final CanOpen? canOpen;
+  final Open? open;
+
+  /// Kenya's emergency number, the one the rest of the app and every alert text give.
+  static const String emergencyNumber = '999';
+
+  Future<void> _text(BuildContext context, List<String> to, String body) async {
+    final Uri uri = smsLink(to, body);
+    final Open go = open ?? launchUrl;
+    try {
+      if (await go(uri)) return;
+    } on Exception {
+      // Told below, the same as a phone that has no messages app.
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This phone cannot send a text. Call $emergencyNumber instead.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final HelpByText? byText = card?.helpByText;
+    final List<String> family = <String>[
+      for (final Carer carer in card?.carers ?? const <Carer>[])
+        if (carer.phone.isNotEmpty) carer.phone,
+    ];
+    final Carer? first = card?.first;
+    final String body = message ?? 'HELP';
+    final String? address = home;
+
+    // The shortcode first when there is one, because it reaches everybody the button
+    // would have, in order, and escalates. The family directly otherwise.
+    final List<Widget> texts = <Widget>[
+      if (byText != null)
+        _Action(
+          primary: true,
+          icon: Icons.sms_outlined,
+          label: 'Text ${byText.word} to MzaziCare',
+          onPressed: () => unawaited(_text(context, <String>[byText.number], byText.word)),
+        ),
+      if (family.isNotEmpty)
+        _Action(
+          primary: byText == null,
+          icon: Icons.sms_outlined,
+          label: 'Text my family',
+          onPressed: () => unawaited(_text(context, family, body)),
+        ),
+    ];
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Semantics(
+                  liveRegion: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Text('Not sent yet', style: theme.textTheme.headlineLarge),
+                      const SizedBox(height: MzaziSpace.s8),
+                      Text(
+                        'Your phone cannot reach MzaziCare. It will keep trying. '
+                        'Ask for help another way now:',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+                if (address != null && address.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: MzaziSpace.s12),
+                  Text('Your address: $address', style: theme.textTheme.titleMedium),
+                ],
+                // Away from the thumb, so it is not pressed on the way to the others.
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    onPressed: alerts.stopTrying,
+                    child: const Text('I am all right, stop trying'),
+                  ),
+                ),
+                const SizedBox(height: MzaziSpace.s16),
+                const Spacer(),
+                for (final Widget action in texts) ...<Widget>[
+                  action,
+                  const SizedBox(height: MzaziSpace.s12),
+                ],
+                // As tall as the taller of the two, so the pair is even whatever the names.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      if (first != null && first.phone.isNotEmpty) ...<Widget>[
+                        Expanded(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minHeight: MzaziA11y.elderMinTouchTarget,
+                            ),
+                            child: CallButton(
+                              name: first.name,
+                              phone: first.phone,
+                              stacked: true,
+                              canOpen: canOpen,
+                              open: open,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: MzaziSpace.s12),
+                      ],
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: MzaziA11y.elderMinTouchTarget,
+                          ),
+                          child: CallButton(
+                            name: emergencyNumber,
+                            phone: emergencyNumber,
+                            stacked: true,
+                            canOpen: canOpen,
+                            open: open,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One way to ask for help from [_Unreachable]: the first in red, because it is the
+/// emergency action on that screen, and the rest outlined.
+class _Action extends StatelessWidget {
+  const _Action({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MzaziA11y.elderMinTouchTarget,
+      child: primary
+          ? FilledButton.icon(onPressed: onPressed, icon: Icon(icon), label: Text(label))
+          : OutlinedButton.icon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
     );
   }
 }
@@ -590,7 +950,10 @@ class _CheckInSetUpQuestion extends StatelessWidget {
             Expanded(
               child: SizedBox(
                 height: MzaziA11y.elderMinTouchTarget,
-                child: TextButton(onPressed: busy ? null : onNo, child: const Text('No, thank you')),
+                child: TextButton(
+                  onPressed: busy ? null : onNo,
+                  child: const Text('No, thank you'),
+                ),
               ),
             ),
           ],

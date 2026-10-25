@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
+
+import '../../../core/widgets/motion.dart';
 
 /// The one control this app exists for.
 ///
@@ -15,14 +19,26 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 /// Overflowing its parent is the lesser fault. A panic button painting a few points
 /// outside its box is untidy; a panic button rendered as a dot is the feature failing.
 ///
-/// There is no press animation and no ripple. Feedback is the screen changing to the
-/// countdown, which is the thing that actually needs to be noticed.
+/// It sits where [alignment] puts it in the space it is given. The elder's screen puts
+/// it at the bottom, in the reach of a thumb holding the phone in one hand, the way the
+/// SOS controls on phones and in safety apps are placed.
+///
+/// A press is felt as well as seen: one firm vibration the moment it registers, before
+/// the screen changes to the countdown, so somebody who cannot read the screen still
+/// knows it took.
 class PanicButton extends StatelessWidget {
-  const PanicButton({required this.onPressed, required this.label, this.enabled = true, super.key});
+  const PanicButton({
+    required this.onPressed,
+    required this.label,
+    this.enabled = true,
+    this.alignment = Alignment.center,
+    super.key,
+  });
 
   final VoidCallback onPressed;
   final String label;
   final bool enabled;
+  final AlignmentGeometry alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +51,8 @@ class PanicButton extends StatelessWidget {
             ? available.clamp(MzaziA11y.elderMinTouchTarget, 420.0)
             : MzaziA11y.elderMinTouchTarget;
 
-        return Center(
+        return Align(
+          alignment: alignment,
           child: Semantics(
             button: true,
             enabled: enabled,
@@ -43,6 +60,8 @@ class PanicButton extends StatelessWidget {
             // reads very differently from "Get help" alone.
             label: 'Get help now. Alerts the people who look after you.',
             child: OverflowBox(
+              // The box fills the space it is given, so the circle is placed inside it.
+              alignment: alignment,
               minWidth: diameter,
               maxWidth: diameter,
               minHeight: diameter,
@@ -54,10 +73,25 @@ class PanicButton extends StatelessWidget {
                 color: enabled
                     ? theme.colorScheme.primary
                     : theme.colorScheme.surfaceContainerHighest,
-                shape: const CircleBorder(),
+                // In dark mode the brand red is about 2:1 against the page, under the 3:1 a
+                // control's outline needs, so the circle gets a brighter red edge there.
+                // In light mode the red stands off the page by itself.
+                shape: CircleBorder(
+                  side: enabled && theme.brightness == Brightness.dark
+                      ? const BorderSide(
+                          color: MzaziColorsDark.emergencyEdge,
+                          width: MzaziStroke.rule,
+                        )
+                      : BorderSide.none,
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: enabled ? onPressed : null,
+                  onTap: enabled
+                      ? () {
+                          unawaited(Haptics.confirm());
+                          onPressed();
+                        }
+                      : null,
                   child: Padding(
                     padding: const EdgeInsets.all(MzaziSpace.s24),
                     child: Center(

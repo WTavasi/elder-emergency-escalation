@@ -4,13 +4,15 @@ import 'package:flutter/foundation.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../offline/help_card.dart';
 import 'session_store.dart';
 
 /// Who is signed in, and how that changes.
 class AuthController extends ChangeNotifier {
-  AuthController({required ApiClient api, required SessionStore store})
+  AuthController({required ApiClient api, required SessionStore store, HelpCardStore? helpCard})
     : _api = api,
-      _store = store {
+      _store = store,
+      _helpCard = helpCard ?? HelpCardStore() {
     // The client rotates tokens on its own when one expires, and it ends the session
     // when a refresh is refused. Both have to reach the app: the first so the new
     // tokens are persisted, the second so the person is returned to sign-in rather
@@ -20,6 +22,10 @@ class AuthController extends ChangeNotifier {
 
   final ApiClient _api;
   final SessionStore _store;
+
+  /// The elder's numbers kept for asking for help without a connection. Other people's
+  /// numbers, so they leave the phone with the session.
+  final HelpCardStore _helpCard;
 
   Session? _session;
   bool _restoring = true;
@@ -244,6 +250,7 @@ class AuthController extends ChangeNotifier {
     _session = session;
     if (session == null) {
       unawaited(_store.clear());
+      unawaited(_helpCard.clear());
     } else {
       unawaited(_store.write(session));
     }
