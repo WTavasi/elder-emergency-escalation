@@ -80,11 +80,14 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   countdown. They line up down a column and do not jitter as they change.
 - **The thumb decides placement.** The places a person goes most are along the bottom
   (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
-  screen. The top bar carries a back arrow and nothing else. On the elder's screen this
-  is stricter: what is read sits at the top and what is pressed sits at the bottom. That
-  covers the help button, **I am all right, stop this**, and the ways to ask for help
-  without a connection. A control that undoes something, such as **stop trying**, is
-  kept away from the thumb so it is not pressed on the way to the others.
+  screen. The top bar carries a back arrow and nothing else. On the elder's screen the
+  help button stays in the middle, with its explanation underneath, and what replaces
+  it (the countdown's ring, the steps of help coming) appears in the same place, so the
+  eye never has to look for it. What the elder does next sits at the bottom, in the reach
+  of a thumb: **I am all right, stop this**, the ways to ask for help without a
+  connection, **Back to the help button**. A control that undoes something, such as
+  **stop trying**, is kept away from the thumb so it is not pressed on the way to the
+  others.
 - **Feedback is felt as well as seen.** Four vibrations and no more: a press that starts
   something, something confirmed (the help button), a tick for each second of the
   countdown, and something that needs attention (an alert arriving, a call joining).

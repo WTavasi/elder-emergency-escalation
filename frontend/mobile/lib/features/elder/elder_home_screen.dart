@@ -33,9 +33,10 @@ import 'widgets/panic_button.dart';
 /// help should not have to recognise that they are somewhere new: the thing they
 /// pressed is replaced, in place, by what happened next.
 ///
-/// Laid out for one hand. The help button sits at the bottom, where a thumb holding the
-/// phone reaches it, and so does whatever the elder can do next: stop the alert, text
-/// for help, go back. What is only read sits above.
+/// The help button sits in the middle of the screen, and what replaces it (the countdown's
+/// ring, the steps of help coming) appears in the same place. What the elder can do next,
+/// stop the alert, text for help, go back, sits at the bottom, where a thumb holding the
+/// phone reaches it.
 class ElderHomeScreen extends StatefulWidget {
   const ElderHomeScreen({
     this.api,
@@ -459,25 +460,25 @@ class _Idle extends StatelessWidget {
           const Notice(message: 'Thank you. Your family can see you are all right.'),
           const SizedBox(height: MzaziSpace.s16),
         ],
-        // Read first, then pressed: the words above, the button below them at the bottom
-        // of the screen, where the thumb of the hand holding the phone already is.
-        Semantics(
-          liveRegion: sending,
-          child: Text(
-            sending ? 'Sending your alert…' : 'Press the red circle and the people who look after you will be told straight away.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge,
-          ),
-        ),
-        const SizedBox(height: MzaziSpace.s24),
+        // In the middle of the screen, where it has always been. The countdown's ring and
+        // the steps that follow it take its place there, so the eye stays in one spot as
+        // what the elder pressed turns into what happened next.
         Expanded(
           child: PanicButton(
             // Words, not a spinner, while the request travels: the button greys and says
             // what it is doing, so a second press is not needed to find out.
             label: sending ? 'Sending…' : 'Get\nhelp',
             enabled: alerts.canRaise,
-            alignment: Alignment.bottomCenter,
             onPressed: alerts.raise,
+          ),
+        ),
+        const SizedBox(height: MzaziSpace.s24),
+        Semantics(
+          liveRegion: sending,
+          child: Text(
+            sending ? 'Sending your alert…' : 'Press the red circle and the people who look after you will be told straight away.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge,
           ),
         ),
       ],

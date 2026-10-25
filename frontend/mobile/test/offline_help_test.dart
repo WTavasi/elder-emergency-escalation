@@ -362,21 +362,29 @@ void main() {
       matching: find.byWidgetPredicate((Widget w) => w is FilledButton),
     );
 
-    testWidgets('puts the help button in the lower half, under the words that explain it', (
+    testWidgets('keeps the help button in the middle, where the countdown then appears', (
       WidgetTester tester,
     ) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int i) => <http.Response>[json(<String, dynamic>{})],
+        (http.Request request, int i) => <http.Response>[json(emergencyBody())],
       );
       final AlertController alerts = await show(tester, api: t.api, withApi: false);
+      // The middle third of the screen, top to bottom.
+      final Matcher middle = inInclusiveRange(860 / 3, 860 * 2 / 3);
 
       final Rect button = tester.getRect(
         find.descendant(of: find.byType(PanicButton), matching: find.byType(InkWell)),
       );
       final Rect words = tester.getRect(find.textContaining('Press the red circle'));
+      expect(button.center.dy, middle);
+      // The explanation under the button, as it has always been.
+      expect(words.top, greaterThanOrEqualTo(button.bottom));
 
-      expect(button.center.dy, greaterThan(860 / 2));
-      expect(words.bottom, lessThanOrEqualTo(button.top));
+      // Pressed, the countdown's ring takes the middle of the screen in its place.
+      await tester.tap(find.text('Get\nhelp'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(tester.getRect(find.byType(CountdownRing)).center.dy, middle);
       await done(tester, alerts);
     });
 

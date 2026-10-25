@@ -83,13 +83,14 @@ the app stops opening after a week until it is installed again.
 
 **The elder.** One screen with five states rather than five screens, because
 navigation is one more thing to understand at the worst possible moment: the thing the
-elder pressed is replaced, in place, by what happened next. It is laid out for one
-hand: what is read sits at the top, and what is pressed sits at the bottom, where the
-thumb of the hand holding the phone already is.
+elder pressed is replaced, in place, by what happened next: the help button sits in the
+middle of the screen, and the countdown's ring and the steps of help coming appear in
+the same place. What the elder does next is at the bottom, where the thumb of the hand
+holding the phone already is.
 
-1. **Idle.** The help button at the bottom of the screen, with one line above it saying
-   what it does. A press is felt as a firm vibration. While the request travels the
-   button greys and says "Sending…".
+1. **Idle.** The help button in the middle of the screen, with one line underneath
+   saying what it does. A press is felt as a firm vibration. While the request travels
+   the button greys and says "Sending…".
 2. **Cancellable.** The alert has already gone to the first person in the chain. For
    ten seconds the screen turns yellow, the seconds left sit inside a ring that empties,
    and the phone taps lightly once a second. **I am all right, stop this** is at the

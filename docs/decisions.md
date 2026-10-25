@@ -603,15 +603,20 @@ without reading and felt with the phone face down. The way out, **I am all right
 this**, sits at the bottom in the darkest ink on the screen. It is not red, because
 stopping an alert is not an emergency.
 
-## The elder's screen is laid out for one hand
+## The help button stays in the middle; what comes next is under the thumb
 
-The help button sat in the middle of the screen with its explanation underneath, which
-put its centre near the top third on a tall phone, out of comfortable reach of a thumb.
-Now the words are above and the button is at the bottom. Every other thing an elder
-presses on that screen is at the bottom too: stopping an alert, the ways to ask without a
-connection, going back to the button. This follows how the SOS controls in phones and
-personal-safety apps are placed. The one exception is **stop trying**, which undoes
-something and so is kept away from the thumb.
+Personal-safety apps tend to put their SOS control low on the screen, in easy reach of a
+thumb, and for a while the help button moved to the bottom for that reason. It went back
+to the middle, with its explanation underneath, for continuity: the elder's screen
+replaces what was pressed with what happened next, in place, and the countdown's ring and
+the steps of help coming appear in the middle of the screen too. A button at the bottom
+broke that, because the eye had to jump from the bottom of the screen to its centre at
+the moment of pressing. The button fills the width of the screen, so it is within reach
+either way.
+
+Everything the elder does after pressing is at the bottom: stopping an alert, the ways to
+ask without a connection, going back to the button. The one exception is **stop trying**,
+which undoes something and so is kept away from the thumb.
 
 ## Light or dark is the person's choice, and the emergency colours are not
 
