@@ -697,7 +697,8 @@ class _WhatHappened extends StatelessWidget {
           DecoratedBox(
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.focus),
+                // A hairline: the spine of a timeline, not a stripe that colours the block.
+                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.hairline),
               ),
             ),
             child: Column(

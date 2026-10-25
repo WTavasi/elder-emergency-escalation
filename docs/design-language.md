@@ -35,7 +35,7 @@ emergency and nothing else.
 
 Two roles exist only to pass contrast where the brand colours cannot. `danger` is the
 red for text and thin marks: the brand red in light mode, a lighter red in dark mode,
-where the brand red is 2:1 against the background. Error text, the waiting rule and the
+where the brand red is 2:1 against the background. Error text, the waiting dot and the
 "waiting" state are all written in it. `control` is the outline of a field, at 3:1 or
 better against the page in both modes, as WCAG 1.4.11 asks of a control's boundary; the
 hairline colour it replaced was 1.3:1. Both are in the contrast gate.
@@ -62,14 +62,20 @@ also carries a glyph and a word.
 Swiss and utilitarian: the type and the spacing do the work boxes used to.
 
 - **No cards.** Lists run edge to edge, one row per item, divided by hairlines. Sections
-  start with a small-capitals label over a hairline (`SectionLabel`). Messages are a rule
-  down the left and the words beside it, not a filled box.
+  start with a small-capitals label over a hairline (`SectionLabel`). Messages are an
+  icon and the words beside it, not a filled box: an error mark in the text-safe red, an
+  information mark in ink.
+- **No side stripes.** A coloured border down the left or right edge of a row, a
+  message or a banner is decoration, and it is ruled out above a 1-point hairline. State
+  is said by a glyph and a word, and where it has to catch the eye down a list, by a dot
+  at the start of the row. The one vertical line allowed is a hairline that is structure:
+  the spine of the alert trail.
 - **One big thing per screen.** Each screen opens with its title at headline size, tight
   and left-aligned (`PageTitle`, or the elder's name on a detail screen), so the eye lands
   in the same place every time.
-- **Red means a person is needed.** An emergency nobody has answered gets a 4-point red
-  rule down its left edge in the list, and the waiting count in red under the title.
-  Nothing decorative is red after sign-in.
+- **Red means a person is needed.** An emergency nobody has answered gets a red dot at
+  the start of its row in the list, as an unread message does, and the waiting count in
+  red under the title. Nothing decorative is red after sign-in.
 - **Figures in the monospaced face**: ages, ranks in a chain, phone numbers, the
   countdown. They line up down a column and do not jitter as they change.
 - **The thumb decides placement.** The places a person goes most are along the bottom
@@ -109,10 +115,15 @@ Dense, because it is read at a desk by somebody looking across many records at o
 - **Primary actions are ink**, not a brand colour. Red stays the emergency's alone; a
   worsening trend on the reporting screen is the one other place the warning red appears,
   and always with an arrow and a signed figure beside it.
+- **The status banner leads with the state pill**, and its outline turns red only while
+  nobody has taken the emergency on. It used to carry a thick coloured stripe down its
+  left edge in every state. The sidebar's current page is marked by a sunk background,
+  weight and a thin ink line beside it: a navigation affordance, not a coloured stripe.
 
 Tracking and line weights are tokens like everything else: `type.tracking` tightens
-large type and opens small capitals, `stroke` holds the hairline, the waiting rule and
-the focus ring.
+large type and opens small capitals, `stroke` holds the hairline, the heavier rule (the
+progress steps' connecting line and the help button's dark-mode edge) and the focus
+ring.
 
 The app follows this as of 1 October 2026 and the console as of 6 October 2026. Both use
 the same words: Waiting, Being handled, Escalated, Closed, Withdrawn. The console's

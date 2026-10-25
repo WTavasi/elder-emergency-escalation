@@ -1158,17 +1158,14 @@ select {
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-left-width: 6px;
   border-radius: var(--radius-card);
 }
+/* The state pill at the start of the banner says what state it is in. While nobody has
+   taken it on, the whole outline turns red as well: red is spent on a person being
+   needed and nothing else. It used to be a thick coloured stripe down the left edge in
+   every state, which is decoration the design guidance rules out. */
 .banner--waiting {
-  border-left-color: var(--emergency-edge);
-}
-.banner--owned {
-  border-left-color: var(--pill-acknowledged-fg);
-}
-.banner--closed {
-  border-left-color: var(--pill-resolved-fg);
+  border-color: var(--emergency-edge);
 }
 .banner__main {
   display: flex;
