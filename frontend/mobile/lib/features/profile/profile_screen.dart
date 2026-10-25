@@ -8,6 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
+import '../../core/theme/appearance.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -26,6 +27,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final Account? account = context.watch<AuthController>().account;
     final ThemeData theme = Theme.of(context);
+    final AppearanceController? appearance = AppearanceController.maybeOf(context);
 
     return Scaffold(
       body: SafeArea(
@@ -55,6 +57,11 @@ class ProfileScreen extends StatelessWidget {
                         ],
                         const SizedBox(height: MzaziSpace.s32),
                         const _PasswordForm(),
+                        if (appearance != null) ...<Widget>[
+                          const SizedBox(height: MzaziSpace.s32),
+                          const SectionLabel('Screen'),
+                          AppearancePicker(controller: appearance),
+                        ],
                         const SizedBox(height: MzaziSpace.s32),
                         const SectionLabel('Privacy and terms'),
                         const LegalLinks(),

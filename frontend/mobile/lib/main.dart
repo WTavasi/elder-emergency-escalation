@@ -15,6 +15,7 @@ import 'core/live/realtime_connection.dart';
 import 'core/location/position_source.dart';
 import 'core/location/way_there.dart';
 import 'core/push/push_registration.dart';
+import 'core/theme/appearance.dart';
 
 /// Where the API is, when it was given at build time:
 ///
@@ -101,14 +102,21 @@ void main() {
   auth.addListener(followSession);
   unawaited(auth.restore());
 
+  // Light or dark, if the person chose one; the phone's setting until it is read.
+  final AppearanceController appearance = AppearanceController();
+  unawaited(appearance.load());
+
   runApp(
     Provider<LiveUpdates>.value(
       value: live,
-      child: ChangeNotifierProvider<WayThere>.value(
-        value: wayThere,
-        child: ChangeNotifierProvider<AuthController>.value(
-          value: auth,
-          child: MzaziCareApp(api: api),
+      child: ChangeNotifierProvider<AppearanceController>.value(
+        value: appearance,
+        child: ChangeNotifierProvider<WayThere>.value(
+          value: wayThere,
+          child: ChangeNotifierProvider<AuthController>.value(
+            value: auth,
+            child: MzaziCareApp(api: api),
+          ),
         ),
       ),
     ),

@@ -5,6 +5,7 @@ import 'core/api/api_client.dart';
 import 'core/api/models.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/live/live_updates.dart';
+import 'core/theme/appearance.dart';
 import 'core/theme/theme.dart';
 import 'core/widgets/sign_out_button.dart';
 import 'features/auth/sign_in_screen.dart';
@@ -43,6 +44,8 @@ class MzaziCareApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: MzaziTheme.light(audience),
       darkTheme: MzaziTheme.dark(audience),
+      // The phone's own setting unless the person chose otherwise on their account page.
+      themeMode: AppearanceController.maybeOf(context)?.mode ?? ThemeMode.system,
       home: _Home(api: api, auth: auth),
     );
   }
