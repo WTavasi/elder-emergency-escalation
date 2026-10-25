@@ -44,6 +44,7 @@ abstract final class MzaziTheme {
     emergency: MzaziColorsLight.emergency,
     onEmergency: MzaziColorsLight.onEmergency,
     focus: MzaziColorsLight.focus,
+    selection: MzaziColorsLight.selection,
   );
 
   static ThemeData dark(AppAudience audience) => _build(
@@ -61,6 +62,7 @@ abstract final class MzaziTheme {
     emergency: MzaziColorsDark.emergency,
     onEmergency: MzaziColorsDark.onEmergency,
     focus: MzaziColorsDark.focus,
+    selection: MzaziColorsDark.selection,
   );
 
   /// The same theme laid on the caution yellow, for the screen that says "you can still
@@ -151,6 +153,7 @@ abstract final class MzaziTheme {
     required Color emergency,
     required Color onEmergency,
     required Color focus,
+    required Color selection,
   }) {
     final bool elder = audience.isLarge;
     final double body = bodySize(audience);
@@ -434,6 +437,14 @@ abstract final class MzaziTheme {
         errorBorder: outline(danger),
         focusedErrorBorder: outline(danger, MzaziStroke.focus),
         errorStyle: textTheme.bodySmall?.copyWith(color: danger),
+      ),
+      // Material takes the cursor and the selection from the primary colour, which here is
+      // the emergency red, so every field had a red caret. The focus blue and the gated
+      // selection colour instead.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: focus,
+        selectionColor: selection,
+        selectionHandleColor: focus,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: text,

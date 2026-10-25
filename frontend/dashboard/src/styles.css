@@ -82,6 +82,25 @@ h2 {
 
 a {
   color: var(--focus);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: from-font;
+}
+
+/*
+  The parts of the page the browser draws for us. Left alone, selection, the text caret
+  and scrollbars are the browser's own blue and grey, which belong to no design system;
+  here they take the tokens like everything else. Selection is gated against the text in
+  both themes. Scrollbars keep their full width, because a thin one is harder to grab.
+*/
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+:where(input, textarea, [contenteditable]) {
+  caret-color: var(--focus);
+}
+html {
+  scrollbar-color: var(--control) var(--surface-sunk);
 }
 
 /* A visible focus ring on every interactive element. Removing it would fail the

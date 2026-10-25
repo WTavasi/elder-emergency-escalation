@@ -115,6 +115,11 @@ Dense, because it is read at a desk by somebody looking across many records at o
 - **Primary actions are ink**, not a brand colour. Red stays the emergency's alone; a
   worsening trend on the reporting screen is the one other place the warning red appears,
   and always with an arrow and a signed figure beside it.
+- **The parts the browser draws carry the design too.** Text selection takes the
+  `selection` token, gated against body text in both themes; the caret is the focus blue;
+  scrollbars are the control grey on the sunk surface, at full width so they are easy to
+  grab; links are underlined a little below the baseline. The app's fields follow the same
+  rule: Material would colour the caret and the selection with the emergency red.
 - **The status banner leads with the state pill**, and its outline turns red only while
   nobody has taken the emergency on. It used to carry a thick coloured stripe down its
   left edge in every state. The sidebar's current page is marked by a sunk background,

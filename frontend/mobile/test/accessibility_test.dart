@@ -210,6 +210,23 @@ void main() {
       expect(MzaziTheme.light(AppAudience.elder).scaffoldBackgroundColor, MzaziColorsLight.bg);
     });
   });
+
+  group('text fields', () {
+    test('take the focus blue for the caret and the gated colour for a selection, never red', () {
+      for (final (ThemeData theme, Color focus, Color selection) in <(ThemeData, Color, Color)>[
+        (
+          MzaziTheme.light(AppAudience.standard),
+          MzaziColorsLight.focus,
+          MzaziColorsLight.selection,
+        ),
+        (MzaziTheme.dark(AppAudience.elder), MzaziColorsDark.focus, MzaziColorsDark.selection),
+      ]) {
+        expect(theme.textSelectionTheme.cursorColor, focus);
+        expect(theme.textSelectionTheme.selectionColor, selection);
+        expect(theme.textSelectionTheme.cursorColor, isNot(theme.colorScheme.primary));
+      }
+    });
+  });
 }
 
 void _noop() {}
