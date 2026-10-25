@@ -102,4 +102,7 @@ covers. The ones most people need are:
 - [docs/api.md](docs/api.md): every endpoint and who may call it
 - [docs/decisions.md](docs/decisions.md): why things are the way they are
 - [docs/design-language.md](docs/design-language.md): the rules the screens follow
+- [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md): the product and the visual system,
+  in the format of the [impeccable](https://github.com/pbakaus/impeccable) design guidance
+  that UI work here follows
 - [frontend/mobile/README.md](frontend/mobile/README.md): the app, screen by screen

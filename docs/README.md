@@ -2,6 +2,8 @@
 
 | Document | What it covers |
 | --- | --- |
+| [../PRODUCT.md](../PRODUCT.md) | Who the product is for, what it must stay true to, in the impeccable format |
+| [../DESIGN.md](../DESIGN.md) | The visual system: tokens, type, components, do's and don'ts, in the impeccable format |
 | [running.md](running.md) | Starting the system from a cold laptop: a terminal, VS Code, or the Flutter app |
 | [testing.md](testing.md) | The five testing layers, and how to demonstrate the system |
 | [api-testing.md](api-testing.md) | Testing the API by hand with Postman, step by step, and from the terminal with Newman |
