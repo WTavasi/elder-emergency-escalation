@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -433,7 +434,6 @@ class _Idle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final String? error = alerts.error;
     final CheckInController? checking = checkIns;
     final CheckIn? waiting = checking?.mine.waiting;
@@ -441,47 +441,193 @@ class _Idle extends StatelessWidget {
 
     final bool sending = alerts.phase == AlertPhase.raising;
 
-    return Column(
-      children: <Widget>[
-        if (error != null) ...<Widget>[
-          Notice(message: error, isError: true),
-          const SizedBox(height: MzaziSpace.s16),
+    return _CircleStage(
+      // Above the button, never in its place: "are you all right?" is one press away,
+      // and so is help.
+      above: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (error != null) ...<Widget>[
+            Notice(message: error, isError: true),
+            const SizedBox(height: MzaziSpace.s16),
+          ],
+          if (checking != null && waiting != null)
+            _CheckInPrompt(
+              busy: checking.busy,
+              error: checking.error,
+              onAnswer: () => unawaited(checking.answerNow()),
+            )
+          else if (answered != null && answered != CheckInAnswer.nothing)
+            const Notice(message: 'Thank you. Your family can see you are all right.'),
         ],
-        // Above the button, never in its place: "are you all right?" is one press away,
-        // and so is help.
-        if (checking != null && waiting != null) ...<Widget>[
-          _CheckInPrompt(
-            busy: checking.busy,
-            error: checking.error,
-            onAnswer: () => unawaited(checking.answerNow()),
+      ),
+      circle: PanicButton(
+        // Words, not a spinner, while the request travels: the button greys and says what
+        // it is doing, so a second press is not needed to find out.
+        label: sending ? 'Sending…' : 'Get\nhelp',
+        enabled: alerts.canRaise,
+        onPressed: alerts.raise,
+      ),
+      below: _HelpCaption(sending: sending),
+    );
+  }
+}
+
+/// The layout the help button and the countdown that replaces it share, so the circle is
+/// the same size in the same place on both screens: pressing the button turns the red
+/// disc into the countdown's ring where it was, and the eye never has to move.
+///
+/// Above the circle, what each screen says; below it, what each screen offers. Each band
+/// is held at the height of the taller of the two screens' contents, measured at this
+/// width and text size, so the circle's slot, and the circle in it, is identical whichever
+/// screen is showing. Only something the idle screen adds above the button, a check-in
+/// question or an error, can make that band taller than the countdown's heading.
+class _CircleStage extends StatelessWidget {
+  const _CircleStage({required this.circle, this.above, this.below});
+
+  final Widget circle;
+  final Widget? above;
+  final Widget? below;
+
+  /// The smallest circle the stage will lay out before it scrolls instead.
+  static const double _floor = MzaziA11y.elderMinTouchTarget * 2;
+
+  /// How tall [text] sets in [style] at [width], as a Text widget would set it.
+  static double _height(
+    String text,
+    TextStyle? style,
+    double width,
+    TextScaler scaler, {
+    TextAlign align = TextAlign.start,
+  }) {
+    final TextPainter painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textAlign: align,
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout(maxWidth: width);
+    final double height = painter.height;
+    painter.dispose();
+    return height;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double width = constraints.maxWidth;
+        final double heading =
+            _height(_CountdownHeading.title, theme.textTheme.headlineLarge, width, scaler) +
+            MzaziSpace.s12 +
+            _height(_CountdownHeading.body, theme.textTheme.bodyLarge, width, scaler);
+        final double caption = math.max(
+          _height(
+            _HelpCaption.waiting,
+            theme.textTheme.bodyLarge,
+            width,
+            scaler,
+            align: TextAlign.center,
           ),
-          const SizedBox(height: MzaziSpace.s16),
-        ] else if (answered != null && answered != CheckInAnswer.nothing) ...<Widget>[
-          const Notice(message: 'Thank you. Your family can see you are all right.'),
-          const SizedBox(height: MzaziSpace.s16),
+          // The countdown's way out is a full touch target tall.
+          MzaziA11y.elderMinTouchTarget,
+        );
+
+        final List<Widget> bands = <Widget>[
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: heading),
+            child: above ?? const SizedBox.shrink(),
+          ),
+          const SizedBox(height: MzaziSpace.s24),
+        ];
+        final List<Widget> foot = <Widget>[
+          const SizedBox(height: MzaziSpace.s24),
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: caption),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              heightFactor: 1,
+              child: below ?? const SizedBox.shrink(),
+            ),
+          ),
+        ];
+
+        // On a very small screen at the elder's text size the words leave too little room
+        // for a circle worth pressing. Then the circle keeps a floor and the screen scrolls,
+        // rather than the button shrinking to a dot or the layout overflowing. Both screens
+        // reach the same answer, so the circle still matches.
+        final double room = constraints.maxHeight - heading - caption - MzaziSpace.s24 * 2;
+        if (room < _floor) {
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                ...bands,
+                SizedBox(height: _floor, child: circle),
+                ...foot,
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            ...bands,
+            Expanded(child: circle),
+            ...foot,
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// What the help button does, said under it.
+class _HelpCaption extends StatelessWidget {
+  const _HelpCaption({required this.sending});
+
+  final bool sending;
+
+  static const String waiting =
+      'Press the red circle and the people who look after you will be told straight away.';
+  static const String sent = 'Sending your alert…';
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: sending,
+    child: Text(
+      sending ? sent : waiting,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodyLarge,
+    ),
+  );
+}
+
+/// What the countdown screen says above its ring.
+class _CountdownHeading extends StatelessWidget {
+  const _CountdownHeading();
+
+  static const String title = 'Help is on the way';
+  static const String body =
+      'Your caregiver has been told. If you pressed by mistake, you can stop this.';
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Semantics(
+      liveRegion: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(title, style: theme.textTheme.headlineLarge),
+          const SizedBox(height: MzaziSpace.s12),
+          Text(body, style: theme.textTheme.bodyLarge),
         ],
-        // In the middle of the screen, where it has always been. The countdown's ring and
-        // the steps that follow it take its place there, so the eye stays in one spot as
-        // what the elder pressed turns into what happened next.
-        Expanded(
-          child: PanicButton(
-            // Words, not a spinner, while the request travels: the button greys and says
-            // what it is doing, so a second press is not needed to find out.
-            label: sending ? 'Sending…' : 'Get\nhelp',
-            enabled: alerts.canRaise,
-            onPressed: alerts.raise,
-          ),
-        ),
-        const SizedBox(height: MzaziSpace.s24),
-        Semantics(
-          liveRegion: sending,
-          child: Text(
-            sending ? 'Sending your alert…' : 'Press the red circle and the people who look after you will be told straight away.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -519,51 +665,27 @@ class _CancellableState extends State<_Cancellable> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final AlertController alerts = widget.alerts;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Semantics(
-          liveRegion: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text('Help is on the way', style: theme.textTheme.headlineLarge),
-              const SizedBox(height: MzaziSpace.s12),
-              Text(
-                'Your caregiver has been told. If you pressed by mistake, you can stop this.',
-                style: theme.textTheme.bodyLarge,
-              ),
-            ],
+    return _CircleStage(
+      above: const _CountdownHeading(),
+      circle: CountdownRing(secondsLeft: alerts.secondsLeft, total: alerts.cancelWindow.inSeconds),
+      below: SizedBox(
+        height: MzaziA11y.elderMinTouchTarget,
+        child: FilledButton(
+          onPressed: alerts.cancel,
+          // The inverse of the screen: yellow on the dark ink, at 12.7:1, so the one thing
+          // to press is the heaviest thing on it. Not red: stopping an alert is not an
+          // emergency.
+          style: FilledButton.styleFrom(
+            backgroundColor: MzaziColorsLight.onCaution,
+            foregroundColor: MzaziColorsLight.caution,
           ),
+          // Says what it does, in the words the person would use. "Cancel" alone is
+          // ambiguous when the thing on screen is already called a cancellation.
+          child: const Text('I am all right, stop this'),
         ),
-        const SizedBox(height: MzaziSpace.s24),
-        Expanded(
-          child: CountdownRing(
-            secondsLeft: alerts.secondsLeft,
-            total: alerts.cancelWindow.inSeconds,
-          ),
-        ),
-        const SizedBox(height: MzaziSpace.s24),
-        SizedBox(
-          height: MzaziA11y.elderMinTouchTarget,
-          child: FilledButton(
-            onPressed: alerts.cancel,
-            // The inverse of the screen: yellow on the dark ink, at 12.7:1, so the one
-            // thing to press is the heaviest thing on it. Not red: stopping an alert is
-            // not an emergency.
-            style: FilledButton.styleFrom(
-              backgroundColor: MzaziColorsLight.onCaution,
-              foregroundColor: MzaziColorsLight.caution,
-            ),
-            // Says what it does, in the words the person would use. "Cancel" alone is
-            // ambiguous when the thing on screen is already called a cancellation.
-            child: const Text('I am all right, stop this'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

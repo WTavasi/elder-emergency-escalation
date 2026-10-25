@@ -29,16 +29,25 @@ class PanicButton extends StatelessWidget {
   final String label;
   final bool enabled;
 
+  /// How big the circle is in the space it is given: as large as fits, up to 420
+  /// points, and never below the elder touch target.
+  ///
+  /// The countdown's ring takes its size from here too, so pressing the button turns the
+  /// red disc into a ring of exactly the same size in exactly the same place.
+  static double diameterFor(Size available) {
+    final double side = available.shortestSide;
+    return side.isFinite
+        ? side.clamp(MzaziA11y.elderMinTouchTarget, 420.0)
+        : MzaziA11y.elderMinTouchTarget;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final double available = constraints.biggest.shortestSide;
-        final double diameter = available.isFinite
-            ? available.clamp(MzaziA11y.elderMinTouchTarget, 420.0)
-            : MzaziA11y.elderMinTouchTarget;
+        final double diameter = diameterFor(constraints.biggest);
 
         return Center(
           child: Semantics(

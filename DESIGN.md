@@ -245,9 +245,9 @@ An 8-point rhythm (4, 8, 12, 16, 24, 32, 48, 64). In the app, 24pt side margins 
 elder's screens and 16pt elsewhere; lists run edge to edge, one row per item, divided by
 hairlines; each screen opens with one large left-aligned title. Places people go often
 sit in a bottom bar (Alerts, People, Me), and the decision on an emergency is pinned to
-the bottom of its screen. On the elder's screen the help button stays in the middle, and
-the countdown's ring and the steps of help coming take its place there; what the elder
-does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb. Elder
+the bottom of its screen. On the elder's screen the help button and the countdown's ring
+share one layout and one size, so the ring appears exactly where the button was; what the
+elder does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb. Elder
 targets are 72pt, others 48pt, and
 the console uses 36pt where a mouse is detected. The console keeps a fixed sidebar that
 narrows to icons on a desktop and becomes a drawer on a phone.
@@ -280,9 +280,9 @@ banner. State is a glyph and a word, and in a list a dot at the start of the row
 
 ### Help button
 
-The one control the elder's app exists for: a red circle filling the width of the screen
-in its middle, with one line underneath saying what it does, "Get help" in white at
-display size, no icon. A firm vibration on press;
+The one control the elder's app exists for: a red circle, the same size and in the same
+place as the countdown ring that replaces it, with one line underneath saying what it
+does, "Get help" in white at display size, no icon. A firm vibration on press;
 grey with "Sending…" while the request travels. In dark mode, a brighter red edge.
 
 ### Countdown
@@ -336,8 +336,8 @@ marked by a sunk background, weight, and a thin ink line beside it.
 
 - **Do** keep red for a person being needed, and nothing else.
 - **Do** say every state three ways: glyph, word and colour.
-- **Do** keep the help button in the middle of the elder's screen, where what replaces
-  it appears, and put what the elder does next at the bottom.
+- **Do** keep the help button and the countdown ring the same size in the same place,
+  and put what the elder does next at the bottom.
 - **Do** take every colour, size and duration from `frontend/design-tokens`, and add a
   contrast pair for any new colour.
 - **Do** set figures in Atkinson Hyperlegible Mono.

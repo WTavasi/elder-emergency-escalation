@@ -81,9 +81,12 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
 - **The thumb decides placement.** The places a person goes most are along the bottom
   (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
   screen. The top bar carries a back arrow and nothing else. On the elder's screen the
-  help button stays in the middle, with its explanation underneath, and what replaces
-  it (the countdown's ring, the steps of help coming) appears in the same place, so the
-  eye never has to look for it. What the elder does next sits at the bottom, in the reach
+  help button and the countdown's ring that replaces it are the same size in the same
+  place, so pressing turns the red disc into the ring where it was and the eye never has
+  to look for it. The two screens share one layout: the band above the circle is as tall
+  as the countdown's heading, the band below as tall as the button's explanation, both
+  measured at the current width and text size. On the smallest phones, where that would
+  leave a circle under 144 points, the screen scrolls instead. What the elder does next sits at the bottom, in the reach
   of a thumb: **I am all right, stop this**, the ways to ask for help without a
   connection, **Back to the help button**. A control that undoes something, such as
   **stop trying**, is kept away from the thumb so it is not pressed on the way to the
