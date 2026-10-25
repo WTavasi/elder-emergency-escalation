@@ -738,7 +738,7 @@ class _WhatHappened extends StatelessWidget {
     return switch (entry.action) {
       'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
         'The daily check-in went unanswered',
-      'EVENT_CREATED' => '$who asked for help',
+      'EVENT_CREATED' => entry.byText ? '$who asked for help, by text' : '$who asked for help',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
       'VOLUNTEERS_ASKED' => 'Volunteers nearby were asked',
       'VOLUNTEER_ACCEPTED' => '$who, a volunteer, said they would go',

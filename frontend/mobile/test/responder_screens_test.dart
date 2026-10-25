@@ -127,6 +127,31 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('an alert the elder raised by texting HELP says so in the trail', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> body = detailBody();
+    final List<Map<String, dynamic>> timeline = (body['timeline'] as List<Map<String, dynamic>>)
+        .toList();
+    timeline[0] = <String, dynamic>{
+      ...timeline[0],
+      'detail': <String, dynamic>{'trigger': 'PANIC', 'via': 'sms'},
+    };
+    body['timeline'] = timeline;
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(body)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Grace Wanjiru asked for help, by text'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
