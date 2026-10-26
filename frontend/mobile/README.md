@@ -126,6 +126,13 @@ typed.
 the phone on the account and sets a new password with it, then signs straight in. The
 number already typed on the sign-in screen is carried over.
 
+**Signing up.** Two short steps. First who you are (caregiver, family or volunteer),
+your name and your number, and **Agree and send a code**, with the terms of use and the
+privacy notice linked in the small print under it. Then the six-digit code and a
+password, which has a show button rather than a second field. An email can be added
+later on the account page. Back from the code returns to the first step with what was
+typed kept.
+
 **Before sign-in.** The sign-in and reset screens use the elder's type sizes, because an
 elder may be the one signing in, but regular-weight body text: bold everywhere is kept
 for an account known to be an elder's (`AppAudience.welcome` in the theme). Sign-up uses

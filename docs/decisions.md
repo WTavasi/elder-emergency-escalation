@@ -373,6 +373,28 @@ attacker's hands. Before this, registering a taken number answered "an account a
 exists", which was a way to test whether somebody was registered; that answer is now only
 reachable by somebody who holds the phone.
 
+## Sign-up asks for two things at a time, and the small print stays small
+
+The first sign-up screen had grown to fourteen things on one page: a notice, three role
+buttons with icons, five fields, a panel on what is kept, two links, a tick box and the
+button, which a 6.1 inch phone could not show without scrolling. It now follows the
+phone-first sign-ups people already know from apps like WhatsApp, in two short steps.
+
+- **Who you are and your number, then the code and a password.** Each screen holds three
+  or four things. The password moved beside the code because it is needed at the same
+  moment, when the account is made.
+- **Only what an account cannot exist without.** The optional email went, since the
+  account page already takes one, and so did "Password again". A show button lets a
+  mistake be seen and put right in the field, which is what the second field was for.
+- **Agreeing is the button.** "Agree and send a code" is the act of agreeing, with the
+  terms of use and the privacy notice linked in one line of small print under it, in
+  the sentence that says what pressing it means. It is still a deliberate press, unlike
+  "by using this app", and the server still records `acceptedPrivacyNotice`. The summary
+  of what MzaziCare keeps went with the tick box: the privacy notice says all of it, one
+  tap away.
+- **Words alone on the role buttons.** With icons beside them, the three no longer fit
+  across a phone, and "Volunteer" broke in the middle of the word.
+
 ## A caregiver adds family by phone number, and the place waits for them
 
 A relative does not have to sign up before the caregiver can add them. If the number has

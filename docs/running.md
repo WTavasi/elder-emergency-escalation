@@ -695,7 +695,7 @@ number is texted, and any other phone signed in as Mary is signed out. Change it
 would try to make a second Mary with the same email and stop.
 
 **4. Read the notice.** **Privacy notice** and **Terms of use** are under the sign-in
-form, under the agreement on sign-up, on **My account**, on Grace's **You** page and on
+form, in the small print under **Agree and send a code** on sign-up, on **My account**, on Grace's **You** page and on
 the consent page. The retention figures and the contact come from the server. The
 console's **Privacy and data** panel says the same.
 
