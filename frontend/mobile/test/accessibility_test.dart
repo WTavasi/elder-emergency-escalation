@@ -102,20 +102,15 @@ void main() {
       }
     });
 
-    test('keeps the elder sizes before sign-in, without making every word bold', () {
-      // Anybody can be on the sign-in screen, an elder included, so the sizes are the
-      // elder's. Bold body text is kept for an account known to be an elder's.
-      final ThemeData welcome = MzaziTheme.light(AppAudience.welcome);
+    test("follows Apple's sizes outside Elder mode, with 17 point body text", () {
+      final ThemeData standard = MzaziTheme.light(AppAudience.standard);
+      expect(standard.textTheme.bodyLarge?.fontSize, MzaziTypeApp.body);
+      expect(standard.textTheme.headlineLarge?.fontSize, MzaziTypeApp.largeTitle);
+      // No family named: the phone's own face, SF Pro on an iPhone.
+      expect(standard.textTheme.bodyLarge?.fontFamily, isNot(contains('Inclusive')));
       final ThemeData elder = MzaziTheme.light(AppAudience.elder);
-
-      expect(welcome.textTheme.bodyLarge?.fontSize, elder.textTheme.bodyLarge?.fontSize);
-      expect(
-        welcome.textTheme.bodyLarge?.fontSize,
-        greaterThanOrEqualTo(MzaziA11y.elderMinBodySize),
-      );
-      expect(MzaziTheme.touchTarget(AppAudience.welcome), MzaziA11y.elderMinTouchTarget);
-      expect(welcome.textTheme.bodyLarge?.fontWeight, MzaziWeight.body);
       expect(elder.textTheme.bodyLarge?.fontWeight, MzaziWeight.elderBody);
+      expect(standard.textTheme.bodyLarge?.fontWeight, MzaziWeight.body);
     });
 
     test('gives an elder larger text than a caregiver, which is the point of the split', () {
@@ -136,6 +131,7 @@ void main() {
         );
 
         expect(filled?.height, greaterThanOrEqualTo(MzaziTheme.touchTarget(audience)));
+        expect(filled?.height, theme.extension<MzaziSizes>()!.control);
         expect(outlined?.height, greaterThanOrEqualTo(MzaziTheme.touchTarget(audience)));
       }
     });

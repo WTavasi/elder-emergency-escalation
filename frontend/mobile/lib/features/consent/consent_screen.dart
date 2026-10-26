@@ -5,8 +5,9 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../legal/legal_screens.dart';
 
@@ -113,13 +114,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
   /// The elder for themselves; a caregiver on their behalf, which the elder is then asked
   /// to confirm and is told about by text.
   Future<void> _give(ConsentItem item) async {
-    final bool? sure = await showPlatformAlert<bool>(
+    final bool? sure = await showActionSheet<bool>(
       context,
       title: _giveTitle(item.kind),
-      content: Text(_meaning(item.kind)),
-      actions: const <AlertAction<bool>>[
-        AlertAction<bool>('Not now', false),
-        AlertAction<bool>('Agree', true),
+      message: _meaning(item.kind),
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>('Agree', true, icon: Icons.check, primary: true),
+        SheetAction<bool>('Not now', false, icon: Icons.close),
       ],
     );
     if (!mounted || sure != true) return;
@@ -136,13 +137,18 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   Future<void> _withdraw(ConsentItem item) async {
     final bool endsService = item.kind == ConsentKind.dataProcessing;
-    final bool? sure = await showPlatformAlert<bool>(
+    final bool? sure = await showActionSheet<bool>(
       context,
       title: _withdrawTitle(item.kind),
-      content: Text(_withdrawEffect(item.kind)),
-      actions: <AlertAction<bool>>[
-        const AlertAction<bool>('Keep it', false),
-        AlertAction<bool>(endsService ? 'Stop MzaziCare' : 'Withdraw', true, destructive: true),
+      message: _withdrawEffect(item.kind),
+      actions: <SheetAction<bool>>[
+        SheetAction<bool>(
+          endsService ? 'Stop MzaziCare' : 'Withdraw',
+          true,
+          icon: Icons.remove_circle_outline,
+          destructive: true,
+        ),
+        const SheetAction<bool>('Keep it', false, icon: Icons.close),
       ],
     );
     if (!mounted) return;
@@ -284,7 +290,12 @@ class _ConsentScreenState extends State<ConsentScreen> {
     if (error == null) return const Center(child: CircularProgressIndicator());
 
     return ListView(
-      padding: const EdgeInsets.all(MzaziSpace.s24),
+      padding: EdgeInsets.fromLTRB(
+        MzaziLayout.margin(context),
+        MzaziSpace.s24,
+        MzaziLayout.margin(context),
+        MzaziSpace.s24,
+      ),
       children: <Widget>[
         Notice(message: error, isError: true),
         const SizedBox(height: MzaziSpace.s16),
@@ -299,7 +310,12 @@ class _ConsentScreenState extends State<ConsentScreen> {
     final String? error = _error;
 
     return ListView(
-      padding: const EdgeInsets.all(MzaziSpace.s24),
+      padding: EdgeInsets.fromLTRB(
+        MzaziLayout.margin(context),
+        MzaziSpace.s24,
+        MzaziLayout.margin(context),
+        MzaziSpace.s24,
+      ),
       children: <Widget>[
         Semantics(
           header: true,
@@ -326,7 +342,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
         ],
         const SizedBox(height: MzaziSpace.s24),
         SizedBox(
-          height: MzaziA11y.elderMinTouchTarget,
+          height: MzaziSizes.of(context).control,
           child: FilledButton(
             onPressed: _busy ? null : () => unawaited(_agree()),
             child: const Text('I agree'),
@@ -334,7 +350,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
         ),
         const SizedBox(height: MzaziSpace.s12),
         SizedBox(
-          height: MzaziA11y.elderMinTouchTarget,
+          height: MzaziSizes.of(context).control,
           child: OutlinedButton(
             onPressed: _busy ? null : () => Navigator.of(context).pop(false),
             child: const Text('Not now'),
@@ -348,15 +364,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget _page(BuildContext context, ConsentView view) {
     final ThemeData theme = Theme.of(context);
     final String? error = _error;
-    final double target = _isElder
-        ? MzaziA11y.elderMinTouchTarget
-        : MzaziA11y.standardMinTouchTarget;
+    final double target = MzaziSizes.of(context).target;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        MzaziSpace.s16,
+      padding: EdgeInsets.fromLTRB(
+        MzaziLayout.margin(context),
         MzaziSpace.s8,
-        MzaziSpace.s16,
+        MzaziLayout.margin(context),
         MzaziSpace.s32,
       ),
       children: <Widget>[

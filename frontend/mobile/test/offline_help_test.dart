@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -29,16 +28,8 @@ import 'support.dart';
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues(<String, String>{}));
 
-  // The real faces, so a test of what fits on a phone's screen measures the type the
-  // elder will see. The test font draws every letter as a full square, which makes a
-  // line of text nearly twice as wide as it really is.
-  setUpAll(() async {
-    final FontLoader elder = FontLoader(MzaziFont.elder)
-      ..addFont(rootBundle.load('assets/fonts/InclusiveSans-Variable.ttf'));
-    final FontLoader mono = FontLoader(MzaziFont.mono)
-      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegibleMono-Variable.ttf'));
-    await Future.wait(<Future<void>>[elder.load(), mono.load()]);
-  });
+  // A real face, so a test of what fits on a phone's screen measures real text.
+  setUpAll(loadRealFaces);
 
   const Account grace = Account(
     id: 'elder-1',

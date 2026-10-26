@@ -31,13 +31,12 @@ class MzaziCareApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthController auth = context.watch<AuthController>();
 
-    // The elder's sizes until we know otherwise. A caregiver seeing one oversized frame
-    // for an instant is harmless; an elder seeing a 16pt screen is not.
-    final AppAudience audience = switch (auth.account?.role) {
-      null => AppAudience.welcome,
-      Role.elder => AppAudience.elder,
-      _ => AppAudience.standard,
-    };
+    // Elder mode: on for an elder until they say otherwise, off for everybody else, and
+    // whatever this phone was last set to before anybody is signed in.
+    final AppearanceController? appearance = AppearanceController.maybeOf(context);
+    final bool large =
+        appearance?.elderModeFor(auth.account?.role) ?? auth.account?.role == Role.elder;
+    final AppAudience audience = large ? AppAudience.elder : AppAudience.standard;
 
     return MaterialApp(
       title: 'MzaziCare',
@@ -45,7 +44,7 @@ class MzaziCareApp extends StatelessWidget {
       theme: MzaziTheme.light(audience),
       darkTheme: MzaziTheme.dark(audience),
       // The phone's own setting unless the person chose otherwise on their account page.
-      themeMode: AppearanceController.maybeOf(context)?.mode ?? ThemeMode.system,
+      themeMode: appearance?.mode ?? ThemeMode.system,
       home: _Home(api: api, auth: auth),
     );
   }

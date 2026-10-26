@@ -6,11 +6,14 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/location/location_permission.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/appearance.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
+import '../../core/widgets/password_field.dart';
 import '../../core/widgets/section_label.dart';
 import '../legal/legal_screens.dart';
 import 'change_phone_screen.dart';
@@ -39,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
                 children: <Widget>[
                   const PageTitle('My account'),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+                    padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
@@ -61,6 +64,7 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: MzaziSpace.s32),
                           const SectionLabel('Screen'),
                           AppearancePicker(controller: appearance),
+                          ElderModeSwitch(controller: appearance, role: account.role),
                         ],
                         const SizedBox(height: MzaziSpace.s32),
                         const SectionLabel('Privacy and terms'),
@@ -244,7 +248,6 @@ class _PasswordFormState extends State<_PasswordForm> {
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
   final TextEditingController _current = TextEditingController();
   final TextEditingController _next = TextEditingController();
-  final TextEditingController _again = TextEditingController();
   bool _busy = false;
   String? _error;
   bool _done = false;
@@ -253,7 +256,6 @@ class _PasswordFormState extends State<_PasswordForm> {
   void dispose() {
     _current.dispose();
     _next.dispose();
-    _again.dispose();
     super.dispose();
   }
 
@@ -277,7 +279,6 @@ class _PasswordFormState extends State<_PasswordForm> {
       if (_done) {
         _current.clear();
         _next.clear();
-        _again.clear();
       }
     });
   }
@@ -302,32 +303,23 @@ class _PasswordFormState extends State<_PasswordForm> {
             ),
             const SizedBox(height: MzaziSpace.s12),
           ],
-          TextFormField(
+          PasswordField(
             controller: _current,
-            obscureText: true,
-            autofillHints: const <String>[AutofillHints.password],
-            decoration: const InputDecoration(labelText: 'Current password'),
+            label: 'Current password',
+            textInputAction: TextInputAction.next,
             validator: (String? v) =>
                 (v == null || v.isEmpty) ? 'Enter your current password.' : null,
           ),
           const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
+          // Shown on request rather than typed twice, as everywhere else in the app.
+          PasswordField(
             controller: _next,
-            obscureText: true,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            decoration: const InputDecoration(
-              labelText: 'New password',
-              helperText: 'At least 8 characters',
-            ),
+            label: 'New password',
+            helperText: 'At least 8 characters',
+            newPassword: true,
+            onSubmitted: (_) => unawaited(_change()),
             validator: (String? v) =>
                 (v == null || v.length < 8) ? 'Use at least 8 characters.' : null,
-          ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
-            controller: _again,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'New password again'),
-            validator: (String? v) => v == _next.text ? null : 'The two passwords are different.',
           ),
           const SizedBox(height: MzaziSpace.s16),
           OutlinedButton.icon(
@@ -349,6 +341,15 @@ class _WayThereSetting extends StatelessWidget {
   const _WayThereSetting({required this.way});
 
   final WayThere way;
+
+  /// Turning it on says why location is wanted before the phone asks for it, when the
+  /// phone has not been asked yet.
+  Future<void> _turn(BuildContext context, bool on) async {
+    if (on && await way.checkAccess() == LocationAccess.denied) {
+      if (!context.mounted || !await explainLocation(context)) return;
+    }
+    await way.setEnabled(on);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +374,7 @@ class _WayThereSetting extends StatelessWidget {
               value: way.enabled,
               onChanged: !way.isLoaded || way.isSaving
                   ? null
-                  : (bool on) => unawaited(way.setEnabled(on)),
+                  : (bool on) => unawaited(_turn(context, on)),
             ),
             if (way.problem != null && way.eventId == null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s8),

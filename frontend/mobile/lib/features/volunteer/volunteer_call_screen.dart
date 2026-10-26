@@ -6,9 +6,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../responder/widgets/call_button.dart';
 import '../responder/widgets/directions_button.dart';
@@ -37,15 +38,18 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
   }
 
   Future<void> _withdraw(VolunteerController volunteer) async {
-    final bool? sure = await showPlatformAlert<bool>(
+    final bool? sure = await showActionSheet<bool>(
       context,
       title: 'You can no longer go?',
-      content: const Text(
-        'The other volunteers nearby will be asked again. If you can, call to say so.',
-      ),
-      actions: const <AlertAction<bool>>[
-        AlertAction<bool>('I am still going', false),
-        AlertAction<bool>('I cannot go', true, destructive: true),
+      message: 'The other volunteers nearby will be asked again. If you can, call to say so.',
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>(
+          'I cannot go',
+          true,
+          icon: Icons.do_not_disturb_on_outlined,
+          destructive: true,
+        ),
+        SheetAction<bool>('I am still going', false, icon: Icons.directions_walk),
       ],
     );
     if (sure == true && mounted) {
@@ -65,10 +69,10 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
         child: call == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  MzaziSpace.s16,
+                padding: EdgeInsets.fromLTRB(
+                  MzaziLayout.margin(context),
                   0,
-                  MzaziSpace.s16,
+                  MzaziLayout.margin(context),
                   MzaziSpace.s32,
                 ),
                 children: <Widget>[
@@ -181,25 +185,19 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
         style: theme.textTheme.bodyLarge,
       ),
       const SizedBox(height: MzaziSpace.s24),
-      SizedBox(
-        height: MzaziA11y.standardMinTouchTarget,
-        child: FilledButton(
-          onPressed: volunteer.busy
-              ? null
-              : () => unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.accept)),
-          child: const Text('I can go'),
-        ),
+      FilledButton(
+        onPressed: volunteer.busy
+            ? null
+            : () => unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.accept)),
+        child: const Text('I can go'),
       ),
       if (call.status != VolunteerCallStatus.declined) ...<Widget>[
         const SizedBox(height: MzaziSpace.s12),
-        SizedBox(
-          height: MzaziA11y.standardMinTouchTarget,
-          child: OutlinedButton(
-            onPressed: volunteer.busy
-                ? null
-                : () => unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.decline)),
-            child: const Text('I cannot go'),
-          ),
+        OutlinedButton(
+          onPressed: volunteer.busy
+              ? null
+              : () => unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.decline)),
+          child: const Text('I cannot go'),
         ),
       ],
     ];

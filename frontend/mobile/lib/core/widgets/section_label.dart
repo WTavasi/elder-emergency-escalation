@@ -22,7 +22,9 @@ class SectionLabel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          // On one line of type with the action's words, whatever the button's padding.
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: <Widget>[
             Expanded(
               child: Semantics(

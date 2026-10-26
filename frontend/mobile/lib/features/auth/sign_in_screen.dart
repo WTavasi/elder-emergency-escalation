@@ -6,12 +6,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
-import '../../core/theme/theme.dart';
-import '../../core/widgets/care_rings.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/password_field.dart';
 import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
+import 'auth_frame.dart';
 import 'code_sign_in_screen.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
@@ -108,23 +107,13 @@ class _SignInScreenState extends State<SignInScreen> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) _changeNumber();
       },
-      child: Scaffold(
-        body: CareRings(
-          child: SafeArea(
-            // From the top, not the middle, so nothing jumps between the two steps.
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(MzaziSpace.s24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  child: _number == null ? _numberStep(context) : _passwordStep(context),
-                ),
-              ),
+      child: _number == null
+          ? AuthFrame(tall: true, child: _numberStep(context))
+          : AuthFrame(
+              onBack: context.watch<AuthController>().isBusy ? null : _changeNumber,
+              backLabel: 'Change the number',
+              child: _passwordStep(context),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -135,19 +124,8 @@ class _SignInScreenState extends State<SignInScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SizedBox(height: MzaziSpace.s32),
-        // The same wordmark the console's sign-in carries, so the first screen on either
-        // looks like one product. Type only: there is no logo, and inventing one is not
-        // this project's job.
-        Text('MzaziCare', style: theme.textTheme.headlineLarge?.weighted(FontWeight.w700)),
-        const SizedBox(height: MzaziSpace.s4),
-        Text(
-          'Emergency help for elders at home',
-          style: theme.textTheme.bodyLarge?.copyWith(color: theme.textTheme.bodySmall?.color),
-        ),
-        const SizedBox(height: MzaziSpace.s32),
-        // Straight on the page, no card. The fields are filled, so nothing that has to be
-        // read sits on the rings behind them.
+        const StepHeading(title: 'Sign in', lead: 'Enter the number on your account.'),
+        const SizedBox(height: MzaziSpace.s24),
         Form(
           key: _numberForm,
           child: Column(
@@ -166,7 +144,7 @@ class _SignInScreenState extends State<SignInScreen> {
             ],
           ),
         ),
-        const SizedBox(height: MzaziSpace.s32),
+        const SizedBox(height: MzaziSpace.s16),
         // For caregivers, family members and volunteers. Elders are registered by their
         // caregiver, and the sign-up screen says so.
         Wrap(
@@ -196,15 +174,6 @@ class _SignInScreenState extends State<SignInScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: IconButton(
-            tooltip: 'Change the number',
-            onPressed: auth.isBusy ? null : _changeNumber,
-            icon: const Icon(Icons.arrow_back),
-          ),
-        ),
-        const SizedBox(height: MzaziSpace.s8),
         StepHeading(title: 'Enter your password', lead: _number!),
         const SizedBox(height: MzaziSpace.s24),
         if (error != null) ...<Widget>[
@@ -249,8 +218,6 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         const SizedBox(height: MzaziSpace.s12),
         OutlinedButton(
-          // Filled like the fields, so the rings do not show through it.
-          style: OutlinedButton.styleFrom(backgroundColor: theme.colorScheme.surface),
           onPressed: auth.isBusy ? null : () => unawaited(_signInWithCode()),
           child: const Text('Sign in with a code'),
         ),

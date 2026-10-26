@@ -208,10 +208,6 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'nope');
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Another!2026');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'New password again'),
-      'Another!2026',
-    );
     await tester.tap(find.text('Change password').last);
     await tester.pumpAndSettle();
 
@@ -228,10 +224,6 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'Dev!2026');
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Another!2026');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'New password again'),
-      'Another!2026',
-    );
     await tester.tap(find.text('Change password').last);
     await tester.pumpAndSettle();
 
@@ -278,9 +270,33 @@ void main() {
       await tester.tap(toggle);
       await tester.pumpAndSettle();
 
-      expect(source.asked, <bool>[true]);
+      // Checked, then asked: already allowed, so nothing to explain first.
+      expect(source.asked, <bool>[false, true]);
       expect(t.patches.single, contains('"shareWayThere":true'));
       expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      t.way.dispose();
+    });
+
+    testWidgets('says why before the phone asks, on a phone never asked before', (
+      WidgetTester tester,
+    ) async {
+      source
+        ..answer = LocationAccess.denied
+        ..afterAsking = LocationAccess.granted;
+      final ({WayThere way, List<String> patches}) t = await sharing();
+      await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
+
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Share my way there'));
+      await tester.pumpAndSettle();
+
+      // Apple's pattern: one way on, called Continue, and the phone asks only after it.
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(source.asked, <bool>[false]);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(source.asked, <bool>[false, true]);
+      expect(t.patches.single, contains('"shareWayThere":true'));
       t.way.dispose();
     });
 

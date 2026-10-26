@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../theme/theme.dart';
+
 /// The actions a screen exists for, at the bottom where a thumb reaches them.
 ///
 /// Phones are held in one hand, and the top of a modern screen is out of reach of the
@@ -19,7 +21,7 @@ class BottomActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     assert(children.isNotEmpty, 'a bar with no actions should not be built');
     final ThemeData theme = Theme.of(context);
-    final double target = elder ? MzaziA11y.elderMinTouchTarget : MzaziA11y.standardMinTouchTarget;
+    final double target = elder ? MzaziA11y.elderMinTouchTarget : MzaziSizes.of(context).target;
 
     return DecoratedBox(
       decoration: BoxDecoration(

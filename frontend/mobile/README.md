@@ -199,8 +199,8 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | `lib/core/theme/` | The theme, built from the design tokens, and the light or dark setting |
 | `lib/core/widgets/` | Shared pieces: notices, section labels, the swipe control and more |
 
-`main.dart` starts the app and registers the font licences; `app.dart` chooses the
-screen for the signed-in role. Tests are in `test/`, one file per controller or screen.
+`main.dart` starts the app; `app.dart` chooses the screen for the signed-in role and the
+size the app is in. Tests are in `test/`, one file per controller or screen.
 
 ## Design
 
@@ -208,9 +208,17 @@ Every colour, type size, spacing step, radius and duration comes from
 `frontend/design-tokens`, consumed as a Dart package. There is no literal anywhere in the
 theme, because a hard-coded value is the one thing the contrast gate cannot check.
 
-The type and touch scale follows the role rather than a setting. An elder-facing screen
-is built to `MzaziA11y.elderMinBodySize` and `MzaziA11y.elderMinTouchTarget` because of
-who is using it, and a caregiver's alert list would be unusable at 22pt body text.
+The app is set in the phone's own face (SF Pro on an iPhone, Roboto on Android) on
+Apple's type scale, and comes in two sizes. Elder mode is the larger one, built to
+`MzaziA11y.elderMinBodySize` and `MzaziA11y.elderMinTouchTarget`: it starts on for an
+elder's account and off for everybody else, and anybody can switch it from their own
+page. A screen takes its sizes from the theme (`MzaziSizes.of(context)` and the text
+theme) rather than from the account's role, so the switch reaches every screen.
+
+Questions and notices are sheets from the bottom (`showActionSheet` in
+`lib/core/widgets/action_sheet.dart`), and a permission is asked only when a person
+presses the thing that needs it, after a sheet has said why
+(`lib/core/location/location_permission.dart`).
 
 ## Tests
 
@@ -233,9 +241,10 @@ quietly, and the tests that guard them:
   against numbers typed in the test, so lowering a floor in `tokens.json` fails a test
   instead of passing a review.
 
-Tests that measure what fits on a phone's screen load the real bundled fonts first,
-because Flutter's test font draws every letter as a full square and would make every
-line look twice as long as it is.
+Tests that measure what fits on a phone's screen load a real face first
+(`loadRealFaces` in `test/support.dart`, Roboto from the Flutter SDK), because Flutter's
+test font draws every letter as a full square and would make every line look twice as
+long as it is.
 
 ## Location
 

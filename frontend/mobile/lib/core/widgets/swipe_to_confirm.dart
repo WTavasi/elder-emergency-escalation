@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../theme/theme.dart';
 import 'motion.dart';
 
 /// A deliberate action that a pocket or a stray thumb cannot take.
@@ -10,7 +11,9 @@ import 'motion.dart';
 /// For the few actions that are costly to take by mistake and are taken by people in a
 /// hurry: closing an emergency, telling the chain "I am on my way". A tap is too easy
 /// and a dialog is too slow. The thumb drags across the track; let go early and it
-/// springs back.
+/// springs back. The track fills behind the knob as it goes, covering the words it has
+/// passed, and the words fade, as the iPhone's own "slide to" controls do: what is left
+/// to read is only what is left to do.
 ///
 /// A screen reader cannot swipe, so the control is also a button to assistive
 /// technology: activating it confirms, and the label says what it does. Nothing about
@@ -91,9 +94,9 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double height = widget.elder
+    final double height = widget.elder || MzaziSizes.of(context).large
         ? MzaziA11y.elderMinTouchTarget
-        : MzaziA11y.standardMinTouchTarget + MzaziSpace.s8;
+        : MzaziSizes.of(context).control + MzaziSpace.s4;
     // A ticked knob keeps its colour while the request runs, rather than greying out as
     // if the swipe had been refused.
     final Color fill = widget.enabled || _done
@@ -142,13 +145,36 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> {
                 children: <Widget>[
                   Center(
                     child: Padding(
-                      padding: EdgeInsets.only(left: height),
-                      child: Text(
-                        widget.label,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      padding: EdgeInsets.only(left: height, right: MzaziSpace.s16),
+                      child: Opacity(
+                        // Gone by the time the knob is two thirds of the way across.
+                        opacity: (1 - _progress * 1.5).clamp(0.0, 1.0),
+                        child: Text(
+                          widget.label,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  // The track behind the knob, filled up to it, over the words it has passed.
+                  AnimatedPositioned(
+                    duration: _dragging ? Duration.zero : Motion.of(context, MzaziMotion.standard),
+                    curve: MzaziEasing.decelerate,
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: height + _progress * travel,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        // Solid, so the words it has passed are hidden, not seen through.
+                        color: Color.alphaBlend(
+                          fill.withValues(alpha: 0.18),
+                          theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        borderRadius: BorderRadius.circular(height / 2),
                       ),
                     ),
                   ),

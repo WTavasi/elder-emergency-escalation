@@ -7,6 +7,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../auth/sign_up_screen.dart' show resendSeconds;
 import 'widgets/address_picker.dart';
@@ -136,7 +137,12 @@ class _AddElderScreenState extends State<AddElderScreen> {
       appBar: AppBar(title: const Text('Register somebody')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(MzaziSpace.s24),
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
+            MzaziSpace.s24,
+            MzaziLayout.margin(context),
+            MzaziSpace.s24,
+          ),
           child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
         ),
       ),
@@ -294,7 +300,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
               LengthLimitingTextInputFormatter(6),
             ],
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontFamily: MzaziFont.mono,
+              fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
             decoration: const InputDecoration(labelText: 'Six-digit code'),

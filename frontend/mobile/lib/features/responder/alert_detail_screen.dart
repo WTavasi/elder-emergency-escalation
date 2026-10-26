@@ -6,13 +6,14 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/models.dart';
+import '../../core/location/location_permission.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../voice/call_screen.dart';
@@ -68,7 +69,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       body: RefreshIndicator(
         onRefresh: controller.refresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s32),
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
+            0,
+            MzaziLayout.margin(context),
+            MzaziSpace.s32,
+          ),
           children: <Widget>[
             _Header(alert: alert),
             _OnTheWay(
@@ -187,10 +193,10 @@ class _ActionBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
             MzaziSpace.s12,
-            MzaziSpace.s16,
+            MzaziLayout.margin(context),
             MzaziSpace.s12,
           ),
           child: child,
@@ -446,32 +452,29 @@ class _Actions extends StatelessWidget {
   Future<void> _confirmDecline(BuildContext context) async {
     final TextEditingController reason = TextEditingController();
 
-    final bool? confirmed = await showPlatformAlert<bool>(
+    final bool? confirmed = await showActionSheet<bool>(
       context,
       title: 'Cannot come?',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Text(
-            'The emergency will stop waiting on you and move on to the next person '
-            'straight away.',
-          ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextField(
-            controller: reason,
-            maxLength: 200,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'Reason (optional)',
-              hintText: 'At work, two hours away',
-            ),
-          ),
-        ],
+      message:
+          'The emergency will stop waiting on you and move on to the next person straight '
+          'away.',
+      content: TextField(
+        controller: reason,
+        maxLength: 200,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
+          labelText: 'Reason (optional)',
+          hintText: 'At work, two hours away',
+        ),
       ),
-      actions: const <AlertAction<bool>>[
-        AlertAction<bool>('Never mind', false),
-        AlertAction<bool>('I cannot come', true, primary: true),
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>(
+          'I cannot come',
+          true,
+          icon: Icons.do_not_disturb_on_outlined,
+          primary: true,
+        ),
+        SheetAction<bool>('Never mind', false, icon: Icons.close),
       ],
     );
 
@@ -545,10 +548,11 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  MzaziSpace.s16,
-                  MzaziSpace.s24,
-                  MzaziSpace.s16,
+                // Below the sheet's grab handle, which leaves the room above the question.
+                padding: EdgeInsets.fromLTRB(
+                  MzaziLayout.margin(context),
+                  0,
+                  MzaziLayout.margin(context),
                   MzaziSpace.s8,
                 ),
                 child: Column(
@@ -584,7 +588,9 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
           title: Text(outcome.label, style: theme.textTheme.bodyLarge),
           subtitle: Text(outcome.hint, style: theme.textTheme.bodySmall),
           trailing: outcome.needsNote ? const Icon(Icons.chevron_right) : null,
-          minTileHeight: MzaziA11y.standardMinTouchTarget,
+          // In line with the question above.
+          contentPadding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
+          minTileHeight: MzaziSizes.of(context).target,
           onTap: () {
             if (outcome.needsNote) {
               setState(() => _writing = true);
@@ -597,10 +603,10 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
   );
 
   Widget _writingStep(ThemeData theme) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      MzaziSpace.s16,
+    padding: EdgeInsets.fromLTRB(
+      MzaziLayout.margin(context),
       MzaziSpace.s8,
-      MzaziSpace.s16,
+      MzaziLayout.margin(context),
       MzaziSpace.s16,
     ),
     child: Column(
@@ -687,34 +693,19 @@ class _WhatHappened extends StatelessWidget {
         if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
         else
-          DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                // A hairline: the spine of a timeline, not a stripe that colours the block.
-                left: BorderSide(color: theme.dividerColor, width: MzaziStroke.hairline),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                for (final TimelineEntry entry in shown)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      MzaziSpace.s16,
-                      MzaziSpace.s4,
-                      0,
-                      MzaziSpace.s12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(_sentence(entry), style: theme.textTheme.bodyLarge),
-                        Text(_when(entry.secondsFromTrigger), style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+          // Numbered, on a line from the first thing that happened to the latest, as the
+          // console draws an emergency's chain. The latest is filled in.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              for (int i = 0; i < shown.length; i++)
+                _Step(
+                  number: i + 1,
+                  last: i == shown.length - 1,
+                  title: _sentence(shown[i]),
+                  when: _when(shown[i].secondsFromTrigger),
+                ),
+            ],
           ),
       ],
     );
@@ -791,7 +782,7 @@ class _WhatHappened extends StatelessWidget {
   /// Relative to the alert, in units a person reads without counting zeroes.
   static String _when(int seconds) {
     if (seconds <= 0) return 'when the alert was raised';
-    if (seconds < 60) return '$seconds seconds after the alert';
+    if (seconds < 60) return '$seconds ${seconds == 1 ? 'second' : 'seconds'} after the alert';
     final int minutes = seconds ~/ 60;
     if (minutes < 60) return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} after the alert';
     final int hours = minutes ~/ 60;
@@ -837,7 +828,7 @@ class _Chain extends StatelessWidget {
                     width: MzaziSpace.s32,
                     child: Text(
                       '${member.priorityOrder}',
-                      style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
+                      style: theme.textTheme.titleLarge?.figures,
                       semanticsLabel: 'Tier ${member.priorityOrder}',
                     ),
                   ),
@@ -989,18 +980,22 @@ class _OnTheWay extends StatelessWidget {
           way.access == LocationAccess.deniedForever || way.access == LocationAccess.serviceOff;
       children = <Widget>[
         Notice(message: way.problem!, isError: true),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: settings
-              ? TextButton(
-                  onPressed: () => unawaited(way.openSettings()),
-                  child: const Text('Open settings'),
-                )
-              : TextButton(
-                  onPressed: () => unawaited(way.shareFor(alert.eventId)),
-                  child: const Text('Try sharing again'),
+        const SizedBox(height: MzaziSpace.s12),
+        // Asks the phone for location when it has not been asked, after saying why. A
+        // retry that only checked could never succeed on a phone that was never asked.
+        settings
+            ? OutlinedButton.icon(
+                onPressed: () => unawaited(way.openSettings()),
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Open Settings'),
+              )
+            : OutlinedButton.icon(
+                onPressed: () => unawaited(shareWithPermission(context, way, alert.eventId)),
+                icon: const Icon(Icons.my_location),
+                label: Text(
+                  way.access == LocationAccess.denied ? 'Allow location' : 'Try sharing again',
                 ),
-        ),
+              ),
       ];
     } else if (way.enabled) {
       children = <Widget>[
@@ -1008,7 +1003,7 @@ class _OnTheWay extends StatelessWidget {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
-            onPressed: () => unawaited(way.shareFor(alert.eventId)),
+            onPressed: () => unawaited(shareWithPermission(context, way, alert.eventId)),
             child: const Text('Share my way there'),
           ),
         ),
@@ -1072,16 +1067,21 @@ class _OnTheWay extends StatelessWidget {
   /// Stopping is a choice with a cost to somebody else, so it is said plainly before it
   /// happens. The safe answer is the quiet one and keeps sharing.
   static Future<void> _confirmStop(BuildContext context, WayThere way, String elder) async {
-    final bool? stop = await showPlatformAlert<bool>(
+    final bool? stop = await showActionSheet<bool>(
       context,
       title: 'Stop sharing your way there?',
-      content: Text(
-        '$elder will no longer see how long you will be, and the rest of the circle will '
-        'not see where you are. You can share again from this screen.',
-      ),
-      actions: const <AlertAction<bool>>[
-        AlertAction<bool>('Keep sharing', false),
-        AlertAction<bool>('Stop sharing', true, primary: true, destructive: true),
+      message:
+          '$elder will no longer see how long you will be, and the rest of the circle will '
+          'not see where you are. You can share again from this screen.',
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>(
+          'Stop sharing',
+          true,
+          icon: Icons.location_off_outlined,
+          primary: true,
+          destructive: true,
+        ),
+        SheetAction<bool>('Keep sharing', false, icon: Icons.my_location),
       ],
     );
     if (stop == true) way.stop();
@@ -1163,6 +1163,76 @@ class _Talk extends StatelessWidget {
           Text('$startedBy has started a call.', style: theme.textTheme.bodySmall),
         ],
       ],
+    );
+  }
+}
+
+/// One numbered step of what has happened: a marker with its number, the line on to the
+/// next step, and the sentence with its time beside them.
+class _Step extends StatelessWidget {
+  const _Step({required this.number, required this.last, required this.title, required this.when});
+
+  final int number;
+  final bool last;
+  final String title;
+  final String when;
+
+  static const double _marker = 28;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final Color ink = theme.colorScheme.onSurface;
+    final Color line = theme.colorScheme.outlineVariant;
+    // The marker grows with the text, up to a point, so the number always fits in it.
+    final double scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
+    final double marker = _marker * scale;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SizedBox(
+            width: marker,
+            child: Column(
+              children: <Widget>[
+                Container(
+                  width: marker,
+                  height: marker,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // The latest step filled, the earlier ones outlined.
+                    color: last ? ink : theme.colorScheme.surface,
+                    border: Border.all(color: last ? ink : line, width: 2),
+                  ),
+                  child: Text(
+                    '$number',
+                    style: theme.textTheme.labelMedium?.figures.copyWith(
+                      color: last ? theme.colorScheme.surface : ink,
+                    ),
+                    textScaler: TextScaler.linear(scale),
+                  ),
+                ),
+                if (!last) Expanded(child: Container(width: 2, color: line)),
+              ],
+            ),
+          ),
+          const SizedBox(width: MzaziSpace.s12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: last ? 0 : MzaziSpace.s16, top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title, style: theme.textTheme.bodyLarge),
+                  Text(when, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

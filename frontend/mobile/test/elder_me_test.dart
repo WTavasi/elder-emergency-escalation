@@ -101,4 +101,20 @@ void main() {
     expect(t.auth.isSignedIn, isFalse);
     expect(t.calls.where((Exchange c) => c.path.endsWith('/auth/logout')), hasLength(1));
   });
+
+  testWidgets('has privacy and terms in a part of their own, as everybody else does', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester);
+
+    expect(find.text('PRIVACY AND TERMS'), findsOneWidget);
+    expect(find.text('Privacy and consent'), findsOneWidget);
+    expect(find.text('Privacy notice'), findsOneWidget);
+    expect(find.text('THIS PHONE'), findsOneWidget);
+    // The privacy part comes before signing out, which is last.
+    expect(
+      tester.getCenter(find.text('PRIVACY AND TERMS')).dy,
+      lessThan(tester.getCenter(find.text('Sign out of this phone')).dy),
+    );
+  });
 }

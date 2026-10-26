@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
 import '../../core/widgets/notice.dart';
 
@@ -83,7 +84,7 @@ class _CallScreenState extends State<CallScreen> {
           appBar: AppBar(),
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s24),
+              padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
@@ -110,10 +111,7 @@ class _CallScreenState extends State<CallScreen> {
                     Text(
                       _elapsed(since),
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontFamily: MzaziFont.mono,
-                        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-                      ),
+                      style: theme.textTheme.titleLarge?.figures,
                     ),
                   ],
                   const SizedBox(height: MzaziSpace.s24),

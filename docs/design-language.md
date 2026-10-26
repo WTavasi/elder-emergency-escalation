@@ -1,6 +1,6 @@
 # Design language, enforceable constraints
 
-Version 0.2. The narrative version with swatches and rationale is kept in the project
+Version 0.3. The narrative version with swatches and rationale is kept in the project
 documentation. This file is the part that code has to obey.
 
 ## Governing rule
@@ -76,8 +76,17 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
 - **Red means a person is needed.** An emergency nobody has answered gets a red dot at
   the start of its row in the list, as an unread message does, and the waiting count in
   red under the title. Nothing decorative is red after sign-in.
-- **Figures in the monospaced face**: ages, ranks in a chain, phone numbers, the
-  countdown. They line up down a column and do not jitter as they change.
+- **Figures with tabular digits** (`.figures` in the app, the monospaced face in the
+  console): ages, ranks in a chain, phone numbers, the countdown. They line up down a
+  column and do not jitter as they change.
+- **Apple's margins and steps.** A page's side margin is 20 points, 16 on the narrowest
+  phones (`MzaziLayout.margin`), the same on every screen. Text takes Apple's named steps
+  (large title, title, headline, body, subheadline, footnote) from the theme.
+- **The way in has a colour.** Sign-in, sign-up and the reset screens put MzaziCare's red
+  across the top, with the care rings faint in white and a curved lower edge, and the form
+  below it, low on the screen in the reach of a thumb (`AuthFrame`). The red is the same in
+  light and dark mode. No emergency can be on screen before sign-in, so the red there
+  cannot be mistaken for one.
 - **The thumb decides placement.** The places a person goes most are along the bottom
   (Alerts, People, Me), and the decision on an emergency is pinned to the bottom of its
   screen. The top bar carries a back arrow and nothing else. On the elder's screen the
@@ -95,12 +104,20 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   something, something confirmed (the help button), a tick for each second of the
   countdown, and something that needs attention (an alert arriving, a call joining).
   Progress is said in words ("Sending…"), never shown as a bare spinner.
-- **On iPhone, iPhone's own alerts and switches.** A question or notice is iOS's alert
-  on iPhone and Material's everywhere else (`showPlatformAlert`), and switches are adaptive.
-  An elder's alert keeps the elder's face and sizes even in iOS's frame, because iOS sets
-  an alert at 17 points and the elder floor is 20. The iOS tint is the focus blue; a
-  destructive answer is iOS's red, which is a destructive confirmation and so allowed. The
-  care-level choice stays a Material dialog, because it is a form, not a question.
+- **Every pop-up is a sheet from the bottom.** A question, a choice or a notice slides
+  up from the bottom (`showActionSheet`), where the thumb already is: a grab handle,
+  rounded top corners, a title, a line saying what will happen, and the answers as rows
+  with an icon each, the way back out last, as iOS places Cancel. The answer the question
+  leads to may be a full-width button above the rows; it is red only when it ends,
+  removes or stops something, which is a destructive confirmation and so allowed. A sheet
+  takes the app's current size, so an elder's is as large as the rest of their app.
+  Switches are adaptive, so iOS's own on iPhone.
+- **Permission is asked when it is needed, after saying why.** Nothing is asked at
+  start-up. When a person presses something that needs a permission the phone has not
+  given, a sheet says in a sentence what it is for and has one button, Continue; the
+  phone's own question follows. A retry asks the phone again rather than only checking,
+  because on an iPhone "not asked yet" and an expired "Allow Once" both read as refused,
+  and a retry that only checks can never succeed.
 - **Selected controls are ink, never the emergency red.** Material colours an "on"
   switch, a ticked box, a chosen radio, a slider and a spinner from the primary colour,
   and the primary colour here is the emergency red. The theme sets them all to ink, and
@@ -110,9 +127,16 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   the mode: the help button keeps its red, with a brighter `emergencyEdge` around it in
   dark mode where the red alone is 2:1 against the page, and the countdown stays yellow.
 - **Every control is a full touch target.** Text buttons, icon buttons and tabs are
-  48 points in the standard scale and 72 in the elder scale, set in the theme so a new
-  screen cannot forget. Text buttons are ink and underlined, never red, because red here
-  means an emergency.
+  48 points in the standard size and 72 in Elder mode, set in the theme so a new screen
+  cannot forget. Full-width buttons are solid with 12-point corners and 50 points tall, 72
+  in Elder mode (`MzaziSizes.control`); the secondary one is ink on the sunk grey with no
+  outline. Text buttons are MzaziCare red without an underline, as an iPhone app's links
+  take its tint. Red buttons and links in the app are under review, because red is meant
+  to mean an emergency.
+- **The alert trail is numbered.** What has happened on an emergency is a column of
+  numbered circles joined by a line, the latest filled in, as the console draws the chain.
+- **A swipe covers its words.** As the knob of a swipe-to-confirm moves, the track fills
+  behind it and the words fade, so nothing is read through the knob.
 
 ## Layout, in the console
 
@@ -193,59 +217,65 @@ to it competes with the only thing that screen is for.
 
 ## Type
 
-One family per audience, and it is a legibility decision rather than a stylistic one.
+In the app, one face for everybody: the phone's own. SF Pro on an iPhone, its Display cut
+from 20 points up and its Text cut below, as Apple sets them; Roboto on Android. It is
+named on every text style (`MzaziTheme.systemFamily`) rather than inherited, because some
+widgets, buttons among them, take a style from the theme as it is.
 
-| Audience | Face | Why |
+| | Standard | Elder mode |
 | --- | --- | --- |
-| Elder | Inclusive Sans, 700 throughout | Designed for accessibility and readability. A capital I, a lowercase l and a 1 cannot be confused, and the zero is slashed. That is the single most useful property a face can have on a screen somebody reads in a panic, and it is friendlier to read than the face it replaced (`docs/decisions.md`) |
-| Caregiver, responder, administrator | Source Sans 3 | Humanist, unremarkable in a good way, and one variable file covers every weight the interface needs |
-| Figures everywhere | Atkinson Hyperlegible Mono | Timers, phone numbers and codes, where digits have to line up. From the Braille Institute's low-vision research, with a slashed zero |
+| Large title (a page's title) | 34, bold | 40, bold |
+| Title 2 (a step or a sheet) | 22, bold | 28, bold |
+| Headline (names, buttons) | 17, semibold | 22, bold |
+| Body | 17, regular | 22, semibold |
+| Subheadline (secondary text) | 15, regular | 20, semibold |
+| Footnote (section labels) | 13, semibold, small capitals | 20, bold, small capitals |
 
-Headings are separated from body text by weight, not by a fourth family. All three faces
-are SIL Open Font Licence.
+The standard sizes are Apple's own defaults at the phone's normal text size. Every size
+follows the phone's text-size setting from there.
 
-Before anybody has signed in, the app cannot know whose phone it is, so the sign-in and
-reset screens take the elder's face and sizes with regular-weight body text, and bold only
-for headings and buttons. Bold throughout begins once the account is known to be an
-elder's. Sign-up uses the caregiver's type, because elders are registered by their
-caregiver and never sign up themselves.
+**Elder mode** is the larger size: the same face, the same layout, larger text and taller
+buttons. It starts on for an elder's account and off for everybody else, and anybody can
+switch it on their own page (**Screen**, **Elder mode**); the choice is kept on the phone
+and holds before sign-in too, so an elder's phone stays large on the sign-in screen. A
+screen takes its sizes from the theme (`MzaziSizes`, the text theme) and never asks whose
+account it is, so the switch reaches every screen.
 
-Fonts are bundled into the app from `frontend/mobile/assets/fonts/` and self-hosted by the
-dashboard from `frontend/dashboard/public/fonts/`. Nothing is fetched from a font CDN, which
-matters for more than principle: the console reads an elder's name and address, so once
-signed in it makes no third-party request at all. The one exception is before sign-in,
-when Google sign-in is set up: the sign-in page fetches Google's button, and the console
-reloads after signing in so the page that shows anybody's details never carries it
-(`docs/running.md`, Google sign-in on the console).
-The licence text ships inside the app as an asset and is registered with Flutter's licence
-page, because bundling a font is distributing it and the Open Font Licence requires the
-licence to travel with it.
+In the console, Source Sans 3, with Atkinson Hyperlegible Mono for figures, both SIL Open
+Font Licence and self-hosted from `frontend/dashboard/public/fonts/`. Nothing is fetched
+from a font CDN, which matters for more than principle: the console reads an elder's name
+and address, so once signed in it makes no third-party request at all. The one exception is
+before sign-in, when Google sign-in is set up: the sign-in page fetches Google's button,
+and the console reloads after signing in so the page that shows anybody's details never
+carries it (`docs/running.md`, Google sign-in on the console).
+
+The app bundled its own faces from 30 September to 26 October 2026: Inclusive Sans for the
+elder, Source Sans 3 for everybody else and Atkinson Hyperlegible Mono for figures. Why
+that changed, and what was given up, is in `docs/decisions.md`.
 
 Until 30 September 2026 this section described a set of fonts that no build ever loaded.
 The tokens named IBM Plex Sans and Archivo, nothing was bundled, and both surfaces fell
-back to whatever the platform supplied. The elder screen's legibility was therefore a
-property of the phone rather than of a decision. Recorded here because a design language
-that cannot be observed in the product is not a design language.
+back to whatever the platform supplied. Recorded here because a design language that
+cannot be observed in the product is not a design language.
 
-Weight is a token (`type.weight`) rather than a per-widget choice, because the elder
-path's boldness is a decision about reading and has to be the same in both surfaces. On the
-large-type screens the step above body is bold rather than semi-bold, so a button never reads
-lighter than the bold sentence next to it. All three faces are variable, so the app drives
-the weight axis with `fontVariations` as well as setting `fontWeight`, and changes a weight
-only through `weighted()`; the dashboard declares one `@font-face` per face with its range.
+Weight is a token (`type.weight`) rather than a per-widget choice, because Elder mode's
+heavier body text is a decision about reading. On the large screens the step above body is
+bold rather than semi-bold, so a button never reads lighter than the sentence next to it.
+A weight changes only through `weighted()`.
 
-None of the faces is on the list of overused interface fonts in the impeccable design
-guidance (Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica, Fraunces,
-Instrument Sans and Serif, Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk, Recoleta),
-and a new face should not be either.
+No face the project chooses and ships is on the list of overused interface fonts in the
+impeccable design guidance (Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica,
+Fraunces, Instrument Sans and Serif, Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk,
+Recoleta), and a new one should not be either. The phone's own face is not such a choice:
+it is what every other app on the phone is set in, Roboto on Android included.
 
 ## Accessibility floors, asserted in tests
 
 | Floor | Value |
 | --- | --- |
-| Elder body text | 20sp minimum |
+| Elder mode body text | 20pt minimum (22 by default) |
 | Elder touch target | 72dp minimum |
-| Standard body text | 14px minimum |
+| Standard body text | 14pt minimum (17 by default in the app) |
 | Standard touch target | 48dp minimum |
 | Contrast | AA everywhere, AAA on body text and the panic control |
 | Font scaling | usable at 200% system font size |

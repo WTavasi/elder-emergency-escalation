@@ -56,7 +56,7 @@ void main() {
       await tester.tap(find.text('Get directions'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsOneWidget);
       expect(find.text('Kilimani, Nairobi'), findsOneWidget);
     });
 

@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/country.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/password_field.dart';
 import '../../core/widgets/step_heading.dart';
+import 'auth_frame.dart';
 import 'sign_up_screen.dart' show resendSeconds;
 
 /// Setting a new password with a code sent to the phone on the account.
@@ -121,25 +123,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) _changeNumber();
       },
-      child: Scaffold(
-        appBar: AppBar(),
-        body: SafeArea(
-          // From the top, so the heading of each step is in the same place.
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                MzaziSpace.s16,
-                MzaziSpace.s8,
-                MzaziSpace.s16,
-                MzaziSpace.s32,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
-              ),
-            ),
-          ),
+      child: Builder(
+        builder: (BuildContext context) => AuthFrame(
+          onBack: () => unawaited(Navigator.of(context).maybePop()),
+          child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
         ),
       ),
     );
@@ -209,7 +196,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               LengthLimitingTextInputFormatter(6),
             ],
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontFamily: MzaziFont.mono,
+              fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
             decoration: const InputDecoration(labelText: 'Six-digit code'),

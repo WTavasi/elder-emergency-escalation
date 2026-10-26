@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
@@ -46,27 +45,8 @@ String resolveApiBaseUrl({String configured = configuredApiBaseUrl, TargetPlatfo
   return 'http://$host:3000/api/v1';
 }
 
-/// Registers the font licences with Flutter's own licence page.
-///
-/// The Open Font Licence requires the licence to travel with the font, and a font bundled
-/// into an app is a distribution of it. Having the text sitting in the repository does not
-/// satisfy that; this puts it in front of whoever opens the app's licences.
-void _registerFontLicences() {
-  LicenseRegistry.addLicense(() async* {
-    for (final (String name, String path) in <(String, String)>[
-      ('Inclusive Sans', 'assets/fonts/OFL-InclusiveSans.txt'),
-      ('Source Sans 3', 'assets/fonts/OFL-SourceSans3.txt'),
-      ('Atkinson Hyperlegible Mono', 'assets/fonts/OFL-AtkinsonHyperlegibleMono.txt'),
-    ]) {
-      final String text = await rootBundle.loadString(path);
-      yield LicenseEntryWithLineBreaks(<String>[name], text);
-    }
-  });
-}
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  _registerFontLicences();
 
   final String baseUrl = resolveApiBaseUrl();
   final ApiClient api = ApiClient(baseUrl: baseUrl);

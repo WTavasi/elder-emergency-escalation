@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mzazicare/core/api/api_client.dart';
@@ -208,15 +210,19 @@ Map<String, dynamic> detailBody({
 
 /// A phone whose location answers are scripted, and whose readings are pushed by hand.
 class FakePositionSource implements PositionSource {
-  FakePositionSource({this.answer = LocationAccess.granted});
+  FakePositionSource({this.answer = LocationAccess.granted, this.afterAsking});
 
   LocationAccess answer;
+
+  /// What the person answers when the phone actually asks, if that differs.
+  LocationAccess? afterAsking;
   final List<bool> asked = <bool>[];
   final StreamController<Fix> readings = StreamController<Fix>.broadcast();
 
   @override
   Future<LocationAccess> access({required bool ask}) async {
     asked.add(ask);
+    if (ask && afterAsking != null) answer = afterAsking!;
     return answer;
   }
 
@@ -325,3 +331,27 @@ Map<String, dynamic> checkInScheduleBody({
   'waitingForElder': waitingForElder,
   'setBy': setByName == null ? null : <String, dynamic>{'id': 'carer-1', 'name': setByName},
 };
+
+/// Loads a real face for a test that measures what fits on a screen. The app names no
+/// family, so the phone's own face is used: SF Pro on an iPhone, Roboto under test. The
+/// test font draws every letter as a full square, nearly twice as wide as real text.
+Future<void> loadRealFaces() async {
+  const String dir = 'bin/cache/artifacts/material_fonts';
+  final String root = Platform.environment['FLUTTER_ROOT'] ?? _flutterRoot();
+  Future<ByteData> file(String name) async =>
+      ByteData.sublistView(await File('$root/$dir/$name').readAsBytes());
+
+  final FontLoader roboto = FontLoader('Roboto');
+  for (final String weight in <String>['Regular', 'Medium', 'Bold']) {
+    roboto.addFont(file('Roboto-$weight.ttf'));
+  }
+  final FontLoader icons = FontLoader('MaterialIcons')..addFont(file('MaterialIcons-Regular.otf'));
+  await Future.wait(<Future<void>>[roboto.load(), icons.load()]);
+}
+
+/// Where Flutter is, from the running Dart executable when FLUTTER_ROOT is not set.
+String _flutterRoot() {
+  final String dart = Platform.resolvedExecutable;
+  final int at = dart.indexOf('/bin/cache/');
+  return at == -1 ? '' : dart.substring(0, at);
+}

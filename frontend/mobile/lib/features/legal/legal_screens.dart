@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/section_label.dart';
 
 /// The sentence the Kenya Data Protection Act's vital interests ground asks this notice
@@ -210,7 +211,12 @@ class _LegalPageState extends State<_LegalPage> {
         // out at once: it is short and fixed, a screen reader can move through all of it,
         // and the last section (who to ask) exists before anybody scrolls to it.
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s8, MzaziSpace.s16, MzaziSpace.s32),
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
+            MzaziSpace.s8,
+            MzaziLayout.margin(context),
+            MzaziSpace.s32,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[

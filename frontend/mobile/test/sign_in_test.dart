@@ -47,7 +47,7 @@ void main() {
       ChangeNotifierProvider<AuthController>.value(
         value: auth,
         child: MaterialApp(
-          theme: MzaziTheme.light(AppAudience.welcome),
+          theme: MzaziTheme.light(AppAudience.standard),
           home: const SignInScreen(),
         ),
       ),

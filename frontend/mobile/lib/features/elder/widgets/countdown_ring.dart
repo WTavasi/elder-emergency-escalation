@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../../../core/theme/theme.dart';
 import '../../../core/widgets/motion.dart';
 import 'panic_button.dart';
 
@@ -56,7 +57,7 @@ class CountdownRing extends StatelessWidget {
                     // not move the ones beside it.
                     Text(
                       '$secondsLeft',
-                      style: theme.textTheme.displayLarge?.copyWith(fontFamily: MzaziFont.mono),
+                      style: theme.textTheme.displayLarge?.figures,
                       semanticsLabel: '$secondsLeft seconds left to stop this',
                     ),
                     ExcludeSemantics(

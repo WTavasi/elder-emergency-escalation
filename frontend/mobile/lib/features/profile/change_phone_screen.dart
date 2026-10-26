@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/code_field.dart';
 import '../../core/widgets/notice.dart';
 import '../auth/sign_up_screen.dart' show resendSeconds;
@@ -118,10 +119,10 @@ class _ChangePhoneScreenState extends State<ChangePhoneScreen> {
       appBar: AppBar(title: const Text('Change phone number')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            MzaziSpace.s16,
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
             MzaziSpace.s8,
-            MzaziSpace.s16,
+            MzaziLayout.margin(context),
             MzaziSpace.s32,
           ),
           child: _sentTo == null ? _numberStep(context) : _codeStep(context),

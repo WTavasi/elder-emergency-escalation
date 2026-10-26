@@ -6,8 +6,9 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/platform_alert.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
@@ -123,9 +124,14 @@ class _ElderScreenState extends State<ElderScreen> {
   }
 
   Future<void> _changeCareLevel(CareLevel? current) async {
-    final _LevelChoice? choice = await showDialog<_LevelChoice>(
-      context: context,
-      builder: (_) => _CareLevelDialog(current: current),
+    final _LevelChoice? choice = await showActionSheet<_LevelChoice>(
+      context,
+      title: 'How much help do they need?',
+      actions: <SheetAction<_LevelChoice>>[
+        for (final CareLevel level in CareLevel.values)
+          SheetAction<_LevelChoice>(level.label, _LevelChoice(level), selected: level == current),
+        SheetAction<_LevelChoice>('Not sure', const _LevelChoice(null), selected: current == null),
+      ],
     );
     if (choice == null) return;
     await _act(
@@ -138,18 +144,21 @@ class _ElderScreenState extends State<ElderScreen> {
   }
 
   Future<void> _remove(ChainPlace place) async {
-    final bool? confirmed = await showPlatformAlert<bool>(
+    final bool? confirmed = await showActionSheet<bool>(
       context,
       title: place.isInvited ? 'Withdraw the invitation?' : 'Remove ${place.name}?',
-      content: Text(
-        place.isInvited
-            ? 'The place held for ${place.phone} is released. Nothing is sent to them.'
-            : '${place.name} will no longer be asked when ${widget.elderName} needs help. '
-                  'They will get an SMS saying so.',
-      ),
-      actions: <AlertAction<bool>>[
-        const AlertAction<bool>('Keep them', false),
-        AlertAction<bool>(place.isInvited ? 'Withdraw' : 'Remove', true, destructive: true),
+      message: place.isInvited
+          ? 'The place held for ${place.phone} is released. Nothing is sent to them.'
+          : '${place.name} will no longer be asked when ${widget.elderName} needs help. '
+                'They will get an SMS saying so.',
+      actions: <SheetAction<bool>>[
+        SheetAction<bool>(
+          place.isInvited ? 'Withdraw' : 'Remove',
+          true,
+          icon: Icons.person_remove_outlined,
+          destructive: true,
+        ),
+        const SheetAction<bool>('Keep them', false, icon: Icons.close),
       ],
     );
     if (confirmed == true) {
@@ -208,7 +217,12 @@ class _ElderScreenState extends State<ElderScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, 0, MzaziSpace.s16, MzaziSpace.s32),
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
+            0,
+            MzaziLayout.margin(context),
+            MzaziSpace.s32,
+          ),
           children: <Widget>[
             Semantics(
               header: true,
@@ -230,7 +244,7 @@ class _ElderScreenState extends State<ElderScreen> {
                 Text(
                   phone,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    fontFamily: MzaziFont.mono,
+                    fontFeatures: MzaziTheme.figures,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -414,7 +428,7 @@ class _ChainRow extends StatelessWidget {
             width: MzaziSpace.s32,
             child: Text(
               '${place.tier}',
-              style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
+              style: theme.textTheme.titleLarge?.figures,
               semanticsLabel: 'Tier ${place.tier}',
             ),
           ),
@@ -424,10 +438,7 @@ class _ChainRow extends StatelessWidget {
               children: <Widget>[
                 Text(place.name, style: theme.textTheme.titleMedium),
                 Text(label, style: theme.textTheme.bodySmall),
-                Text(
-                  place.phone,
-                  style: theme.textTheme.bodySmall?.copyWith(fontFamily: MzaziFont.mono),
-                ),
+                Text(place.phone, style: theme.textTheme.bodySmall?.figures),
               ],
             ),
           ),
@@ -458,53 +469,6 @@ class _LevelChoice {
   const _LevelChoice(this.level);
 
   final CareLevel? level;
-}
-
-class _CareLevelDialog extends StatefulWidget {
-  const _CareLevelDialog({required this.current});
-
-  final CareLevel? current;
-
-  @override
-  State<_CareLevelDialog> createState() => _CareLevelDialogState();
-}
-
-class _CareLevelDialogState extends State<_CareLevelDialog> {
-  late CareLevel? _level = widget.current;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('How much help do they need?'),
-      content: RadioGroup<CareLevel?>(
-        groupValue: _level,
-        onChanged: (CareLevel? value) => setState(() => _level = value),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            for (final CareLevel level in CareLevel.values)
-              RadioListTile<CareLevel?>(
-                contentPadding: EdgeInsets.zero,
-                value: level,
-                title: Text(level.label),
-              ),
-            const RadioListTile<CareLevel?>(
-              contentPadding: EdgeInsets.zero,
-              value: null,
-              title: Text('Not sure'),
-            ),
-          ],
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_LevelChoice(_level)),
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
 }
 
 /// A place chosen by address search, for a home or a stay.

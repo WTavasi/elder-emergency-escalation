@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mzazicare_tokens/mzazicare_tokens.dart';
+
+import '../theme/theme.dart';
 
 /// A six-digit code box: digits only, spaced wide in the monospace face so each digit
 /// can be checked against the text message one at a time, and offered the code from an
@@ -32,7 +33,10 @@ class CodeField extends StatelessWidget {
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(6),
       ],
-      style: theme.textTheme.headlineSmall?.copyWith(fontFamily: MzaziFont.mono, letterSpacing: 8),
+      style: theme.textTheme.headlineSmall?.copyWith(
+        fontFeatures: MzaziTheme.figures,
+        letterSpacing: 8,
+      ),
       decoration: InputDecoration(labelText: label),
       onFieldSubmitted: onSubmitted,
       validator: (String? value) => (value?.length ?? 0) == 6 ? null : 'The code has six digits.',

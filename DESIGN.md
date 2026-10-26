@@ -27,26 +27,54 @@ colors:
   surface-sunk: "#E8EDEF"
 typography:
   elder-display:
-    fontFamily: "Inclusive Sans, Source Sans 3, system-ui, sans-serif"
+    fontFamily: "SF Pro, system-ui, sans-serif"
     fontSize: "56px"
     fontWeight: 700
     lineHeight: 1.05
-    letterSpacing: "-1px"
   elder-title:
-    fontFamily: "Inclusive Sans, Source Sans 3, system-ui, sans-serif"
-    fontSize: "32px"
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "40px"
     fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.6px"
+    lineHeight: 1.15
   elder-body:
-    fontFamily: "Inclusive Sans, Source Sans 3, system-ui, sans-serif"
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "22px"
+    fontWeight: 600
+    lineHeight: 1.35
+  elder-label:
+    fontFamily: "SF Pro, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 700
-    lineHeight: 1.5
-  elder-label:
-    fontFamily: "Inclusive Sans, Source Sans 3, system-ui, sans-serif"
-    fontSize: "20px"
+  app-large-title:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "34px"
     fontWeight: 700
+    lineHeight: 1.15
+  app-title:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "22px"
+    fontWeight: 700
+    lineHeight: 1.25
+  app-headline:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.3
+  app-body:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 400
+    lineHeight: 1.35
+  app-subheadline:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "15px"
+    fontWeight: 400
+    lineHeight: 1.35
+  app-label:
+    fontFamily: "SF Pro, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 600
+    letterSpacing: "0.6px"
   display:
     fontFamily: "Source Sans 3, system-ui, sans-serif"
     fontSize: "32px"
@@ -84,6 +112,10 @@ rounded:
   sheet: "12px"
   elder-card: "16px"
   pill: "999px"
+  app-field: "10px"
+  app-button: "12px"
+  app-group: "12px"
+  app-sheet-top: "16px"
 spacing:
   "4": "4px"
   "8": "8px"
@@ -103,23 +135,35 @@ components:
     backgroundColor: "{colors.on-caution}"
     textColor: "{colors.caution-yellow}"
     typography: "{typography.elder-label}"
-    rounded: "{rounded.input}"
+    rounded: "{rounded.app-button}"
     height: "72px"
+  button-filled-app:
+    backgroundColor: "{colors.emergency-red}"
+    textColor: "{colors.on-emergency}"
+    typography: "{typography.app-headline}"
+    rounded: "{rounded.app-button}"
+    height: "50px"
+  button-grey-app:
+    backgroundColor: "{colors.surface-sunk}"
+    textColor: "{colors.ink}"
+    typography: "{typography.app-headline}"
+    rounded: "{rounded.app-button}"
+    height: "50px"
   button-primary-console:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.surface}"
     typography: "{typography.body}"
     rounded: "{rounded.input}"
-  button-outlined:
+  button-outlined-console:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     rounded: "{rounded.input}"
-    height: "48px"
+    height: "36px"
   button-call:
     backgroundColor: "{colors.waiting-amber-wash}"
     textColor: "{colors.waiting-amber-ink}"
-    rounded: "{rounded.input}"
-    height: "48px"
+    rounded: "{rounded.app-button}"
+    height: "50px"
   state-pill-owned:
     backgroundColor: "{colors.owned-blue-wash}"
     textColor: "{colors.owned-blue-ink}"
@@ -127,7 +171,7 @@ components:
   field:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.input}"
+    rounded: "{rounded.app-field}"
 ---
 
 # Design System: MzaziCare
@@ -148,19 +192,24 @@ length, nothing on it that is not information, and one red thing that means a pe
 needed. Every screen is measured against it. If a stranger picking up the phone could not
 tell within a second what is happening and what to press, the screen is not done.
 
-Swiss and utilitarian in the app, dense and tool-like in the console. Type and spacing do
-the work boxes would otherwise do: lists run edge to edge under hairlines, sections open
-with a small-capitals label, and there are almost no cards. Colour is spent only on state.
-The elder's screens are the same system at a larger scale (22pt bold body, 72pt targets),
-with the help button in the middle, where what replaces it appears too, and what the
-elder does next at the bottom, under the thumb.
+An iPhone app in the app, dense and tool-like in the console. The app follows Apple's
+conventions: the phone's own face (SF Pro) on Apple's type scale, 20-point margins,
+rounded solid buttons, and questions as sheets that slide up from the bottom. Type and
+spacing do the work boxes would otherwise do: lists run edge to edge under hairlines,
+sections open with a small-capitals label, and there are almost no cards. Colour is spent
+on state, and on the way in, where MzaziCare's red fills the top of the screen. Elder
+mode is the same app at a larger size (22pt semibold body, 72pt buttons); it starts on
+for an elder and anybody can switch it. The elder's screen has the help button in the
+middle, where what replaces it appears too, and what the elder does next at the bottom,
+under the thumb.
 
 **Key Characteristics:**
 
 - One red thing per screen, and it always means a person is needed.
 - Yellow means "you can still act": the ten seconds to stop an alert, and no connection.
 - State is said three ways: a glyph, a word and a colour, never colour alone.
-- Legibility over character: faces that keep I, l and 1 apart, and a slashed zero.
+- One face everywhere in the app, the phone's own, larger in Elder mode rather than
+  different.
 - Felt as well as seen: four vibrations, each with one meaning.
 
 ## Colors
@@ -201,55 +250,61 @@ or grey, and every pair is gated for contrast in CI in both themes.
 
 **The One Red Rule.** Red appears only where a person is needed: the help button, an
 unanswered emergency, a destructive confirmation. A selected switch, a ticked box, a
-spinner or a caret is never red.
+spinner or a caret is never red. Two exceptions in the app: MzaziCare's red across the top
+of the screens on the way in, where no emergency can be on screen yet, and the app's
+filled buttons and text links, which are under review.
 
 **The You-Can-Still-Act Rule.** Yellow is spent on exactly two moments on the elder's
 screen, and never as decoration.
 
 ## Typography
 
-**Display Font:** Source Sans 3 (with system-ui)
-**Body Font:** Source Sans 3 for caregivers, responders, volunteers and the console;
-Inclusive Sans for the elder and the screens before sign-in
-**Label/Mono Font:** Atkinson Hyperlegible Mono, for figures only
+**App:** the phone's own face. SF Pro on an iPhone (its Display cut from 20 points up,
+its Text cut below, as Apple sets them), Roboto on Android. Nothing is bundled.
+**Console:** Source Sans 3, with Atkinson Hyperlegible Mono for figures, self-hosted.
 
-**Character:** One family per audience, chosen for legibility first. Inclusive Sans is
-friendly and open with every confusable letter distinct; Source Sans 3 is humanist and
-unremarkable in a good way; the mono is the Braille Institute's.
+**Character:** In the app, Apple's own type, because a person reading in a hurry should
+not have to adjust to anything. The same face for everybody; Elder mode makes it larger
+and heavier, it does not change it.
 
-### Hierarchy
+### Hierarchy (app, standard / Elder mode)
 
-- **Elder Display** (700, 56px, 1.05): "Get help" on the help button; the countdown.
-- **Elder Title** (700, 32px, 1.1): the elder's name; the state of their emergency.
-- **Elder Body** (700, 22px, 1.5): everything the elder reads. Bold throughout.
-- **Headline** (700, 28px, 1.1): page titles for everyone else, left-aligned.
-- **Title** (600, 22px): names in lists and sections.
-- **Body** (400, 16px, 1.5): everything else; 14px is the floor.
-- **Label** (600, 14px, 1.2px tracking, small capitals): section labels over a hairline.
-- **Figures** (Atkinson Hyperlegible Mono): times, phone numbers, codes, the countdown,
-  so digits line up and do not jitter as they change.
+- **Display** (700, 40 / 56): "Get help" on the help button; the countdown's seconds.
+- **Large Title** (700, 34 / 40): a page's title, left-aligned.
+- **Title 2** (700, 22 / 28): the heading of a step or a sheet.
+- **Headline** (600 / 700, 17 / 22): names in lists, and every button.
+- **Body** (400 / 600, 17 / 22): everything a person reads.
+- **Subheadline** (400 / 600, 15 / 20): secondary text in the softer ink. Nothing a
+  person has to read is smaller.
+- **Label** (600 / 700, 13 / 20, opened out, small capitals): section labels over a
+  hairline, as the Settings app heads its groups.
+- **Figures:** the same face with tabular digits, so times, phone numbers, codes and the
+  countdown line up and do not jitter as they change.
 
 ### Named Rules
 
-**The No-Ambiguous-Letters Rule.** Any face that reaches an elder must keep I, l and 1
-apart and slash its zero. Faces that draw I and l alike are ruled out for the elder,
-however good they look.
+**The One-Face Rule.** The app has one face, the phone's. Elder mode changes size and
+weight, never the family, so a screen reads the same in both.
 
-**The Not-On-The-List Rule.** No face from impeccable's overused list (Inter, Roboto,
-Open Sans, Lato, Montserrat, Arial, Helvetica, Fraunces, Instrument Sans and Serif,
-Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk, Recoleta).
+**The Not-On-The-List Rule.** No face that MzaziCare chooses and ships comes from
+impeccable's overused list (Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica,
+Fraunces, Instrument Sans and Serif, Geist, Mona Sans, Plus Jakarta Sans, Space Grotesk,
+Recoleta). The phone's own face is not a choice in that sense: it is what every other
+app on the phone is set in, Roboto on Android included.
 
 ## Layout
 
-An 8-point rhythm (4, 8, 12, 16, 24, 32, 48, 64). In the app, 24pt side margins on the
-elder's screens and 16pt elsewhere; lists run edge to edge, one row per item, divided by
-hairlines; each screen opens with one large left-aligned title. Places people go often
+An 8-point rhythm (4, 8, 12, 16, 24, 32, 48, 64). In the app, Apple's side margins: 20pt,
+or 16pt on the narrowest phones, the same on every screen; lists run edge to edge, one row
+per item, divided by hairlines; each screen opens with one large left-aligned title. The
+screens on the way in (sign in, sign up, reset) put MzaziCare's red across the top with a
+curved lower edge and the form below it, low on the screen where the thumb is. Places people go often
 sit in a bottom bar (Alerts, People, Me), and the decision on an emergency is pinned to
 the bottom of its screen. On the elder's screen the help button and the countdown's ring
 share one layout and one size, so the ring appears exactly where the button was; what the
-elder does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb. Elder
-targets are 72pt, others 48pt, and
-the console uses 36pt where a mouse is detected. The console keeps a fixed sidebar that
+elder does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb.
+Buttons are 50pt tall, 72pt in Elder mode; no touch target is under 48pt (72pt in Elder
+mode), and the console uses 36pt where a mouse is detected. The console keeps a fixed sidebar that
 narrows to icons on a desktop and becomes a drawer on a phone.
 
 ## Elevation & Depth
@@ -266,9 +321,9 @@ only for something that genuinely floats above the page.
 
 ## Shapes
 
-Square-ish and quiet: 4px on buttons and fields, 8px on the few cards (16px on the
-elder's), 12px on sheets and dialogs, fully round only for the help button and state
-pills. Borders are hairlines; the only heavier lines are focus rings (3px), the progress
+Rounded as iOS is in the app: 12px on buttons and grouped blocks, 10px on fields, 16px on
+the top corners of a sheet, fully round for the help button and state pills. The console
+stays square-ish: 4px on buttons and fields, 8px on its few cards, 12px on dialogs. Borders are hairlines; the only heavier lines are focus rings (3px), the progress
 steps' connector and the help button's dark-mode edge (4px).
 
 ### Named Rules
@@ -294,13 +349,16 @@ the bottom in the darkest ink with yellow text.
 
 ### Buttons
 
-- **Shape:** gently squared (4px).
+- **Shape:** solid with rounded corners (12px) in the app, full width, 50pt tall (72pt in
+  Elder mode); gently squared (4px) in the console.
 - **Console primary:** ink with white text. Red is never a primary action colour there.
-- **App filled:** currently the emergency red by default. This is under review, because
-  it puts red on actions that are not emergencies, such as signing in and saving; see
-  "Don't" below.
-- **Outlined:** ink text, Control Grey outline.
-- **Text:** ink, underlined, never red.
+- **App filled:** MzaziCare red, for the one action a screen leads to. The colour is under
+  review, because it puts red on actions that are not emergencies, such as signing in and
+  saving; see "Don't" below.
+- **App secondary:** ink on the sunk grey, no outline, as iOS's grey buttons are.
+- **App text:** MzaziCare red, not underlined, as an iPhone app's links take its tint.
+  Under review with the filled button. In the console, text actions stay ink and
+  underlined.
 - **Call buttons:** amber wash with amber ink, because they reach a person.
 - **Focus:** a 3px Focus Blue ring.
 
@@ -320,10 +378,17 @@ focus. The caret is Focus Blue and the selection is Selection Blue, never red.
 An error or information mark and the words beside it, no box: errors in the text-safe
 red, information in ink.
 
-### Alerts and switches
+### Sheets and switches
 
-iOS's own alert and switch on iPhone, Material's elsewhere, through one helper. An
-elder's alert keeps the elder's type inside iOS's frame.
+Every question, choice or notice is a sheet that slides up from the bottom
+(`showActionSheet`): a grab handle, rounded top corners, a short title, a line saying what
+will happen, then the answers as rows with an icon each, the way back out last. The answer
+the question leads to can be a full-width button above the rows, red when it ends
+something. It is dismissed by swiping it down. Switches are iOS's own on iPhone.
+
+Before the phone asks for a permission, a sheet says why in a sentence and has one
+button, Continue, after which the phone's own question appears. Permission is asked when
+the person presses the thing that needs it, never at start-up.
 
 ### Navigation
 
@@ -341,16 +406,19 @@ marked by a sunk background, weight, and a thin ink line beside it.
   and put what the elder does next at the bottom.
 - **Do** take every colour, size and duration from `frontend/design-tokens`, and add a
   contrast pair for any new colour.
-- **Do** set figures in Atkinson Hyperlegible Mono.
+- **Do** set figures with tabular digits (`.figures`).
 - **Do** honour Reduce Motion: movement collapses to an instant change.
-- **Do** use `showPlatformAlert` for a question or notice, and adaptive switches.
+- **Do** use `showActionSheet` for a question or notice, and adaptive switches.
+- **Do** say why before the phone asks for a permission, at the moment it is needed.
+- **Do** take sizes from the theme (`MzaziSizes`, the text theme), so Elder mode reaches
+  every screen.
 
 ### Don't:
 
 - **Don't** colour a selected control, a spinner or a caret with the emergency red.
 - **Don't** add a coloured stripe down the edge of a row, message or banner.
-- **Don't** use a font from the overused list, or one that draws I and l alike for the
-  elder.
+- **Don't** bundle a face in the app, or choose one from the overused list for the
+  console.
 - **Don't** put a card, a gradient, glass or a decorative shadow on a working screen.
 - **Don't** show a bare spinner where a sentence could say what is happening.
 - **Don't** add new uses of the red filled button for actions that are not emergencies

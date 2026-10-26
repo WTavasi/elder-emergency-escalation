@@ -14,6 +14,7 @@ import '../../core/widgets/notice.dart';
 import '../../core/widgets/password_field.dart';
 import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
+import 'auth_frame.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
 /// the button never offers something the server would quietly ignore.
@@ -129,42 +130,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The caregiver's type, not the larger sign-in type. Nobody here is an elder: elders
-    // are registered by their caregiver, never through this screen, so the larger sizes
-    // the screens before sign-in keep for them would only make a long form longer.
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    return Theme(
-      data: dark ? MzaziTheme.dark(AppAudience.standard) : MzaziTheme.light(AppAudience.standard),
-      // Back from the code goes to the first step, as it would between two pages, rather
-      // than out of signing up altogether.
-      child: PopScope(
-        canPop: _sentTo == null,
-        onPopInvokedWithResult: (bool didPop, Object? result) {
-          if (!didPop) _changeDetails();
-        },
-        child: Builder(
-          builder: (BuildContext context) => Scaffold(
-            appBar: AppBar(),
-            body: SafeArea(
-              // From the top, not the middle, so the heading of each step is in the same
-              // place and the second step does not jump on arriving.
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    MzaziSpace.s16,
-                    MzaziSpace.s8,
-                    MzaziSpace.s16,
-                    MzaziSpace.s32,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
-                  ),
-                ),
-              ),
-            ),
-          ),
+    // Back from the code goes to the first step, as it would between two pages, rather
+    // than out of signing up altogether.
+    return PopScope(
+      canPop: _sentTo == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _changeDetails();
+      },
+      child: Builder(
+        builder: (BuildContext context) => AuthFrame(
+          onBack: () => unawaited(Navigator.of(context).maybePop()),
+          child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
         ),
       ),
     );
@@ -281,7 +257,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               LengthLimitingTextInputFormatter(6),
             ],
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontFamily: MzaziFont.mono,
+              fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
             decoration: const InputDecoration(labelText: 'Six-digit code'),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
+import '../theme/theme.dart';
+
 /// The title a screen opens with: large, tight and left-aligned, with an optional line
 /// under it that says the one thing worth knowing before reading on.
 ///
@@ -20,13 +22,10 @@ class PageTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
+    final double margin = MzaziLayout.margin(context);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        MzaziSpace.s16,
-        MzaziSpace.s16,
-        MzaziSpace.s16,
-        MzaziSpace.s16,
-      ),
+      padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s8, margin, MzaziSpace.s16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

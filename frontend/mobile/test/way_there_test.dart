@@ -112,6 +112,33 @@ void main() {
   });
 
   group('sharing', () {
+    test('asks the phone only when the person pressed to share', () async {
+      source
+        ..answer = LocationAccess.denied
+        ..afterAsking = LocationAccess.granted;
+      final ({WayThere way, List<Exchange> calls, List<Map<String, dynamic>> bodies}) t = build();
+      await t.way.follow('caregiver-1');
+      await t.way.setEnabled(true);
+      source
+        ..answer = LocationAccess.denied
+        ..afterAsking = LocationAccess.granted
+        ..asked.clear();
+
+      // Taking an emergency on: not asked, and the screen says so.
+      await t.way.shareFor('event-1');
+      expect(source.asked, <bool>[false]);
+      expect(t.way.isSharingFor('event-1'), isFalse);
+      expect(t.way.access, LocationAccess.denied);
+
+      // Pressing to share: asked, and sharing starts. A retry that only checked, as
+      // before, could never get past a phone that had not been asked.
+      await t.way.shareFor('event-1', ask: true);
+      expect(source.asked, <bool>[false, true]);
+      expect(t.way.isSharingFor('event-1'), isTrue);
+      t.way.stop();
+      t.way.dispose();
+    });
+
     test('sends the first reading at once and keeps the time that comes back', () async {
       final ({WayThere way, List<Exchange> calls, List<Map<String, dynamic>> bodies}) t = build();
       await t.way.follow('caregiver-1');
