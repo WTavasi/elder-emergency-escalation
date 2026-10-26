@@ -281,8 +281,9 @@ banner. State is a glyph and a word, and in a list a dot at the start of the row
 ### Help button
 
 The one control the elder's app exists for: a red circle, the same size and in the same
-place as the countdown ring that replaces it, with one line underneath saying what it
-does, "Get help" in white at display size, no icon. A firm vibration on press;
+place as the countdown ring that replaces it, with one line just above it saying what it
+does, where the countdown's heading is read next. "Get help" in white at display size, no
+icon. A firm vibration on press;
 grey with "Sending…" while the request travels. In dark mode, a brighter red edge.
 
 ### Countdown

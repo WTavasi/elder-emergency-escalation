@@ -443,22 +443,28 @@ class _Idle extends StatelessWidget {
 
     return _CircleStage(
       // Above the button, never in its place: "are you all right?" is one press away,
-      // and so is help.
+      // and so is help. The words sit just over the circle, where the countdown's heading
+      // will be read, so they are read before the press rather than after it.
       above: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           if (error != null) ...<Widget>[
             Notice(message: error, isError: true),
             const SizedBox(height: MzaziSpace.s16),
           ],
-          if (checking != null && waiting != null)
+          if (checking != null && waiting != null) ...<Widget>[
             _CheckInPrompt(
               busy: checking.busy,
               error: checking.error,
               onAnswer: () => unawaited(checking.answerNow()),
-            )
-          else if (answered != null && answered != CheckInAnswer.nothing)
+            ),
+            const SizedBox(height: MzaziSpace.s16),
+          ] else if (answered != null && answered != CheckInAnswer.nothing) ...<Widget>[
             const Notice(message: 'Thank you. Your family can see you are all right.'),
+            const SizedBox(height: MzaziSpace.s16),
+          ],
+          _HelpCaption(sending: sending),
         ],
       ),
       circle: PanicButton(
@@ -468,7 +474,6 @@ class _Idle extends StatelessWidget {
         enabled: alerts.canRaise,
         onPressed: alerts.raise,
       ),
-      below: _HelpCaption(sending: sending),
     );
   }
 }
@@ -477,11 +482,11 @@ class _Idle extends StatelessWidget {
 /// the same size in the same place on both screens: pressing the button turns the red
 /// disc into the countdown's ring where it was, and the eye never has to move.
 ///
-/// Above the circle, what each screen says; below it, what each screen offers. Each band
-/// is held at the height of the taller of the two screens' contents, measured at this
-/// width and text size, so the circle's slot, and the circle in it, is identical whichever
-/// screen is showing. Only something the idle screen adds above the button, a check-in
-/// question or an error, can make that band taller than the countdown's heading.
+/// Above the circle, what each screen says; below it, the countdown's way out, which the
+/// help button has no need of. Each band is held at the height of the taller of the two
+/// screens' contents, measured at this width and text size, so the circle's slot, and the
+/// circle in it, is identical whichever screen is showing. Only something the idle screen
+/// adds above its words, a check-in question or an error, can make that band taller.
 class _CircleStage extends StatelessWidget {
   const _CircleStage({required this.circle, this.above, this.below});
 
@@ -519,11 +524,10 @@ class _CircleStage extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double width = constraints.maxWidth;
-        final double heading =
-            _height(_CountdownHeading.title, theme.textTheme.headlineLarge, width, scaler) +
-            MzaziSpace.s12 +
-            _height(_CountdownHeading.body, theme.textTheme.bodyLarge, width, scaler);
-        final double caption = math.max(
+        final double heading = math.max(
+          _height(_CountdownHeading.title, theme.textTheme.headlineLarge, width, scaler) +
+              MzaziSpace.s12 +
+              _height(_CountdownHeading.body, theme.textTheme.bodyLarge, width, scaler),
           _height(
             _HelpCaption.waiting,
             theme.textTheme.bodyLarge,
@@ -531,9 +535,9 @@ class _CircleStage extends StatelessWidget {
             scaler,
             align: TextAlign.center,
           ),
-          // The countdown's way out is a full touch target tall.
-          MzaziA11y.elderMinTouchTarget,
         );
+        // The countdown's way out is a full touch target tall.
+        const double wayOut = MzaziA11y.elderMinTouchTarget;
 
         final List<Widget> bands = <Widget>[
           ConstrainedBox(
@@ -545,7 +549,7 @@ class _CircleStage extends StatelessWidget {
         final List<Widget> foot = <Widget>[
           const SizedBox(height: MzaziSpace.s24),
           ConstrainedBox(
-            constraints: BoxConstraints(minHeight: caption),
+            constraints: const BoxConstraints(minHeight: wayOut),
             child: Align(
               alignment: Alignment.bottomCenter,
               heightFactor: 1,
@@ -558,7 +562,7 @@ class _CircleStage extends StatelessWidget {
         // for a circle worth pressing. Then the circle keeps a floor and the screen scrolls,
         // rather than the button shrinking to a dot or the layout overflowing. Both screens
         // reach the same answer, so the circle still matches.
-        final double room = constraints.maxHeight - heading - caption - MzaziSpace.s24 * 2;
+        final double room = constraints.maxHeight - heading - wayOut - MzaziSpace.s24 * 2;
         if (room < _floor) {
           return SingleChildScrollView(
             child: Column(
@@ -585,7 +589,7 @@ class _CircleStage extends StatelessWidget {
   }
 }
 
-/// What the help button does, said under it.
+/// What the help button does, said over it.
 class _HelpCaption extends StatelessWidget {
   const _HelpCaption({required this.sending});
 

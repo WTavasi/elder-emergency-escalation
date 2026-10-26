@@ -88,9 +88,9 @@ countdown's ring are the same size in the same place, so the press turns one int
 other. What the elder does next is at the bottom, where the thumb of the hand holding the
 phone already is.
 
-1. **Idle.** The help button, with one line underneath saying what it does, and the
-   space above it kept for the countdown's heading. A press is felt as a firm vibration. While the request travels
-   the button greys and says "Sending…".
+1. **Idle.** The help button, with one line just above it saying what it does, where
+   the countdown's heading will be. A press is felt as a firm vibration. While the
+   request travels the button greys and says "Sending…".
 2. **Cancellable.** The alert has already gone to the first person in the chain. For
    ten seconds the screen turns yellow, the seconds left sit inside a ring that empties,
    and the phone taps lightly once a second. **I am all right, stop this** is at the
