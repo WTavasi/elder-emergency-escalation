@@ -88,9 +88,9 @@ countdown's ring are the same size in the same place, so the press turns one int
 other. What the elder does next is at the bottom, where the thumb of the hand holding the
 phone already is.
 
-1. **Idle.** The help button, with one line underneath saying what it does, and the
-   space above it kept for the countdown's heading. A press is felt as a firm vibration. While the request travels
-   the button greys and says "Sending…".
+1. **Idle.** The help button, with one line just above it saying what it does, where
+   the countdown's heading will be. A press is felt as a firm vibration. While the
+   request travels the button greys and says "Sending…".
 2. **Cancellable.** The alert has already gone to the first person in the chain. For
    ten seconds the screen turns yellow, the seconds left sit inside a ring that empties,
    and the phone taps lightly once a second. **I am all right, stop this** is at the
@@ -122,9 +122,22 @@ finding the elder's home by address search, and adds family by phone number. Eve
 field has a country button, Kenya to begin with, and accepts the number however it is
 typed.
 
-**A forgotten password.** **Forgot your password?** on the sign-in screen sends a code to
-the phone on the account and sets a new password with it, then signs straight in. The
-number already typed on the sign-in screen is carried over.
+**Signing in.** Number first, then the password. The first screen holds the number,
+**Continue**, a way to make an account, and the privacy notice and terms in small print.
+The second asks for the password, which has a show button, with **Forgot your
+password?** just under it, and offers elders **Sign in with a code** instead. Back from
+the password returns to the number with it still typed in.
+
+**A forgotten password.** **Forgot your password?** sends a code to the phone on the
+account and sets a new password with it, in one field with a show button, then signs
+straight in. The number already typed on the sign-in screen is carried over.
+
+**The sign-up screens.** Two short steps. First who you are (caregiver, family or volunteer),
+your name and your number, and **Agree and send a code**, with the terms of use and the
+privacy notice linked in the small print under it. Then the six-digit code and a
+password, which has a show button rather than a second field. An email can be added
+later on the account page. Back from the code returns to the first step with what was
+typed kept.
 
 **Before sign-in.** The sign-in and reset screens use the elder's type sizes, because an
 elder may be the one signing in, but regular-weight body text: bold everywhere is kept

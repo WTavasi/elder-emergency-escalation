@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
@@ -10,18 +11,26 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/password_field.dart';
+import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
 /// the button never offers something the server would quietly ignore.
 const int resendSeconds = 30;
 
-/// Creating an account, for a caregiver or a family member.
+/// Creating an account, for a caregiver, a family member or a community volunteer.
 ///
-/// Two steps on one screen. The details first, then a six-digit code sent to the phone,
-/// which proves the number belongs to whoever is typing it. Elders do not sign up here:
-/// their caregiver registers them, so that the consent given on their behalf says who
-/// gave it, and the screen says so rather than leaving an elder to find out.
+/// Two short steps, as phone-first sign-ups do. Who you are and your number first, then
+/// the six-digit code sent to that number, which proves it belongs to whoever is typing
+/// it, with a password chosen beside it. Elders do not sign up here: their caregiver
+/// registers them, so that the consent given on their behalf says who gave it, and the
+/// screen says so rather than leaving an elder to find out.
+///
+/// Only what an account cannot exist without is asked for. An email can be added later on
+/// the account page, and the password has a show button instead of being typed twice.
+/// The terms and the privacy notice are agreed to by pressing "Agree and send a code",
+/// with both one tap away in the small print under it, rather than in front of the form.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -34,14 +43,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final GlobalKey<FormState> _codeForm = GlobalKey<FormState>();
   final TextEditingController _name = TextEditingController();
   final PhoneFieldController _phone = PhoneFieldController();
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _password = TextEditingController();
-  final TextEditingController _confirm = TextEditingController();
   final TextEditingController _code = TextEditingController();
+  final TextEditingController _password = TextEditingController();
 
   Role _role = Role.caregiver;
-  bool _accepted = false;
-  bool _showPrivacyError = false;
 
   /// The number the code went to, once one has been asked for.
   String? _sentTo;
@@ -55,10 +60,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _timer?.cancel();
     for (final TextEditingController controller in <TextEditingController>[
       _name,
-      _email,
-      _password,
-      _confirm,
       _code,
+      _password,
     ]) {
       controller.dispose();
     }
@@ -67,11 +70,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _sendCode() async {
-    final bool valid = _details.currentState?.validate() ?? false;
-    setState(() => _showPrivacyError = !_accepted);
-    if (!valid || !_accepted) return;
+    // Asking again from the code step, where the details form is no longer on screen.
+    if (_sentTo == null && !(_details.currentState?.validate() ?? false)) return;
 
-    final String phone = _phone.reading.e164!;
+    final String phone = _sentTo ?? _phone.reading.e164!;
     setState(() {
       _requesting = true;
       _requestError = null;
@@ -99,6 +101,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
   }
 
+  /// Back to the first step, with what was typed there kept.
+  void _changeDetails() => setState(() {
+    _sentTo = null;
+    _requestError = null;
+    _code.clear();
+    context.read<AuthController>().clearError();
+  });
+
   Future<void> _create() async {
     if (!(_codeForm.currentState?.validate() ?? false)) return;
 
@@ -108,11 +118,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       code: _code.text,
       password: _password.text,
       role: _role,
-      email: _email.text,
     );
     // Signed in: the app has already switched to the right home screen underneath this
-    // one, so all that is left is to get out of its way.
-    if (created && mounted) await Navigator.of(context).maybePop();
+    // one, so all that is left is to get out of its way. A plain pop, because maybePop
+    // would ask the back handler above, which takes back from the code to the first step.
+    if (!created || !mounted) return;
+    final NavigatorState navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
   }
 
   @override
@@ -123,21 +135,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     return Theme(
       data: dark ? MzaziTheme.dark(AppAudience.standard) : MzaziTheme.light(AppAudience.standard),
-      child: Builder(
-        builder: (BuildContext context) => Scaffold(
-          appBar: AppBar(title: const Text('Create an account')),
-          body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  MzaziSpace.s16,
-                  MzaziSpace.s8,
-                  MzaziSpace.s16,
-                  MzaziSpace.s32,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+      // Back from the code goes to the first step, as it would between two pages, rather
+      // than out of signing up altogether.
+      child: PopScope(
+        canPop: _sentTo == null,
+        onPopInvokedWithResult: (bool didPop, Object? result) {
+          if (!didPop) _changeDetails();
+        },
+        child: Builder(
+          builder: (BuildContext context) => Scaffold(
+            appBar: AppBar(),
+            body: SafeArea(
+              // From the top, not the middle, so the heading of each step is in the same
+              // place and the second step does not jump on arriving.
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    MzaziSpace.s16,
+                    MzaziSpace.s8,
+                    MzaziSpace.s16,
+                    MzaziSpace.s32,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: _sentTo == null ? _detailsStep(context) : _codeStep(context),
+                  ),
                 ),
               ),
             ),
@@ -155,31 +178,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const Notice(
-            message:
-                'For caregivers, family members and community volunteers. An elder is '
-                'registered by their caregiver, from the caregiver\'s own account.',
+          const StepHeading(
+            step: 1,
+            title: 'Create your account',
+            lead:
+                'For caregivers, family and volunteers. An elder is registered by their '
+                'caregiver.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           Text('I am', style: theme.textTheme.titleMedium),
           const SizedBox(height: MzaziSpace.s8),
+          // Words alone: with icons beside them the three no longer fit across a phone,
+          // and "Volunteer" broke in the middle of the word.
           SegmentedButton<Role>(
             segments: const <ButtonSegment<Role>>[
-              ButtonSegment<Role>(
-                value: Role.caregiver,
-                label: Text('A caregiver'),
-                icon: Icon(Icons.volunteer_activism_outlined),
-              ),
-              ButtonSegment<Role>(
-                value: Role.familyMember,
-                label: Text('Family'),
-                icon: Icon(Icons.family_restroom),
-              ),
-              ButtonSegment<Role>(
-                value: Role.communityResponder,
-                label: Text('Volunteer'),
-                icon: Icon(Icons.near_me_outlined),
-              ),
+              ButtonSegment<Role>(value: Role.caregiver, label: Text('Caregiver')),
+              ButtonSegment<Role>(value: Role.familyMember, label: Text('Family')),
+              ButtonSegment<Role>(value: Role.communityResponder, label: Text('Volunteer')),
             ],
             selected: <Role>{_role},
             showSelectedIcon: false,
@@ -211,72 +226,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 (value == null || value.trim().length < 2) ? 'Enter your name.' : null,
           ),
           const SizedBox(height: MzaziSpace.s16),
-          PhoneField(controller: _phone, label: 'Your phone number'),
-          const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            autofillHints: const <String>[AutofillHints.email],
-            decoration: const InputDecoration(labelText: 'Email (optional)'),
-            validator: (String? value) {
-              final String email = value?.trim() ?? '';
-              if (email.isEmpty) return null;
-              return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
-                  ? null
-                  : 'That does not look like an email address.';
-            },
-          ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
-            controller: _password,
-            obscureText: true,
-            textInputAction: TextInputAction.next,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            decoration: const InputDecoration(
-              labelText: 'Password',
-              helperText: 'At least 8 characters',
-            ),
-            validator: (String? value) =>
-                (value == null || value.length < 8) ? 'Use at least 8 characters.' : null,
-          ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
-            controller: _confirm,
-            obscureText: true,
+          PhoneField(
+            controller: _phone,
+            label: 'Your phone number',
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(labelText: 'Password again'),
-            validator: (String? value) =>
-                value == _password.text ? null : 'The two passwords are different.',
-          ),
-          const SizedBox(height: MzaziSpace.s24),
-          const _WhatWeKeep(),
-          const LegalLinks(),
-          CheckboxListTile(
-            value: _accepted,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: const Text(
-              'I have read the privacy notice and the terms of use, and I agree',
-            ),
-            subtitle: _showPrivacyError && !_accepted
-                ? Text(
-                    'You need to agree before an account can be made.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                  )
-                : null,
-            onChanged: (bool? value) => setState(() => _accepted = value ?? false),
+            onSubmitted: (_) => unawaited(_sendCode()),
           ),
           if (_requestError != null) ...<Widget>[
             const SizedBox(height: MzaziSpace.s16),
             Notice(message: _requestError!, isError: true),
           ],
-          const SizedBox(height: MzaziSpace.s24),
-          FilledButton.icon(
+          const SizedBox(height: MzaziSpace.s32),
+          FilledButton(
             onPressed: _requesting ? null : () => unawaited(_sendCode()),
-            icon: const Icon(Icons.sms_outlined),
-            label: Text(_requesting ? 'Sending' : 'Send me a code'),
+            child: Text(_requesting ? 'Sending' : 'Agree and send a code'),
           ),
+          const SizedBox(height: MzaziSpace.s16),
+          const _SmallPrint(),
         ],
       ),
     );
@@ -285,18 +251,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget _codeStep(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final AuthController auth = context.watch<AuthController>();
-    final String? error = auth.error;
+    final String? error = auth.error ?? _requestError;
 
     return Form(
       key: _codeForm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Enter the code', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            'If $_sentTo can receive it, a six-digit code is on its way by SMS. It works for 10 minutes.',
-            style: theme.textTheme.bodyLarge,
+          StepHeading(
+            step: 2,
+            title: 'Check your messages',
+            lead:
+                'If $_sentTo can receive it, a six-digit code is on its way by SMS. It works '
+                'for 10 minutes.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -307,7 +274,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             controller: _code,
             autofocus: true,
             keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
+            textInputAction: TextInputAction.next,
             autofillHints: const <String>[AutofillHints.oneTimeCode],
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.digitsOnly,
@@ -318,28 +285,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
               letterSpacing: 8,
             ),
             decoration: const InputDecoration(labelText: 'Six-digit code'),
-            onFieldSubmitted: (_) => unawaited(_create()),
             validator: (String? value) =>
                 (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
           ),
-          const SizedBox(height: MzaziSpace.s24),
-          FilledButton.icon(
-            onPressed: auth.isBusy ? null : () => unawaited(_create()),
-            icon: const Icon(Icons.check),
-            label: Text(auth.isBusy ? 'Creating your account' : 'Create my account'),
-          ),
           const SizedBox(height: MzaziSpace.s16),
-          TextButton(
-            onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
-            child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+          PasswordField(
+            controller: _password,
+            label: 'Choose a password',
+            helperText: 'At least 8 characters',
+            newPassword: true,
+            onSubmitted: (_) => unawaited(_create()),
+            validator: (String? value) =>
+                (value == null || value.length < 8) ? 'Use at least 8 characters.' : null,
           ),
-          TextButton(
-            onPressed: () => setState(() {
-              _sentTo = null;
-              _code.clear();
-              auth.clearError();
-            }),
-            child: const Text('Change my details'),
+          const SizedBox(height: MzaziSpace.s32),
+          FilledButton(
+            onPressed: auth.isBusy ? null : () => unawaited(_create()),
+            child: Text(auth.isBusy ? 'Creating your account' : 'Create my account'),
+          ),
+          const SizedBox(height: MzaziSpace.s8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: MzaziSpace.s8,
+            children: <Widget>[
+              TextButton(
+                onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
+                child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+              ),
+              TextButton(onPressed: _changeDetails, child: const Text('Change my details')),
+            ],
           ),
         ],
       ),
@@ -347,32 +321,53 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-/// What the account holds, said before anybody agrees to it: the part a person needs at
-/// the moment of signing. The full notice and the terms are one tap below it.
-class _WhatWeKeep extends StatelessWidget {
-  const _WhatWeKeep();
+/// The terms and the privacy notice, under the button that agrees to them. Small, because
+/// few people open them while signing up, but in the sentence that says what the button
+/// does, so the agreement is never hidden.
+class _SmallPrint extends StatefulWidget {
+  const _SmallPrint();
+
+  @override
+  State<_SmallPrint> createState() => _SmallPrintState();
+}
+
+class _SmallPrintState extends State<_SmallPrint> {
+  late final TapGestureRecognizer _terms = TapGestureRecognizer()
+    ..onTap = () => unawaited(_open(const TermsScreen()));
+  late final TapGestureRecognizer _privacy = TapGestureRecognizer()
+    ..onTap = () => unawaited(_open(const PrivacyNoticeScreen()));
+
+  Future<void> _open(Widget screen) =>
+      Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => screen));
+
+  @override
+  void dispose() {
+    _terms.dispose();
+    _privacy.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // No card: the theme sets a hairline above and below, which is enough to mark it as
-    // something that opens.
-    return const ExpansionTile(
-      leading: Icon(Icons.privacy_tip_outlined),
-      title: Text('What MzaziCare keeps about you'),
-      childrenPadding: EdgeInsets.only(bottom: MzaziSpace.s16),
-      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Your name, phone number, email if you give one, and a scrambled form of your '
-          'password that cannot be turned back into it.\n\n'
-          'The emergencies you are asked to help with, and what you did about each one. '
-          'Closed emergencies are deleted after a year.\n\n'
-          'Your phone number is shared only with the people in the same care circle, '
-          'so they can call you during an emergency.\n\n'
-          'MzaziCare never tracks your phone\'s location. If you choose to share your way '
-          'to an emergency, it is used until you arrive and then forgotten.',
-        ),
-      ],
+    final ThemeData theme = Theme.of(context);
+    final TextStyle? base = theme.textTheme.bodySmall;
+    final TextStyle? link = base?.copyWith(
+      color: theme.colorScheme.onSurface,
+      decoration: TextDecoration.underline,
+    );
+
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: <InlineSpan>[
+          const TextSpan(text: 'By continuing you agree to the '),
+          TextSpan(text: 'terms of use', style: link, recognizer: _terms),
+          const TextSpan(text: ' and confirm you have read the '),
+          TextSpan(text: 'privacy notice', style: link, recognizer: _privacy),
+          const TextSpan(text: ', which says what MzaziCare keeps about you.'),
+        ],
+      ),
+      textAlign: TextAlign.center,
     );
   }
 }

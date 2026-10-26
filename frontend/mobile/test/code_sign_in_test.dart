@@ -63,7 +63,10 @@ void main() {
   ) async {
     await pump(tester, const SignInScreen());
     await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '0712 345 678');
-    await tester.tap(find.text('Elder? Sign in with a code'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('No password? Elders can sign in with a code instead.'), findsOneWidget);
+    await tester.tap(find.text('Sign in with a code'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CodeSignInScreen), findsOneWidget);

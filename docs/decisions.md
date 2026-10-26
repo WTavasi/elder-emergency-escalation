@@ -373,6 +373,44 @@ attacker's hands. Before this, registering a taken number answered "an account a
 exists", which was a way to test whether somebody was registered; that answer is now only
 reachable by somebody who holds the phone.
 
+## Sign-up asks for two things at a time, and the small print stays small
+
+The first sign-up screen had grown to fourteen things on one page: a notice, three role
+buttons with icons, five fields, a panel on what is kept, two links, a tick box and the
+button, which a 6.1 inch phone could not show without scrolling. It now follows the
+phone-first sign-ups people already know from apps like WhatsApp, in two short steps.
+
+- **Who you are and your number, then the code and a password.** Each screen holds three
+  or four things. The password moved beside the code because it is needed at the same
+  moment, when the account is made.
+- **Only what an account cannot exist without.** The optional email went, since the
+  account page already takes one, and so did "Password again". A show button lets a
+  mistake be seen and put right in the field, which is what the second field was for.
+- **Agreeing is the button.** "Agree and send a code" is the act of agreeing, with the
+  terms of use and the privacy notice linked in one line of small print under it, in
+  the sentence that says what pressing it means. It is still a deliberate press, unlike
+  "by using this app", and the server still records `acceptedPrivacyNotice`. The summary
+  of what MzaziCare keeps went with the tick box: the privacy notice says all of it, one
+  tap away.
+- **Words alone on the role buttons.** With icons beside them, the three no longer fit
+  across a phone, and "Volunteer" broke in the middle of the word.
+
+## Sign-in asks for the number first
+
+Sign-in is two short steps too: the number on its own, then the password. There are two
+ways in, a password or, for an elder, a code, and asking for the number first lets the
+second screen offer both against the number already typed. The first screen holds one
+field and one button, a line to make an account, and the privacy notice and terms in
+small print; the rings behind it stay, since nothing is read on them.
+
+The server cannot say which way suits a number without telling anybody who uses
+MzaziCare, so the second step always offers both: the password, with **Forgot your
+password?** just under the field where people look when it fails, and below it **Sign in
+with a code** for elders. The cost is one more tap for everybody, and password managers
+fill a form split across two screens less smoothly than one with both fields. Setting a
+new password lost its second field for the same reason sign-up did, and every screen on
+the way in now opens at the top with the same heading, so nothing jumps between steps.
+
 ## A caregiver adds family by phone number, and the place waits for them
 
 A relative does not have to sign up before the caregiver can add them. If the number has
@@ -549,7 +587,9 @@ Three details were decided rather than inherited:
 
 - **No cancel window.** A text cannot be withdrawn, so the severity is scored once and
   never reviewed. Reviewing it would count "did not cancel" in full, the factor that
-  reads as "may not be able to reach the phone", for somebody who has just used it.
+  reads as "may not be able to reach the phone", for somebody who has just used it. The
+  stored reasoning says "no cancel window: raised by text" rather than calling a window
+  open that never was, as it does for a missed check-in.
 - **One emergency at a time.** A second HELP, or the gateway retrying the first, while one
   is open is answered with who is coming rather than raising another.
 - **The app only offers it when it will be read.** The shortcode reaches the app through
@@ -607,7 +647,7 @@ stopping an alert is not an emergency.
 
 Personal-safety apps tend to put their SOS control low on the screen, in easy reach of a
 thumb, and for a while the help button moved to the bottom for that reason. It went back
-to the middle, with its explanation underneath, for continuity: the elder's screen
+to the middle, for continuity: the elder's screen
 replaces what was pressed with what happened next, in place. A button at the bottom broke
 that, because the eye had to jump from the bottom of the screen to its centre at the
 moment of pressing.
@@ -615,13 +655,18 @@ moment of pressing.
 It then went one step further: the help button and the countdown's ring are now the same
 size in exactly the same place, so the press turns the red disc into the ring where it
 was. They share one layout and one sizing rule. The band above the circle is held at the
-height of the countdown's heading ("Help is on the way" and its sentence), the band
-below at the height of the button's explanation, both measured from the real text at the
-phone's width and text size, so the circle's slot is the same on both screens. The cost
-is that the idle screen keeps the heading's space empty above the button, which sits a
-little below the centre, and the button is the countdown ring's size rather than as large
-as the screen allows: about 270 points on a 360-wide Android phone and 320 on a 6.1 inch
-iPhone. On the smallest phones, where the words would leave a circle under 144 points,
+height of the taller of the countdown's heading ("Help is on the way" and its sentence)
+and the button's explanation, and the band below at the height of the countdown's way
+out, all measured from the real text at the phone's width and text size, so the circle's
+slot is the same on both screens.
+
+The button's explanation sits above it, just over the circle, rather than underneath. It
+is read before the press rather than after it, and in the same place the countdown's
+heading is read next, so the words change where the eye already is, as the circle does.
+It also leaves the band under the circle with nothing in it but the countdown's way out,
+so the circle can be larger: about 260 points on a 360-wide Android phone and 345 on a
+6.1 inch iPhone. The cost is that the button sits a little below the centre, a little
+more at large text sizes, where the words above it take more of the screen. On the smallest phones, where the words would leave a circle under 144 points,
 the screen scrolls rather than shrinking the button further. The one thing that can still
 shift the circle on the idle screen is a check-in question or an error above the button.
 

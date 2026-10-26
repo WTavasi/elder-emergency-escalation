@@ -251,7 +251,8 @@ Note that the app never asks for location permission, and never sends a coordina
 Where an emergency is happening is resolved by the server from the elder's own record.
 
 
-**Forgot your password?** under the sign-in button resets one with a code sent by SMS.
+**Forgot your password?**, under the password once you have pressed **Continue** on the
+sign-in screen, resets one with a code sent by SMS.
 In development the code is in the API's terminal, on a line ending `password reset code`.
 Try it on an account you made yourself rather than a seeded one, or set the seeded
 password back to `Dev!2026` afterwards.
@@ -512,7 +513,8 @@ In the simulator, launch it with Grace's number, `+254700000010`, and send `HELP
 `12345`. Either way an alert appears on the console marked as raised by text, the chain
 is asked as usual, and Grace is texted back that the people who look after her have been
 told. A second HELP while it is open answers with who is coming rather than raising
-another.
+another. Folder **2g** of the Postman collection does the same and checks each step
+([api-testing.md](api-testing.md)).
 
 Sending from the shortcode is what makes the reply land in the right place: a person who
 answers a message answers the number it came from. Africa's Talking documents the
@@ -675,9 +677,9 @@ DATA_CONTACT_EMAIL=you@example.com
 ```
 
 **1. Grace signs in with a code.** Sign Grace out (**You**, then **Sign out of this
-phone**). On the sign-in screen press **Elder? Sign in with a code**, type Grace's number
-and press **Text me a code**. The API terminal shows the text with the code. Type it and
-press **Sign in**.
+phone**). On the sign-in screen type Grace's number, press **Continue**, then **Sign in
+with a code**. Her number is carried over, so press **Text me a code**. The API terminal
+shows the text with the code. Type it and press **Sign in**.
 
 **2. Mary signs Grace's phone in.** Sign Grace out again. Sign in as Mary on the other
 device, open **People**, then Grace, then **Sign in Grace's phone** under **Their phone**.
@@ -694,7 +696,7 @@ number is texted, and any other phone signed in as Mary is signed out. Change it
 would try to make a second Mary with the same email and stop.
 
 **4. Read the notice.** **Privacy notice** and **Terms of use** are under the sign-in
-form, under the agreement on sign-up, on **My account**, on Grace's **You** page and on
+form, in the small print under **Agree and send a code** on sign-up, on **My account**, on Grace's **You** page and on
 the consent page. The retention figures and the contact come from the server. The
 console's **Privacy and data** panel says the same.
 

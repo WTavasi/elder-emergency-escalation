@@ -9,6 +9,8 @@ import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/care_rings.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/password_field.dart';
+import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
 import 'code_sign_in_screen.dart';
 import 'forgot_password_screen.dart';
@@ -18,6 +20,11 @@ import 'sign_up_screen.dart';
 ///
 /// Phone rather than email because an elder may not have an email address, and the
 /// number is already the system's unique handle for a person.
+///
+/// In two short steps, the number first, as sign-in does where there is more than one
+/// way in. The first screen holds only the number and the way to make an account, with
+/// the privacy notice and terms in small print. The second asks for the password, and
+/// offers an elder who never knew the password a caregiver set a code instead.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -28,7 +35,11 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final PhoneFieldController _phone = PhoneFieldController();
   final TextEditingController _password = TextEditingController();
-  final GlobalKey<FormState> _form = GlobalKey<FormState>();
+  final GlobalKey<FormState> _numberForm = GlobalKey<FormState>();
+  final GlobalKey<FormState> _passwordForm = GlobalKey<FormState>();
+
+  /// The number being signed in, once the person has moved on to the password.
+  String? _number;
 
   @override
   void dispose() {
@@ -37,13 +48,25 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!(_form.currentState?.validate() ?? false)) return;
+  void _continue() {
+    if (!(_numberForm.currentState?.validate() ?? false)) return;
+    context.read<AuthController>().clearError();
+    setState(() => _number = _phone.reading.e164);
+  }
 
-    await context.read<AuthController>().signIn(
-      phone: _phone.reading.e164!,
-      password: _password.text,
-    );
+  /// Back to the number, with it still typed in.
+  void _changeNumber() {
+    context.read<AuthController>().clearError();
+    setState(() {
+      _number = null;
+      _password.clear();
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!(_passwordForm.currentState?.validate() ?? false)) return;
+
+    await context.read<AuthController>().signIn(phone: _number!, password: _password.text);
   }
 
   Future<void> _createAccount() async {
@@ -78,103 +101,160 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AuthController auth = context.watch<AuthController>();
-    final ThemeData theme = Theme.of(context);
-    final String? error = auth.error;
-
-    return Scaffold(
-      body: CareRings(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(MzaziSpace.s24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    // The same wordmark the console's sign-in carries, so the first
-                    // screen on either looks like one product. Type only: there is no
-                    // logo, and inventing one is not this project's job.
-                    Text(
-                      'MzaziCare',
-                      style: theme.textTheme.headlineLarge?.weighted(FontWeight.w700),
-                    ),
-                    const SizedBox(height: MzaziSpace.s4),
-                    Text(
-                      'Emergency help for elders at home',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.textTheme.bodySmall?.color,
-                      ),
-                    ),
-                    const SizedBox(height: MzaziSpace.s32),
-                    // Straight on the page, no card. The fields are filled, so nothing that
-                    // has to be read sits on the rings behind them.
-                    Form(
-                      key: _form,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Text('Sign in', style: theme.textTheme.titleLarge),
-                          const SizedBox(height: MzaziSpace.s16),
-                          if (error != null) ...<Widget>[
-                            Notice(message: error, isError: true),
-                            const SizedBox(height: MzaziSpace.s16),
-                          ],
-                          // Kenya is chosen to begin with; the button in front of the
-                          // number changes it. Whatever way the number is typed,
-                          // 0712..., 712... or +254712..., it is sent in the one format
-                          // the API accepts.
-                          PhoneField(controller: _phone),
-                          const SizedBox(height: MzaziSpace.s16),
-                          TextFormField(
-                            controller: _password,
-                            obscureText: true,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const <String>[AutofillHints.password],
-                            decoration: const InputDecoration(labelText: 'Password'),
-                            onFieldSubmitted: (_) => unawaited(_submit()),
-                            validator: (String? value) =>
-                                (value == null || value.isEmpty) ? 'Enter your password.' : null,
-                          ),
-                          const SizedBox(height: MzaziSpace.s24),
-                          FilledButton(
-                            onPressed: auth.isBusy ? null : () => unawaited(_submit()),
-                            child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
-                          ),
-                          const SizedBox(height: MzaziSpace.s8),
-                          TextButton(
-                            onPressed: auth.isBusy ? null : () => unawaited(_forgotPassword()),
-                            child: const Text('Forgot your password?'),
-                          ),
-                          // An elder may never have known the password a caregiver set.
-                          TextButton.icon(
-                            onPressed: auth.isBusy ? null : () => unawaited(_signInWithCode()),
-                            icon: const Icon(Icons.pin_outlined),
-                            label: const Text('Elder? Sign in with a code'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: MzaziSpace.s16),
-                    // For caregivers and family members. Elders are registered by their
-                    // caregiver, and the sign-up screen says so.
-                    OutlinedButton(
-                      // Filled like the fields, so the rings do not show through it.
-                      style: OutlinedButton.styleFrom(backgroundColor: theme.colorScheme.surface),
-                      onPressed: auth.isBusy ? null : () => unawaited(_createAccount()),
-                      child: const Text('New here? Create an account'),
-                    ),
-                    const SizedBox(height: MzaziSpace.s8),
-                    // Readable before an account exists, which is when it matters.
-                    const Center(child: LegalLinks()),
-                  ],
+    // Back from the password goes to the number, as it would between two pages, rather
+    // than out of the app.
+    return PopScope(
+      canPop: _number == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _changeNumber();
+      },
+      child: Scaffold(
+        body: CareRings(
+          child: SafeArea(
+            // From the top, not the middle, so nothing jumps between the two steps.
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(MzaziSpace.s24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: _number == null ? _numberStep(context) : _passwordStep(context),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _numberStep(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool busy = context.watch<AuthController>().isBusy;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SizedBox(height: MzaziSpace.s32),
+        // The same wordmark the console's sign-in carries, so the first screen on either
+        // looks like one product. Type only: there is no logo, and inventing one is not
+        // this project's job.
+        Text('MzaziCare', style: theme.textTheme.headlineLarge?.weighted(FontWeight.w700)),
+        const SizedBox(height: MzaziSpace.s4),
+        Text(
+          'Emergency help for elders at home',
+          style: theme.textTheme.bodyLarge?.copyWith(color: theme.textTheme.bodySmall?.color),
+        ),
+        const SizedBox(height: MzaziSpace.s32),
+        // Straight on the page, no card. The fields are filled, so nothing that has to be
+        // read sits on the rings behind them.
+        Form(
+          key: _numberForm,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              // Kenya is chosen to begin with; the button in front of the number changes
+              // it. Whatever way the number is typed, 0712..., 712... or +254712..., it is
+              // sent in the one format the API accepts.
+              PhoneField(
+                controller: _phone,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _continue(),
+              ),
+              const SizedBox(height: MzaziSpace.s24),
+              FilledButton(onPressed: busy ? null : _continue, child: const Text('Continue')),
+            ],
+          ),
+        ),
+        const SizedBox(height: MzaziSpace.s32),
+        // For caregivers, family members and volunteers. Elders are registered by their
+        // caregiver, and the sign-up screen says so.
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            Text('New here?', style: theme.textTheme.bodyLarge),
+            TextButton(
+              onPressed: busy ? null : () => unawaited(_createAccount()),
+              child: const Text('Create an account'),
+            ),
+          ],
+        ),
+        const SizedBox(height: MzaziSpace.s8),
+        // Readable before an account exists, which is when it matters, but small: few
+        // people open them on the way in.
+        const Center(child: LegalLinks(quiet: true)),
+      ],
+    );
+  }
+
+  Widget _passwordStep(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final AuthController auth = context.watch<AuthController>();
+    final String? error = auth.error;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: IconButton(
+            tooltip: 'Change the number',
+            onPressed: auth.isBusy ? null : _changeNumber,
+            icon: const Icon(Icons.arrow_back),
+          ),
+        ),
+        const SizedBox(height: MzaziSpace.s8),
+        StepHeading(title: 'Enter your password', lead: _number!),
+        const SizedBox(height: MzaziSpace.s24),
+        if (error != null) ...<Widget>[
+          Notice(message: error, isError: true),
+          const SizedBox(height: MzaziSpace.s16),
+        ],
+        Form(
+          key: _passwordForm,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              PasswordField(
+                controller: _password,
+                label: 'Password',
+                autofocus: true,
+                onSubmitted: (_) => unawaited(_submit()),
+                validator: (String? value) =>
+                    (value == null || value.isEmpty) ? 'Enter your password.' : null,
+              ),
+              // Beside the field it is about, where people look when the password fails.
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  onPressed: auth.isBusy ? null : () => unawaited(_forgotPassword()),
+                  child: const Text('Forgot your password?'),
+                ),
+              ),
+              const SizedBox(height: MzaziSpace.s8),
+              FilledButton(
+                onPressed: auth.isBusy ? null : () => unawaited(_submit()),
+                child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: MzaziSpace.s32),
+        // An elder may never have known the password a caregiver set.
+        Text(
+          'No password? Elders can sign in with a code instead.',
+          style: theme.textTheme.bodyLarge,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: MzaziSpace.s12),
+        OutlinedButton(
+          // Filled like the fields, so the rings do not show through it.
+          style: OutlinedButton.styleFrom(backgroundColor: theme.colorScheme.surface),
+          onPressed: auth.isBusy ? null : () => unawaited(_signInWithCode()),
+          child: const Text('Sign in with a code'),
+        ),
+      ],
     );
   }
 }

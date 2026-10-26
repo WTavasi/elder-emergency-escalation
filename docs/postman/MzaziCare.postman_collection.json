@@ -3033,6 +3033,388 @@
       "description": "Daniel, a seeded volunteer near Grace, is asked about her alert, told how far but not who or where, accepts, and arrives; Mary still has the alert to take. Needs folder 1 run first, and the seed from this phase (npm run db:seed)."
     },
     {
+      "name": "2g. Asking for help by text",
+      "description": "An elder with no data texting HELP to MzaziCare's shortcode, as Africa's Talking would post it. It raises the same alert the button does. Needs the API started with the same secret as 2c:\n\n    SMS_INBOUND_TOKEN=local-text-replies-0123456789 npm run dev\n\nGrace must have no alert open when it starts, or her text is answered with who is coming instead of raising one. The texts sent back appear in the API terminal, on lines starting [LoggingSmsProvider].",
+      "item": [
+        {
+          "name": "Grace texts HELP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{elderPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "HELP"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "Grace has no data, so she texts HELP. The API terminal shows Mary being asked and Grace being told that the people who look after her have been told."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary has an alert for Grace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts?open=true",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"],
+              "query": [
+                {
+                  "key": "open",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const graces = pm.response.json().filter((a) => a.elder.name === 'Grace Wanjiru');",
+                  "pm.test('one alert for Grace', () => pm.expect(graces).to.have.length(1));",
+                  "if (graces.length > 0) pm.environment.set('alertId', graces[0].eventId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The trail says it came by text",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const raised = body.timeline.find((e) => e.action === 'EVENT_CREATED');",
+                  "pm.test('raised by Grace, by text', () => pm.expect(raised.detail.via).to.eql('sms'));",
+                  "const noCancel = body.severityFactors.factors.find((f) => f.key === 'no_cancel_in_grace_window');",
+                  "pm.test('no cancel window, so not cancelling counts nothing', () => {",
+                  "  pm.expect(noCancel.contribution).to.eql(0);",
+                  "  pm.expect(noCancel.detail).to.eql('no cancel window: raised by text');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grace texts msaada while it is open",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{elderPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "msaada"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "Swahili for help. With the alert open, she is told who is coming instead of raising a second one."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary texts help",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/sms/inbound?token={{smsToken}}",
+              "host": ["{{apiBase}}"],
+              "path": ["sms", "inbound"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{smsToken}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "from",
+                  "value": "{{caregiverPhone}}"
+                },
+                {
+                  "key": "to",
+                  "value": "12345"
+                },
+                {
+                  "key": "text",
+                  "value": "help"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-10-21 10:00:00"
+                },
+                {
+                  "key": "id",
+                  "value": "ATXid_postman"
+                },
+                {
+                  "key": "linkId",
+                  "value": "postman"
+                }
+              ]
+            },
+            "description": "Only an elder's number can raise an alert. From anybody else, help is a question, not an emergency."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says it was received', () => pm.expect(pm.response.json().received).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Still one alert for Grace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts?open=true",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"],
+              "query": [
+                {
+                  "key": "open",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const graces = pm.response.json().filter((a) => a.elder.name === 'Grace Wanjiru');",
+                  "pm.test('the same one, not a second', () => {",
+                  "  pm.expect(graces).to.have.length(1);",
+                  "  pm.expect(graces[0].eventId).to.eql(pm.environment.get('alertId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mary closes it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "3. Declining moves it on",
       "description": "Run in order. The caregiver cannot come, so tier two is asked at once; the family member takes it on, calls in a responder and closes it.",
       "item": [
@@ -3700,13 +4082,17 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('answers 200', () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "if (body.results.length > 0) {",
-                  "  pm.environment.set('homeLat', body.results[0].latitude);",
-                  "  pm.environment.set('homeLng', body.results[0].longitude);",
-                  "  pm.environment.set('homeLabel', body.results[0].label);",
-                  "}",
-                  "pm.test('credits OpenStreetMap', () => pm.expect(body.attribution).to.include('OpenStreetMap'));"
+                  "// Without internet the search answers 503. Registering the elder still works: it uses",
+                  "// the home already in the environment, Kileleshwa, until a search replaces it.",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.results.length > 0) {",
+                  "    pm.environment.set('homeLat', body.results[0].latitude);",
+                  "    pm.environment.set('homeLng', body.results[0].longitude);",
+                  "    pm.environment.set('homeLabel', body.results[0].label);",
+                  "  }",
+                  "  pm.test('credits OpenStreetMap', () => pm.expect(body.attribution).to.include('OpenStreetMap'));",
+                  "}"
                 ]
               }
             }

@@ -235,21 +235,35 @@ class _LegalPageState extends State<_LegalPage> {
 
 /// The two links, side by side, for the foot of any page that needs them.
 class LegalLinks extends StatelessWidget {
-  const LegalLinks({super.key});
+  const LegalLinks({this.quiet = false, super.key});
+
+  /// In small print, in the softer ink: for a screen where few people open them and the
+  /// form above is what matters. Still a full touch target each.
+  final bool quiet;
 
   static Future<void> _open(BuildContext context, Widget screen) =>
       Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => screen));
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ButtonStyle? style = quiet
+        ? TextButton.styleFrom(
+            foregroundColor: theme.colorScheme.onSurfaceVariant,
+            textStyle: theme.textTheme.bodySmall?.copyWith(decoration: TextDecoration.underline),
+          )
+        : null;
+
     return Wrap(
       spacing: MzaziSpace.s8,
       children: <Widget>[
         TextButton(
+          style: style,
           onPressed: () => unawaited(_open(context, const PrivacyNoticeScreen())),
           child: const Text('Privacy notice'),
         ),
         TextButton(
+          style: style,
           onPressed: () => unawaited(_open(context, const TermsScreen())),
           child: const Text('Terms of use'),
         ),

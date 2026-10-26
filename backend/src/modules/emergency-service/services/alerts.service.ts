@@ -181,6 +181,7 @@ export class AlertsService {
 
     // Scored now with the cancel window still open, so "did not cancel" counts nothing.
     // It is scored again once, when the window closes (EscalationService.reviewSeverity).
+    // A texted or missed check-in alert has no window, and the trail says so.
     const assessment = await this.severity.evaluate(
       severityContextFor(
         elder,
@@ -188,6 +189,7 @@ export class AlertsService {
         at,
         recentEventCount,
         false,
+        missed ? 'missed check-in' : texted ? 'texted' : undefined,
       ),
     );
 

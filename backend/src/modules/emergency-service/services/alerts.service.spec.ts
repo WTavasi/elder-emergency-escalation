@@ -226,6 +226,7 @@ describe('AlertsService', () => {
           careLevel: CareLevel.HIGH_DEPENDENCY,
         }),
       );
+      expect(severity.evaluate.mock.calls[0][0]).not.toHaveProperty('withoutWindow');
     });
 
     it('writes the creation and the scoring to the audit log, in one transaction', async () => {
@@ -639,6 +640,18 @@ describe('AlertsService', () => {
       expect(entries[0].detail).toEqual({ trigger: AlertTrigger.MISSED_CHECK_IN });
     });
 
+    it('is scored as having no cancel window, so the trail does not call it open', async () => {
+      const severity = buildSeverity();
+      await build(buildPrisma(), severity).create(
+        'elder-1',
+        {},
+        { trigger: AlertTrigger.MISSED_CHECK_IN },
+      );
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({ withoutWindow: 'missed check-in' }),
+      );
+    });
+
     it('a press of the button is still a panic alert', async () => {
       const prisma = buildPrisma();
       await build(prisma).create('elder-1', {});
@@ -674,6 +687,14 @@ describe('AlertsService', () => {
       >;
       expect(entries[0].actorId).toBe('elder-1');
       expect(entries[0].detail).toEqual({ trigger: AlertTrigger.PANIC, via: 'sms' });
+    });
+
+    it('is scored as having no cancel window, so the trail does not call it open', async () => {
+      const severity = buildSeverity();
+      await build(buildPrisma(), severity).create('elder-1', {}, { via: 'sms' });
+      expect(severity.evaluate).toHaveBeenCalledWith(
+        expect.objectContaining({ withoutWindow: 'texted' }),
+      );
     });
   });
 

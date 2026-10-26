@@ -9,12 +9,14 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/phone/country.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/password_field.dart';
+import '../../core/widgets/step_heading.dart';
 import 'sign_up_screen.dart' show resendSeconds;
 
 /// Setting a new password with a code sent to the phone on the account.
 ///
 /// Two steps on one screen, like sign-up: the number, then the code with the new
-/// password. Whoever can read an SMS sent to the number owns the account, which is the
+/// password, which has a show button rather than a second field to type it in again. Whoever can read an SMS sent to the number owns the account, which is the
 /// same proof sign-up asked for, so nothing more is asked here.
 ///
 /// The screen says the same thing whether or not the number has an account, because the
@@ -37,7 +39,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     ..text.text = widget.number ?? '';
   final TextEditingController _code = TextEditingController();
   final TextEditingController _password = TextEditingController();
-  final TextEditingController _confirm = TextEditingController();
 
   /// The number the code went to, once one has been asked for.
   String? _sentTo;
@@ -52,7 +53,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _phone.dispose();
     _code.dispose();
     _password.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -95,8 +95,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       code: _code.text,
       newPassword: _password.text,
     );
-    // Signed in: the app has already moved to the right home screen underneath.
-    if (done && mounted) await Navigator.of(context).maybePop();
+    // Signed in: the app has already moved to the right home screen underneath. A plain
+    // pop, because maybePop would ask the back handler, which goes back to the number.
+    if (!done || !mounted) return;
+    final NavigatorState navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
   }
 
   void _changeNumber() {
@@ -104,6 +107,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     context.read<AuthController>().clearError();
     setState(() {
       _sentTo = null;
+      _requestError = null;
       _cooldown = 0;
       _code.clear();
     });
@@ -111,20 +115,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset your password')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              MzaziSpace.s16,
-              MzaziSpace.s8,
-              MzaziSpace.s16,
-              MzaziSpace.s32,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
+    // Back from the code goes to the number, as it would between two pages.
+    return PopScope(
+      canPop: _sentTo == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _changeNumber();
+      },
+      child: Scaffold(
+        appBar: AppBar(),
+        body: SafeArea(
+          // From the top, so the heading of each step is in the same place.
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                MzaziSpace.s16,
+                MzaziSpace.s8,
+                MzaziSpace.s16,
+                MzaziSpace.s32,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _sentTo == null ? _phoneStep(context) : _resetStep(context),
+              ),
             ),
           ),
         ),
@@ -133,16 +146,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _phoneStep(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
     return Form(
       key: _phoneForm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Forgot your password?', style: theme.textTheme.titleLarge),
-          const SizedBox(height: MzaziSpace.s8),
-          Text('We will send a code by SMS.', style: theme.textTheme.bodyLarge),
+          const StepHeading(
+            step: 1,
+            title: 'Forgot your password?',
+            lead: 'We will send a code by SMS to the number on your account.',
+          ),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(
             controller: _phone,
@@ -154,10 +167,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Notice(message: _requestError!, isError: true),
           ],
           const SizedBox(height: MzaziSpace.s24),
-          FilledButton.icon(
+          FilledButton(
             onPressed: _requesting ? null : () => unawaited(_sendCode()),
-            icon: const Icon(Icons.sms_outlined),
-            label: Text(_requesting ? 'Sending' : 'Send me a code'),
+            child: Text(_requesting ? 'Sending' : 'Send me a code'),
           ),
         ],
       ),
@@ -174,12 +186,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Enter the code', style: theme.textTheme.titleLarge),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            'If $_sentTo has an account, a six-digit code is on its way by SMS. '
-            'It works for 10 minutes.',
-            style: theme.textTheme.bodyLarge,
+          StepHeading(
+            step: 2,
+            title: 'Choose a new password',
+            lead:
+                'If $_sentTo has an account, a six-digit code is on its way by SMS. '
+                'It works for 10 minutes.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -205,40 +217,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
           ),
           const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
+          PasswordField(
             controller: _password,
-            obscureText: true,
-            textInputAction: TextInputAction.next,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            decoration: const InputDecoration(
-              labelText: 'New password',
-              helperText: 'At least 8 characters',
-            ),
+            label: 'New password',
+            helperText: 'At least 8 characters',
+            newPassword: true,
+            onSubmitted: (_) => unawaited(_reset()),
             validator: (String? value) =>
                 (value == null || value.length < 8) ? 'Use at least 8 characters.' : null,
           ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
-            controller: _confirm,
-            obscureText: true,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(labelText: 'New password again'),
-            onFieldSubmitted: (_) => unawaited(_reset()),
-            validator: (String? value) =>
-                value == _password.text ? null : 'The two passwords are different.',
-          ),
           const SizedBox(height: MzaziSpace.s24),
-          FilledButton.icon(
+          FilledButton(
             onPressed: auth.isBusy ? null : () => unawaited(_reset()),
-            icon: const Icon(Icons.lock_reset),
-            label: Text(auth.isBusy ? 'Saving' : 'Set my new password'),
+            child: Text(auth.isBusy ? 'Saving' : 'Set my new password'),
           ),
-          const SizedBox(height: MzaziSpace.s16),
-          TextButton(
-            onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
-            child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+          const SizedBox(height: MzaziSpace.s8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: MzaziSpace.s8,
+            children: <Widget>[
+              TextButton(
+                onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
+                child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+              ),
+              TextButton(onPressed: _changeNumber, child: const Text('Use a different number')),
+            ],
           ),
-          TextButton(onPressed: _changeNumber, child: const Text('Use a different number')),
         ],
       ),
     );

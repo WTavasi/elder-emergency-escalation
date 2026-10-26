@@ -384,9 +384,10 @@ void main() {
             find.descendant(of: find.byType(PanicButton), matching: find.byType(InkWell)),
           );
           final Rect words = tester.getRect(find.textContaining('Press the red circle'));
-          // In the middle of the screen, with its explanation underneath.
-          expect(button.center.dy, inInclusiveRange(size.height / 3, size.height * 2 / 3));
-          expect(words.top, greaterThanOrEqualTo(button.bottom));
+          // In the middle of the screen, with its explanation just above it. A little lower
+          // at large text sizes, where the words above it take more of the screen.
+          expect(button.center.dy, inInclusiveRange(size.height / 3, size.height * 0.7));
+          expect(words.bottom, lessThanOrEqualTo(button.top));
 
           await tester.tap(find.text('Get\nhelp'));
           await tester.pump();

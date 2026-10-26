@@ -178,6 +178,29 @@ describe('SeverityService', () => {
     }
   });
 
+  describe('an alert with no cancel window', () => {
+    const detailOf = (assessment: {
+      factors: Array<{ key: string; detail: string }>;
+    }): string | undefined =>
+      assessment.factors.find((factor) => factor.key === 'no_cancel_in_grace_window')?.detail;
+
+    it('counts nothing for not cancelling, and says there was no window to cancel in', async () => {
+      const { service } = buildService();
+      const texted = await service.evaluate(calm({ withoutWindow: 'texted' }));
+      const missed = await service.evaluate(calm({ withoutWindow: 'missed check-in' }));
+
+      expect(contributionOf(texted, 'no_cancel_in_grace_window')).toBe(0);
+      expect(detailOf(texted)).toBe('no cancel window: raised by text');
+      expect(contributionOf(missed, 'no_cancel_in_grace_window')).toBe(0);
+      expect(detailOf(missed)).toBe('no cancel window: a missed check-in');
+    });
+
+    it('still says the window is open for a press of the button', async () => {
+      const { service } = buildService();
+      expect(detailOf(await service.evaluate(calm()))).toBe('cancel window still open');
+    });
+  });
+
   describe('highestOf', () => {
     it('promotes but never demotes', () => {
       const { service } = buildService();
