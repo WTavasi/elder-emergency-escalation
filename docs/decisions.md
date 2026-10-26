@@ -395,6 +395,22 @@ phone-first sign-ups people already know from apps like WhatsApp, in two short s
 - **Words alone on the role buttons.** With icons beside them, the three no longer fit
   across a phone, and "Volunteer" broke in the middle of the word.
 
+## Sign-in asks for the number first
+
+Sign-in is two short steps too: the number on its own, then the password. There are two
+ways in, a password or, for an elder, a code, and asking for the number first lets the
+second screen offer both against the number already typed. The first screen holds one
+field and one button, a line to make an account, and the privacy notice and terms in
+small print; the rings behind it stay, since nothing is read on them.
+
+The server cannot say which way suits a number without telling anybody who uses
+MzaziCare, so the second step always offers both: the password, with **Forgot your
+password?** just under the field where people look when it fails, and below it **Sign in
+with a code** for elders. The cost is one more tap for everybody, and password managers
+fill a form split across two screens less smoothly than one with both fields. Setting a
+new password lost its second field for the same reason sign-up did, and every screen on
+the way in now opens at the top with the same heading, so nothing jumps between steps.
+
 ## A caregiver adds family by phone number, and the place waits for them
 
 A relative does not have to sign up before the caregiver can add them. If the number has

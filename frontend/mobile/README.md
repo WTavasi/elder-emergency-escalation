@@ -122,11 +122,17 @@ finding the elder's home by address search, and adds family by phone number. Eve
 field has a country button, Kenya to begin with, and accepts the number however it is
 typed.
 
-**A forgotten password.** **Forgot your password?** on the sign-in screen sends a code to
-the phone on the account and sets a new password with it, then signs straight in. The
-number already typed on the sign-in screen is carried over.
+**Signing in.** Number first, then the password. The first screen holds the number,
+**Continue**, a way to make an account, and the privacy notice and terms in small print.
+The second asks for the password, which has a show button, with **Forgot your
+password?** just under it, and offers elders **Sign in with a code** instead. Back from
+the password returns to the number with it still typed in.
 
-**Signing up.** Two short steps. First who you are (caregiver, family or volunteer),
+**A forgotten password.** **Forgot your password?** sends a code to the phone on the
+account and sets a new password with it, in one field with a show button, then signs
+straight in. The number already typed on the sign-in screen is carried over.
+
+**The sign-up screens.** Two short steps. First who you are (caregiver, family or volunteer),
 your name and your number, and **Agree and send a code**, with the terms of use and the
 privacy notice linked in the small print under it. Then the six-digit code and a
 password, which has a show button rather than a second field. An email can be added

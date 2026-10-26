@@ -62,19 +62,17 @@ void main() {
   Future<void> fillReset(WidgetTester tester, String code) async {
     await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), code);
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Brand-new-2026');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'New password again'),
-      'Brand-new-2026',
-    );
     await tester.tap(find.text('Set my new password'));
     await settle(tester);
   }
 
-  testWidgets('sign-in offers it, and carries the typed number across', (
+  testWidgets('sign-in offers it beside the password, and carries the typed number across', (
     WidgetTester tester,
   ) async {
     await pump(tester, const SignInScreen());
     await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '0712 345 678');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Forgot your password?'));
     await tester.pumpAndSettle();
 
@@ -122,7 +120,7 @@ void main() {
     expect(t.auth.isSignedIn, isFalse);
   });
 
-  testWidgets('refuses two different new passwords before asking the server', (
+  testWidgets('asks for the new password once, shows it on request, and refuses a short one', (
     WidgetTester tester,
   ) async {
     final ({List<Map<String, dynamic>> bodies, List<Exchange> calls, AuthController auth}) t =
@@ -130,13 +128,31 @@ void main() {
     await tester.tap(find.text('Send me a code'));
     await settle(tester);
 
+    expect(find.textContaining('again'), findsNothing);
+    expect(find.byTooltip('Show password'), findsOneWidget);
+
     await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
-    await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Brand-new-2026');
-    await tester.enterText(find.widgetWithText(TextFormField, 'New password again'), 'different');
+    await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'short');
     await tester.tap(find.text('Set my new password'));
     await settle(tester);
 
-    expect(find.text('The two passwords are different.'), findsOneWidget);
+    expect(find.text('Use at least 8 characters.'), findsOneWidget);
     expect(t.calls, hasLength(1));
+  });
+
+  testWidgets('back from the code goes to the number, with it still typed in', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester, const ForgotPasswordScreen(number: '0712345678'));
+    await tester.tap(find.text('Send me a code'));
+    await settle(tester);
+    expect(find.text('STEP 2 OF 2'), findsOneWidget);
+
+    // The phone's own back, not the screen's link: it goes to the number, not away.
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.text('STEP 1 OF 2'), findsOneWidget);
+    expect(find.text('0712345678'), findsOneWidget);
   });
 }

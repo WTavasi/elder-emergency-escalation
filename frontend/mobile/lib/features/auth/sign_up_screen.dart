@@ -11,6 +11,8 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/password_field.dart';
+import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
 
 /// Seconds before another code can be asked for. Matches the server's own cooldown, so
@@ -45,7 +47,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _password = TextEditingController();
 
   Role _role = Role.caregiver;
-  bool _showPassword = false;
 
   /// The number the code went to, once one has been asked for.
   String? _sentTo;
@@ -177,7 +178,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const _StepHeading(
+          const StepHeading(
             step: 1,
             title: 'Create your account',
             lead:
@@ -257,7 +258,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          _StepHeading(
+          StepHeading(
             step: 2,
             title: 'Check your messages',
             lead:
@@ -288,25 +289,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
           ),
           const SizedBox(height: MzaziSpace.s16),
-          TextFormField(
+          PasswordField(
             controller: _password,
-            obscureText: !_showPassword,
-            textInputAction: TextInputAction.done,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            onFieldSubmitted: (_) => unawaited(_create()),
-            decoration: InputDecoration(
-              labelText: 'Choose a password',
-              helperText: 'At least 8 characters',
-              // Shown on request instead of typed twice: a mistake is seen and put right
-              // in the field, not found later by a second field that disagrees.
-              suffixIcon: IconButton(
-                tooltip: _showPassword ? 'Hide password' : 'Show password',
-                icon: Icon(
-                  _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                ),
-                onPressed: () => setState(() => _showPassword = !_showPassword),
-              ),
-            ),
+            label: 'Choose a password',
+            helperText: 'At least 8 characters',
+            newPassword: true,
+            onSubmitted: (_) => unawaited(_create()),
             validator: (String? value) =>
                 (value == null || value.length < 8) ? 'Use at least 8 characters.' : null,
           ),
@@ -329,38 +317,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Which step this is, what it is for, and one line on it.
-class _StepHeading extends StatelessWidget {
-  const _StepHeading({required this.step, required this.title, required this.lead});
-
-  final int step;
-  final String title;
-  final String lead;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Text(
-          'STEP $step OF 2',
-          style: theme.textTheme.labelSmall,
-          semanticsLabel: 'Step $step of 2',
-        ),
-        const SizedBox(height: MzaziSpace.s8),
-        Semantics(header: true, child: Text(title, style: theme.textTheme.headlineSmall)),
-        const SizedBox(height: MzaziSpace.s8),
-        Text(
-          lead,
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-      ],
     );
   }
 }

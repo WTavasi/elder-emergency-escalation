@@ -9,6 +9,7 @@ import '../../core/phone/country.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/code_field.dart';
 import '../../core/widgets/notice.dart';
+import '../../core/widgets/step_heading.dart';
 import 'sign_up_screen.dart' show resendSeconds;
 
 /// An elder signing in with a code instead of a password.
@@ -104,8 +105,11 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
       phone: _phoneNumber!,
       code: _code.text,
     );
-    // Signed in: the app has already moved to the elder's home screen underneath.
-    if (done && mounted) await Navigator.of(context).maybePop();
+    // Signed in: the app has already moved to the elder's home screen underneath. A plain
+    // pop, because maybePop would ask the back handler, which goes back to the number.
+    if (!done || !mounted) return;
+    final NavigatorState navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
   }
 
   void _changeNumber() {
@@ -114,6 +118,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
     setState(() {
       _phoneNumber = null;
       _texted = false;
+      _requestError = null;
       _cooldown = 0;
       _code.clear();
     });
@@ -121,20 +126,29 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sign in with a code')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              MzaziSpace.s16,
-              MzaziSpace.s8,
-              MzaziSpace.s16,
-              MzaziSpace.s32,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: _phoneNumber == null ? _phoneStep(context) : _codeStep(context),
+    // Back from the code goes to the number, as it would between two pages.
+    return PopScope(
+      canPop: _phoneNumber == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _changeNumber();
+      },
+      child: Scaffold(
+        appBar: AppBar(),
+        body: SafeArea(
+          // From the top, so the heading of each step is in the same place.
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                MzaziSpace.s16,
+                MzaziSpace.s8,
+                MzaziSpace.s16,
+                MzaziSpace.s32,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _phoneNumber == null ? _phoneStep(context) : _codeStep(context),
+              ),
             ),
           ),
         ),
@@ -143,19 +157,17 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
   }
 
   Widget _phoneStep(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
     return Form(
       key: _phoneForm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('No password needed', style: theme.textTheme.titleLarge),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            'For elders. Use the number of this phone, then a code we text to it, or a '
-            'code from your caregiver.',
-            style: theme.textTheme.bodyLarge,
+          const StepHeading(
+            step: 1,
+            title: 'No password needed',
+            lead:
+                'For elders. Use the number of this phone, then a code we text to it, or a '
+                'code from your caregiver.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(controller: _phone, textInputAction: TextInputAction.done),
@@ -164,21 +176,20 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
             Notice(message: _requestError!, isError: true),
           ],
           const SizedBox(height: MzaziSpace.s24),
+          // Words alone, so the longer of the two fits on one line at the elder's size.
           SizedBox(
             height: MzaziA11y.elderMinTouchTarget,
-            child: FilledButton.icon(
+            child: FilledButton(
               onPressed: _requesting ? null : () => unawaited(_textCode()),
-              icon: const Icon(Icons.sms_outlined),
-              label: Text(_requesting ? 'Sending' : 'Text me a code'),
+              child: Text(_requesting ? 'Sending' : 'Text me a code'),
             ),
           ),
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
             height: MzaziA11y.elderMinTouchTarget,
-            child: OutlinedButton.icon(
+            child: OutlinedButton(
               onPressed: _requesting ? null : _haveCode,
-              icon: const Icon(Icons.family_restroom),
-              label: const Text('I have a code from my caregiver'),
+              child: const Text('I have a code from my caregiver'),
             ),
           ),
         ],
@@ -187,7 +198,6 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
   }
 
   Widget _codeStep(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final AuthController auth = context.watch<AuthController>();
     final String? error = auth.error ?? _requestError;
 
@@ -196,14 +206,13 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Enter the code', style: theme.textTheme.titleLarge),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            _texted
+          StepHeading(
+            step: 2,
+            title: 'Enter the code',
+            lead: _texted
                 ? 'If $_phoneNumber belongs to an elder, a six-digit code is on its way by '
                       'text. A code from your caregiver works here too.'
                 : 'Type the six-digit code your caregiver sees on your page in their app.',
-            style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -214,10 +223,9 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
           const SizedBox(height: MzaziSpace.s24),
           SizedBox(
             height: MzaziA11y.elderMinTouchTarget,
-            child: FilledButton.icon(
+            child: FilledButton(
               onPressed: auth.isBusy ? null : () => unawaited(_signIn()),
-              icon: const Icon(Icons.login),
-              label: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
+              child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
             ),
           ),
           const SizedBox(height: MzaziSpace.s16),
