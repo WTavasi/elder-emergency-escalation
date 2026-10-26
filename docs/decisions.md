@@ -549,7 +549,9 @@ Three details were decided rather than inherited:
 
 - **No cancel window.** A text cannot be withdrawn, so the severity is scored once and
   never reviewed. Reviewing it would count "did not cancel" in full, the factor that
-  reads as "may not be able to reach the phone", for somebody who has just used it.
+  reads as "may not be able to reach the phone", for somebody who has just used it. The
+  stored reasoning says "no cancel window: raised by text" rather than calling a window
+  open that never was, as it does for a missed check-in.
 - **One emergency at a time.** A second HELP, or the gateway retrying the first, while one
   is open is answered with who is coming rather than raising another.
 - **The app only offers it when it will be read.** The shortcode reaches the app through

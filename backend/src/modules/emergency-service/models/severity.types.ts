@@ -12,7 +12,14 @@ export interface SeverityContext {
   recentEventCount: number;
   /** True once the cancel window has passed without the elder cancelling. */
   cancelWindowElapsed: boolean;
+  /**
+   * Why the alert never had a cancel window, when it had none: it was texted, or raised
+   * for a missed check-in. Not cancelling still counts nothing; this only says why.
+   */
+  withoutWindow?: WithoutWindow;
 }
+
+export type WithoutWindow = 'texted' | 'missed check-in';
 
 export interface FactorOutcome {
   key: string;

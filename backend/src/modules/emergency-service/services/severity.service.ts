@@ -86,6 +86,17 @@ export class SeverityService {
       case 'care_level':
         return this.careLevel(context);
       case 'no_cancel_in_grace_window':
+        // A text cannot be withdrawn and nobody pressed anything for a missed check-in,
+        // so the trail says there was no window rather than that it is still open.
+        if (context.withoutWindow) {
+          return {
+            value: 0,
+            detail:
+              context.withoutWindow === 'texted'
+                ? 'no cancel window: raised by text'
+                : 'no cancel window: a missed check-in',
+          };
+        }
         return {
           value: context.cancelWindowElapsed ? 1 : 0,
           detail: context.cancelWindowElapsed

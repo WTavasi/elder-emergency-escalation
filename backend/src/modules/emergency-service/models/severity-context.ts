@@ -1,7 +1,7 @@
 import type { Prisma, User } from '@prisma/client';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import type { Coordinates } from '../../../shared/utils/geo';
-import type { SeverityAssessment, SeverityContext } from './severity.types';
+import type { SeverityAssessment, SeverityContext, WithoutWindow } from './severity.types';
 
 /** The parts of an elder's account the severity policy reads. */
 export type ElderSeverityFacts = Pick<
@@ -19,6 +19,7 @@ export function severityContextFor(
   at: Date,
   recentEventCount: number,
   cancelWindowElapsed: boolean,
+  withoutWindow?: WithoutWindow,
 ): SeverityContext {
   return {
     careLevel: elder.careLevel,
@@ -31,6 +32,7 @@ export function severityContextFor(
     at,
     recentEventCount,
     cancelWindowElapsed,
+    ...(withoutWindow ? { withoutWindow } : {}),
   };
 }
 
