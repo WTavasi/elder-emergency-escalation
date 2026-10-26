@@ -512,7 +512,8 @@ In the simulator, launch it with Grace's number, `+254700000010`, and send `HELP
 `12345`. Either way an alert appears on the console marked as raised by text, the chain
 is asked as usual, and Grace is texted back that the people who look after her have been
 told. A second HELP while it is open answers with who is coming rather than raising
-another.
+another. Folder **2g** of the Postman collection does the same and checks each step
+([api-testing.md](api-testing.md)).
 
 Sending from the shortcode is what makes the reply land in the right place: a person who
 answers a message answers the number it came from. Africa's Talking documents the

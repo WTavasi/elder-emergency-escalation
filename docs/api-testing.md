@@ -92,7 +92,7 @@ folder again.
 
 ## Part 4. The emergency walkthroughs
 
-Three folders each tell one story. Run each one with **Run folder**, as in Part 3, or open
+These folders each tell one story. Run each one with **Run folder**, as in Part 3, or open
 the requests one by one and press **Send** in order, reading each answer as you go. That
 second way is the better one for a demonstration.
 
@@ -104,6 +104,7 @@ second way is the better one for a demonstration.
 | **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([running.md](running.md), Step 10); without one the requests check for 503 instead |
 | **2e. Daily check-ins** | Mary sets up a check-in for Grace and it waits for her; only Grace can agree, and does; Mary sees it on with the last answers; Grace says she is all right; four times a day and the console changing it are refused; Grace turns it off herself. To watch one actually asked and missed, see [running.md](running.md), Step 11 |
 | **2f. Community volunteers** | Daniel, a seeded volunteer near Grace, signs in and is available; Mary agrees to volunteers for Grace and Grace confirms; Grace raises an alert, and twelve seconds later, once it is critical, Daniel is asked and told how far but not who or where; he accepts and is told; Mary still has the alert to take; a volunteer cannot open the alert itself; he arrives; Mary closes it and Daniel's view loses Grace's details; the vetting queue shows Faith waiting. Run `npm run db:seed` once after pulling this change, and re-import the environment for `volunteerPhone` |
+| **2g. Asking for help by text** | Grace has no data, so she texts HELP, as the SMS gateway would post it; Mary has an alert for her; its trail says it came by text and that there was no cancel window; Grace texting "msaada" while it is open, and Mary texting "help", raise nothing more; Mary closes it. Needs the same `SMS_INBOUND_TOKEN` as 2c, and Grace with no alert open when it starts |
 | **3. Declining moves it on** | Mary cannot come, so tier 2 is asked at once; the family member takes it on, calls in a responder and closes it |
 | **4. Withdrawing and reopening** | Grace withdraws inside the 10 second grace window; Mary reopens it because she could not reach her |
 
@@ -154,7 +155,9 @@ This uses the account you made in Part 5, which is a caregiver.
 2. **Search for a home address** finds coordinates for "Kileleshwa, Nairobi" and saves
    the first match for the next requests. Change the `q` value in the **Params** tab to
    search for somewhere else. This one goes out to OpenStreetMap, so it needs internet,
-   and it allows one search a second across everybody: do not run it in a loop.
+   and it allows one search a second across everybody: do not run it in a loop. Without
+   internet it answers `503`, and the next requests use the home the environment already
+   has, Kileleshwa.
 3. **Send a code to the elder's phone**, then copy that code from the API terminal into
    the `elderCode` variable, as in Part 5.
 4. **Register the elder**. The answer shows `myTier: 1`: the caregiver is first in the
@@ -214,7 +217,9 @@ npx newman run docs/postman/MzaziCare.postman_collection.json \
 
 The first time, `npx` asks to install Newman; answer `y`. Folders 5 and 6 are left out
 because they need a code typed in by hand, and 6b, 8b and 8c with them, because they use the
-account and elder made there.
+account and elder made there. The story folders, 2b to 2g, run the same way: add a
+`--folder` line for each, with the API started with `SMS_INBOUND_TOKEN` for 2c and 2g. Clear
+the sign-in limits first (Part 10) if you have already run it a few times.
 
 At the end it prints a table. Every row in the **failed** column should be 0.
 
