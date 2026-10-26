@@ -113,9 +113,12 @@ offers texting and calling instead of an error.
 
 ## Accessibility & Inclusion
 
-- Elder screens: body text 20pt or larger, touch targets 72pt or larger, AAA contrast on
-  body text and the help button, usable at 200% system text size, Reduce Motion honoured.
-- Everyone else: 14pt body floor, 48pt touch targets, AA contrast everywhere.
+- Elder mode (on for elders, and anybody can switch it): body text 20pt or larger,
+  touch targets 72pt or larger, AAA contrast on body text and the help button, usable at
+  200% system text size, Reduce Motion honoured.
+- Everyone else: 14pt body floor (17pt by default, Apple's size), 48pt touch targets, AA
+  contrast everywhere.
+- The phone's own face, at sizes that follow the phone's text-size setting.
 - Colour never carries state alone: every state also has a glyph and a word.
 - Both floors are asserted in tests against the token constants, and contrast is gated
   in CI.

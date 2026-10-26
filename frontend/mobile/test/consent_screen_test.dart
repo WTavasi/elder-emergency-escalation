@@ -161,7 +161,9 @@ void main() {
     // Processing has "Stop MzaziCare", so the first "Withdraw" is location sharing.
     await tester.tap(find.text('Withdraw').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Withdraw'));
+    await tester.tap(
+      find.descendant(of: find.byType(BottomSheet), matching: find.text('Withdraw')),
+    );
     await tester.pumpAndSettle();
 
     expect(t.bodies.single, <String, dynamic>{'type': 'LOCATION_SHARING'});
@@ -182,7 +184,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Stop MzaziCare for you?'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(TextButton, 'Stop MzaziCare'));
+    await tester.tap(
+      find.descendant(of: find.byType(BottomSheet), matching: find.text('Stop MzaziCare')),
+    );
     await tester.pumpAndSettle();
 
     expect(t.bodies.single, <String, dynamic>{'type': 'DATA_PROCESSING', 'confirm': true});

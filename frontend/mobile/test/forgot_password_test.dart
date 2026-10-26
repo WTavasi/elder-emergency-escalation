@@ -47,7 +47,7 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthController>.value(
         value: auth,
-        child: MaterialApp(theme: MzaziTheme.light(AppAudience.welcome), home: screen),
+        child: MaterialApp(theme: MzaziTheme.light(AppAudience.standard), home: screen),
       ),
     );
     return (bodies: bodies, calls: t.calls, auth: auth);

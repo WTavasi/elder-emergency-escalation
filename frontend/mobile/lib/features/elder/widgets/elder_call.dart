@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/models.dart';
+import '../../../core/theme/theme.dart';
 import '../../../core/voice/voice_call.dart';
 import '../../../core/voice/voice_room.dart';
 import '../../../core/widgets/motion.dart';
@@ -153,7 +154,7 @@ class _ElderCallState extends State<ElderCall> {
 
   Widget _panel(BuildContext context, bool announcing, VoiceCall? call) {
     final ThemeData theme = Theme.of(context);
-    const BoxConstraints elderTarget = BoxConstraints(minHeight: MzaziA11y.elderMinTouchTarget);
+    final BoxConstraints elderTarget = BoxConstraints(minHeight: MzaziSizes.of(context).control);
 
     if (announcing) {
       return Column(

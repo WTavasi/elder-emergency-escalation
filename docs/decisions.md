@@ -302,6 +302,10 @@ rather than the mechanism by which escalation happens.
 
 ## The fonts are bundled, and the elder's was chosen for legibility first
 
+The app no longer bundles fonts. Since 26 October 2026 it uses the phone's own face; see
+"The app follows Apple's conventions, and Elder mode is a switch" below. The console still
+self-hosts its faces as described here.
+
 Before this the token file named IBM Plex Sans and Archivo and no font file existed in the
 repository. Both surfaces asked for faces that were never loaded and fell back to the
 platform default, so the app rendered in San Francisco on iOS and Roboto on Android. The
@@ -824,3 +828,63 @@ the number every chain rings, so it changes only with a code sent to the new num
 after the current password for anybody who has one. An elder is not asked for the
 password; the text sent to the old number afterwards is their safeguard, as it is for
 everybody.
+
+## The app follows Apple's conventions, and Elder mode is a switch
+
+Most people who use the app do so on an iPhone, and the app looked like a web page placed
+inside one: its own fonts, square buttons, centred dialogs, and a sign-in form floating
+high on a blank screen. On 26 October 2026 it was reworked to follow Apple's Human
+Interface Guidelines, and to avoid the habits that make an interface look generated.
+
+**The phone's own face, on Apple's scale.** SF Pro on an iPhone and Roboto on Android,
+at Apple's default sizes (body 17, large title 34) and following the phone's text-size
+setting. Nothing is bundled, which also removes about a megabyte and the licence
+registration. The cost is stated plainly: the elder's previous face, Inclusive Sans, was
+chosen because a capital I, a lowercase l and a 1 could not be confused and the zero was
+slashed. SF Pro draws I and l more alike. What carries the meaning on an elder's screen is
+words and context rather than a code to be read letter by letter, and codes and numbers
+are digits, which SF Pro keeps distinct; against that, the face every other app on the
+phone uses is the one the elder already reads every day. The console keeps Source Sans 3
+and Atkinson Hyperlegible Mono.
+
+**One face for everybody, and Elder mode for size.** Before, the elder had a different
+face from everybody else. Now everybody has the same face, and Elder mode makes it larger
+(body 22, semibold) with taller buttons (72 points). It starts on for an elder's account
+and off for everybody else, and anybody can switch it from their own page: a caregiver
+with poor eyesight wants it, and an elder who reads well may not. The choice is kept on
+the phone, not the account, because it is about the person holding that phone, and it
+holds before sign-in so an elder's phone stays large on the sign-in screen. Screens take
+their sizes from the theme rather than asking whose account it is, so the switch reaches
+everything.
+
+**The way in has MzaziCare's red across the top**, with the care rings faint in white and
+a curved lower edge, and the form low on the screen where the thumb is. The red fills the
+space a short form would leave empty. It is the one place the red is used as a mark
+rather than a state, and it can be, because no emergency can be on screen before sign-in.
+
+**Buttons are solid with rounded corners**, full width, 50 points tall: the main action in
+red, the secondary one ink on grey with no outline, links in red without an underline, as
+an iPhone app's links take its tint. Red on actions that are not emergencies was already
+under review for the filled button, and the links join that review.
+
+**Every question is a sheet from the bottom**, not a dialog in the middle: a grab handle, a
+title, a sentence saying what will happen, then the answers as rows with icons, the way out
+last. It sits where the thumb is and is dismissed by swiping down, as on iPhone. The
+answer a question leads to can be a full-width button.
+
+**Permission is asked at the moment of need, after saying why.** The location retry on an
+emergency ("Try sharing again") only checked whether the phone allowed location, and never
+asked. On an iPhone a permission that has not been asked yet, or an "Allow Once" that has
+expired, reads as refused, so the retry could never succeed: a caregiver who had not been
+asked could not share their way there at all. Now pressing it says why in a sheet with one
+button, Continue, and then the phone asks. Apple recommends both halves: ask in context,
+and explain before the system's question, because a refusal there can only be undone in
+Settings.
+
+Smaller changes in the same pass: what has happened on an emergency is numbered on a line,
+as the console draws the chain; the swipe to confirm fills behind its knob and fades its
+words so they are never read through it; the elder's own page has the same parts in the
+same order as everybody else's, with privacy and terms in a part of their own; and the
+change-password form asks for the new password once, with a way to show it, rather than
+twice.
+

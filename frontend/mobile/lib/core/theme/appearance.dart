@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
-/// Light or dark, chosen by the person rather than only by the phone.
+import '../api/models.dart';
+
+/// Light or dark, and Elder mode, chosen by the person rather than only by the phone.
 ///
 /// The phone's own setting is the default, because that is where most people already
 /// made the choice. But it is one setting for every app, and an older person may find
@@ -13,6 +15,11 @@ import 'package:provider/provider.dart';
 /// Whatever is chosen, the alert's own colours stay the same: the panic control's red,
 /// with a brighter red edge in dark mode so its outline still stands off the page, and
 /// the caution yellow, which is the same in both.
+///
+/// Elder mode, larger text and taller buttons, follows the same rule. It starts on for an
+/// elder's account and off for everybody else, and anybody can switch it either way. The
+/// choice is the phone's too, so an elder's phone stays large on the sign-in screen after
+/// a sign-out, and somebody who switched it on keeps it after signing in again.
 class AppearanceController extends ChangeNotifier {
   AppearanceController({FlutterSecureStorage? storage})
     : _storage =
@@ -22,11 +29,20 @@ class AppearanceController extends ChangeNotifier {
           );
 
   static const String _key = 'mzazicare.appearance';
+  static const String _elderKey = 'mzazicare.elderMode';
 
   final FlutterSecureStorage _storage;
   ThemeMode _mode = ThemeMode.system;
+  bool? _elderMode;
 
   ThemeMode get mode => _mode;
+
+  /// What was chosen on this phone, or null when nobody has chosen.
+  bool? get elderMode => _elderMode;
+
+  /// Whether Elder mode is on for [role]: the choice made on this phone, or, until one
+  /// is made, on for an elder and off for everybody else.
+  bool elderModeFor(Role? role) => _elderMode ?? role == Role.elder;
 
   /// Null where a test builds a screen without one.
   static AppearanceController? maybeOf(BuildContext context) {
@@ -41,11 +57,28 @@ class AppearanceController extends ChangeNotifier {
   Future<void> load() async {
     try {
       final ThemeMode stored = _parse(await _storage.read(key: _key));
-      if (stored == _mode) return;
+      final bool? elder = switch (await _storage.read(key: _elderKey)) {
+        'on' => true,
+        'off' => false,
+        _ => null,
+      };
+      if (stored == _mode && elder == _elderMode) return;
       _mode = stored;
+      _elderMode = elder;
       notifyListeners();
     } on Exception {
       // Kept at the phone's setting.
+    }
+  }
+
+  Future<void> setElderMode(bool on) async {
+    if (on == _elderMode) return;
+    _elderMode = on;
+    notifyListeners();
+    try {
+      await _storage.write(key: _elderKey, value: on ? 'on' : 'off');
+    } on Exception {
+      // Applies for this launch, and is asked again next time.
     }
   }
 
@@ -129,6 +162,28 @@ class _Choice extends StatelessWidget {
         // A tick as well as the word being chosen, so the choice never rests on colour.
         trailing: selected ? const Icon(Icons.check, semanticLabel: 'Chosen') : null,
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+/// The switch for Elder mode, for the "Screen" part of a person's own page.
+class ElderModeSwitch extends StatelessWidget {
+  const ElderModeSwitch({required this.controller, required this.role, super.key});
+
+  final AppearanceController controller;
+  final Role? role;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (BuildContext context, Widget? _) => SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Elder mode'),
+        subtitle: const Text('Larger text and bigger buttons'),
+        value: controller.elderModeFor(role),
+        onChanged: controller.setElderMode,
       ),
     );
   }

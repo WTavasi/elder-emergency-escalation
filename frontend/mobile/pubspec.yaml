@@ -73,31 +73,6 @@ flutter:
   # The licences ship inside the app, not just in the repository. The Open Font Licence
   # requires the licence to travel with the font, and main.dart registers these with
   # Flutter's own licence page so "About" shows them.
-  assets:
-    - assets/fonts/OFL-InclusiveSans.txt
-    - assets/fonts/OFL-SourceSans3.txt
-    - assets/fonts/OFL-AtkinsonHyperlegibleMono.txt
-
-  # Bundled rather than fetched. Before this, the theme named faces that were never
-  # loaded, so the app quietly rendered in whatever the platform happened to supply and
-  # the elder screen's legibility was down to the phone rather than to a decision.
-  fonts:
-    # The elder's face, designed for accessibility and readability: a capital I, a
-    # lowercase l and a 1 that cannot be mistaken for one another, and a slashed zero.
-    # One variable file covering 300 to 700, driven by fontVariations like Source Sans 3.
-    - family: Inclusive Sans
-      fonts:
-        - asset: assets/fonts/InclusiveSans-Variable.ttf
-
-    # One variable file covering 200 to 900, which is smaller than three static weights
-    # would be. Weight is an axis here, so the theme drives it with fontVariations.
-    - family: Source Sans 3
-      fonts:
-        - asset: assets/fonts/SourceSans3-Variable.ttf
-
-    # Figures, timers and identifiers, where digits have to line up. The Braille
-    # Institute's monospace, from the same legibility research as Atkinson Hyperlegible,
-    # with a slashed zero. One variable file covering 200 to 800.
-    - family: Atkinson Hyperlegible Mono
-      fonts:
-        - asset: assets/fonts/AtkinsonHyperlegibleMono-Variable.ttf
+  # No fonts are bundled. The app uses the phone's own face, SF Pro on an iPhone and
+  # Roboto on Android, which follows the phone's text-size setting and costs nothing to
+  # ship. See MzaziTheme._text.

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +10,6 @@ import 'package:mzazicare/core/auth/auth_controller.dart';
 import 'package:mzazicare/core/auth/session_store.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/auth/sign_up_screen.dart';
-import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import 'support.dart';
@@ -19,13 +17,8 @@ import 'support.dart';
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues(<String, String>{}));
 
-  // The real face, so the test of what fits across a phone measures the type people will
-  // see. The test font draws every letter as a full square, nearly twice as wide.
-  setUpAll(() async {
-    final FontLoader sans = FontLoader(MzaziFont.sans)
-      ..addFont(rootBundle.load('assets/fonts/SourceSans3-Variable.ttf'));
-    await sans.load();
-  });
+  // A real face, so the test of what fits across a phone measures real text.
+  setUpAll(loadRealFaces);
 
   /// The sign-up screen pushed over a page, as it is in the app, with every request
   /// body recorded.

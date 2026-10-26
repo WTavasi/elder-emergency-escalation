@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/widgets/platform_alert.dart';
+import '../../../core/widgets/action_sheet.dart';
 import 'call_button.dart' show Open;
 
 /// Opens directions to where the elder is, in whatever maps app the phone has.
@@ -57,7 +57,7 @@ class DirectionsButton extends StatelessWidget {
     }
 
     if (!context.mounted) return;
-    await showPlatformAlert<void>(
+    await showActionSheet<void>(
       context,
       title: 'Get directions',
       content: Column(
@@ -72,7 +72,7 @@ class DirectionsButton extends StatelessWidget {
           ),
         ],
       ),
-      actions: const <AlertAction<void>>[AlertAction<void>('Close', null)],
+      actions: const <SheetAction<void>>[SheetAction<void>('Close', null, icon: Icons.close)],
     );
   }
 }

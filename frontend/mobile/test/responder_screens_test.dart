@@ -152,6 +152,29 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('the trail is numbered on one line, the latest filled in', (
+    WidgetTester tester,
+  ) async {
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(detailBody())],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    // Three steps worth showing in the fixture: asked, sent, moved on. Scoring is left out.
+    final double one = tester.getCenter(find.text('1')).dy;
+    final double two = tester.getCenter(find.text('2').first).dy;
+    final double three = tester.getCenter(find.text('3')).dy;
+    expect(one, lessThan(two));
+    expect(two, lessThan(three));
+    expect(find.text('1 second after the alert'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
@@ -691,7 +714,7 @@ void main() {
     // Both say "Stop sharing", so finding either by its words alone depends on order.
     final Finder stopOnPage = find.byIcon(Icons.location_off_outlined);
     final Finder stopInDialog = find.descendant(
-      of: find.byType(AlertDialog),
+      of: find.byType(BottomSheet),
       matching: find.text('Stop sharing'),
     );
 
@@ -714,7 +737,7 @@ void main() {
       await tester.tap(find.text('Keep sharing'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(BottomSheet), findsNothing);
       expect(t.way.isSharingFor('event-1'), isTrue);
       await finish(tester, t);
     });

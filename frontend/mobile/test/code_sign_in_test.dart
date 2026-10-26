@@ -22,8 +22,9 @@ void main() {
   /// the server answers it.
   Future<({List<Map<String, dynamic>> bodies, List<Exchange> calls, AuthController auth})> pump(
     WidgetTester tester,
-    Widget screen,
-  ) async {
+    Widget screen, {
+    AppAudience audience = AppAudience.standard,
+  }) async {
     final List<Map<String, dynamic>> bodies = <Map<String, dynamic>>[];
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
       final Map<String, dynamic> body = jsonDecode(request.body) as Map<String, dynamic>;
@@ -46,7 +47,7 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthController>.value(
         value: auth,
-        child: MaterialApp(theme: MzaziTheme.light(AppAudience.welcome), home: screen),
+        child: MaterialApp(theme: MzaziTheme.light(audience), home: screen),
       ),
     );
     return (bodies: bodies, calls: t.calls, auth: auth);
@@ -113,8 +114,10 @@ void main() {
     expect(t.auth.isSignedIn, isFalse);
   });
 
-  testWidgets('every control is big enough for an elder', (WidgetTester tester) async {
-    await pump(tester, const CodeSignInScreen(number: '0712345678'));
+  testWidgets('every control is big enough for an elder in Elder mode', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester, const CodeSignInScreen(number: '0712345678'), audience: AppAudience.elder);
 
     for (final String label in <String>['Text me a code', 'I have a code from my caregiver']) {
       final Finder button = find.ancestor(

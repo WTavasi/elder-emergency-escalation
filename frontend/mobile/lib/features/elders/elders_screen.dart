@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import 'add_elder_screen.dart';
@@ -100,10 +101,10 @@ class _EldersScreenState extends State<EldersScreen> {
                 ],
               if (widget.isCaregiver)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    MzaziSpace.s16,
+                  padding: EdgeInsets.fromLTRB(
+                    MzaziLayout.margin(context),
                     MzaziSpace.s24,
-                    MzaziSpace.s16,
+                    MzaziLayout.margin(context),
                     0,
                   ),
                   child: FilledButton.icon(
@@ -161,10 +162,7 @@ class _ElderRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
                   Text('TIER', style: theme.textTheme.labelSmall),
-                  Text(
-                    '${elder.myTier}',
-                    style: theme.textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
-                  ),
+                  Text('${elder.myTier}', style: theme.textTheme.titleLarge?.figures),
                 ],
               ),
             ),
@@ -187,7 +185,12 @@ class _Empty extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
+      padding: EdgeInsets.fromLTRB(
+        MzaziLayout.margin(context),
+        MzaziSpace.s24,
+        MzaziLayout.margin(context),
+        0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

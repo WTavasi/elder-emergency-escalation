@@ -7,9 +7,11 @@ import 'package:provider/provider.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/phone/country.dart';
 import '../../core/phone/phone_field.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/code_field.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/step_heading.dart';
+import 'auth_frame.dart';
 import 'sign_up_screen.dart' show resendSeconds;
 
 /// An elder signing in with a code instead of a password.
@@ -132,25 +134,10 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) _changeNumber();
       },
-      child: Scaffold(
-        appBar: AppBar(),
-        body: SafeArea(
-          // From the top, so the heading of each step is in the same place.
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                MzaziSpace.s16,
-                MzaziSpace.s8,
-                MzaziSpace.s16,
-                MzaziSpace.s32,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _phoneNumber == null ? _phoneStep(context) : _codeStep(context),
-              ),
-            ),
-          ),
+      child: Builder(
+        builder: (BuildContext context) => AuthFrame(
+          onBack: () => unawaited(Navigator.of(context).maybePop()),
+          child: _phoneNumber == null ? _phoneStep(context) : _codeStep(context),
         ),
       ),
     );
@@ -178,7 +165,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
           const SizedBox(height: MzaziSpace.s24),
           // Words alone, so the longer of the two fits on one line at the elder's size.
           SizedBox(
-            height: MzaziA11y.elderMinTouchTarget,
+            height: MzaziSizes.of(context).control,
             child: FilledButton(
               onPressed: _requesting ? null : () => unawaited(_textCode()),
               child: Text(_requesting ? 'Sending' : 'Text me a code'),
@@ -186,7 +173,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
           ),
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
-            height: MzaziA11y.elderMinTouchTarget,
+            height: MzaziSizes.of(context).control,
             child: OutlinedButton(
               onPressed: _requesting ? null : _haveCode,
               child: const Text('I have a code from my caregiver'),
@@ -222,7 +209,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
           CodeField(controller: _code, onSubmitted: (_) => unawaited(_signIn())),
           const SizedBox(height: MzaziSpace.s24),
           SizedBox(
-            height: MzaziA11y.elderMinTouchTarget,
+            height: MzaziSizes.of(context).control,
             child: FilledButton(
               onPressed: auth.isBusy ? null : () => unawaited(_signIn()),
               child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),

@@ -1,26 +1,69 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
-/// The audiences this app serves, which need different type and touch sizes.
+/// The two sizes the app comes in.
 ///
-/// Not a preference and not a setting. An elder-facing screen is built to the elder
-/// floors because of who is using it, and a caregiver's alert list would be unusable
-/// at 22pt body text with 72dp rows. The scale follows the role, and the role comes
-/// from the account.
-///
-/// [welcome] is for the screens before anybody is signed in, where the person could be
-/// anyone, an elder included. It keeps the elder's sizes and face, so nobody meets a
-/// screen too small to read, but body text is regular weight: bold everywhere is a
-/// decision for somebody known to need it, and on a form full of explanation it makes
-/// everything shout equally, which reads as nothing standing out.
+/// [elder] is Elder mode: larger text and taller buttons. It starts on for an elder's
+/// account and off for everybody else, and anybody can switch it on or off from their
+/// own page; the choice is kept on the phone (see `AppearanceController`). Everything
+/// else about the app is the same in both: one face, one set of colours, one layout.
 enum AppAudience {
   elder,
-  welcome,
   standard;
 
-  /// The elder's type sizes, face and touch targets.
-  bool get isLarge => this != AppAudience.standard;
+  /// Elder mode's sizes.
+  bool get isLarge => this == AppAudience.elder;
+}
+
+/// The sizes a screen needs beyond the text styles: how tall a button is and how big a
+/// touch target must be, for whichever size the app is in.
+@immutable
+class MzaziSizes extends ThemeExtension<MzaziSizes> {
+  const MzaziSizes({required this.large, required this.control, required this.target});
+
+  static const MzaziSizes standard = MzaziSizes(
+    large: false,
+    control: MzaziA11y.appControlHeight,
+    target: MzaziA11y.standardMinTouchTarget,
+  );
+
+  static const MzaziSizes elder = MzaziSizes(
+    large: true,
+    control: MzaziA11y.elderControlHeight,
+    target: MzaziA11y.elderMinTouchTarget,
+  );
+
+  /// Whether Elder mode is on.
+  final bool large;
+
+  /// The height of a full-width button.
+  final double control;
+
+  /// The smallest any touch target may be.
+  final double target;
+
+  static MzaziSizes of(BuildContext context) =>
+      Theme.of(context).extension<MzaziSizes>() ?? standard;
+
+  @override
+  MzaziSizes copyWith({bool? large, double? control, double? target}) => MzaziSizes(
+    large: large ?? this.large,
+    control: control ?? this.control,
+    target: target ?? this.target,
+  );
+
+  @override
+  MzaziSizes lerp(MzaziSizes? other, double t) => t < 0.5 || other == null ? this : other;
+}
+
+/// The page's side margin, from the screen's width: Apple's 16 points on the narrowest
+/// phones and 20 on the rest, so text never runs closer to the edge on a big phone than
+/// on a small one.
+abstract final class MzaziLayout {
+  static double margin(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 375 ? MzaziSpace.s16 : 20.0;
 }
 
 /// Builds the app's themes from the generated tokens.
@@ -30,6 +73,9 @@ enum AppAudience {
 /// hard-coded value here would be invisible to that gate, which is the entire reason
 /// there are none.
 abstract final class MzaziTheme {
+  /// Fixed-width digits, for a style built with `copyWith`. See [MzaziTextWeight.figures].
+  static const List<FontFeature> figures = <FontFeature>[FontFeature.tabularFigures()];
+
   static ThemeData light(AppAudience audience) => _build(
     audience: audience,
     brightness: Brightness.light,
@@ -103,41 +149,41 @@ abstract final class MzaziTheme {
     );
   }
 
-  /// One text style, with the weight declared twice on purpose.
+  /// One text style, in the phone's own face.
   ///
-  /// All three faces are variable fonts: weight is an axis inside one file rather than a
-  /// separate file per weight. `fontVariations` is what moves that axis, and
-  /// `fontWeight` is what every other part of the framework reads, including the
-  /// fallback face when a glyph is missing. Setting only the first would leave the rest
-  /// of the framework thinking the text is regular; setting only the second would leave
-  /// the axis at its default and the text would come out the same weight everywhere.
-  /// For the same reason a change of weight anywhere else goes through [weighted], never
-  /// `copyWith(fontWeight:)`.
+  /// SF Pro on an iPhone, as in Apple's own apps, and Roboto on Android. SF Pro is already
+  /// on every iPhone at every weight, follows the phone's text-size setting, and may not
+  /// be bundled for anything else, so nothing is shipped. The family is named on every
+  /// style rather than left to be inherited, because some widgets, buttons among them,
+  /// take a style from the theme as it is and never merge it with the platform's own.
   static TextStyle _text({
-    required String family,
     required double size,
     required FontWeight weight,
     required Color color,
     double? height,
     double? tracking,
   }) => TextStyle(
-    fontFamily: family,
+    fontFamily: systemFamily(size),
     fontSize: size,
     fontWeight: weight,
-    fontVariations: <FontVariation>[FontVariation('wght', weight.value.toDouble())],
     height: height,
     letterSpacing: tracking,
     color: color,
   );
 
+  /// The phone's own face for text of [size]. On an iPhone, Flutter's names for SF Pro:
+  /// its Display cut from 20 points up and its Text cut below, as Apple sets them.
+  static String systemFamily(double size) => switch (defaultTargetPlatform) {
+    TargetPlatform.iOS ||
+    TargetPlatform.macOS => size >= 20 ? 'CupertinoSystemDisplay' : 'CupertinoSystemText',
+    _ => 'Roboto',
+  };
+
   static double bodySize(AppAudience audience) =>
-      audience.isLarge ? MzaziTypeElder.body : MzaziTypeStandard.body;
+      audience.isLarge ? MzaziTypeElder.body : MzaziTypeApp.body;
 
   static double touchTarget(AppAudience audience) =>
       audience.isLarge ? MzaziA11y.elderMinTouchTarget : MzaziA11y.standardMinTouchTarget;
-
-  static double cardRadius(AppAudience audience) =>
-      audience.isLarge ? MzaziRadius.elderCard : MzaziRadius.card;
 
   static ThemeData _build({
     required AppAudience audience,
@@ -157,108 +203,109 @@ abstract final class MzaziTheme {
     required Color selection,
   }) {
     final bool elder = audience.isLarge;
-    final double body = bodySize(audience);
     final double target = touchTarget(audience);
+    final double buttonHeight = elder ? MzaziA11y.elderControlHeight : MzaziA11y.appControlHeight;
 
-    // One family per audience. The elder face is Inclusive Sans, designed for
-    // accessibility and readability; everybody else gets Source Sans 3. Headings are
-    // separated from body text by weight rather than by a third family, which is one fewer
-    // file to bundle and one fewer way for two faces to disagree.
-    final String family = elder ? MzaziFont.elder : MzaziFont.sans;
+    // Apple's steps, in Apple's order. Elder mode takes the same steps, larger, so a
+    // screen built for one reads correctly in the other.
+    double size({required double app, required double large}) => elder ? large : app;
 
-    // The elder path is bold throughout, which is a legibility decision rather than a
-    // stylistic one and therefore lives in tokens.json. Only once the account is known
-    // to be an elder's: see [AppAudience.welcome].
-    final FontWeight bodyWeight = audience == AppAudience.elder
-        ? MzaziWeight.elderBody
-        : MzaziWeight.body;
-
-    // The step above body. On the large-type screens it is bold rather than semi-bold:
-    // the elder face has a real 600, and next to bold body text a 600 label or button
-    // reads lighter than the sentence beside it, which is the wrong way round.
+    // Elder mode's body text is semibold, a legibility decision rather than a stylistic
+    // one, which lives in tokens.json. Headings stay a step heavier than the text beside
+    // them in both sizes.
+    final FontWeight bodyWeight = elder ? MzaziWeight.elderBody : MzaziWeight.body;
     final FontWeight strong = elder ? MzaziWeight.heading : MzaziWeight.strong;
 
     final TextTheme textTheme = TextTheme(
+      // The countdown's seconds and nothing else.
       displayLarge: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.display : MzaziTypeStandard.display,
+        size: size(app: MzaziTypeApp.display, large: MzaziTypeElder.display),
         weight: MzaziWeight.heading,
         height: 1.05,
-        tracking: MzaziTracking.display,
         color: text,
       ),
+      // A page's title: Apple's large title.
       headlineLarge: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h1,
+        size: size(app: MzaziTypeApp.largeTitle, large: MzaziTypeElder.largeTitle),
         weight: MzaziWeight.heading,
-        height: 1.1,
-        tracking: MzaziTracking.headline,
+        height: 1.15,
+        color: text,
+      ),
+      headlineMedium: _text(
+        size: size(app: MzaziTypeApp.title1, large: MzaziTypeElder.title1),
+        weight: MzaziWeight.heading,
+        height: 1.2,
+        color: text,
+      ),
+      // The heading of a step or a sheet.
+      headlineSmall: _text(
+        size: size(app: MzaziTypeApp.title2, large: MzaziTypeElder.title2),
+        weight: MzaziWeight.heading,
+        height: 1.25,
         color: text,
       ),
       titleLarge: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
+        size: size(app: MzaziTypeApp.title3, large: MzaziTypeElder.title3),
         weight: strong,
-        height: 1.2,
-        tracking: MzaziTracking.title,
+        height: 1.25,
         color: text,
       ),
-      // Every style a widget asks for is defined here, including the ones Flutter's own
-      // widgets reach for (list tiles, segmented buttons, sheets). A style left out
-      // falls back to Material's default, which has no font family of its own, so it
-      // would quietly render in the platform's system font instead of ours.
-      headlineSmall: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.title : MzaziTypeStandard.h2,
-        weight: MzaziWeight.heading,
-        height: 1.2,
-        tracking: MzaziTracking.title,
+      // Apple's headline: the body size, heavier. Names in a list, a row's title.
+      titleMedium: _text(
+        size: size(app: MzaziTypeApp.headline, large: MzaziTypeElder.headline),
+        weight: strong,
+        height: 1.3,
         color: text,
       ),
-      titleMedium: _text(family: family, size: body, weight: strong, height: 1.4, color: text),
       titleSmall: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        size: size(app: MzaziTypeApp.subheadline, large: MzaziTypeElder.subheadline),
         weight: strong,
-        height: 1.4,
+        height: 1.3,
+        color: text,
+      ),
+      bodyLarge: _text(
+        size: size(app: MzaziTypeApp.body, large: MzaziTypeElder.body),
+        weight: bodyWeight,
+        height: 1.35,
+        color: text,
+      ),
+      bodyMedium: _text(
+        size: size(app: MzaziTypeApp.body, large: MzaziTypeElder.body),
+        weight: bodyWeight,
+        height: 1.35,
+        color: text,
+      ),
+      // Secondary text, in the softer ink. Apple's subheadline rather than its footnote,
+      // so nothing a person has to read is smaller than 15 points.
+      bodySmall: _text(
+        size: size(app: MzaziTypeApp.subheadline, large: MzaziTypeElder.subheadline),
+        weight: bodyWeight,
+        height: 1.35,
+        color: textSoft,
+      ),
+      // Buttons.
+      labelLarge: _text(
+        size: size(app: MzaziTypeApp.headline, large: MzaziTypeElder.headline),
+        weight: strong,
         color: text,
       ),
       labelMedium: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        size: size(app: MzaziTypeApp.subheadline, large: MzaziTypeElder.subheadline),
         weight: strong,
         color: text,
       ),
-      bodyLarge: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
-      bodyMedium: _text(family: family, size: body, weight: bodyWeight, height: 1.5, color: text),
-      // Section labels: small capitals, opened out, in the softer ink. The Swiss device for
-      // saying "a new part starts here" without a box round it.
+      // Section labels: small capitals, opened out, in the softer ink, as the iPhone's
+      // Settings app heads its groups.
       labelSmall: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
+        size: size(app: MzaziTypeApp.footnote, large: MzaziTypeElder.footnote),
         weight: strong,
         height: 1.3,
-        tracking: MzaziTracking.eyebrow,
-        color: textSoft,
-      ),
-      labelLarge: _text(
-        family: family,
-        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.body,
-        weight: strong,
-        color: text,
-      ),
-      bodySmall: _text(
-        family: family,
-        // Never below the floor for this audience, even for secondary text. On an
-        // elder's screen there is no such thing as text that does not have to be read.
-        size: elder ? MzaziTypeElder.label : MzaziTypeStandard.small,
-        weight: bodyWeight,
-        height: 1.4,
+        tracking: MzaziTracking.eyebrow / 2,
         color: textSoft,
       ),
     );
 
-    final double inputRadius = elder ? MzaziRadius.elderInput : MzaziRadius.input;
+    const double inputRadius = MzaziRadius.field;
     OutlineInputBorder outline(Color color, [double width = MzaziStroke.hairline]) =>
         OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),
@@ -268,6 +315,7 @@ abstract final class MzaziTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
+      extensions: <ThemeExtension<dynamic>>[elder ? MzaziSizes.elder : MzaziSizes.standard],
       scaffoldBackgroundColor: bg,
       canvasColor: bg,
       textTheme: textTheme,
@@ -308,7 +356,6 @@ abstract final class MzaziTheme {
         elevation: MzaziElevation.flat,
         scrolledUnderElevation: MzaziElevation.flat,
         surfaceTintColor: bg,
-        centerTitle: false,
         titleTextStyle: textTheme.titleMedium,
       ),
       cardTheme: CardThemeData(
@@ -316,7 +363,7 @@ abstract final class MzaziTheme {
         elevation: MzaziElevation.flat,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(cardRadius(audience)),
+          borderRadius: BorderRadius.circular(MzaziRadius.group),
           side: BorderSide(color: line),
         ),
       ),
@@ -340,45 +387,54 @@ abstract final class MzaziTheme {
         collapsedIconColor: text,
         tilePadding: EdgeInsets.zero,
       ),
+      // One button shape everywhere: solid, gently rounded, no border, glow or shadow,
+      // at Apple's large-control height (taller in Elder mode).
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: Size.fromHeight(target),
+          minimumSize: Size.fromHeight(buttonHeight),
           backgroundColor: emergency,
           foregroundColor: onEmergency,
           disabledBackgroundColor: surfaceSunk,
           disabledForegroundColor: textSoft,
           textStyle: textTheme.labelLarge,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.input)),
+          elevation: MzaziElevation.flat,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.button)),
         ),
       ),
+      // The second action beside a filled one: Apple's grey button, the same shape filled
+      // with the sunk grey, so it never competes with the filled one and needs no outline.
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: Size.fromHeight(target),
+          minimumSize: Size.fromHeight(buttonHeight),
           foregroundColor: text,
+          backgroundColor: surfaceSunk,
+          disabledForegroundColor: textSoft,
           textStyle: textTheme.labelLarge,
-          side: BorderSide(color: control),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.input)),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.button)),
         ),
       ),
-      // Material's text buttons are 40 points tall, under both platforms' minimum, and
-      // red, which here means an emergency. Ink-coloured and underlined instead, at the
-      // audience's touch target.
+      // A plain button: the words alone, in the brand red, as Apple tints its plain
+      // buttons. No underline, which on a phone marks a link inside a sentence.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: Size(target, target),
-          foregroundColor: text,
-          textStyle: textTheme.labelLarge?.copyWith(decoration: TextDecoration.underline),
+          foregroundColor: emergency,
+          disabledForegroundColor: textSoft,
+          textStyle: textTheme.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s8),
         ),
       ),
-      // Square-cornered like every other control, rather than Material's capsule.
+      // Apple's segmented control: a grey track with the chosen segment lifted out.
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
-          side: BorderSide(color: control),
-          selectedBackgroundColor: surfaceSunk,
+          side: BorderSide.none,
+          backgroundColor: surfaceSunk,
+          selectedBackgroundColor: surface,
           selectedForegroundColor: text,
           foregroundColor: textSoft,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.input)),
+          textStyle: textTheme.labelMedium,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.field)),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
@@ -390,7 +446,7 @@ abstract final class MzaziTheme {
         elevation: MzaziElevation.flat,
         indicatorColor: surfaceSunk,
         indicatorShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(MzaziRadius.input),
+          borderRadius: BorderRadius.circular(MzaziRadius.field),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (Set<WidgetState> states) => states.contains(WidgetState.selected)
@@ -404,15 +460,19 @@ abstract final class MzaziTheme {
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
+        modalBackgroundColor: surface,
         surfaceTintColor: surface,
+        showDragHandle: true,
+        dragHandleColor: control,
+        dragHandleSize: const Size(36, 5),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(MzaziRadius.sheet)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(MzaziRadius.sheetTop)),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
         surfaceTintColor: surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.sheet)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.sheetTop)),
       ),
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
@@ -489,13 +549,12 @@ abstract final class MzaziTheme {
   }
 }
 
-/// A heavier or lighter weight for one piece of text, moving the variable font's axis
-/// as well as the declared weight, for the reason given on `_text` above. A plain
-/// `copyWith(fontWeight:)` changes what the framework believes and leaves the glyphs
-/// exactly as they were.
+/// A heavier or lighter weight for one piece of text.
 extension MzaziTextWeight on TextStyle {
-  TextStyle weighted(FontWeight weight) => copyWith(
-    fontWeight: weight,
-    fontVariations: <FontVariation>[FontVariation('wght', weight.value.toDouble())],
-  );
+  TextStyle weighted(FontWeight weight) => copyWith(fontWeight: weight);
+
+  /// Figures that line up: timers, codes and phone numbers, where a changing digit must
+  /// not move the ones beside it. The system face's own fixed-width digits, rather than
+  /// a second, monospaced face.
+  TextStyle get figures => copyWith(fontFeatures: MzaziTheme.figures);
 }

@@ -8,7 +8,9 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/appearance.dart';
-import '../../core/widgets/platform_alert.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/action_sheet.dart';
+import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
@@ -51,16 +53,15 @@ class ElderMeScreen extends StatelessWidget {
 
   Future<void> _signOut(BuildContext context, AuthController auth) async {
     final NavigatorState navigator = Navigator.of(context);
-    final bool? sure = await showPlatformAlert<bool>(
+    final bool? sure = await showActionSheet<bool>(
       context,
       title: 'Sign out of this phone?',
-      content: const Text(
-        'While you are signed out, this phone cannot ask for help. To sign back in you '
-        'will need a code sent by text, or one from your caregiver.',
-      ),
-      actions: const <AlertAction<bool>>[
-        AlertAction<bool>('Stay signed in', false),
-        AlertAction<bool>('Sign out', true, destructive: true),
+      message:
+          'While you are signed out, this phone cannot ask for help. To sign back in you '
+          'will need a code sent by text, or one from your caregiver.',
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>('Sign out', true, icon: Icons.logout, destructive: true),
+        SheetAction<bool>('Stay signed in', false, icon: Icons.close),
       ],
     );
     if (sure != true) return;
@@ -76,70 +77,66 @@ class ElderMeScreen extends StatelessWidget {
     final Account? account = auth.account;
     final AppearanceController? appearance = AppearanceController.maybeOf(context);
 
+    final double margin = MzaziLayout.margin(context);
+
+    // The same page, in the same order and the same parts, as everybody else's account
+    // page: a large title, then sections under small labels, with privacy and terms in a
+    // part of their own and signing out last.
     return Scaffold(
-      appBar: AppBar(title: const Text('You')),
+      appBar: AppBar(),
       body: SafeArea(
+        top: false,
         child: account == null
             ? const SizedBox.shrink()
-            // Scrolls when it has to, with large text on a small phone, and otherwise
-            // fills the screen so signing out stays at the bottom.
-            : LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) =>
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(MzaziSpace.s24),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: (constraints.maxHeight - MzaziSpace.s24 * 2)
-                              .clamp(0, double.infinity)
-                              .toDouble(),
+            : ListView(
+                padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
+                children: <Widget>[
+                  const PageTitle('You'),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _IdCard(account: account),
+                        const SizedBox(height: MzaziSpace.s32),
+                        const _WhoComes(),
+                        const SizedBox(height: MzaziSpace.s32),
+                        CheckInSettings(
+                          api: api,
+                          elderId: account.id,
+                          elderName: account.name,
+                          forElder: true,
                         ),
-                        child: IntrinsicHeight(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              _IdCard(account: account),
-                              const SizedBox(height: MzaziSpace.s32),
-                              const _WhoComes(),
-                              const SizedBox(height: MzaziSpace.s32),
-                              CheckInSettings(
-                                api: api,
-                                elderId: account.id,
-                                elderName: account.name,
-                                forElder: true,
-                              ),
-                              if (appearance != null) ...<Widget>[
-                                const SizedBox(height: MzaziSpace.s32),
-                                const SectionLabel('Screen'),
-                                AppearancePicker(controller: appearance),
-                              ],
-                              const SizedBox(height: MzaziSpace.s32),
-                              SizedBox(
-                                height: MzaziA11y.elderMinTouchTarget,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => unawaited(_openConsent(context, auth, account)),
-                                  icon: const Icon(Icons.privacy_tip_outlined),
-                                  label: const Text('Privacy and consent'),
-                                ),
-                              ),
-                              const SizedBox(height: MzaziSpace.s8),
-                              const LegalLinks(),
-                              const SizedBox(height: MzaziSpace.s24),
-                              const Spacer(),
-                              // Last, and plain. The one control on this page that takes the
-                              // panic button away, so it is the least prominent one.
-                              SizedBox(
-                                height: MzaziA11y.elderMinTouchTarget,
-                                child: TextButton.icon(
-                                  onPressed: () => unawaited(_signOut(context, auth)),
-                                  icon: const Icon(Icons.logout),
-                                  label: const Text('Sign out of this phone'),
-                                ),
-                              ),
-                            ],
-                          ),
+                        if (appearance != null) ...<Widget>[
+                          const SizedBox(height: MzaziSpace.s32),
+                          const SectionLabel('Screen'),
+                          AppearancePicker(controller: appearance),
+                          ElderModeSwitch(controller: appearance, role: account.role),
+                        ],
+                        const SizedBox(height: MzaziSpace.s32),
+                        const SectionLabel('Privacy and terms'),
+                        const SizedBox(height: MzaziSpace.s8),
+                        OutlinedButton.icon(
+                          onPressed: () => unawaited(_openConsent(context, auth, account)),
+                          icon: const Icon(Icons.privacy_tip_outlined),
+                          label: const Text('Privacy and consent'),
                         ),
-                      ),
+                        const SizedBox(height: MzaziSpace.s8),
+                        const LegalLinks(),
+                        const SizedBox(height: MzaziSpace.s24),
+                        const SectionLabel('This phone'),
+                        const SizedBox(height: MzaziSpace.s16),
+                        // Last on the page, and behind a question: the one control here
+                        // that takes the help button away.
+                        OutlinedButton.icon(
+                          onPressed: () => unawaited(_signOut(context, auth)),
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Sign out of this phone'),
+                        ),
+                      ],
                     ),
+                  ),
+                ],
               ),
       ),
     );
@@ -247,10 +244,7 @@ class _WhoComesState extends State<_WhoComes> {
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s8),
-            SizedBox(
-              height: MzaziA11y.elderMinTouchTarget,
-              child: CallButton(name: carer.name, phone: carer.phone),
-            ),
+            CallButton(name: carer.name, phone: carer.phone),
             const SizedBox(height: MzaziSpace.s16),
           ],
       ],

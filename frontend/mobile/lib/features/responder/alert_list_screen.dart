@@ -9,6 +9,7 @@ import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/location/way_there.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -70,10 +71,10 @@ class _AlertListScreenState extends State<AlertListScreen> {
               if (!alerts.openOnly) _HistorySearch(alerts: alerts),
               if (alerts.error != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
+                    MzaziLayout.margin(context),
                     MzaziSpace.s16,
-                    MzaziSpace.s16,
-                    MzaziSpace.s16,
+                    MzaziLayout.margin(context),
                     0,
                   ),
                   child: Notice(message: alerts.error!, isError: true),
@@ -103,7 +104,12 @@ class _AlertListScreenState extends State<AlertListScreen> {
       // no alerts is the good outcome, and it needs no picture to say so.
       return <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s32, MzaziSpace.s16, 0),
+          padding: EdgeInsets.fromLTRB(
+            MzaziLayout.margin(context),
+            MzaziSpace.s32,
+            MzaziLayout.margin(context),
+            0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -134,7 +140,12 @@ class _AlertListScreenState extends State<AlertListScreen> {
       for (final _Group group in _groups(alerts.alerts, byDay: !alerts.openOnly)) ...<Widget>[
         if (group.heading != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
+            padding: EdgeInsets.fromLTRB(
+              MzaziLayout.margin(context),
+              MzaziSpace.s24,
+              MzaziLayout.margin(context),
+              0,
+            ),
             child: SectionLabel(group.heading!),
           ),
         for (final AlertSummary alert in group.alerts) ...<Widget>[
@@ -471,10 +482,7 @@ class _AlertRow extends StatelessWidget {
                         const SizedBox(width: MzaziSpace.s8),
                         // Figures in the monospaced face, so "4 min" and "12 min" line
                         // up down the list.
-                        Text(
-                          _when(alert.triggeredAt),
-                          style: quiet?.copyWith(fontFamily: MzaziFont.mono),
-                        ),
+                        Text(_when(alert.triggeredAt), style: quiet?.figures),
                       ],
                     ),
                     const SizedBox(height: MzaziSpace.s4),

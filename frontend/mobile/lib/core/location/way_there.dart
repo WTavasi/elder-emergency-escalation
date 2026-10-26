@@ -164,15 +164,22 @@ class WayThere extends ChangeNotifier {
     }
   }
 
+  /// Whether this phone may read its location now, without asking.
+  Future<LocationAccess> checkAccess() => _source.access(ask: false);
+
   /// Starts sharing for an emergency this person took on. Does nothing when the
-  /// preference is off or this emergency is already being shared. Never asks for
-  /// access here: that question belongs to the moment they turned sharing on, not to
-  /// the moment they are rushing out of the door.
-  Future<void> shareFor(String eventId) async {
+  /// preference is off or this emergency is already being shared.
+  ///
+  /// Asks the phone for access only when [ask] is true, which is when the person pressed
+  /// something to share: never on their behalf the moment they take an emergency on and
+  /// are rushing out of the door. The preference lives on the account, so a new phone,
+  /// or an iPhone that was told "Allow Once", reaches this having never been asked; the
+  /// screen then offers to ask, rather than a retry that could never work.
+  Future<void> shareFor(String eventId, {bool ask = false}) async {
     if (!enabled || isSharingFor(eventId)) return;
     stop();
 
-    final LocationAccess access = await _source.access(ask: false);
+    final LocationAccess access = await _source.access(ask: ask);
     if (access != LocationAccess.granted) {
       _eventId = eventId;
       _state = SharingState.stopped;
@@ -283,7 +290,8 @@ class WayThere extends ChangeNotifier {
 String accessProblem(LocationAccess access) => switch (access) {
   LocationAccess.granted => '',
   LocationAccess.denied =>
-    'MzaziCare was not allowed to use your location, so your way there is not shared.',
+    'Your way there is not being shared yet. Allow MzaziCare to use your location to '
+        'share it.',
   LocationAccess.deniedForever =>
     'Location is turned off for MzaziCare. Allow it in your phone settings to share '
         'your way there.',

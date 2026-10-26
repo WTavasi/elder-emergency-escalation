@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -41,7 +42,7 @@ class NearbyScreen extends StatelessWidget {
                 )
               else ...<Widget>[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+                  padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
                   child: _Standing(
                     profile: profile,
                     busy: volunteer.busy,
@@ -51,10 +52,10 @@ class NearbyScreen extends StatelessWidget {
                 ),
                 if (volunteer.error case final String failure)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
+                      MzaziLayout.margin(context),
                       MzaziSpace.s16,
-                      MzaziSpace.s16,
-                      MzaziSpace.s16,
+                      MzaziLayout.margin(context),
                       0,
                     ),
                     child: Notice(message: failure, isError: true),
@@ -186,7 +187,7 @@ class _CallRow extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
-      minTileHeight: MzaziA11y.standardMinTouchTarget,
+      minTileHeight: MzaziSizes.of(context).target,
       title: Text(headline, style: theme.textTheme.titleMedium),
       subtitle: Text(callStanding(call)),
       trailing: call.severity == Severity.critical && call.open

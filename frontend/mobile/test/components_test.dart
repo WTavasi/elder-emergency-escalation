@@ -58,12 +58,40 @@ void main() {
       expect(tester.getTopLeft(find.byIcon(Icons.arrow_forward)).dx, lessThan(100));
     });
 
+    testWidgets('covers its words as the knob passes them, and they fade', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(host(SwipeToConfirm(label: swipeLabel, onConfirmed: () {})));
+      double opacity() => tester
+          .widget<Opacity>(find.ancestor(of: find.text(swipeLabel), matching: find.byType(Opacity)))
+          .opacity;
+      expect(opacity(), 1);
+
+      final TestGesture drag = await tester.startGesture(
+        tester.getCenter(find.byIcon(Icons.arrow_forward)),
+      );
+      await drag.moveBy(const Offset(20, 0));
+      await drag.moveBy(const Offset(120, 0));
+      await tester.pump();
+
+      expect(opacity(), lessThan(1));
+      // The filled track reaches the knob: everything it has passed is under the fill.
+      final Rect knob = tester.getRect(
+        find.ancestor(of: find.byIcon(Icons.arrow_forward), matching: find.byType(Container)).first,
+      );
+      final Rect fill = tester.getRect(
+        find.descendant(of: find.byType(SwipeToConfirm), matching: find.byType(DecoratedBox)).last,
+      );
+      expect(fill.right, greaterThanOrEqualTo(knob.right - 0.5));
+      await drag.up();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('goes back at once when the request ends and the slider is still here', (
       WidgetTester tester,
     ) async {
-      Widget slider({required bool enabled}) => host(
-        SwipeToConfirm(label: swipeLabel, enabled: enabled, onConfirmed: () {}),
-      );
+      Widget slider({required bool enabled}) =>
+          host(SwipeToConfirm(label: swipeLabel, enabled: enabled, onConfirmed: () {}));
       await tester.pumpWidget(slider(enabled: true));
       await tester.drag(find.byIcon(Icons.arrow_forward), const Offset(2000, 0));
       await tester.pump();

@@ -206,7 +206,12 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
             if (unreachable) const _NoConnectionBand(),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(MzaziSpace.s24),
+                padding: EdgeInsets.fromLTRB(
+                  MzaziLayout.margin(context),
+                  MzaziSpace.s24,
+                  MzaziLayout.margin(context),
+                  MzaziSpace.s24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -319,14 +324,14 @@ class _ConsentQuestion extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: SizedBox(
-                height: MzaziA11y.elderMinTouchTarget,
+                height: MzaziSizes.of(context).control,
                 child: OutlinedButton(onPressed: onRead, child: const Text('Read it')),
               ),
             ),
             const SizedBox(width: MzaziSpace.s12),
             Expanded(
               child: SizedBox(
-                height: MzaziA11y.elderMinTouchTarget,
+                height: MzaziSizes.of(context).control,
                 child: TextButton(onPressed: onLater, child: const Text('Not now')),
               ),
             ),
@@ -360,11 +365,11 @@ class _Header extends StatelessWidget {
             onPressed: me,
             icon: const Icon(Icons.account_circle_outlined, semanticLabel: 'You and your privacy'),
             tooltip: 'You and your privacy',
-            constraints: const BoxConstraints(
-              minWidth: MzaziA11y.elderMinTouchTarget,
-              minHeight: MzaziA11y.elderMinTouchTarget,
+            constraints: BoxConstraints(
+              minWidth: MzaziSizes.of(context).target,
+              minHeight: MzaziSizes.of(context).target,
             ),
-            iconSize: MzaziA11y.elderMinTouchTarget / 2.4,
+            iconSize: MzaziSizes.of(context).target / 2.4,
           ),
       ],
     );
@@ -537,7 +542,7 @@ class _CircleStage extends StatelessWidget {
           ),
         );
         // The countdown's way out is a full touch target tall.
-        const double wayOut = MzaziA11y.elderMinTouchTarget;
+        final double wayOut = MzaziSizes.of(context).control;
 
         final List<Widget> bands = <Widget>[
           ConstrainedBox(
@@ -549,7 +554,7 @@ class _CircleStage extends StatelessWidget {
         final List<Widget> foot = <Widget>[
           const SizedBox(height: MzaziSpace.s24),
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: wayOut),
+            constraints: BoxConstraints(minHeight: wayOut),
             child: Align(
               alignment: Alignment.bottomCenter,
               heightFactor: 1,
@@ -675,7 +680,7 @@ class _CancellableState extends State<_Cancellable> {
       above: const _CountdownHeading(),
       circle: CountdownRing(secondsLeft: alerts.secondsLeft, total: alerts.cancelWindow.inSeconds),
       below: SizedBox(
-        height: MzaziA11y.elderMinTouchTarget,
+        height: MzaziSizes.of(context).control,
         child: FilledButton(
           onPressed: alerts.cancel,
           // The inverse of the screen: yellow on the dark ink, at 12.7:1, so the one thing
@@ -823,9 +828,7 @@ class _Unreachable extends StatelessWidget {
                       if (first != null && first.phone.isNotEmpty) ...<Widget>[
                         Expanded(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minHeight: MzaziA11y.elderMinTouchTarget,
-                            ),
+                            constraints: BoxConstraints(minHeight: MzaziSizes.of(context).control),
                             child: CallButton(
                               name: first.name,
                               phone: first.phone,
@@ -839,9 +842,7 @@ class _Unreachable extends StatelessWidget {
                       ],
                       Expanded(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            minHeight: MzaziA11y.elderMinTouchTarget,
-                          ),
+                          constraints: BoxConstraints(minHeight: MzaziSizes.of(context).control),
                           child: CallButton(
                             name: emergencyNumber,
                             phone: emergencyNumber,
@@ -881,7 +882,7 @@ class _Action extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: MzaziA11y.elderMinTouchTarget,
+      height: MzaziSizes.of(context).control,
       child: primary
           ? FilledButton.icon(onPressed: onPressed, icon: Icon(icon), label: Text(label))
           : OutlinedButton.icon(onPressed: onPressed, icon: Icon(icon), label: Text(label)),
@@ -959,7 +960,7 @@ class _CheckInPrompt extends StatelessWidget {
           ],
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
-            height: MzaziA11y.elderMinTouchTarget,
+            height: MzaziSizes.of(context).control,
             child: FilledButton(
               onPressed: busy ? null : onAnswer,
               child: const Text('I am all right'),
@@ -1021,7 +1022,7 @@ class _MissedCheckIn extends StatelessWidget {
         ],
         const SizedBox(height: MzaziSpace.s12),
         SizedBox(
-          height: MzaziA11y.elderMinTouchTarget,
+          height: MzaziSizes.of(context).control,
           child: OutlinedButton(
             onPressed: busy ? null : onAnswer,
             child: const Text('I am all right'),
@@ -1066,7 +1067,7 @@ class _CheckInSetUpQuestion extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: SizedBox(
-                height: MzaziA11y.elderMinTouchTarget,
+                height: MzaziSizes.of(context).control,
                 child: OutlinedButton(
                   onPressed: busy ? null : onYes,
                   child: const Text('Yes, check on me'),
@@ -1076,7 +1077,7 @@ class _CheckInSetUpQuestion extends StatelessWidget {
             const SizedBox(width: MzaziSpace.s12),
             Expanded(
               child: SizedBox(
-                height: MzaziA11y.elderMinTouchTarget,
+                height: MzaziSizes.of(context).control,
                 child: TextButton(
                   onPressed: busy ? null : onNo,
                   child: const Text('No, thank you'),
@@ -1117,7 +1118,7 @@ class _Finished extends StatelessWidget {
         ),
         const Spacer(),
         SizedBox(
-          height: MzaziA11y.elderMinTouchTarget,
+          height: MzaziSizes.of(context).control,
           child: FilledButton(
             onPressed: alerts.reset,
             child: const Text('Back to the help button'),

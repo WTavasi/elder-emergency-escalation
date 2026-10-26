@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mzazicare/app.dart';
 import 'package:mzazicare/core/api/api_client.dart';
+import 'package:mzazicare/core/api/models.dart';
 import 'package:mzazicare/core/auth/auth_controller.dart';
 import 'package:mzazicare/core/auth/session_store.dart';
 import 'package:mzazicare/core/theme/appearance.dart';
@@ -12,7 +13,8 @@ import 'package:provider/provider.dart';
 
 import 'support.dart';
 
-/// Light or dark: the phone's setting unless the person chose otherwise.
+/// Light or dark, and Elder mode: the phone's setting, or the account's, unless the person
+/// chose otherwise.
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues(<String, String>{}));
 
@@ -96,6 +98,69 @@ void main() {
       await tester.pump();
 
       expect(mode(), ThemeMode.dark);
+    });
+  });
+
+  group('Elder mode', () {
+    test('starts on for an elder and off for everybody else', () async {
+      final AppearanceController appearance = AppearanceController();
+      await appearance.load();
+
+      expect(appearance.elderModeFor(Role.elder), isTrue);
+      expect(appearance.elderModeFor(Role.caregiver), isFalse);
+      expect(appearance.elderModeFor(null), isFalse);
+    });
+
+    test('once chosen, holds for whoever uses the phone, and next time it opens', () async {
+      await AppearanceController().setElderMode(false);
+
+      final AppearanceController next = AppearanceController();
+      await next.load();
+
+      expect(next.elderModeFor(Role.elder), isFalse);
+      await next.setElderMode(true);
+      expect(next.elderModeFor(Role.caregiver), isTrue);
+      // Before anybody signs in too, so an elder's phone stays large on the sign-in screen.
+      expect(next.elderModeFor(null), isTrue);
+    });
+
+    testWidgets('is a switch, and the app takes its sizes from it', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int i) => <http.Response>[json(<String, dynamic>{})],
+      );
+      final AuthController auth = AuthController(api: t.api, store: SessionStore());
+      final AppearanceController appearance = AppearanceController();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppearanceController>.value(
+          value: appearance,
+          child: ChangeNotifierProvider<AuthController>.value(
+            value: auth,
+            child: MzaziCareApp(api: t.api),
+          ),
+        ),
+      );
+      bool large() => tester
+          .widget<MaterialApp>(find.byType(MaterialApp))
+          .theme!
+          .extension<MzaziSizes>()!
+          .large;
+
+      expect(large(), isFalse);
+      await appearance.setElderMode(true);
+      await tester.pump();
+      expect(large(), isTrue);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ElderModeSwitch(controller: appearance, role: Role.caregiver),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Elder mode'));
+      await tester.pump();
+      expect(appearance.elderModeFor(Role.caregiver), isFalse);
     });
   });
 }

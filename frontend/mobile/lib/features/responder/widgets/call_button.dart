@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/widgets/platform_alert.dart';
+import '../../../core/theme/theme.dart';
+import '../../../core/widgets/action_sheet.dart';
 
 /// Whether this device can open a link, and opening it. Split out so a test can see what
 /// would have been dialled without a phone, and so a simulator's answer can be faked.
@@ -81,7 +82,7 @@ class CallButton extends StatelessWidget {
     }
 
     if (!context.mounted) return;
-    await showPlatformAlert<void>(
+    await showActionSheet<void>(
       context,
       title: 'Call $_firstName',
       content: Column(
@@ -91,13 +92,10 @@ class CallButton extends StatelessWidget {
           const Text('This device cannot place calls. Dial this number from a phone:'),
           const SizedBox(height: MzaziSpace.s12),
           // Selectable, so it can be copied into another app rather than retyped.
-          SelectableText(
-            phone,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontFamily: MzaziFont.mono),
-          ),
+          SelectableText(phone, style: Theme.of(context).textTheme.titleLarge?.figures),
         ],
       ),
-      actions: const <AlertAction<void>>[AlertAction<void>('Close', null)],
+      actions: const <SheetAction<void>>[SheetAction<void>('Close', null, icon: Icons.close)],
     );
   }
 }
@@ -115,7 +113,7 @@ abstract final class CallStyle {
     return OutlinedButton.styleFrom(
       backgroundColor: dark ? MzaziColorsDark.callBg : MzaziColorsLight.callBg,
       foregroundColor: dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg,
-      side: BorderSide(color: dark ? MzaziColorsDark.callBd : MzaziColorsLight.callBd),
+      side: BorderSide.none,
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -95,7 +96,7 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
           children: <Widget>[
             const PageTitle('Volunteering'),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+              padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[

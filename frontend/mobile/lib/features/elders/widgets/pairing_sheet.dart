@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/models.dart';
+import '../../../core/theme/theme.dart';
 import '../../../core/widgets/notice.dart';
 
 /// A caregiver signing the elder's phone in for them: a code to type into it.
@@ -110,7 +111,7 @@ class _PairingSheetState extends State<PairingSheet> {
                 _spaced(code.code),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.displaySmall?.copyWith(
-                  fontFamily: MzaziFont.mono,
+                  fontFeatures: MzaziTheme.figures,
                   letterSpacing: 6,
                   color: expired ? theme.disabledColor : null,
                   decoration: expired ? TextDecoration.lineThrough : null,
