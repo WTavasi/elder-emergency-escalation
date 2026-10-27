@@ -10,6 +10,7 @@ import 'package:mzazicare/core/auth/session_store.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/auth/sign_in_screen.dart';
 import 'package:mzazicare/features/auth/sign_up_screen.dart';
+import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
 import 'support.dart';
@@ -155,6 +156,22 @@ void main() {
     await tester.tap(find.byTooltip('Change the number'));
     await tester.pumpAndSettle();
     expect(find.text('Continue'), findsOneWidget);
+  });
+
+  testWidgets('the back arrow lines up with the page below it', (WidgetTester tester) async {
+    await pump(tester);
+    await toPassword(tester);
+
+    // The arrow itself, not the touch target around it, starts where the words do.
+    expect(
+      tester.getTopLeft(find.byIcon(Icons.arrow_back)).dx,
+      moreOrLessEquals(tester.getTopLeft(find.text('Enter your password')).dx, epsilon: 1),
+    );
+    // And the touch target is still full size.
+    expect(
+      tester.getSize(find.byTooltip('Change the number')).width,
+      greaterThanOrEqualTo(MzaziA11y.standardMinTouchTarget),
+    );
   });
 
   testWidgets('somebody new goes to sign-up', (WidgetTester tester) async {

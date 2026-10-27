@@ -482,6 +482,12 @@ For the same reason the sign-out control left the elder's home screen. It sits o
 elder's own page, behind the round button at the top, at the bottom of that page, and
 asks first, saying that the phone cannot ask for help while signed out.
 
+Everybody else is asked the same way, with the same sheet at the bottom of their account
+page, saying what it costs them: emergencies will not appear on this phone, and anybody
+asked to help is sent a text instead. That is true because signing out forgets the
+phone's push address, and both the chain and the volunteer messages fall back to a text
+when there is none.
+
 ## The app is told about changes by socket and by push, and still polls
 
 The socket gives the app the console's speed. Push reaches a phone whose app is closed,

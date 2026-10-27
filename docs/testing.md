@@ -80,7 +80,7 @@ each of the four actions with its refetch, sign-up, password reset, the profile,
 live updates (a change refreshes only the screens it concerns, a burst becomes one
 request, and the poll slows while the socket is up), push registration (once per
 account, again for the next person on the phone, never without a Firebase project), the
-elder's own page (signing out asks first), the daily check-in (the question above the
+elder's own page and everybody else's account page (signing out asks first), the daily check-in (the question above the
 help button, agreeing to somebody else's set-up, a late answer withdrawing the alert it
 raised, setting it up and the last answers on the circle's page, "Missed check-in" on the
 caregiver's list and alert page), community volunteers (applying, the availability switch,
