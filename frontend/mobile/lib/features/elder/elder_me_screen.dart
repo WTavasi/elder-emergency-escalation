@@ -7,9 +7,9 @@ import 'package:provider/provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/auth/confirm_sign_out.dart';
 import '../../core/theme/appearance.dart';
 import '../../core/theme/theme.dart';
-import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
@@ -51,25 +51,12 @@ class ElderMeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _signOut(BuildContext context, AuthController auth) async {
-    final NavigatorState navigator = Navigator.of(context);
-    final bool? sure = await showActionSheet<bool>(
-      context,
-      title: 'Sign out of this phone?',
-      message:
-          'While you are signed out, this phone cannot ask for help. To sign back in you '
-          'will need a code sent by text, or one from your caregiver.',
-      actions: const <SheetAction<bool>>[
-        SheetAction<bool>('Sign out', true, icon: Icons.logout, destructive: true),
-        SheetAction<bool>('Stay signed in', false, icon: Icons.close),
-      ],
-    );
-    if (sure != true) return;
-
-    // Closed first, then signed out, for the same reason as above.
-    navigator.popUntil((Route<dynamic> route) => route.isFirst);
-    await auth.signOut();
-  }
+  Future<void> _signOut(BuildContext context) => confirmSignOut(
+    context,
+    message:
+        'While you are signed out, this phone cannot ask for help. To sign back in you '
+        'will need a code sent by text, or one from your caregiver.',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +116,7 @@ class ElderMeScreen extends StatelessWidget {
                         // Last on the page, and behind a question: the one control here
                         // that takes the help button away.
                         OutlinedButton.icon(
-                          onPressed: () => unawaited(_signOut(context, auth)),
+                          onPressed: () => unawaited(_signOut(context)),
                           icon: const Icon(Icons.logout),
                           label: const Text('Sign out of this phone'),
                         ),

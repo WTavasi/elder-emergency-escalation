@@ -153,7 +153,8 @@ can change the home and care level, remove a family member, or withdraw an invit
 nobody has taken up yet; family members see the same page without those controls.
 
 **My account.** The **Me** tab: change your name and email, change your password, and
-sign out. Changing the password signs out every other phone the account is signed in on.
+sign out, which asks first, as the elder's page does. Changing the password signs out
+every other phone the account is signed in on.
 The elder's own page, behind the round button at the top of their screen, has the same
 idea at their size: who comes, the daily check-in, privacy, and signing out.
 

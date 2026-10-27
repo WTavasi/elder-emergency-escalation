@@ -39,6 +39,9 @@ class AuthFrame extends StatelessWidget {
   static const Color _red = MzaziColorsLight.emergency;
   static const Color _onRed = MzaziColorsLight.onEmergency;
 
+  /// The widest the form gets, centred on a wide screen.
+  static const double _formWidth = 480;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -64,6 +67,9 @@ class AuthFrame extends StatelessWidget {
                     Expanded(
                       child: _Colour(
                         least: tall ? 220.0 : 150.0,
+                        side:
+                            margin +
+                            math.max(0, (constraints.maxWidth - 2 * margin - _formWidth) / 2),
                         tall: tall,
                         onBack: onBack,
                         backLabel: backLabel,
@@ -75,7 +81,7 @@ class AuthFrame extends StatelessWidget {
                         padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s8, margin, MzaziSpace.s24),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 480),
+                            constraints: const BoxConstraints(maxWidth: _formWidth),
                             child: child,
                           ),
                         ),
@@ -95,6 +101,7 @@ class AuthFrame extends StatelessWidget {
 class _Colour extends StatelessWidget {
   const _Colour({
     required this.least,
+    required this.side,
     required this.tall,
     required this.onBack,
     required this.backLabel,
@@ -102,6 +109,10 @@ class _Colour extends StatelessWidget {
 
   /// The smallest the colour may be, below the status bar.
   final double least;
+
+  /// The space at each side, which puts the arrow and the name in the form's column so
+  /// they line up with the words below on a wide screen as on a phone.
+  final double side;
   final bool tall;
   final VoidCallback? onBack;
   final String backLabel;
@@ -109,8 +120,9 @@ class _Colour extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double margin = MzaziLayout.margin(context);
     final double top = MediaQuery.paddingOf(context).top;
+    final double target = MzaziSizes.of(context).target;
+    final double inset = (target - (IconTheme.of(context).size ?? 24)) / 2;
 
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: least + top),
@@ -133,21 +145,30 @@ class _Colour extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(margin, top, margin, MzaziSpace.s48),
+              padding: EdgeInsetsDirectional.fromSTEB(side, top, side, MzaziSpace.s48),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   SizedBox(
-                    height: MzaziSizes.of(context).target,
+                    height: target,
                     child: onBack == null
                         ? null
                         : Align(
                             alignment: AlignmentDirectional.centerStart,
-                            child: IconButton(
-                              onPressed: onBack,
-                              tooltip: backLabel,
-                              color: AuthFrame._onRed,
-                              icon: const Icon(Icons.arrow_back),
+                            // Moved out by the space around the arrow inside its touch
+                            // target, so the arrow itself lines up with the words below.
+                            // The target stays full size, reaching into the margin.
+                            child: Transform.translate(
+                              offset: Offset(
+                                Directionality.of(context) == TextDirection.rtl ? inset : -inset,
+                                0,
+                              ),
+                              child: IconButton(
+                                onPressed: onBack,
+                                tooltip: backLabel,
+                                color: AuthFrame._onRed,
+                                icon: const Icon(Icons.arrow_back),
+                              ),
                             ),
                           ),
                   ),

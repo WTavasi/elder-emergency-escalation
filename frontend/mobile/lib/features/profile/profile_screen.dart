@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/auth/confirm_sign_out.dart';
 import '../../core/location/location_permission.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
@@ -75,9 +76,9 @@ class ProfileScreen extends StatelessWidget {
                         // Here rather than in a top bar, at the bottom of the account page,
                         // where nobody presses it by accident on the way to something else.
                         OutlinedButton.icon(
-                          onPressed: () => unawaited(context.read<AuthController>().signOut()),
+                          onPressed: () => unawaited(_signOut(context, account)),
                           icon: const Icon(Icons.logout),
-                          label: const Text('Sign out'),
+                          label: const Text('Sign out of this phone'),
                         ),
                       ],
                     ),
@@ -87,6 +88,18 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// The same sheet the elder sees, saying what signing out means for this person.
+  /// Signing out removes this phone's push address, so anybody who is asked to help is
+  /// sent a text instead, and the text is what the sheet promises.
+  static Future<void> _signOut(BuildContext context, Account account) => confirmSignOut(
+    context,
+    message: account.role.responds || account.role == Role.communityResponder
+        ? 'While you are signed out, emergencies will not appear on this phone. If you are '
+              'asked to help, you will be sent a text instead. To sign back in you will need '
+              'your number and password.'
+        : 'To sign back in you will need your number and password.',
+  );
 
   static String _roleLabel(Role role) => switch (role) {
     Role.caregiver => 'Caregiver',
@@ -202,27 +215,42 @@ class _DetailsFormState extends State<_DetailsForm> {
             },
           ),
           const SizedBox(height: MzaziSpace.s16),
-          InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Phone number',
-              helperText: 'You sign in with this number. Changing it needs a code.',
-              helperMaxLines: 2,
-            ),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    widget.account.phone,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+          // The whole field is the button, as a row in the iPhone's Settings is, with
+          // "Change" in it as a word rather than a button of its own. A button inside the
+          // field brought its own touch target and made this field taller than the two
+          // above it.
+          Semantics(
+            button: true,
+            enabled: !_busy,
+            label: 'Phone number, ${widget.account.phone}. Change',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: _busy ? null : () => unawaited(_changePhone()),
+              borderRadius: BorderRadius.circular(MzaziRadius.field),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Phone number',
+                  helperText: 'You sign in with this number. Changing it needs a code.',
+                  helperMaxLines: 2,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(widget.account.phone, style: theme.textTheme.bodyLarge?.figures),
                     ),
-                  ),
+                    // The body's size and spacing, at a button's weight, so the line is
+                    // no taller than the number beside it.
+                    Text(
+                      'Change',
+                      style: theme.textTheme.bodyLarge
+                          ?.weighted(theme.textTheme.labelLarge?.fontWeight ?? MzaziWeight.strong)
+                          .copyWith(
+                            color: _busy ? theme.disabledColor : theme.colorScheme.primary,
+                          ),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: _busy ? null : () => unawaited(_changePhone()),
-                  child: const Text('Change'),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: MzaziSpace.s16),

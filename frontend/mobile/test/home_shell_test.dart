@@ -86,7 +86,7 @@ void main() {
     await tester.tap(inBar('Me'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign out'), findsOneWidget);
+    expect(find.text('Sign out of this phone'), findsOneWidget);
   });
 
   testWidgets('every tab is a full touch target', (WidgetTester tester) async {

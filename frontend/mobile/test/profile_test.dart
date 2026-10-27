@@ -93,6 +93,30 @@ void main() {
     expect(save.onPressed, isNull);
   });
 
+  testWidgets('the phone number is as tall as the name and email, and opens as one button', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester, (_) => json(<String, dynamic>{}));
+    await tester.pumpAndSettle();
+
+    // How far into its field a line of text sits. The same for the value in two fields
+    // means the same box around it; the same for two helper lines means the same box
+    // above them.
+    double into(Finder text) =>
+        tester.getTopLeft(text).dy -
+        tester.getTopLeft(find.ancestor(of: text, matching: find.byType(InputDecorator)).first).dy;
+    expect(into(find.text('+254700000020')), into(find.text('Mary Otieno').last));
+    expect(
+      into(find.text('You sign in with this number. Changing it needs a code.')),
+      into(find.text('At least 8 characters')),
+    );
+
+    // Anywhere on the field, not only the word, opens the change.
+    await tester.tap(find.text('+254700000020'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, 'New phone number'), findsOneWidget);
+  });
+
   testWidgets('says where they stand in each circle and what they have done', (
     WidgetTester tester,
   ) async {
@@ -169,6 +193,56 @@ void main() {
 
     expect(find.text('Privacy notice'), findsOneWidget);
     expect(find.text('Terms of use'), findsOneWidget);
+  });
+
+  testWidgets('asks before signing out, as the elder is asked, and staying changes nothing', (
+    WidgetTester tester,
+  ) async {
+    final List<({String method, String path, Map<String, dynamic>? body})> seen = await pump(
+      tester,
+      (_) => json(<String, dynamic>{}),
+    );
+    await tester.pumpAndSettle();
+    final AuthController auth = tester.element(find.byType(ProfileScreen)).read<AuthController>();
+
+    await tester.tap(find.text('Sign out of this phone'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign out of this phone?'), findsOneWidget);
+    // Said for a caregiver: what they will miss, and how they will still be reached.
+    expect(find.textContaining('you will be sent a text instead'), findsOneWidget);
+    await tester.tap(find.text('Stay signed in'));
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isTrue);
+    expect(
+      seen.where((({String method, String path, Map<String, dynamic>? body}) r) {
+        return r.path.endsWith('/auth/logout');
+      }),
+      isEmpty,
+    );
+  });
+
+  testWidgets('signs out once the person says so', (WidgetTester tester) async {
+    final List<({String method, String path, Map<String, dynamic>? body})> seen = await pump(
+      tester,
+      (_) => json(<String, dynamic>{}),
+    );
+    await tester.pumpAndSettle();
+    final AuthController auth = tester.element(find.byType(ProfileScreen)).read<AuthController>();
+
+    await tester.tap(find.text('Sign out of this phone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isFalse);
+    expect(
+      seen.where((({String method, String path, Map<String, dynamic>? body}) r) {
+        return r.path.endsWith('/auth/logout');
+      }),
+      hasLength(1),
+    );
   });
 
   testWidgets('saves a new email address', (WidgetTester tester) async {
