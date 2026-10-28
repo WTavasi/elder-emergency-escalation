@@ -262,11 +262,12 @@ that phone. Three consent rows are written (data processing, location sharing, c
 sharing) naming the caregiver as the one who gave them and `relationship` as how they are
 related.
 
-**Adding a family member** takes `{ phone, name? }` and fills the chain's family rank. If
-the number has a caregiver or family account, they take the place at once; if it has no
+**Adding a family member** takes `{ phone, name? }` and puts them at the chain's family
+rank, beside any family already there; everybody at a rank is asked together. If the
+number has a caregiver or family account, they take the place at once; if it has no
 account, the place is held in `chain_invitations` and taken when that number signs up.
-Either way they get an SMS saying who added them. Each rank holds one person, so a second
-family member is refused with 409 until the first is removed.
+Either way they get an SMS saying who added them. Somebody already in the chain, or a
+number whose place is already held, is refused with 409.
 
 **Removing someone** takes the `id` of a chain entry, and each entry says whether it is
 `removable`. A family member who had taken their place is sent an SMS saying who removed

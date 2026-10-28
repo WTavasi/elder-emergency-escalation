@@ -64,9 +64,9 @@ const ADDABLE_ROLES: Role[] = [Role.CAREGIVER, Role.FAMILY_MEMBER];
  * Elders and the people who look after them, as a caregiver sets them up.
  *
  * Every place in a chain is a rank, and the rank is what dispatch reads: tier one is
- * told first, tier two when tier one has not answered. The database allows one person
- * per rank for each elder, so adding a family contact fills the family rank, and a
- * second one is refused until the first is removed.
+ * told first, tier two when tier one has not answered. Several people may share a rank,
+ * and everybody at a rank is asked together, so an elder's family can be all of their
+ * children rather than whichever one was added first.
  */
 @Injectable()
 export class ChainService {
@@ -208,7 +208,8 @@ export class ChainService {
     const [assignments, invitations] = await Promise.all([
       this.prisma.careAssignment.findMany({
         where: { elderlyId: elderId },
-        orderBy: { priorityOrder: 'asc' },
+        // Inside a rank, in the order they were added.
+        orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
         select: {
           id: true,
           priorityOrder: true,
@@ -217,7 +218,7 @@ export class ChainService {
       }),
       this.prisma.chainInvitation.findMany({
         where: { elderlyId: elderId },
-        orderBy: { priorityOrder: 'asc' },
+        orderBy: [{ priorityOrder: 'asc' }, { createdAt: 'asc' }],
       }),
     ]);
 
@@ -250,7 +251,8 @@ export class ChainService {
   }
 
   /**
-   * Adds somebody to the family rank of an elder's chain by phone number.
+   * Adds somebody to the family rank of an elder's chain by phone number, beside any
+   * family already there. They are all asked together.
    *
    * With an account, they take the place now. Without one, the place is held for the
    * number and taken when it signs up. Either way they get an SMS saying who added them
@@ -269,7 +271,6 @@ export class ChainService {
     }
 
     const tier = await tierForRole(this.prisma, Role.FAMILY_MEMBER);
-    await this.requireRankFree(elderId, tier);
 
     const inviter = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
@@ -297,15 +298,22 @@ export class ChainService {
       await this.sms.send(dto.phone, accountMessages.addedToChain(inviter.name, elder.name));
       this.logger.log(`Account added to the chain of elder ${elderId} at tier ${tier}`);
     } else {
-      await this.prisma.chainInvitation.create({
-        data: {
-          elderlyId: elderId,
-          phone: dto.phone,
-          name: dto.name ?? null,
-          priorityOrder: tier,
-          invitedById: userId,
-        },
-      });
+      await this.prisma.chainInvitation
+        .create({
+          data: {
+            elderlyId: elderId,
+            phone: dto.phone,
+            name: dto.name ?? null,
+            priorityOrder: tier,
+            invitedById: userId,
+          },
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            throw new ConflictException('A place in this chain is already held for that number');
+          }
+          throw error;
+        });
       await this.sms.send(dto.phone, accountMessages.invitedToChain(inviter.name, elder.name));
       this.logger.log(`Place in the chain of elder ${elderId} held for ${redactPhone(dto.phone)}`);
     }
@@ -378,30 +386,6 @@ export class ChainService {
     await this.prisma.chainInvitation.delete({ where: { id: invitation.id } });
     this.logger.log(`Invitation ${invitation.id} withdrawn for elder ${elderId}`);
     return this.chain(elderId, userId, role);
-  }
-
-  private async requireRankFree(elderId: string, tier: number): Promise<void> {
-    const [taken, held] = await Promise.all([
-      this.prisma.careAssignment.findFirst({
-        where: { elderlyId: elderId, priorityOrder: tier },
-        select: { responder: { select: { name: true } } },
-      }),
-      this.prisma.chainInvitation.findFirst({
-        where: { elderlyId: elderId, priorityOrder: tier },
-        select: { name: true, phone: true },
-      }),
-    ]);
-
-    if (taken) {
-      throw new ConflictException(
-        `${taken.responder.name} already holds the family place in this chain. Each place holds one person.`,
-      );
-    }
-    if (held) {
-      throw new ConflictException(
-        `The family place is already held for ${held.name ?? 'somebody who has not signed up yet'}.`,
-      );
-    }
   }
 
   /** The same rule as everywhere else: you see an elder's chain only if you are in it. */

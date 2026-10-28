@@ -37,11 +37,12 @@ An elder cannot change any of this about themselves, deliberately.
 
 ## The chain
 
-Each rank in a chain holds one person, and the rank is what dispatch reads. The rank a
+The rank is what dispatch reads, and everybody at a rank is asked together. The rank a
 role belongs at comes from the escalation rules, so caregivers are tier one and family
-tier two because the rules say so. A caregiver registering an elder takes tier one; adding
-family fills tier two, at once for somebody with an account, or held in
-`chain_invitations` until that number signs up.
+tier two because the rules say so. A caregiver registering an elder takes tier one; each
+relative added joins tier two beside the others, at once for somebody with an account, or
+held in `chain_invitations` until that number signs up. The same person, or the same held
+number, cannot be added to one chain twice.
 
 Only a caregiver removes people, and never themselves or a responder. Nobody is removed
 while the elder has an emergency open, because dispatch may be asking that person at that

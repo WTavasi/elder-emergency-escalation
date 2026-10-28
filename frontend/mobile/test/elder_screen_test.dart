@@ -30,7 +30,11 @@ Map<String, dynamic> elderBody({bool canEdit = true, bool atHome = true, bool wi
       'canEdit': canEdit,
     };
 
-Map<String, dynamic> chainBody({bool canEdit = true, bool withFamily = true}) => <String, dynamic>{
+Map<String, dynamic> chainBody({
+  bool canEdit = true,
+  bool withFamily = true,
+  bool twoFamily = false,
+}) => <String, dynamic>{
   'elderId': 'elder-1',
   'elderName': 'Grace Wanjiru',
   'canEdit': canEdit,
@@ -54,6 +58,16 @@ Map<String, dynamic> chainBody({bool canEdit = true, bool withFamily = true}) =>
         'status': 'member',
         'removable': canEdit,
       },
+    if (twoFamily)
+      <String, dynamic>{
+        'id': 'assignment-3',
+        'tier': 2,
+        'name': 'Brian Otieno',
+        'phone': '+254700000032',
+        'role': 'FAMILY_MEMBER',
+        'status': 'member',
+        'removable': canEdit,
+      },
   ],
 };
 
@@ -63,6 +77,7 @@ void main() {
     bool canEdit = true,
     bool atHome = true,
     bool withheld = false,
+    bool twoFamily = false,
   }) async {
     bool removed = false;
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
@@ -77,7 +92,9 @@ void main() {
         ];
       }
       if (path.endsWith('/chain')) {
-        return <http.Response>[json(chainBody(canEdit: canEdit, withFamily: !removed))];
+        return <http.Response>[
+          json(chainBody(canEdit: canEdit, withFamily: !removed, twoFamily: twoFamily)),
+        ];
       }
       return <http.Response>[json(elderBody(canEdit: canEdit, atHome: atHome, withheld: withheld))];
     });
@@ -128,6 +145,29 @@ void main() {
     expect(find.text('Mary Otieno'), findsOneWidget);
     expect(find.text('Aisha Otieno'), findsOneWidget);
     expect(find.text('They are staying somewhere else'), findsOneWidget);
+  });
+
+  testWidgets('says the family are asked together when there is more than one', (
+    WidgetTester tester,
+  ) async {
+    final SemanticsHandle semantics = tester.ensureSemantics();
+    await pump(tester, twoFamily: true);
+
+    expect(find.text('Aisha Otieno'), findsOneWidget);
+    expect(find.text('Brian Otieno'), findsOneWidget);
+    expect(find.text('Family, asked together'), findsNWidgets(2));
+    // Both at the same place in the order, so both carry the same number.
+    expect(find.bySemanticsLabel(RegExp('Tier 2')), findsNWidgets(2));
+    // The caregiver, alone in theirs, is not.
+    expect(find.text('Caregiver'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('one family member is simply family', (WidgetTester tester) async {
+    await pump(tester);
+
+    expect(find.text('Family'), findsOneWidget);
+    expect(find.text('Family, asked together'), findsNothing);
   });
 
   testWidgets('offers "back home" while a stay is recorded', (WidgetTester tester) async {

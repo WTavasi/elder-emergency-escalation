@@ -134,7 +134,7 @@ longitude pairs, with an optional human-readable address label on the alert.
 | `notifications(event_id)` | Rebuilding the escalation ladder for one event |
 | `notifications(status)` | Finding failed dispatches that need the SMS fallback |
 | `audit_logs(event_id, occurred_at)` | The event timeline, in order |
-| `care_assignments(elderly_id, priority_order)` unique | Two contacts cannot hold the same rank in one chain |
+| `care_assignments(elderly_id, priority_order)` | Dispatch reads one rank of one elder's chain at a time. Not unique: several people may share a rank, as a family does, and are asked together |
 | `care_assignments(elderly_id, responder_id)` unique | The same person cannot appear twice in one chain |
 | `check_ins(elder_id, due_at)` unique | One check-in per elder per time, whichever clock gets there first |
 | `volunteer_calls(event_id, volunteer_id)` unique | A volunteer is asked about an emergency once |
@@ -163,3 +163,6 @@ longitude pairs, with an optional human-readable address label on the alert.
    `volunteer_profiles` (one-to-one with a volunteer `users` row, with a nullable foreign
    key to the reviewing administrator) and `volunteer_calls` (between `users` and
    `emergency_events`) tables, with the four volunteer columns on `emergency_events`.
+7. In the `care_assignments` narrative, say that several people may share a
+   `priority_order` in one elder's chain and are asked together, which is how an elder's
+   whole family is the family contact. Only `(elderly_id, responder_id)` is unique.

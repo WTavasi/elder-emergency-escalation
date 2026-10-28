@@ -533,7 +533,7 @@ export class AlertsService {
       }),
       this.prisma.careAssignment.findMany({
         where: { elderlyId: event.elderlyId },
-        orderBy: { priorityOrder: 'asc' },
+        orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
         select: {
           priorityOrder: true,
           responder: { select: { id: true, name: true, role: true } },
