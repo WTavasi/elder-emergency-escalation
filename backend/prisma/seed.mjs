@@ -62,8 +62,8 @@ const DEV_PASSWORD = process.env.SEED_PASSWORD ?? 'Dev!2026';
 /**
  * Refuse to seed anything that is not a local database.
  *
- * Without this, a stray DATABASE_URL would write nine accounts with a published
- * password into a deployed database. Set SEED_ALLOW_REMOTE=true to override,
+ * Without this, a stray DATABASE_URL would write every account below, all with one
+ * published password, into a deployed database. Set SEED_ALLOW_REMOTE=true to override,
  * deliberately and once.
  */
 function assertLocalDatabase() {
@@ -93,6 +93,16 @@ function assertLocalDatabase() {
 
 /* ------------------------------------------------------------------ *
  * People
+ *
+ * Numbers by kind: 01 the administrator, 1x elders, 2x caregivers, 3x
+ * family, 4x emergency responders, 5x community volunteers.
+ *
+ * Four families, so a chain shows several relatives asked together and a
+ * relative can look out for both parents: the Wanjirus (Grace and Samuel,
+ * with Aisha and Brian), the Kimanis (Joseph and Hannah, with David and
+ * Wanjiku), the Muthonis (Esther, with Kevin and Lucy), and two elders with
+ * one relative each. Mary Otieno looks after four elders within about two
+ * kilometres of each other, across Kileleshwa, Lavington and Kilimani.
  * ------------------------------------------------------------------ */
 
 const people = [
@@ -122,10 +132,63 @@ const people = [
     homeLongitude: 36.811,
     homeAddressLabel: 'Westlands, Nairobi',
   },
+  // Grace's husband, at the same home.
+  {
+    phone: '+254700000012',
+    name: 'Samuel Wanjiru',
+    role: 'ELDER',
+    careLevel: 'ASSISTED',
+    homeLatitude: -1.2833,
+    homeLongitude: 36.7833,
+    homeAddressLabel: 'Kileleshwa, Nairobi',
+  },
+  // Joseph's wife, at the same home.
+  {
+    phone: '+254700000013',
+    name: 'Hannah Kimani',
+    role: 'ELDER',
+    careLevel: 'INDEPENDENT',
+    homeLatitude: -1.268,
+    homeLongitude: 36.811,
+    homeAddressLabel: 'Westlands, Nairobi',
+  },
+  {
+    phone: '+254700000014',
+    name: 'Esther Muthoni',
+    role: 'ELDER',
+    careLevel: 'HIGH_DEPENDENCY',
+    homeLatitude: -1.2795,
+    homeLongitude: 36.77,
+    homeAddressLabel: 'Lavington, Nairobi',
+  },
+  {
+    phone: '+254700000015',
+    name: 'Francis Odhiambo',
+    role: 'ELDER',
+    careLevel: 'ASSISTED',
+    homeLatitude: -1.2921,
+    homeLongitude: 36.7856,
+    homeAddressLabel: 'Kilimani, Nairobi',
+  },
+  {
+    phone: '+254700000016',
+    name: 'Ali Hassan',
+    role: 'ELDER',
+    careLevel: 'INDEPENDENT',
+    homeLatitude: -1.2895,
+    homeLongitude: 36.792,
+    homeAddressLabel: 'Kilimani, Nairobi',
+  },
 
   // Caregivers
   { phone: '+254700000020', name: 'Mary Otieno', role: 'CAREGIVER', email: 'mary@example.com' },
   { phone: '+254700000021', name: 'Peter Mwangi', role: 'CAREGIVER', email: 'peter@example.com' },
+  {
+    phone: '+254700000022',
+    name: 'Caroline Wafula',
+    role: 'CAREGIVER',
+    email: 'caroline@example.com',
+  },
 
   // Family members
   {
@@ -139,6 +202,32 @@ const people = [
     name: 'David Kimani',
     role: 'FAMILY_MEMBER',
     email: 'david@example.com',
+  },
+  {
+    phone: '+254700000032',
+    name: 'Brian Wanjiru',
+    role: 'FAMILY_MEMBER',
+    email: 'brian@example.com',
+  },
+  {
+    phone: '+254700000033',
+    name: 'Wanjiku Kimani',
+    role: 'FAMILY_MEMBER',
+    email: 'wanjiku@example.com',
+  },
+  { phone: '+254700000034', name: 'Kevin Muthoni', role: 'FAMILY_MEMBER' },
+  {
+    phone: '+254700000035',
+    name: 'Lucy Muthoni',
+    role: 'FAMILY_MEMBER',
+    email: 'lucy@example.com',
+  },
+  { phone: '+254700000036', name: 'Achieng Odhiambo', role: 'FAMILY_MEMBER' },
+  {
+    phone: '+254700000037',
+    name: 'Amina Hassan',
+    role: 'FAMILY_MEMBER',
+    email: 'amina@example.com',
   },
 
   // Emergency responders, registered with the areas they cover
@@ -180,12 +269,40 @@ const people = [
     coverageLongitude: 36.77,
     coverageRadiusKm: 1.5,
   },
+  {
+    phone: '+254700000052',
+    name: 'Mercy Wairimu',
+    role: 'COMMUNITY_RESPONDER',
+    coverageAreaName: 'Kilimani, Nairobi',
+    coverageLatitude: -1.2905,
+    coverageLongitude: 36.787,
+    coverageRadiusKm: 1.5,
+  },
+  {
+    phone: '+254700000053',
+    name: 'Omar Abdi',
+    role: 'COMMUNITY_RESPONDER',
+    coverageAreaName: 'Westlands, Nairobi',
+    coverageLatitude: -1.266,
+    coverageLongitude: 36.808,
+    coverageRadiusKm: 2.0,
+  },
+  {
+    phone: '+254700000054',
+    name: 'Joyce Chebet',
+    role: 'COMMUNITY_RESPONDER',
+    coverageAreaName: 'Lavington, Nairobi',
+    coverageLatitude: -1.278,
+    coverageLongitude: 36.769,
+    coverageRadiusKm: 1.0,
+  },
 ];
 
 /**
  * Daniel is approved and available, about 270 m from Grace's home, so a critical alert
- * of hers asks him. Faith has applied and waits in the console's vetting queue. Grace
- * has not agreed to volunteers: turning that on is part of the demonstration.
+ * of hers asks him. Faith, Mercy, Omar and Joyce have applied and wait in the console's
+ * vetting queue, with different training, so approving and refusing can both be tried.
+ * No elder has agreed to volunteers: turning that on is part of the demonstration.
  */
 const volunteerProfiles = [
   { phone: '+254700000050', status: 'APPROVED', training: ['FIRST_AID', 'CPR'], available: true },
@@ -195,6 +312,27 @@ const volunteerProfiles = [
     training: ['COMMUNITY_HEALTH_PROMOTER'],
     available: false,
     note: 'Community Health Promoter for Lavington since 2023.',
+  },
+  {
+    phone: '+254700000052',
+    status: 'PENDING',
+    training: ['FIRST_AID'],
+    available: false,
+    note: 'Red Cross first aid certificate, renewed in 2026.',
+  },
+  {
+    phone: '+254700000053',
+    status: 'PENDING',
+    training: ['HEALTH_PROFESSIONAL', 'CPR'],
+    available: false,
+    note: 'Registered nurse at a clinic in Westlands. Free most evenings.',
+  },
+  {
+    phone: '+254700000054',
+    status: 'PENDING',
+    training: ['CPR', 'OTHER'],
+    available: false,
+    note: 'Trained as a pool lifeguard. CPR refreshed this year.',
   },
 ];
 
@@ -377,22 +515,61 @@ async function main() {
     console.log(`  volunteer ${user.name} ${data.status.toLowerCase()}`);
   }
 
-  // Escalation chains. Priority order is the rank inside one elder's chain.
+  // Escalation chains. Priority order is the rank inside one elder's chain, and
+  // everybody at a rank is asked together: a family of two shares rank 2.
+  const kileleshwaUnit = { phone: '+254700000040', priorityOrder: 3 };
+  const westlandsUnit = { phone: '+254700000041', priorityOrder: 3 };
+  const wanjirus = [
+    { phone: '+254700000030', priorityOrder: 2 },
+    { phone: '+254700000032', priorityOrder: 2 },
+  ];
+  const kimanis = [
+    { phone: '+254700000031', priorityOrder: 2 },
+    { phone: '+254700000033', priorityOrder: 2 },
+  ];
   const chains = [
+    // Mary's four, all within about two kilometres.
     {
       elder: '+254700000010',
+      contacts: [{ phone: '+254700000020', priorityOrder: 1 }, ...wanjirus, kileleshwaUnit],
+    },
+    {
+      elder: '+254700000012',
+      contacts: [{ phone: '+254700000020', priorityOrder: 1 }, ...wanjirus, kileleshwaUnit],
+    },
+    {
+      elder: '+254700000014',
       contacts: [
         { phone: '+254700000020', priorityOrder: 1 },
-        { phone: '+254700000030', priorityOrder: 2 },
-        { phone: '+254700000040', priorityOrder: 3 },
+        { phone: '+254700000034', priorityOrder: 2 },
+        { phone: '+254700000035', priorityOrder: 2 },
+        kileleshwaUnit,
       ],
     },
     {
-      elder: '+254700000011',
+      elder: '+254700000015',
       contacts: [
-        { phone: '+254700000021', priorityOrder: 1 },
-        { phone: '+254700000031', priorityOrder: 2 },
-        { phone: '+254700000041', priorityOrder: 3 },
+        { phone: '+254700000020', priorityOrder: 1 },
+        { phone: '+254700000036', priorityOrder: 2 },
+        kileleshwaUnit,
+      ],
+    },
+    // Peter's two, a couple in Westlands.
+    {
+      elder: '+254700000011',
+      contacts: [{ phone: '+254700000021', priorityOrder: 1 }, ...kimanis, westlandsUnit],
+    },
+    {
+      elder: '+254700000013',
+      contacts: [{ phone: '+254700000021', priorityOrder: 1 }, ...kimanis, westlandsUnit],
+    },
+    // Caroline's one.
+    {
+      elder: '+254700000016',
+      contacts: [
+        { phone: '+254700000022', priorityOrder: 1 },
+        { phone: '+254700000037', priorityOrder: 2 },
+        kileleshwaUnit,
       ],
     },
   ];
@@ -449,10 +626,11 @@ async function main() {
   // Consent, recorded as data. Each elder's consent is granted by their primary
   // caregiver on their behalf, which is the realistic case and the one the Act
   // cares about.
-  const consents = [
-    { subject: '+254700000010', grantor: '+254700000020', relationship: 'primary caregiver' },
-    { subject: '+254700000011', grantor: '+254700000021', relationship: 'primary caregiver' },
-  ];
+  const consents = chains.map((chain) => ({
+    subject: chain.elder,
+    grantor: chain.contacts.find((contact) => contact.priorityOrder === 1).phone,
+    relationship: 'primary caregiver',
+  }));
   for (const c of consents) {
     const subject = byPhone[c.subject];
     const grantor = byPhone[c.grantor];

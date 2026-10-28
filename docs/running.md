@@ -231,11 +231,34 @@ Any seeded account, password `Dev!2026`. Which screen you get is decided by the 
 | --- | --- | --- |
 | `+254700000010` | Grace Wanjiru, elder | The panic control, at the larger type scale |
 | `+254700000020` | Mary Otieno, caregiver, tier one for Grace | The alert list and the four actions |
-| `+254700000030` | family member, tier two for Grace | The same list |
+| `+254700000030` | Aisha Wanjiru, family, tier two for Grace | The same list |
 | `+254700000040` | emergency responder, tier three | The same list |
 | `+254700000001` | administrator | A note sending you to the web console |
 | `+254700000050` | Daniel Ochieng, community volunteer, approved, near Grace | Nearby: who near him needs help |
 | `+254700000051` | Faith Akinyi, community volunteer, waiting for approval | Nearby: "Thank you for applying" |
+
+The seed makes more people around them, so the lists look like a real caseload. All sign
+in the same way:
+
+| Phone | Who |
+| --- | --- |
+| `+254700000012` | Samuel Wanjiru, elder, Grace's husband, at the same home |
+| `+254700000011`, `13` | Joseph and Hannah Kimani, elders, a couple in Westlands |
+| `+254700000014` | Esther Muthoni, elder, Lavington |
+| `+254700000015` | Francis Odhiambo, elder, Kilimani |
+| `+254700000016` | Ali Hassan, elder, Kilimani |
+| `+254700000021` | Peter Mwangi, caregiver for Joseph and Hannah |
+| `+254700000022` | Caroline Wafula, caregiver for Ali |
+| `+254700000032` | Brian Wanjiru, family, beside Aisha for both Grace and Samuel |
+| `+254700000031`, `33` | David and Wanjiku Kimani, family for both Joseph and Hannah |
+| `+254700000034`, `35` | Kevin and Lucy Muthoni, family for Esther |
+| `+254700000036`, `37` | Achieng Odhiambo for Francis, and Amina Hassan for Ali |
+| `+254700000052` to `54` | Mercy Wairimu, Omar Abdi and Joyce Chebet, volunteers waiting for approval |
+
+Mary looks after four elders within about two kilometres: Grace, Samuel, Esther and
+Francis. Where a family has two people, both are at tier two and both are asked at the
+same moment, so an alert of Grace's reaches Aisha and Brian together once Mary has not
+answered.
 
 The phone field has a country button in front of it, set to Kenya, so `0700000010`,
 `700000010` and `+254700000010` all sign in as Grace.
@@ -494,7 +517,9 @@ ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.
 
 7. **Raise an alert as Grace** and let it reach tier 2: in the app or Postman, have Mary
    decline it (folder 3 does this). The simulator's **Messages** shows the alert from
-   `12345`, ending "Reply 1 if you can go, 2 if you cannot."
+   `12345`, ending "Reply 1 if you can go, 2 if you cannot." Brian Wanjiru shares tier 2,
+   so he is texted at the same moment; launch a second simulator with `+254700000032`
+   to watch both.
 
 8. **Reply 1** in the simulator. Within a few seconds a text comes back with Grace's
    number and address, the alert shows as taken by the family member on the console and
@@ -628,11 +653,12 @@ To stop the clock entirely for a run: `CHECK_INS_ENABLED=false npm run dev`.
 ### Step 12 (optional). Community volunteers
 
 Daniel Ochieng is a seeded volunteer, approved, available, and about 270 m from Grace's
-home. Faith Akinyi has applied and is waiting. Nothing to install. Run
-`npm run db:seed` once after pulling this change, so both exist.
+home. Faith Akinyi, Mercy Wairimu, Omar Abdi and Joyce Chebet have applied and are
+waiting. Nothing to install. Run `npm run db:seed` once after pulling this change, so
+they exist.
 
-**1. Vet Faith on the console.** Open **Volunteers**. Faith is under **Waiting**, with
-her training and area. Press **Approve** (she is texted; the API terminal shows the
+**1. Vet Faith on the console.** Open **Volunteers**. Faith is under **Waiting** with
+the other three, each with their training and area. Press **Approve** (she is texted; the API terminal shows the
 text), or **Do not approve** with a reason.
 
 **2. Let volunteers help Grace.** Grace has not agreed yet, which is the default.
