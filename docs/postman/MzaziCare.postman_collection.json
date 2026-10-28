@@ -4251,7 +4251,7 @@
                 }
               ]
             },
-            "description": "No account for that number yet, so the place is held (status 'invited') until it signs up. Sending it twice answers 409: the family place holds one person."
+            "description": "No account for that number yet, so the place is held (status 'invited') until it signs up. Sending it twice answers 409, because a place is already held for that number. A different number is added beside it: everybody in the family rank is asked together."
           },
           "event": [
             {

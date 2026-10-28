@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { PasswordService } from '../../auth-service/services/password.service';
 import type { PhoneVerificationService } from '../../auth-service/services/phone-verification.service';
@@ -56,7 +56,7 @@ function build() {
   return { service, prisma, verification, sms };
 }
 
-/** The caller is in the elder's chain; the family rank is empty unless a test says so. */
+/** The caller is in the elder's chain. */
 function inChain(prisma: ReturnType<typeof build>['prisma']) {
   prisma.user.findUnique.mockImplementation((args: { where: { id?: string; phone?: string } }) =>
     Promise.resolve(args.where.id === ELDER.id ? ELDER : null),
@@ -162,16 +162,48 @@ describe('ChainService', () => {
       expect(sms.send.mock.calls[0][1]).toContain('sign up');
     });
 
-    it('refuses when the family place is already taken', async () => {
+    it('adds a second family member beside the first, at the same rank', async () => {
       const { service, prisma } = build();
       inChain(prisma);
-      prisma.careAssignment.findFirst.mockImplementation(
-        (args: { where: { responderId?: string; priorityOrder?: number } }) =>
+      // Somebody already holds the family rank. That no longer matters.
+      prisma.careAssignment.findMany.mockResolvedValue([
+        {
+          id: 'assignment-2',
+          priorityOrder: 2,
+          responder: {
+            id: 'family-1',
+            name: 'Aisha',
+            phone: '+254700000030',
+            role: 'FAMILY_MEMBER',
+          },
+        },
+      ]);
+      prisma.user.findUnique.mockImplementation(
+        (args: { where: { id?: string; phone?: string } }) =>
           Promise.resolve(
-            args.where.responderId
-              ? { id: 'assignment-1' }
-              : { responder: { name: 'Aisha Otieno' } },
+            args.where.id === ELDER.id
+              ? ELDER
+              : args.where.phone
+                ? { id: 'family-2', role: Role.FAMILY_MEMBER }
+                : null,
           ),
+      );
+
+      await service.addMember(ELDER.id, 'carer-1', Role.CAREGIVER, { phone: '+254700000032' });
+
+      expect(prisma.careAssignment.create).toHaveBeenCalledWith({
+        data: { elderlyId: ELDER.id, responderId: 'family-2', priorityOrder: 2 },
+      });
+    });
+
+    it('refuses a number whose place is already held', async () => {
+      const { service, prisma } = build();
+      inChain(prisma);
+      prisma.chainInvitation.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
       );
 
       await expect(

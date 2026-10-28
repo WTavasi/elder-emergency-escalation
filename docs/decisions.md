@@ -423,11 +423,16 @@ transaction, when that number signs up. Either way the person is sent an SMS say
 added them and for whom, because finding out you are somebody's emergency contact during
 the emergency is the wrong moment.
 
-Each rank in a chain still holds one person, which the database has enforced from the
-start. Allowing several family members at one rank is a small change, since dispatch
-already notifies everyone at a rank, but it changes what "the family contact" means in
-the documentation and the ERD, so it is left as a decision to make rather than a side
-effect of sign-up.
+Until 28 October 2026 each rank held one person, enforced by the database from the start,
+so a caregiver could add one relative and a second was refused. Now several people may
+share a rank, and in practice that is the family rank: an elder's family is usually more
+than one person, and asking only whichever child was added first left the others to hear
+about it afterwards. Dispatch already told everybody at a rank, and a decline already
+moved the emergency on only once everybody asked had declined, so the change was the
+database rule and the check in front of it. Everybody at a rank is asked at the same
+moment, the first to take it on owns it as before, and the rank waits its full window
+while any of them might still answer. The one-to-one reading of "the family contact" in
+the Chapter 4 narrative changes with it (`docs/schema-extensions.md`).
 
 ## An elder's home is found by address search, on the server
 

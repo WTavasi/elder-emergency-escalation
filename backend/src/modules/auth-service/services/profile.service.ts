@@ -124,7 +124,7 @@ export class ProfileService {
   private async carers(elderId: string): Promise<Carer[]> {
     const rows = await this.prisma.careAssignment.findMany({
       where: { elderlyId: elderId, responder: { deactivatedAt: null } },
-      orderBy: { priorityOrder: 'asc' },
+      orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
       select: {
         priorityOrder: true,
         responder: { select: { name: true, role: true, phone: true } },

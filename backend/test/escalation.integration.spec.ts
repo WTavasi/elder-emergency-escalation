@@ -36,7 +36,7 @@ describe('escalation, end to end', () => {
   // passing it here would test the fallback rung instead of the real path.
   const home = { latitude: -1.2833, longitude: 36.7833 };
   const suffix = Date.now().toString().slice(-7);
-  const ids: { elder?: string; caregiver?: string; family?: string } = {};
+  const ids: { elder?: string; caregiver?: string; family?: string; secondFamily?: string } = {};
   let originalTimeout: number | null = null;
 
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -148,7 +148,13 @@ describe('escalation, end to end', () => {
       await prisma.emergencyEvent.deleteMany({ where: { elderlyId: ids.elder } });
       await prisma.careAssignment.deleteMany({ where: { elderlyId: ids.elder } });
       await prisma.user.deleteMany({
-        where: { id: { in: [ids.elder, ids.caregiver, ids.family].filter(Boolean) as string[] } },
+        where: {
+          id: {
+            in: [ids.elder, ids.caregiver, ids.family, ids.secondFamily].filter(
+              Boolean,
+            ) as string[],
+          },
+        },
       });
 
       if (originalTimeout !== null) {
@@ -376,6 +382,52 @@ describe('escalation, end to end', () => {
         where: { id: ids.caregiver },
         data: { deactivatedAt: null },
       });
+    }
+  });
+
+  it('asks every family member at the family rank together', async () => {
+    // A second relative at the same rank as the first. Several people may share a rank,
+    // and everybody at a rank is asked at the same moment.
+    const second = await prisma.user.create({
+      data: {
+        name: 'Test Second Family',
+        phone: `+2547444${suffix}`,
+        role: Role.FAMILY_MEMBER,
+        passwordHash: app.get(PasswordService).hash('Integration!2026'),
+      },
+    });
+    ids.secondFamily = second.id;
+    const place = await prisma.careAssignment.create({
+      data: { elderlyId: ids.elder as string, responderId: second.id, priorityOrder: 2 },
+    });
+
+    try {
+      const event = await alerts.create(ids.elder as string, {});
+
+      await waitFor(
+        'both family members to be asked at tier two',
+        async () =>
+          (await prisma.notification.count({
+            where: {
+              eventId: event.id,
+              tier: 2,
+              channel: NotificationChannel.PUSH,
+              recipientId: { in: [ids.family as string, second.id] },
+            },
+          })) === 2,
+      );
+
+      // One dispatch for the rank, naming both, rather than one after the other.
+      const dispatched = await prisma.auditLog.findMany({
+        where: { eventId: event.id, action: AuditAction.TIER_DISPATCHED },
+        orderBy: { occurredAt: 'asc' },
+      });
+      expect(dispatched).toHaveLength(2);
+      expect(dispatched[1].detail).toMatchObject({ tier: 2, recipients: 2 });
+    } finally {
+      // The place goes whatever happens; the account goes in afterAll, after the
+      // notifications that name it.
+      await prisma.careAssignment.delete({ where: { id: place.id } });
     }
   });
 });

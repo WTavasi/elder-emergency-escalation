@@ -165,7 +165,9 @@ This uses the account you made in Part 5, which is a caregiver.
 5. **The elder's chain** lists who is asked, in order.
 6. **Add a family member** adds `inviteePhone`. Nobody has that number yet, so the place
    is held for them, shown as `"status": "invited"`. Sending it a second time answers
-   `409 Conflict`, because the family place holds one person.
+   `409 Conflict`, because a place is already held for that number. A different number
+   would be added beside it: the family rank holds as many relatives as the caregiver
+   adds, and they are all asked together.
 
 Folder **6b. Looking after an elder** carries on with the same elder: it reads the
 elder's details, changes their care level, and withdraws the held family place, after
@@ -251,7 +253,7 @@ expired token is disconnected straight away.
 | `401 Unauthorized` | The token expired. Run **1. Sign in** again |
 | `403 Forbidden` | That account is not allowed to do that, which is often the point |
 | `404 Not Found` on an alert | The account is not part of it. The API says 404 rather than 403, so it never confirms that an alert exists |
-| `409 Conflict` | The state does not allow it: already acknowledged, already closed, outside the grace window, or the family place is taken |
+| `409 Conflict` | The state does not allow it: already acknowledged, already closed, outside the grace window, or that person or number is already in the chain |
 | `400 Bad Request` | The body is wrong. The `message` names the field |
 | `429 Too Many Requests` | A rate limit. Wait, or see below |
 

@@ -325,7 +325,10 @@ class _ElderScreenState extends State<ElderScreen> {
               for (final ChainPlace place in chain.places) ...<Widget>[
                 _ChainRow(
                   place: place,
-                  label: _placeLabel(place),
+                  label: _placeLabel(
+                    place,
+                    together: chain.places.where((ChainPlace p) => p.tier == place.tier).length,
+                  ),
                   onRemove: place.removable && !_busy ? () => unawaited(_remove(place)) : null,
                 ),
                 const Divider(),
@@ -382,14 +385,17 @@ class _ElderScreenState extends State<ElderScreen> {
     );
   }
 
-  static String _placeLabel(ChainPlace place) {
+  /// What somebody is, and, where several people share their place, that they are asked
+  /// at the same moment rather than one after another.
+  static String _placeLabel(ChainPlace place, {required int together}) {
     if (place.isInvited) return 'Invited. Their place is held until they sign up.';
-    return switch (place.role) {
+    final String role = switch (place.role) {
       Role.caregiver => 'Caregiver',
       Role.familyMember => 'Family',
       Role.emergencyResponder => 'Emergency responder',
       _ => '',
     };
+    return together > 1 && role.isNotEmpty ? '$role, asked together' : role;
   }
 }
 
@@ -605,8 +611,8 @@ class _AddFamilySheetState extends State<_AddFamilySheet> {
             Text('Add a family member', style: theme.textTheme.titleLarge),
             const SizedBox(height: MzaziSpace.s8),
             Text(
-              'They are asked if the caregiver does not answer. They will get an SMS saying '
-              'you added them.',
+              'They are asked, with the rest of the family, if the caregiver does not answer. '
+              'They will get an SMS saying you added them.',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s16),

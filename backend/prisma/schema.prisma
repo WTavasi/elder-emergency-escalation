@@ -249,7 +249,9 @@ model User {
 }
 
 // ---------------------------------------------------------------------------
-// care_assignments. The escalation chain, ranked by priority_order.
+// care_assignments. The escalation chain, ranked by priority_order. Several people
+// may share a rank, and everybody at a rank is asked together: an elder's family
+// is usually more than one person.
 // ---------------------------------------------------------------------------
 
 model CareAssignment {
@@ -270,8 +272,8 @@ model CareAssignment {
   elder     User @relation("assignmentElder", fields: [elderlyId], references: [id], onDelete: Cascade)
   responder User @relation("assignmentResponder", fields: [responderId], references: [id], onDelete: Cascade)
 
-  @@unique([elderlyId, priorityOrder], name: "one_contact_per_rank")
   @@unique([elderlyId, responderId], name: "no_duplicate_contact")
+  @@index([elderlyId, priorityOrder])
   @@index([responderId])
   @@map("care_assignments")
 }
