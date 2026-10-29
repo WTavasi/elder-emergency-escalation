@@ -541,12 +541,12 @@ th {
 td {
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--line-soft);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 tbody tr[aria-selected='true'] td,
 tbody tr:hover td {
-  background: color-mix(in srgb, var(--surface-sunk) 50%, transparent);
+  background: color-mix(in srgb, var(--surface-sunk) 60%, transparent);
 }
 
 /* Figures right-aligned so their places line up; states and bands centred. */
@@ -570,15 +570,108 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* The urgency marker. A filled cell rather than a tinted card edge, so it reads as
-   data in a column instead of decoration wrapped around the row. */
-.urgency {
-  width: 4px;
-  padding: 0;
-  background: var(--line-soft);
+/* -------------------------------------------------------------------- lists -- */
+
+/*
+  A table drawn as an Apple list: rows that highlight under the pointer and open their
+  record when pressed anywhere, with a chevron at the end to say they do. The name is the
+  link, for the keyboard and for opening it in a new tab, and reads as plain text.
+*/
+.row-link {
+  cursor: pointer;
 }
-.urgency--live {
+.row-link__name {
+  color: var(--text);
+  font-weight: var(--font-weight-strong);
+}
+.row-link__name:hover {
+  text-decoration: none;
+}
+td.chevron {
+  width: var(--space-24);
+  padding-left: 0;
+  color: var(--text-faint);
+}
+
+/* An emergency nobody has answered: a red dot before the name, as an unread message is
+   marked in Mail. The slot is kept when there is no dot, so the names line up. */
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot--unanswered {
   background: var(--emergency);
+}
+.row-indent {
+  padding-left: calc(10px + var(--space-8));
+}
+
+.list__caption {
+  caption-side: top;
+  padding: var(--space-12) var(--space-12) var(--space-4);
+  text-align: left;
+  color: var(--text-soft);
+  font-size: var(--font-size-subheadline);
+}
+
+/* Column headings stay in view under the page's bar as a long list scrolls, where the
+   list is wide enough not to need scrolling sideways. */
+@media (min-width: 1100px) {
+  .grid .grid__body {
+    overflow-x: visible;
+  }
+  .list thead th {
+    position: sticky;
+    top: var(--bar-height);
+    z-index: 1;
+    background: var(--surface);
+  }
+}
+
+/*
+  A phone: each row becomes a list item of its own, the name on top and the facts
+  beneath it with their names, rather than a table to scroll sideways.
+*/
+@media (max-width: 860px) {
+  .list thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-12);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .list tbody tr:last-child {
+    border-bottom: none;
+  }
+  .list td {
+    display: block;
+    grid-column: 1;
+    padding: 2px 0;
+    border: none;
+    text-align: left;
+  }
+  .list td.chevron,
+  .list td.select-cell {
+    grid-column: 2;
+    grid-row: 1 / span 9;
+    align-self: center;
+  }
+  .list td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--text-soft);
+  }
+  .list td:empty {
+    display: none;
+  }
 }
 
 /*
@@ -1407,14 +1500,15 @@ select {
   accent-color: var(--text);
 }
 
-/* Muted tint and darker ink for an account's status, never a bright pill. */
+/* An account's status where it is the exception: a muted tint and darker ink, never a
+   bright pill. */
 .status {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--space-8);
   border-radius: var(--radius-control);
-  font-size: var(--font-size-subheadline);
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-strong);
   line-height: 1.8;
 }
 .status--active {
@@ -1431,13 +1525,21 @@ select {
   position: relative;
   display: inline-block;
 }
+/* Apple's "more" control: three dots in a small round button. */
 .row-menu > button {
-  width: var(--control-height);
+  width: 28px;
+  min-height: 28px;
   padding: 0;
   display: inline-grid;
   place-items: center;
-  border-color: transparent;
+  border-radius: 50%;
   background: none;
+  color: var(--text-soft);
+}
+.row-menu > button:hover:not(:disabled),
+.row-menu > button[aria-expanded='true'] {
+  background: var(--surface-sunk);
+  color: var(--text);
 }
 @media (hover: hover) {
   tbody tr .row-menu > button {

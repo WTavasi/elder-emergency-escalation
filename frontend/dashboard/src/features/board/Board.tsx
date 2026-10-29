@@ -37,7 +37,7 @@ export function Board() {
 
       {error ? <ErrorNotice message={error} onRetry={reload} /> : null}
 
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+      <div className="card grid">
         {loading ? (
           <Skeleton />
         ) : !alerts || alerts.length === 0 ? (
@@ -45,45 +45,40 @@ export function Board() {
             No emergency is open right now. This is the state the system should usually be in.
           </Empty>
         ) : (
-          <table>
-            <caption
-              className="micro"
-              style={{ captionSide: 'top', padding: 'var(--space-12)', textAlign: 'left' }}
-            >
-              {alerts.length} open, ordered by whoever has been waiting longest without an answer.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">
-                  <span className="visually-hidden">Waiting for an answer</span>
-                </th>
-                <th scope="col">Elder</th>
-                <th scope="col" className="center">
-                  State
-                </th>
-                <th scope="col" className="center">
-                  Severity
-                </th>
-                <th scope="col" className="num">
-                  Tier
-                </th>
-                <th scope="col">Answered by</th>
-                <th scope="col" className="num">
-                  Time left
-                </th>
-                {/* The time zone on the column it applies to, rather than in a line of text
+          <div className="grid__body">
+            <table className="list">
+              <caption className="list__caption">
+                {alerts.length} open, ordered by whoever has been waiting longest without an answer.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Elder</th>
+                  <th scope="col">State</th>
+                  <th scope="col">Severity</th>
+                  <th scope="col" className="num">
+                    Tier
+                  </th>
+                  <th scope="col">Answered by</th>
+                  <th scope="col" className="num">
+                    Time left
+                  </th>
+                  {/* The time zone on the column it applies to, rather than in a line of text
                     above the table. */}
-                <th scope="col" className="num" title={`Times in ${localTimezone()}`}>
-                  Raised <span className="th__note">{localTimezone()}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {alerts.map((alert) => (
-                <AlertRow key={alert.eventId} alert={alert} live />
-              ))}
-            </tbody>
-          </table>
+                  <th scope="col" className="num" title={`Times in ${localTimezone()}`}>
+                    Raised <span className="th__note">{localTimezone()}</span>
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">Open</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {alerts.map((alert) => (
+                  <AlertRow key={alert.eventId} alert={alert} live />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

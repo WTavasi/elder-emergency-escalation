@@ -127,15 +127,13 @@ export function Volunteers() {
               : 'Try another filter.'}
           </Empty>
         ) : (
-          <table>
+          <table className="list">
             <thead>
               <tr>
                 <th scope="col">Volunteer</th>
                 <th scope="col">Can do</th>
                 <th scope="col">Area</th>
-                <th scope="col" className="center">
-                  Status
-                </th>
+                <th scope="col">Status</th>
                 <th scope="col" className="num">
                   Went
                 </th>
@@ -155,11 +153,11 @@ export function Volunteers() {
                     <div className="micro figures">{volunteer.phone}</div>
                     {volunteer.email ? <div className="micro">{volunteer.email}</div> : null}
                   </td>
-                  <td>
+                  <td data-label="Can do">
                     {volunteer.training.map((kind) => TRAINING_LABEL[kind]).join(', ')}
                     {volunteer.note ? <div className="micro">{volunteer.note}</div> : null}
                   </td>
-                  <td>
+                  <td data-label="Area">
                     {volunteer.area ? (
                       <>
                         {volunteer.area.label}
@@ -171,12 +169,16 @@ export function Volunteers() {
                       <span className="muted">&ndash;</span>
                     )}
                   </td>
-                  <td className="center">
-                    <span
-                      className={`status status--${volunteer.status === 'APPROVED' && !volunteer.deactivated ? 'active' : 'deactivated'}`}
-                    >
-                      {volunteer.deactivated ? 'Deactivated' : STATUS_LABEL[volunteer.status]}
-                    </span>
+                  <td data-label="Status">
+                    {/*
+                      The status in words only where the list does not already say it: every
+                      row under Waiting is waiting. An account deactivated is always said.
+                    */}
+                    {volunteer.deactivated ? (
+                      <span className="status status--deactivated">Deactivated</span>
+                    ) : status === undefined ? (
+                      <span>{STATUS_LABEL[volunteer.status]}</span>
+                    ) : null}
                     {volunteer.status === 'APPROVED' ? (
                       <div className="micro">
                         {volunteer.available ? 'Available now' : 'Not available'}
@@ -186,15 +188,22 @@ export function Volunteers() {
                       <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
                     ) : null}
                   </td>
-                  <td className="figures num" title="Said they would go / reached the elder">
+                  <td
+                    className="figures num"
+                    data-label="Went"
+                    title="Said they would go / reached the elder"
+                  >
                     {volunteer.accepted} / {volunteer.arrived}
                   </td>
-                  <td className="figures num">{dateOnly.format(new Date(volunteer.appliedAt))}</td>
+                  <td className="figures num" data-label="Applied">
+                    {dateOnly.format(new Date(volunteer.appliedAt))}
+                  </td>
                   <td className="num">
                     <div className="row" style={{ justifyContent: 'flex-end' }}>
                       {volunteer.status !== 'APPROVED' ? (
                         <button
                           type="button"
+                          className="button--primary"
                           disabled={busy || volunteer.deactivated}
                           onClick={() => void decide(volunteer, 'approve')}
                         >

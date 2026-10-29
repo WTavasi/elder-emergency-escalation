@@ -277,19 +277,12 @@ export function History() {
           </Empty>
         ) : (
           <div className="grid__body">
-            <table>
+            <table className="list">
               <thead>
                 <tr>
-                  <th scope="col">
-                    <span className="visually-hidden">Waiting</span>
-                  </th>
                   <th scope="col">Elder</th>
-                  <th scope="col" className="center">
-                    State
-                  </th>
-                  <th scope="col" className="center">
-                    Severity
-                  </th>
+                  <th scope="col">State</th>
+                  <th scope="col">Severity</th>
                   <th scope="col" className="num">
                     Tier
                   </th>
@@ -299,6 +292,9 @@ export function History() {
                   </th>
                   <th scope="col" className="num">
                     Raised
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">Open</span>
                   </th>
                 </tr>
               </thead>

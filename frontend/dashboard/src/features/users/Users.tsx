@@ -4,7 +4,7 @@ import type { Role, UserQuery, UserRow } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
 import { PageHeader } from '../../shared/components/PageHeader';
-import { Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
+import { Empty, ErrorNotice, Pager, Skeleton, onControl } from '../../shared/components/parts';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
@@ -36,6 +36,7 @@ const COLUMNS: CsvColumn<UserRow>[] = [
   { header: 'Area', value: (row) => row.coverage?.areaName },
   { header: 'Radius km', value: (row) => row.coverage?.radiusKm },
   { header: 'Places in chains', value: (row) => row.chainPlaces },
+  { header: 'People in their chain', value: (row) => (row.role === 'ELDER' ? row.chainSize : '') },
   { header: 'Status', value: (row) => (row.deactivatedAt ? 'Deactivated' : 'Active') },
   { header: 'Deactivated', value: (row) => row.deactivatedAt },
   { header: 'Created', value: (row) => row.createdAt },
@@ -274,7 +275,7 @@ export function Users() {
           </Empty>
         ) : (
           <div className="grid__body">
-            <table>
+            <table className="list">
               <thead>
                 <tr>
                   <th scope="col" className="select-cell">
@@ -289,12 +290,7 @@ export function Users() {
                   <th scope="col">Phone</th>
                   <th scope="col">Role</th>
                   <th scope="col">Area</th>
-                  <th scope="col" className="num">
-                    In chains
-                  </th>
-                  <th scope="col" className="center">
-                    Status
-                  </th>
+                  <th scope="col">Chain</th>
                   <th scope="col" className="num">
                     Created
                   </th>
@@ -305,7 +301,16 @@ export function Users() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} aria-selected={selected.has(row.id)}>
+                  <tr
+                    key={row.id}
+                    className="row-link"
+                    aria-selected={selected.has(row.id)}
+                    // The whole row opens the account, as a row in an Apple list does. The
+                    // menu at its end does the same from the keyboard.
+                    onClick={(clickEvent) => {
+                      if (!onControl(clickEvent)) setPending({ kind: 'form', user: row });
+                    }}
+                  >
                     <td className="select-cell">
                       <input
                         type="checkbox"
@@ -315,13 +320,21 @@ export function Users() {
                       />
                     </td>
                     <td>
-                      <strong>{row.name}</strong>
-                      {row.id === session?.user.id ? <span className="micro"> (you)</span> : null}
+                      <span className="row-inline">
+                        <strong>{row.name}</strong>
+                        {row.id === session?.user.id ? <span className="micro">(you)</span> : null}
+                        {/* Only the exception is marked: every other account is active. */}
+                        {row.deactivatedAt ? (
+                          <span className="status status--deactivated">Deactivated</span>
+                        ) : null}
+                      </span>
                       <div className="micro">{row.email ?? 'No email'}</div>
                     </td>
-                    <td className="figures">{row.phone}</td>
-                    <td>{ROLE_LABEL[row.role]}</td>
-                    <td>
+                    <td className="figures" data-label="Phone">
+                      {row.phone}
+                    </td>
+                    <td data-label="Role">{ROLE_LABEL[row.role]}</td>
+                    <td data-label="Area">
                       {row.coverage ? (
                         <>
                           {row.coverage.areaName}
@@ -333,15 +346,10 @@ export function Users() {
                         <span className="muted">&ndash;</span>
                       )}
                     </td>
-                    <td className="figures num">{row.chainPlaces}</td>
-                    <td className="center">
-                      <span
-                        className={`status status--${row.deactivatedAt ? 'deactivated' : 'active'}`}
-                      >
-                        {row.deactivatedAt ? 'Deactivated' : 'Active'}
-                      </span>
+                    <td data-label="Chain">{chainText(row)}</td>
+                    <td className="figures num" data-label="Created">
+                      {dateOnly.format(new Date(row.createdAt))}
                     </td>
-                    <td className="figures num">{dateOnly.format(new Date(row.createdAt))}</td>
                     <td className="num">
                       <RowMenu
                         name={row.name}
@@ -409,6 +417,18 @@ export function Users() {
       ) : null}
     </>
   );
+}
+
+/**
+ * An account's place in the chains, in words: for an elder, the people in their own chain;
+ * for anybody else, the elders whose chains they are in.
+ */
+function chainText(row: UserRow): string {
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  if (row.role === 'ELDER') {
+    return row.chainSize === 0 ? 'Nobody yet' : count(row.chainSize, 'person', 'people');
+  }
+  return row.chainPlaces === 0 ? '\u2013' : count(row.chainPlaces, 'elder', 'elders');
 }
 
 /**
@@ -523,7 +543,7 @@ function RowMenu({ name, items }: { name: string; items: MenuItem[] }) {
         aria-expanded={open}
         onClick={() => setOpen((was) => !was)}
       >
-        <Icon name="moreVert" label={`Actions for ${name}`} size={18} />
+        <Icon name="moreHoriz" label={`Actions for ${name}`} size={18} />
       </button>
       {place ? (
         <div

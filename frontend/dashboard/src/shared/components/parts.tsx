@@ -1,5 +1,7 @@
 import { useId } from 'react';
-import { Link } from 'react-router-dom';
+import type { MouseEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { OPEN_STATES } from '../api/types';
 import type { AlertSummary, AlertTrigger, EventState, Severity } from '../api/types';
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
@@ -189,31 +191,69 @@ export function Skeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-/** One row of the emergency table, shared by the live board and the history view. */
-export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }) {
+/**
+ * Whether a click landed on something with its own job, such as a link, a button or a
+ * box to tick, rather than on the row around it.
+ */
+export function onControl(clickEvent: MouseEvent): boolean {
+  return (clickEvent.target as HTMLElement).closest('a, button, input, label, [tabindex]') !== null;
+}
+
+/**
+ * The mark for an emergency nobody has answered: a red dot at the start of the row, as an
+ * unread message is marked in Mail, and as the app's list marks it. The words are there
+ * for a screen reader.
+ */
+export function UnansweredDot({ shown }: { shown: boolean }) {
   return (
-    <tr>
-      <td className={`urgency${live && !alert.acknowledgedBy ? ' urgency--live' : ''}`} />
+    <span className={`dot${shown ? ' dot--unanswered' : ''}`} aria-hidden={!shown}>
+      {shown ? <span className="visually-hidden">Nobody has answered. </span> : null}
+    </span>
+  );
+}
+
+/**
+ * One row of the emergency list, shared by the live board and the history view. The whole
+ * row opens the emergency, as a row in an Apple list does, with a chevron to say so; the
+ * name is the link, for the keyboard and for opening it in a new tab.
+ */
+export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }) {
+  const navigate = useNavigate();
+  const to = `/emergencies/${alert.eventId}`;
+  const unanswered = OPEN_STATES.includes(alert.state) && !alert.acknowledgedBy;
+
+  return (
+    <tr
+      className="row-link"
+      onClick={(clickEvent) => {
+        if (!onControl(clickEvent)) void navigate(to);
+      }}
+    >
       <td>
         <span className="row-inline">
-          <Link to={`/emergencies/${alert.eventId}`}>{alert.elder.name}</Link>
+          <UnansweredDot shown={unanswered} />
+          <Link className="row-link__name" to={to}>
+            {alert.elder.name}
+          </Link>
           <TriggerTag trigger={alert.trigger} />
         </span>
-        <div className="micro">
+        <div className="micro row-indent">
           {alert.addressLabel ??
             (alert.withheld?.includes('location')
               ? 'Location withheld at the elder\u2019s request'
               : 'Location captured, no address')}
         </div>
       </td>
-      <td className="center">
+      <td>
         <StatePill state={alert.state} />
       </td>
-      <td className="center">
+      <td>
         <SeverityLabel severity={alert.severity} score={alert.severityScore} />
       </td>
-      <td className="figures num">{alert.currentTier}</td>
-      <td>
+      <td className="figures num" data-label="Tier">
+        {alert.currentTier}
+      </td>
+      <td data-label="Answered by">
         {alert.acknowledgedBy ? (
           <>
             {alert.acknowledgedBy.name}
@@ -225,7 +265,7 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
           <span className="muted">nobody yet</span>
         )}
       </td>
-      <td className="num">
+      <td className="num" data-label={live ? 'Time left' : 'Response time'}>
         {live ? (
           <Countdown deadlineAt={alert.deadlineAt} />
         ) : alert.responseSeconds === null ? (
@@ -234,7 +274,12 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
           <span className="figures">{formatDuration(alert.responseSeconds)}</span>
         )}
       </td>
-      <td className="figures num">{formatClock(alert.triggeredAt)}</td>
+      <td className="figures num" data-label="Raised">
+        {formatClock(alert.triggeredAt)}
+      </td>
+      <td className="chevron" aria-hidden="true">
+        <Icon name="chevronRight" size={18} />
+      </td>
     </tr>
   );
 }

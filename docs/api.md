@@ -381,7 +381,7 @@ same length) and `daily` (one point per day, with the days nothing happened incl
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/v1/admin/users` | administrator | `{ items, total, page, pageSize }`. Filters: `q` (name, phone or email), `role`, `status` (`active` or `deactivated`) |
+| GET | `/api/v1/admin/users` | administrator | `{ items, total, page, pageSize }`. Filters: `q` (name, phone or email), `role`, `status` (`active` or `deactivated`). Each row has `chainPlaces`, the elders' chains it is in, and `chainSize`, for an elder the people in their own chain |
 | POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }` |
 | PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage? }` |
 | POST | `/api/v1/admin/users/deactivate` | administrator | `{ ids }` |
