@@ -317,21 +317,21 @@ export function Users() {
                       {row.id === session?.user.id ? <span className="micro"> (you)</span> : null}
                       <div className="micro">{row.email ?? 'No email'}</div>
                     </td>
-                    <td className="mono">{row.phone}</td>
+                    <td className="figures">{row.phone}</td>
                     <td>{ROLE_LABEL[row.role]}</td>
                     <td>
                       {row.coverage ? (
                         <>
                           {row.coverage.areaName}
                           <div className="micro">
-                            within <span className="mono">{row.coverage.radiusKm}</span> km
+                            within <span className="figures">{row.coverage.radiusKm}</span> km
                           </div>
                         </>
                       ) : (
                         <span className="muted">&ndash;</span>
                       )}
                     </td>
-                    <td className="mono num">{row.chainPlaces}</td>
+                    <td className="figures num">{row.chainPlaces}</td>
                     <td className="center">
                       <span
                         className={`status status--${row.deactivatedAt ? 'deactivated' : 'active'}`}
@@ -339,7 +339,7 @@ export function Users() {
                         {row.deactivatedAt ? 'Deactivated' : 'Active'}
                       </span>
                     </td>
-                    <td className="mono num">{dateOnly.format(new Date(row.createdAt))}</td>
+                    <td className="figures num">{dateOnly.format(new Date(row.createdAt))}</td>
                     <td className="num">
                       <RowMenu
                         name={row.name}

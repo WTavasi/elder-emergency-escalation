@@ -276,11 +276,11 @@ export function EventDetail() {
                 {alert.deliveries.map((delivery) => (
                   <tr key={delivery.id}>
                     <td>{delivery.recipient?.name ?? 'unknown'}</td>
-                    <td className="mono">{delivery.tier}</td>
+                    <td className="figures">{delivery.tier}</td>
                     <td>{delivery.channel.toLowerCase()}</td>
                     <td>{humanise(delivery.status)}</td>
                     <td className="micro">{delivery.failureReason ?? ''}</td>
-                    <td className="mono">
+                    <td className="figures">
                       {delivery.sentAt ? formatClock(delivery.sentAt) : 'not sent'}
                     </td>
                   </tr>
@@ -329,9 +329,9 @@ export function EventDetail() {
                     {humanise(factor.key)}
                     {factor.detail ? <div className="micro">{factor.detail}</div> : null}
                   </td>
-                  <td className="mono num">{factor.weight}</td>
-                  <td className="mono num">{factor.value}</td>
-                  <td className="mono num">{factor.contribution}</td>
+                  <td className="figures num">{factor.weight}</td>
+                  <td className="figures num">{factor.value}</td>
+                  <td className="figures num">{factor.contribution}</td>
                 </tr>
               ))}
               <tr>
@@ -340,7 +340,7 @@ export function EventDetail() {
                 </td>
                 <td />
                 <td />
-                <td className="mono num">
+                <td className="figures num">
                   <strong>{alert.severityScore}</strong>
                 </td>
               </tr>
@@ -414,7 +414,7 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
           {formatClock(volunteer.acceptedAt)}
           {volunteer.distanceMetres !== null ? `, ${distance(volunteer.distanceMetres)} away` : ''}
           {volunteer.arrivedAt ? ` and arrived ${formatClock(volunteer.arrivedAt)}.` : '.'}
-          {volunteer.phone ? <span className="micro muted mono"> {volunteer.phone}</span> : null}
+          {volunteer.phone ? <span className="micro muted figures"> {volunteer.phone}</span> : null}
         </p>
       ) : volunteer.asked > 0 && OPEN_STATES.includes(alert.state) ? (
         <p className="micro muted">None has said they will go yet.</p>

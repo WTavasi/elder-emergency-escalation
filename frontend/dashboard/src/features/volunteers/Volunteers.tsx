@@ -154,7 +154,7 @@ export function Volunteers() {
                 <tr key={volunteer.id}>
                   <td>
                     <strong>{volunteer.name}</strong>
-                    <div className="micro mono">{volunteer.phone}</div>
+                    <div className="micro figures">{volunteer.phone}</div>
                     {volunteer.email ? <div className="micro">{volunteer.email}</div> : null}
                   </td>
                   <td>
@@ -166,7 +166,7 @@ export function Volunteers() {
                       <>
                         {volunteer.area.label}
                         <div className="micro">
-                          within <span className="mono">{volunteer.radiusKm}</span> km
+                          within <span className="figures">{volunteer.radiusKm}</span> km
                         </div>
                       </>
                     ) : (
@@ -188,10 +188,10 @@ export function Volunteers() {
                       <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
                     ) : null}
                   </td>
-                  <td className="mono num" title="Said they would go / reached the elder">
+                  <td className="figures num" title="Said they would go / reached the elder">
                     {volunteer.accepted} / {volunteer.arrived}
                   </td>
-                  <td className="mono num">{dateOnly.format(new Date(volunteer.appliedAt))}</td>
+                  <td className="figures num">{dateOnly.format(new Date(volunteer.appliedAt))}</td>
                   <td className="num">
                     <div className="row" style={{ justifyContent: 'flex-end' }}>
                       {volunteer.status !== 'APPROVED' ? (

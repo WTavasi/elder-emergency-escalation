@@ -52,7 +52,7 @@ function Trend({
     <span className={`trend trend--${tone}`}>
       <Icon name={up ? 'trendingUp' : 'trendingDown'} size={16} />
       <span>
-        <span className="mono">{amount}</span> {versus}
+        <span className="figures">{amount}</span> {versus}
       </span>
     </span>
   );
@@ -156,8 +156,8 @@ export function Reporting() {
                   windowDays={days}
                 />
                 <div className="metric__note">
-                  From <span className="mono">{overview.responseTimes.sampleSize}</span> answered.
-                  Mean{' '}
+                  From <span className="figures">{overview.responseTimes.sampleSize}</span>{' '}
+                  answered. Mean{' '}
                   {overview.responseTimes.meanSeconds === null
                     ? 'none'
                     : formatDuration(overview.responseTimes.meanSeconds)}
@@ -196,8 +196,8 @@ export function Reporting() {
                   windowDays={days}
                 />
                 <div className="metric__note">
-                  <span className="mono">{overview.escalation.escalatedCount}</span> of{' '}
-                  <span className="mono">{overview.escalation.total}</span> closed.
+                  <span className="figures">{overview.escalation.escalatedCount}</span> of{' '}
+                  <span className="figures">{overview.escalation.total}</span> closed.
                 </div>
               </div>
             </div>
@@ -253,7 +253,7 @@ export function Reporting() {
                     Object.entries(overview.escalation.answeredAtTier).map(([tier, count]) => (
                       <tr key={tier}>
                         <td>Tier {tier}</td>
-                        <td className="mono">{count}</td>
+                        <td className="figures">{count}</td>
                       </tr>
                     ))
                   )}
@@ -264,7 +264,7 @@ export function Reporting() {
                         Counted once per emergency, however many tiers it climbed.
                       </div>
                     </td>
-                    <td className="mono">
+                    <td className="figures">
                       <strong>{overview.escalation.escalatedCount}</strong>
                       {overview.escalation.escalationRatePercent === null ? null : (
                         <div className="micro">
@@ -306,10 +306,10 @@ export function Reporting() {
                     overview.channels.map((row) => (
                       <tr key={row.channel}>
                         <td>{humanise(row.channel)}</td>
-                        <td className="mono">{row.attempted}</td>
-                        <td className="mono">{row.delivered}</td>
-                        <td className="mono">{row.failed}</td>
-                        <td className="mono">
+                        <td className="figures">{row.attempted}</td>
+                        <td className="figures">{row.delivered}</td>
+                        <td className="figures">{row.failed}</td>
+                        <td className="figures">
                           {row.successRatePercent === null ? 'none' : `${row.successRatePercent}%`}
                         </td>
                       </tr>

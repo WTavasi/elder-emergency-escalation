@@ -7,28 +7,11 @@
 @import '@mzazicare/tokens/dist/tokens.css';
 
 /*
- * Self-hosted from public/fonts, never from a font CDN. The console is an internal tool
- * that reads an elder's name and address, so it makes no third-party request at all;
- * the content security policy in the API denies one anyway.
- *
- * Both faces are one variable file covering the whole weight range, which is why each
- * is declared once with a range rather than once per weight.
+ * The computer's own face, as Apple's and Microsoft's own apps use: SF Pro on a Mac,
+ * Segoe UI on Windows. Nothing is bundled or fetched, so the console still makes no
+ * third-party request at all. Figures are the same face with fixed-width digits
+ * (font-variant-numeric), so columns line up without a second, monospaced face.
  */
-@font-face {
-  font-family: 'Source Sans 3';
-  src: url('/fonts/SourceSans3-Variable.ttf') format('truetype-variations');
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Atkinson Hyperlegible Mono';
-  src: url('/fonts/AtkinsonHyperlegibleMono-Variable.ttf') format('truetype-variations');
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
 
 *,
 *::before,
@@ -61,7 +44,7 @@ body {
   font-family: var(--font-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-body);
-  line-height: 1.5;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -69,21 +52,34 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-family: var(--font-display);
   line-height: 1.2;
 }
 
+/* A page's title: Apple's large title, bold and slightly tightened. */
 h1 {
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-large-title);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.01em;
 }
+/* A section's heading, as Apple heads a group: smaller than you might expect, and bold. */
 h2 {
-  font-size: var(--font-size-h2);
+  font-size: var(--font-size-title2);
+  font-weight: var(--font-weight-strong);
 }
 
+/*
+  Links take the console's tint, MzaziCare red in its text-safe shade, as an app's links
+  take its accent colour. Underlined only when pointed at: a link stands on its own line
+  or in a control here, never inside a sentence where colour alone would have to mark it.
+*/
 a {
-  color: var(--focus);
+  color: var(--danger);
+  text-decoration: none;
   text-underline-offset: 0.18em;
   text-decoration-thickness: from-font;
+}
+a:hover {
+  text-decoration: underline;
 }
 
 /*
@@ -119,7 +115,7 @@ html {
   padding: var(--space-8) var(--space-16);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   transition: none;
 }
 .skip-link:focus {
@@ -166,8 +162,8 @@ html {
 }
 
 .sidebar__brand {
-  font-family: var(--font-display);
-  font-size: var(--font-size-h2);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title2);
   font-weight: var(--font-weight-heading);
   letter-spacing: -0.01em;
   color: var(--text);
@@ -191,9 +187,9 @@ html {
   gap: var(--space-8);
   min-height: 40px;
   padding: 0 var(--space-12);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   text-decoration: none;
 }
 
@@ -226,8 +222,7 @@ html {
 }
 
 .nav__count {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-soft);
 }
 
@@ -241,7 +236,7 @@ html {
   border: none;
   background: none;
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 /* Narrowed to icons: the words go, the names stay as tooltips and for screen readers. */
@@ -291,7 +286,7 @@ html {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .crumbs li {
   white-space: nowrap;
@@ -335,7 +330,7 @@ html {
 .page-head p {
   margin: var(--space-4) 0 0;
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 .scrim {
@@ -422,7 +417,7 @@ html {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-group);
   padding: var(--space-16);
 }
 
@@ -444,12 +439,11 @@ html {
 }
 
 .micro {
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 
-.mono {
-  font-family: var(--font-mono);
+.figures {
   font-variant-numeric: tabular-nums;
 }
 
@@ -500,7 +494,7 @@ html {
   padding: 2px var(--space-8);
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -559,16 +553,15 @@ html {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
 }
 
 th {
   text-align: left;
-  font-size: var(--font-size-micro);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-strong);
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--line);
 }
@@ -616,20 +609,24 @@ tbody tr:last-child td {
   background: var(--emergency);
 }
 
+/*
+  A push button: solid, with rounded corners, grey unless it is the action the screen
+  leads to. No outline, as Apple's buttons have none; the words say what it is.
+*/
 button {
   min-height: var(--control-height);
   padding: 0 var(--space-16);
-  border-radius: var(--radius-input);
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: var(--surface-sunk);
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
 }
 
 button:disabled {
@@ -637,20 +634,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.button--emergency {
-  background: var(--emergency);
-  border-color: var(--emergency);
-  color: var(--on-emergency);
-}
-.button--emergency:hover:not(:disabled) {
-  background: var(--emergency-pressed);
-  border-color: var(--emergency-pressed);
-}
-
 label {
   display: block;
-  font-size: var(--font-size-small);
-  font-weight: 600;
+  font-size: var(--font-size-callout);
+  font-weight: var(--font-weight-strong);
   margin-bottom: var(--space-4);
 }
 
@@ -662,7 +649,7 @@ select {
   /* The control colour, 3:1 against the page as WCAG 1.4.11 asks of a field's edge. The
      hairline colour it used was 1.3:1, so an empty field was close to invisible. */
   border: 1px solid var(--control);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text);
   font: inherit;
@@ -674,7 +661,7 @@ select {
 
 .notice {
   padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   border: 1px solid var(--line);
   background: var(--surface-sunk);
 }
@@ -685,10 +672,9 @@ select {
   border-color: var(--pill-triggered-bd);
 }
 
-/* A countdown is the one number an operator reads under pressure, so it is set in
-   the monospaced face at display size and never animated. */
+/* A countdown is the one number an operator reads under pressure, so its digits keep
+   a fixed width, so it does not jitter as it counts, and it is never animated. */
 .countdown {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--timer);
@@ -710,8 +696,7 @@ select {
 }
 
 .metric__value {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-large-title);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -719,13 +704,13 @@ select {
 
 .metric__label {
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 .metric__note {
   margin-top: var(--space-4);
   color: var(--text-faint);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
 }
 
 /* How a figure moved: green the right way, the warning red the wrong way, ink when
@@ -734,7 +719,7 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-soft);
 }
 .trend--good {
@@ -765,8 +750,7 @@ select {
 }
 .chart__axis {
   fill: var(--text-faint);
-  font-size: var(--font-size-micro);
-  font-family: var(--font-mono);
+  font-size: var(--font-size-subheadline);
 }
 .chart__line {
   fill: none;
@@ -799,10 +783,10 @@ select {
   transform: translateX(-50%);
   pointer-events: none;
   padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--text);
   color: var(--surface);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   white-space: nowrap;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 20%, transparent);
 }
@@ -836,15 +820,14 @@ select {
 }
 
 .timeline__at {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--text-faint);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 .timeline__actor {
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 .signin {
@@ -904,7 +887,7 @@ select {
   gap: var(--space-12);
   margin: var(--space-16) 0;
   color: var(--text-faint);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .signin__or::before,
 .signin__or::after {
@@ -959,17 +942,18 @@ select {
   gap: var(--space-8);
 }
 
-/* The main action on a form. Inverse text rather than emergency red: red is a state,
-   and signing in is not an emergency. Text on surface is a gated pair, so the inverse
-   of it meets the same ratio. */
+/* The action a screen or a sheet leads to: MzaziCare red, as the app's buttons are.
+   White on the emergency red is a gated pair in both themes. Under review with the
+   app's, because red is otherwise kept for a person being needed. */
 .button--primary {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--surface);
+  background: var(--emergency);
+  color: var(--on-emergency);
 }
 .button--primary:hover:not(:disabled) {
-  background: var(--text-soft);
-  border-color: var(--text-soft);
+  background: var(--emergency-pressed);
+}
+.button--primary:disabled {
+  background: var(--surface-sunk);
 }
 
 .icon-button {
@@ -984,7 +968,7 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   color: var(--text-soft);
 }
 .connection__dot {
@@ -1001,27 +985,33 @@ select {
   font-weight: 600;
 }
 
-/* A segmented control: one outline, the chosen segment sunk and bold. */
+/* A segmented control, as Apple draws one: a grey track, and the chosen segment raised
+   on it in white. aria-pressed says which, for a screen reader. */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-input);
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
 }
 .segmented button {
+  min-height: calc(var(--control-height) - 4px);
+  padding: 0 var(--space-12);
   border: none;
-  border-radius: 0;
-  font-weight: 400;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
+  font-weight: var(--font-weight-body);
   color: var(--text-soft);
 }
-.segmented button + button {
-  border-left: 1px solid var(--line);
+.segmented button:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
 }
 .segmented button[aria-pressed='true'] {
-  background: var(--surface-sunk);
+  background: var(--surface);
   color: var(--text);
-  font-weight: 600;
-  box-shadow: inset 0 -3px 0 var(--text);
+  font-weight: var(--font-weight-strong);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 18%, transparent);
 }
 
 /* Who is signed in, top right, opening a small menu. */
@@ -1049,7 +1039,7 @@ select {
   border-radius: 50%;
   background: var(--surface-sunk);
   border: 1px solid var(--line);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   font-weight: 600;
 }
 .account__who {
@@ -1060,12 +1050,12 @@ select {
   line-height: 1.2;
 }
 .account__name {
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   font-weight: 600;
   white-space: nowrap;
 }
 .account__role {
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 .account__role::first-letter {
@@ -1081,7 +1071,7 @@ select {
   padding: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .menu--right {
@@ -1099,7 +1089,7 @@ select {
   padding: 0 var(--space-12);
   border: none;
   background: none;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   text-align: left;
 }
 .menu button:hover:not(:disabled),
@@ -1109,8 +1099,8 @@ select {
 
 .wordmark {
   margin: 0 0 var(--space-16);
-  font-family: var(--font-display);
-  font-size: var(--font-size-h2);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title2);
   font-weight: var(--font-weight-heading);
   letter-spacing: -0.01em;
 }
@@ -1137,7 +1127,7 @@ select {
 .empty__title {
   margin: 0;
   font-weight: 600;
-  font-size: var(--font-size-h2);
+  font-size: var(--font-size-title2);
 }
 .empty__body {
   margin: 0;
@@ -1177,7 +1167,7 @@ select {
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-group);
 }
 /* The state pill at the start of the banner says what state it is in. While nobody has
    taken it on, the whole outline turns red as well: red is spent on a person being
@@ -1209,7 +1199,7 @@ select {
   flex-direction: column;
 }
 .banner__countdown {
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-large-title);
   line-height: 1.1;
 }
 
@@ -1247,15 +1237,14 @@ select {
   border-radius: 50%;
   border: 2px solid var(--line);
   background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .step__name {
   font-weight: 600;
 }
 .step__status {
   display: block;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   color: var(--text-soft);
 }
 .step--current .step__marker {
@@ -1359,7 +1348,7 @@ select {
   padding: var(--space-8) var(--space-12);
   background: var(--surface-sunk);
   border-bottom: 1px solid var(--line);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 /* A search field with its magnifier inside, at the front. */
@@ -1393,7 +1382,7 @@ select {
   padding: var(--space-8) var(--space-12);
   background: var(--surface);
   border-top: 1px solid var(--line);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .pager__range {
   margin: 0;
@@ -1412,9 +1401,12 @@ select {
 }
 
 .button--quiet {
-  border-color: transparent;
   background: none;
   color: var(--text-soft);
+}
+.button--quiet:hover:not(:disabled) {
+  background: var(--surface-sunk);
+  color: var(--text);
 }
 
 /* A checkbox column: wide enough to hit, no wider. */
@@ -1434,8 +1426,8 @@ select {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--space-8);
-  border-radius: var(--radius-input);
-  font-size: var(--font-size-micro);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-subheadline);
   font-weight: 600;
   line-height: 1.8;
 }
@@ -1553,7 +1545,7 @@ select {
 }
 .field__hint {
   margin: var(--space-4) 0 0;
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 .choices {
@@ -1561,7 +1553,7 @@ select {
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
 }
 .choices li + li {
   border-top: 1px solid var(--line-soft);
@@ -1584,7 +1576,7 @@ select {
 .label,
 legend {
   display: block;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   font-weight: 600;
   margin-bottom: var(--space-4);
 }
@@ -1592,7 +1584,7 @@ legend {
   margin: 0 0 var(--space-16);
   padding: var(--space-12);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
 }
 .fieldset legend {
   padding: 0 var(--space-4);
@@ -1603,7 +1595,7 @@ legend {
 
 .pager__note {
   display: block;
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 
@@ -1622,11 +1614,11 @@ legend {
   align-items: center;
   padding: 0 var(--space-8);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--surface-sunk);
   color: var(--text-soft);
   font-family: var(--font-sans);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   font-weight: 600;
   line-height: 1.8;
   cursor: help;
@@ -1639,7 +1631,7 @@ legend {
   width: max-content;
   max-width: 320px;
   padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--text);
   color: var(--surface);
   font-weight: 400;
@@ -1654,23 +1646,24 @@ legend {
   opacity: 1;
 }
 
-/* A button that reads as a link, for an action that opens something rather than doing it. */
+/* A button that reads as a link, for an action that opens something rather than doing
+   it: the console's red, as a link is. */
 .link-button {
   min-height: 0;
   padding: 0;
   border: none;
   background: none;
-  color: var(--focus);
-  font-weight: 400;
-  text-decoration: underline;
+  color: var(--danger);
+  font-weight: var(--font-weight-body);
 }
 .link-button:hover:not(:disabled) {
   background: none;
+  text-decoration: underline;
 }
 
 .prose h3 {
   margin: var(--space-16) 0 var(--space-4);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .prose h3:first-child {
   margin-top: 0;
@@ -1678,7 +1671,7 @@ legend {
 .prose p,
 .prose ul {
   margin: 0 0 var(--space-8);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .prose ul {
   padding-left: var(--space-16);

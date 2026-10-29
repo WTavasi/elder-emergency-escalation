@@ -184,7 +184,7 @@ export function UserForm({
       {editing ? (
         <div className="field">
           <span className="label">Phone number</span>
-          <p className="mono" style={{ margin: 0 }}>
+          <p className="figures" style={{ margin: 0 }}>
             {user.phone}
           </p>
           <p className="field__hint">
@@ -242,7 +242,7 @@ export function UserForm({
           {coverage ? (
             <p style={{ margin: '0 0 var(--space-8)' }}>
               <strong>{coverage.areaName}</strong>{' '}
-              <span className="mono micro">
+              <span className="figures micro">
                 {coverage.latitude.toFixed(4)}, {coverage.longitude.toFixed(4)}
               </span>
             </p>

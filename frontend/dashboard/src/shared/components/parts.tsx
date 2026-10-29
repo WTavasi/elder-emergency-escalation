@@ -60,7 +60,7 @@ export function SeverityLabel({ severity, score }: { severity: Severity; score?:
     <span className={`severity severity--${severity}`}>
       <Icon name={SEVERITY_GLYPH[severity]} size={16} />
       {severity.charAt(0) + severity.slice(1).toLowerCase()}
-      {score === undefined ? null : <span className="mono muted"> {score}</span>}
+      {score === undefined ? null : <span className="figures muted"> {score}</span>}
     </span>
   );
 }
@@ -212,7 +212,7 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
       <td className="center">
         <SeverityLabel severity={alert.severity} score={alert.severityScore} />
       </td>
-      <td className="mono num">{alert.currentTier}</td>
+      <td className="figures num">{alert.currentTier}</td>
       <td>
         {alert.acknowledgedBy ? (
           <>
@@ -231,10 +231,10 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
         ) : alert.responseSeconds === null ? (
           <span className="muted">not answered</span>
         ) : (
-          <span className="mono">{formatDuration(alert.responseSeconds)}</span>
+          <span className="figures">{formatDuration(alert.responseSeconds)}</span>
         )}
       </td>
-      <td className="mono num">{formatClock(alert.triggeredAt)}</td>
+      <td className="figures num">{formatClock(alert.triggeredAt)}</td>
     </tr>
   );
 }
@@ -272,9 +272,9 @@ export function Pager({
           `No ${noun}`
         ) : (
           <>
-            Showing <span className="mono">{count.format(first)}</span>&ndash;
-            <span className="mono">{count.format(last)}</span> of{' '}
-            <span className="mono">{count.format(total)}</span> {noun}
+            Showing <span className="figures">{count.format(first)}</span>&ndash;
+            <span className="figures">{count.format(last)}</span> of{' '}
+            <span className="figures">{count.format(total)}</span> {noun}
           </>
         )}
         {note ? <span className="pager__note">{note}</span> : null}
