@@ -1,31 +1,22 @@
 import { useOpenAlerts } from '../../shared/state/OpenAlerts';
-import { Icon } from '../../shared/components/Icon';
 import { PageHeader } from '../../shared/components/PageHeader';
 import {
   AlertRow,
-  ConnectionStatus,
+  UpdatedStatus,
+  moveBetweenRows,
   Empty,
   ErrorNotice,
   Skeleton,
 } from '../../shared/components/parts';
-import { localTimezone } from '../../shared/utils/format';
 
 export function Board() {
-  const { alerts, error, loading, connection, reload } = useOpenAlerts();
+  const { alerts, error, loading, connection, updatedAt, reload } = useOpenAlerts();
 
   return (
     <>
       <PageHeader
         title="Open emergencies"
-        actions={
-          <>
-            <ConnectionStatus state={connection} />
-            <button type="button" className="button--with-icon" onClick={reload}>
-              <Icon name="refresh" size={18} />
-              Refresh
-            </button>
-          </>
-        }
+        actions={<UpdatedStatus state={connection} updatedAt={updatedAt} onRefresh={reload} />}
       />
 
       {connection === 'offline' ? (
@@ -62,17 +53,17 @@ export function Board() {
                   <th scope="col" className="num">
                     Time left
                   </th>
-                  {/* The time zone on the column it applies to, rather than in a line of text
-                    above the table. */}
-                  <th scope="col" className="num" title={`Times in ${localTimezone()}`}>
-                    Raised <span className="th__note">{localTimezone()}</span>
+                  {/* How long ago, which is what matters on a live board; each time gives the
+                    exact clock time, with its zone, on hover. */}
+                  <th scope="col" className="num">
+                    Raised
                   </th>
                   <th scope="col">
                     <span className="visually-hidden">Open</span>
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody onKeyDown={moveBetweenRows}>
                 {alerts.map((alert) => (
                   <AlertRow key={alert.eventId} alert={alert} live />
                 ))}

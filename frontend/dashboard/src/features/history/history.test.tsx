@@ -42,6 +42,18 @@ describe('searching the history', () => {
     );
   });
 
+  it('puts the cursor in the search on Command-F, and leaves a second press to the browser', async () => {
+    renderHistory();
+    const search = screen.getByRole('searchbox');
+
+    await userEvent.keyboard('{Meta>}f{/Meta}');
+    expect(search).toHaveFocus();
+
+    const second = new KeyboardEvent('keydown', { key: 'f', metaKey: true, cancelable: true });
+    document.dispatchEvent(second);
+    expect(second.defaultPrevented).toBe(false);
+  });
+
   it('offers the ranges a person usually means, and a range of their own', async () => {
     const page = renderHistory();
     await waitFor(() => expect(page).toHaveBeenCalledTimes(1));

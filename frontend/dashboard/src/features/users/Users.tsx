@@ -4,9 +4,17 @@ import type { Role, UserQuery, UserRow } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
 import { PageHeader } from '../../shared/components/PageHeader';
-import { Empty, ErrorNotice, Pager, Skeleton, onControl } from '../../shared/components/parts';
+import {
+  Empty,
+  ErrorNotice,
+  Pager,
+  Skeleton,
+  moveBetweenRows,
+  onControl,
+} from '../../shared/components/parts';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useDebounced } from '../../shared/hooks/useDebounced';
+import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { UserForm } from './UserForm';
@@ -57,6 +65,8 @@ type Pending =
 export function Users() {
   const { session } = useAuth();
   const [search, setSearch] = useState('');
+  const searchField = useRef<HTMLInputElement>(null);
+  useFindShortcut(searchField);
   const [role, setRole] = useState<Role | ''>('');
   const [status, setStatus] = useState<UserQuery['status'] | ''>('');
   const [page, setPage] = useState(1);
@@ -188,7 +198,9 @@ export function Users() {
             <span className="visually-hidden">Search by name, phone or email</span>
             <input
               id="users-q"
+              ref={searchField}
               type="search"
+              aria-keyshortcuts="Meta+F Control+F"
               placeholder="Search name, phone or email"
               value={search}
               onChange={(changeEvent) => setSearch(changeEvent.target.value)}
@@ -314,15 +326,15 @@ export function Users() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody onKeyDown={moveBetweenRows}>
                 {rows.map((row) => (
                   <tr
                     key={row.id}
                     className="row-link"
                     aria-selected={selecting ? selected.has(row.id) : undefined}
                     // The whole row opens the account, as a row in an Apple list does, or
-                    // ticks it while choosing several. The menu at its end opens it from
-                    // the keyboard.
+                    // ticks it while choosing several. The name is a button that does the
+                    // same, for the keyboard.
                     onClick={(clickEvent) => {
                       if (onControl(clickEvent)) return;
                       if (selecting) toggle(row.id);
@@ -341,7 +353,15 @@ export function Users() {
                     ) : null}
                     <td>
                       <span className="row-inline">
-                        <strong>{row.name}</strong>
+                        <button
+                          type="button"
+                          className="row-link__name"
+                          onClick={() =>
+                            selecting ? toggle(row.id) : setPending({ kind: 'form', user: row })
+                          }
+                        >
+                          {row.name}
+                        </button>
                         {row.id === session?.user.id ? <span className="micro">(you)</span> : null}
                         {/* Only the exception is marked: every other account is active. */}
                         {row.deactivatedAt ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distance, formatDuration, humanise, timeAway } from './format';
+import { distance, formatAgo, formatDuration, humanise, timeAway } from './format';
 
 describe('formatDuration', () => {
   it('stays in seconds below a minute, which is where most acknowledgements land', () => {
@@ -19,6 +19,25 @@ describe('formatDuration', () => {
 
   it('never shows a negative duration, because an overdue timer is handled separately', () => {
     expect(formatDuration(-30)).toBe('0s');
+  });
+});
+
+describe('formatAgo', () => {
+  const now = Date.parse('2026-10-29T12:00:00Z');
+  const before = (seconds: number) => now - seconds * 1000;
+
+  it('says just now, then minutes, then hours, as a person would', () => {
+    expect(formatAgo(before(10), now)).toBe('just now');
+    expect(formatAgo(before(4 * 60), now)).toBe('4 min ago');
+    expect(formatAgo(before(2 * 3600), now)).toBe('2 h ago');
+  });
+
+  it('gives the date once it is more than a day old', () => {
+    expect(formatAgo(before(3 * 86400), now)).not.toMatch(/ago/);
+  });
+
+  it('never says a time in the future, when the clocks disagree a little', () => {
+    expect(formatAgo(now + 5000, now)).toBe('just now');
   });
 });
 

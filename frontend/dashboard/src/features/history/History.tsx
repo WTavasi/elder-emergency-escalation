@@ -1,9 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ApiError, api, type AlertQuery } from '../../shared/api/client';
 import type { AlertSummary, EventState, Severity } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { PageHeader } from '../../shared/components/PageHeader';
-import { AlertRow, Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
+import {
+  AlertRow,
+  Empty,
+  ErrorNotice,
+  Pager,
+  Skeleton,
+  moveBetweenRows,
+} from '../../shared/components/parts';
+import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
@@ -134,6 +142,8 @@ export function History() {
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const searchField = useRef<HTMLInputElement>(null);
+  useFindShortcut(searchField);
 
   // A new search starts at the first page, adjusted while rendering so it happens with the
   // new filters rather than one render later.
@@ -214,7 +224,9 @@ export function History() {
             <span className="visually-hidden">Search by elder or who attended</span>
             <input
               id="filter-q"
+              ref={searchField}
               type="search"
+              aria-keyshortcuts="Meta+F Control+F"
               placeholder="Search by elder or who attended"
               value={form.q}
               onChange={(changeEvent) => set('q', changeEvent.target.value)}
@@ -338,7 +350,7 @@ export function History() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody onKeyDown={moveBetweenRows}>
                 {result.items.map((alert) => (
                   <AlertRow key={alert.eventId} alert={alert} live={false} />
                 ))}

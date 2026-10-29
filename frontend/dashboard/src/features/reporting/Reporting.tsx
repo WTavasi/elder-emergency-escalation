@@ -114,7 +114,7 @@ export function Reporting() {
                 <div className="metric__value">{overview.live.open}</div>
               </div>
               <div className="card metric">
-                <div className="metric__label">Waiting for somebody to answer</div>
+                <div className="metric__label">Not answered yet</div>
                 <div className="metric__value">{overview.live.unacknowledged}</div>
               </div>
               {Object.entries(overview.live.bySeverity).map(([band, count]) => (

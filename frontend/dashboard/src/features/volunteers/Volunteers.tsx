@@ -83,6 +83,8 @@ export function Volunteers() {
   }
 
   const rows = data ?? [];
+  // Every row under Waiting is waiting, so the column would be empty there.
+  const showStatus = status !== 'PENDING' || rows.some((volunteer) => volunteer.deactivated);
 
   return (
     <>
@@ -121,7 +123,10 @@ export function Volunteers() {
         ) : error ? (
           <ErrorNotice message={error} onRetry={reload} />
         ) : rows.length === 0 ? (
-          <Empty title={status === 'PENDING' ? 'Nobody is waiting' : 'No volunteers here'}>
+          <Empty
+            icon="personAdd"
+            title={status === 'PENDING' ? 'Nobody is waiting' : 'No volunteers here'}
+          >
             {status === 'PENDING'
               ? 'New applications from the app appear here, oldest first.'
               : 'Try another filter.'}
@@ -133,7 +138,7 @@ export function Volunteers() {
                 <th scope="col">Volunteer</th>
                 <th scope="col">Can do</th>
                 <th scope="col">Area</th>
-                <th scope="col">Status</th>
+                {showStatus ? <th scope="col">Status</th> : null}
                 <th scope="col" className="num">
                   Went
                 </th>
@@ -169,25 +174,27 @@ export function Volunteers() {
                       <span className="muted">&ndash;</span>
                     )}
                   </td>
-                  <td data-label="Status">
-                    {/*
+                  {showStatus ? (
+                    <td data-label="Status">
+                      {/*
                       The status in words only where the list does not already say it: every
                       row under Waiting is waiting. An account deactivated is always said.
                     */}
-                    {volunteer.deactivated ? (
-                      <span className="status status--deactivated">Deactivated</span>
-                    ) : status === undefined ? (
-                      <span>{STATUS_LABEL[volunteer.status]}</span>
-                    ) : null}
-                    {volunteer.status === 'APPROVED' ? (
-                      <div className="micro">
-                        {volunteer.available ? 'Available now' : 'Not available'}
-                      </div>
-                    ) : null}
-                    {volunteer.reviewNote ? (
-                      <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
-                    ) : null}
-                  </td>
+                      {volunteer.deactivated ? (
+                        <span className="status status--deactivated">Deactivated</span>
+                      ) : status === undefined ? (
+                        <span>{STATUS_LABEL[volunteer.status]}</span>
+                      ) : null}
+                      {volunteer.status === 'APPROVED' ? (
+                        <div className="micro">
+                          {volunteer.available ? 'Available now' : 'Not available'}
+                        </div>
+                      ) : null}
+                      {volunteer.reviewNote ? (
+                        <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td
                     className="figures num"
                     data-label="Went"
@@ -199,17 +206,8 @@ export function Volunteers() {
                     {dateOnly.format(new Date(volunteer.appliedAt))}
                   </td>
                   <td className="num">
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      {volunteer.status !== 'APPROVED' ? (
-                        <button
-                          type="button"
-                          className="button--primary"
-                          disabled={busy || volunteer.deactivated}
-                          onClick={() => void decide(volunteer, 'approve')}
-                        >
-                          Approve
-                        </button>
-                      ) : null}
+                    {/* Side by side, the one that goes ahead on the right, as on a Mac. */}
+                    <div className="row-buttons">
                       {volunteer.status === 'PENDING' ? (
                         <button
                           type="button"
@@ -226,6 +224,16 @@ export function Volunteers() {
                           onClick={() => setDeciding({ volunteer, decision: 'suspend' })}
                         >
                           Suspend
+                        </button>
+                      ) : null}
+                      {volunteer.status !== 'APPROVED' ? (
+                        <button
+                          type="button"
+                          className="button--primary"
+                          disabled={busy || volunteer.deactivated}
+                          onClick={() => void decide(volunteer, 'approve')}
+                        >
+                          Approve
                         </button>
                       ) : null}
                     </div>

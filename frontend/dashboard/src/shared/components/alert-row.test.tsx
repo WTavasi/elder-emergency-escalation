@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { AlertSummary } from '../api/types';
-import { AlertRow } from './parts';
+import { AlertRow, moveBetweenRows } from './parts';
 
 const alert: AlertSummary = {
   eventId: 'event-1',
@@ -47,6 +47,36 @@ function renderRow(row: AlertSummary) {
 }
 
 describe('a row in the emergency list', () => {
+  it('moves to the next and previous rows with the arrow keys, ready for Return', async () => {
+    render(
+      <MemoryRouter>
+        <table>
+          <tbody onKeyDown={moveBetweenRows}>
+            <AlertRow alert={alert} live />
+            <AlertRow
+              alert={{
+                ...alert,
+                eventId: 'event-2',
+                elder: { ...alert.elder, name: 'Peter Kamau' },
+              }}
+              live
+            />
+          </tbody>
+        </table>
+      </MemoryRouter>,
+    );
+    const grace = screen.getByRole('link', { name: 'Grace Wanjiru' });
+    const peter = screen.getByRole('link', { name: 'Peter Kamau' });
+
+    grace.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(peter).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(peter).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(grace).toHaveFocus();
+  });
+
   it('marks an emergency nobody has answered with a dot, said in words too', () => {
     renderRow(alert);
     expect(screen.getByText('Nobody has answered.')).toBeInTheDocument();

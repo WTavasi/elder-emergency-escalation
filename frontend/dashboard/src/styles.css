@@ -545,6 +545,7 @@ td {
 }
 
 tbody tr[aria-selected='true'] td,
+tbody tr:has(.row-link__name:focus-visible) td,
 tbody tr:hover td {
   background: color-mix(in srgb, var(--surface-sunk) 60%, transparent);
 }
@@ -586,6 +587,17 @@ tbody tr:last-child td {
 }
 .row-link__name:hover {
   text-decoration: none;
+}
+/* Where the name is a button, it still reads as the plain name. */
+button.row-link__name,
+button.row-link__name:hover:not(:disabled) {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: var(--font-weight-strong);
+  text-align: left;
 }
 td.chevron {
   width: var(--space-24);
@@ -761,28 +773,32 @@ textarea {
   gap: var(--space-12);
 }
 
+/* A figure as Health and Fitness show one: a short grey label over a large bold number,
+   and anything more in small type beneath. */
 .metric {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 2px;
 }
 
 .metric__value {
   font-size: var(--font-size-large-title);
-  font-weight: 500;
+  font-weight: var(--font-weight-heading);
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .metric__label {
   color: var(--text-soft);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-subheadline);
+  font-weight: var(--font-weight-strong);
 }
 
 .metric__note {
   margin-top: var(--space-4);
-  color: var(--text-faint);
-  font-size: var(--font-size-subheadline);
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
 }
 
 /* How a figure moved: green the right way, the warning red the wrong way, ink when
@@ -1053,22 +1069,19 @@ textarea {
   padding: 0;
 }
 
-/* The live connection: a dot and a word, in neutral colours unless it has failed. */
+/* How fresh the board is, in small grey words, and a refresh button beside them. */
+.updated {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
 .connection {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-footnote);
   color: var(--text-soft);
-}
-.connection__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-faint);
-}
-.connection--live .connection__dot {
-  background: var(--pill-resolved-fg);
+  white-space: nowrap;
 }
 .connection--offline {
   color: var(--pill-notified-fg);
@@ -1206,26 +1219,30 @@ textarea {
 }
 
 /* Nothing to show: an icon, a title and a line, centred in the space. */
+/* Nothing to show, as Apple says it: a large grey symbol, a bold line, and one quieter
+   sentence beneath, centred in the space the list would fill. */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
   padding: var(--space-48) var(--space-24);
   text-align: center;
 }
 .empty__icon {
+  margin-bottom: var(--space-8);
   color: var(--text-faint);
 }
 .empty__title {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-heading);
   font-size: var(--font-size-title2);
 }
 .empty__body {
   margin: 0;
   max-width: 44ch;
   color: var(--text-soft);
+  font-size: var(--font-size-callout);
 }
 
 /* Placeholder rows. Static on purpose: nothing on the console moves unless it means
@@ -1525,6 +1542,14 @@ textarea {
 .button--quiet:hover:not(:disabled) {
   background: var(--surface-sunk);
   color: var(--text);
+}
+
+/* Buttons at the end of a row, side by side and kept on one line. */
+.row-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  white-space: nowrap;
 }
 
 /* A checkbox column: wide enough to hit, no wider. */

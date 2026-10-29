@@ -1,11 +1,12 @@
 import { useId } from 'react';
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { OPEN_STATES } from '../api/types';
 import type { AlertSummary, AlertTrigger, EventState, Severity } from '../api/types';
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
-import { formatClock, formatDuration } from '../utils/format';
+import { useNow } from '../hooks/useNow';
+import { formatAgo, formatClock, formatDuration, formatExact } from '../utils/format';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -87,24 +88,48 @@ export function TriggerTag({ trigger }: { trigger?: AlertTrigger }) {
 }
 
 /**
- * Whether the live connection is up, as a dot and a word. It used to borrow the red
- * critical style when the socket dropped, which made a network blip look like an
- * emergency; red is kept for emergencies alone.
+ * How fresh the board is, as Mail says it at the foot of a mailbox: "Updated just now",
+ * and a small button to fetch again. A dropped connection says so in words, in amber, never
+ * in the red kept for emergencies.
  */
-export function ConnectionStatus({ state }: { state: ConnectionState }) {
-  if (state === 'offline') {
-    return (
-      <span className="connection connection--offline">
-        <Icon name="offline" size={16} />
-        Not receiving updates
-      </span>
-    );
-  }
+export function UpdatedStatus({
+  state,
+  updatedAt,
+  onRefresh,
+}: {
+  state: ConnectionState;
+  updatedAt: number | null;
+  onRefresh: () => void;
+}) {
+  const now = useNow();
   return (
-    <span className={`connection connection--${state}`}>
-      <span className="connection__dot" aria-hidden="true" />
-      {state === 'live' ? 'Live' : 'Connecting'}
+    <span className="updated">
+      {state === 'offline' ? (
+        <span className="connection connection--offline">
+          <Icon name="offline" size={16} />
+          Not receiving updates
+        </span>
+      ) : (
+        <span className="connection" aria-live="polite">
+          {state === 'connecting' || updatedAt === null
+            ? 'Connecting'
+            : `Updated ${formatAgo(updatedAt, now)}`}
+        </span>
+      )}
+      <button type="button" className="icon-button button--quiet" onClick={onRefresh}>
+        <Icon name="refresh" size={18} label="Refresh" />
+      </button>
     </span>
+  );
+}
+
+/** When something was raised, as long ago as it was, with the exact time on hover. */
+export function Ago({ iso }: { iso: string }) {
+  const now = useNow();
+  return (
+    <time dateTime={iso} title={formatExact(iso)}>
+      {formatAgo(Date.parse(iso), now)}
+    </time>
   );
 }
 
@@ -161,7 +186,7 @@ export function Empty({
     <div className="empty">
       {icon ? (
         <span className="empty__icon">
-          <Icon name={icon} size={32} />
+          <Icon name={icon} size={44} />
         </span>
       ) : null}
       {title ? <p className="empty__title">{title}</p> : null}
@@ -197,6 +222,24 @@ export function Skeleton({ rows = 4 }: { rows?: number }) {
  */
 export function onControl(clickEvent: MouseEvent): boolean {
   return (clickEvent.target as HTMLElement).closest('a, button, input, label, [tabindex]') !== null;
+}
+
+/**
+ * Up and down arrows move between the rows of a list, as they do in Mail and Finder, and
+ * Return then opens the row reached, because what they move to is the row's own link or
+ * button. Goes on the list's tbody. A menu open in a row keeps its arrows for itself.
+ */
+export function moveBetweenRows(keyEvent: KeyboardEvent<HTMLElement>) {
+  if (keyEvent.key !== 'ArrowDown' && keyEvent.key !== 'ArrowUp') return;
+  if (keyEvent.altKey || keyEvent.metaKey || keyEvent.ctrlKey || keyEvent.shiftKey) return;
+  const target = keyEvent.target as HTMLElement;
+  if (target.closest('[role="menu"]')) return;
+  const row = target.closest('tr');
+  const next = keyEvent.key === 'ArrowDown' ? row?.nextElementSibling : row?.previousElementSibling;
+  const name = next?.querySelector<HTMLElement>('.row-link__name');
+  if (!name) return;
+  keyEvent.preventDefault();
+  name.focus();
 }
 
 /**
@@ -275,7 +318,7 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
         )}
       </td>
       <td className="figures num" data-label="Raised">
-        {formatClock(alert.triggeredAt)}
+        {live ? <Ago iso={alert.triggeredAt} /> : formatClock(alert.triggeredAt)}
       </td>
       <td className="chevron" aria-hidden="true">
         <Icon name="chevronRight" size={18} />
