@@ -69,9 +69,3 @@ export function localTimezone(): string {
 export function humanise(value: string): string {
   return value.replace(/_/g, ' ').toLowerCase();
 }
-
-/** Seconds as a signed offset from the trigger, for the timeline gutter. */
-export function formatOffset(seconds: number): string {
-  if (seconds <= 0) return '0s';
-  return `+${formatDuration(seconds)}`;
-}

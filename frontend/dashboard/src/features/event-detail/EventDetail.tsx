@@ -4,7 +4,7 @@ import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
-import type { AlertDetail, ChainMember, Journey } from '../../shared/api/types';
+import type { AlertDetail, AuditEntry, ChainMember, Journey } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
@@ -21,10 +21,10 @@ import {
   distance,
   formatClock,
   formatDuration,
-  formatOffset,
   humanise,
   timeAway,
 } from '../../shared/utils/format';
+import { afterTheAlert, timelineSentence } from '../../shared/utils/timeline';
 
 /**
  * Where one person on the chain stands. Worked out from the tier the emergency has
@@ -86,7 +86,7 @@ function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () 
               : 'Nobody took it on'}
         </p>
       </div>
-      {open ? (
+      {open && alert.deadlineAt ? (
         <div className="banner__timer">
           <Icon name="timer" />
           <span>
@@ -133,6 +133,7 @@ export function EventDetail() {
   if (loading || !alert) return <Skeleton rows={5} />;
 
   const factors = alert.severityFactors?.factors ?? [];
+  const timeline = firstThingsFirst(alert.timeline);
 
   return (
     <>
@@ -188,35 +189,34 @@ export function EventDetail() {
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
           <h2 id="timeline-heading">What happened</h2>
-          <p className="muted micro">
-            Times are offsets from the moment the alert was raised. An entry with no person against
-            it was the system acting on its own.
-          </p>
-          <ol className="timeline">
-            {alert.timeline.map((entry) => (
-              <li key={entry.id}>
-                <span className="timeline__at">{formatOffset(entry.secondsFromTrigger)}</span>
-                <span>
-                  <strong>{humanise(entry.action)}</strong>
-                  {entry.previousState && entry.newState ? (
-                    <span className="muted">
-                      {' '}
-                      {humanise(entry.previousState)} to {humanise(entry.newState)}
+          {/*
+            Numbered on a line from the first thing that happened to the latest, in the
+            app's sentences, with the latest filled in: the same drawing as the chain beside
+            it, and as the app's own page for an emergency.
+          */}
+          <ol className="steps steps--timeline">
+            {timeline.map((entry, index) => {
+              const latest = index === timeline.length - 1;
+              return (
+                <li key={entry.id} className={`step${latest ? ' step--latest' : ''}`}>
+                  <span className="step__marker" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span>
+                    <span className="step__name">
+                      {timelineSentence(entry, {
+                        chain: alert.chain,
+                        deliveries: alert.deliveries,
+                      })}
                     </span>
-                  ) : null}
-                  <div className="timeline__actor">
-                    {entry.actor ? `${entry.actor.name}, ${humanise(entry.actor.role)}` : 'system'}
-                    {byText(entry.detail)
-                      ? entry.action === 'EVENT_CREATED'
-                        ? ', by texting HELP'
-                        : ', by text reply'
-                      : null}
-                    {' at '}
-                    {formatClock(entry.occurredAt)}
-                  </div>
-                </span>
-              </li>
-            ))}
+                    <span className="step__status">
+                      {afterTheAlert(entry.secondsFromTrigger)},{' '}
+                      <span className="figures">{formatClock(entry.occurredAt)}</span>
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </section>
 
@@ -256,16 +256,25 @@ export function EventDetail() {
         </div>
       </div>
 
-      <section className="card stack" aria-labelledby="delivery-heading">
-        <h2 id="delivery-heading">Every delivery attempt</h2>
-        <p className="muted micro">
-          A failed push followed by an SMS to the same person is the fallback working, not two
-          separate faults.
-        </p>
-        {alert.deliveries.length === 0 ? (
-          <p className="muted">Nothing has been dispatched for this emergency.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
+      {/*
+        Folded away, as detail somebody opens when they want it: the sentences above already
+        say who was sent what, and this is the record of every message underneath them.
+      */}
+      {alert.deliveries.length === 0 ? (
+        <p className="muted">Nothing has been dispatched for this emergency.</p>
+      ) : (
+        <details className="card disclosure">
+          <summary className="disclosure__summary">
+            <h2 id="delivery-heading">
+              Show {alert.deliveries.length}{' '}
+              {alert.deliveries.length === 1 ? 'delivery attempt' : 'delivery attempts'}
+            </h2>
+          </summary>
+          <div className="disclosure__body">
+            <p className="muted micro">
+              A failed push followed by a text to the same person is the fallback working, not two
+              separate faults.
+            </p>
             <table>
               <thead>
                 <tr>
@@ -293,8 +302,8 @@ export function EventDetail() {
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </details>
+      )}
 
       {explaining ? (
         <Modal
@@ -457,11 +466,11 @@ function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
 }
 
 /**
- * Whether this step was taken by text rather than in the app: replying to an alert SMS,
- * or, for the alert itself, the elder texting HELP from a phone with no data.
+ * The record in order, with the alert itself always first. Scoring is written in the same
+ * instant as the alert, and an equal timestamp would otherwise let "Scored standard, 30"
+ * come before "Grace asked for help".
  */
-function byText(detail: unknown): boolean {
-  return (
-    typeof detail === 'object' && detail !== null && (detail as { via?: unknown }).via === 'sms'
-  );
+function firstThingsFirst(entries: AuditEntry[]): AuditEntry[] {
+  const created = entries.find((entry) => entry.action === 'EVENT_CREATED');
+  return created ? [created, ...entries.filter((entry) => entry !== created)] : entries;
 }

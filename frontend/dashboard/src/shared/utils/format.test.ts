@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distance, formatDuration, formatOffset, humanise, timeAway } from './format';
+import { distance, formatDuration, humanise, timeAway } from './format';
 
 describe('formatDuration', () => {
   it('stays in seconds below a minute, which is where most acknowledgements land', () => {
@@ -19,13 +19,6 @@ describe('formatDuration', () => {
 
   it('never shows a negative duration, because an overdue timer is handled separately', () => {
     expect(formatDuration(-30)).toBe('0s');
-  });
-});
-
-describe('formatOffset', () => {
-  it('signs an offset so the timeline reads as time since the alert', () => {
-    expect(formatOffset(0)).toBe('0s');
-    expect(formatOffset(90)).toBe('+1m 30s');
   });
 });
 

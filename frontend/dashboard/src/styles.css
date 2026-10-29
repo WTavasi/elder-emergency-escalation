@@ -864,37 +864,6 @@ select {
   opacity: 0.8;
 }
 
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.timeline li {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: var(--space-12);
-  padding: var(--space-12) 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.timeline li:last-child {
-  border-bottom: none;
-}
-
-.timeline__at {
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-  font-size: var(--font-size-callout);
-}
-
-.timeline__actor {
-  color: var(--text-soft);
-  font-size: var(--font-size-callout);
-}
-
 .signin {
   position: relative;
   overflow: hidden;
@@ -1342,6 +1311,21 @@ select {
 .step--later .step__name {
   font-weight: 400;
   color: var(--text-soft);
+}
+
+/* What happened, as the same numbered line: each step a sentence, the latest filled in. */
+.steps--timeline .step__name {
+  font-weight: var(--font-weight-body);
+}
+.step--latest .step__marker {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+}
+
+/* The heading of a section that opens, set where the chevron is. */
+.disclosure__summary h2 {
+  flex: 1;
 }
 
 /* A phone number: the country, then the number, on one line. */
