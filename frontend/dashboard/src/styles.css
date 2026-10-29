@@ -872,44 +872,93 @@ textarea {
 }
 
 .signin {
-  position: relative;
-  overflow: hidden;
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: var(--space-24);
+  grid-template-columns: minmax(320px, 5fr) 7fr;
 }
 
 /*
-  Rings spreading from the top-left corner, the way a call for help goes out to the
-  people around somebody: the same background the app's sign-in carries. A circle
-  centred on the corner, clipped round, filled with alternating bands. Decoration only,
-  in the decorative token pair, and nothing that has to be read sits on it.
+  MzaziCare's red with the care rings spreading from the corner, as the app's sign-in
+  draws them: faint white rings, a fainter wash between every other pair. Its right edge
+  is a long, shallow curve where it meets the form.
 */
-.signin::before {
-  --reach: 62vmax;
-  --step: calc(var(--reach) / 7);
+.signin__brand {
+  --ring-step: 72px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--space-48) var(--space-64) var(--space-48) var(--space-48);
+  background: var(--emergency);
+  color: var(--on-emergency);
+  clip-path: ellipse(100% 140% at 0% 50%);
+}
+.signin__brand::before {
   content: '';
   position: absolute;
-  top: calc(var(--reach) * -1);
-  left: calc(var(--reach) * -1);
-  width: calc(var(--reach) * 2);
-  height: calc(var(--reach) * 2);
-  border-radius: 50%;
-  border: 1.5px solid var(--decor-ring);
+  inset: 0;
   background: repeating-radial-gradient(
-    circle at center,
-    var(--decor-wash) 0 calc(var(--step) - 1.5px),
-    var(--decor-ring) calc(var(--step) - 1.5px) var(--step),
-    var(--bg) var(--step) calc(var(--step) * 2 - 1.5px),
-    var(--decor-ring) calc(var(--step) * 2 - 1.5px) calc(var(--step) * 2)
+    circle at 0% 0%,
+    color-mix(in srgb, var(--on-emergency) 6%, transparent) 0 calc(var(--ring-step) - 1.5px),
+    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) - 1.5px)
+      var(--ring-step),
+    transparent var(--ring-step) calc(var(--ring-step) * 2 - 1.5px),
+    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) * 2 - 1.5px)
+      calc(var(--ring-step) * 2)
   );
   pointer-events: none;
 }
-
-.signin__card {
+.signin__brand p {
   position: relative;
-  width: min(400px, 100%);
+  margin: 0;
+}
+.signin__name {
+  font-size: calc(var(--font-size-large-title) * 1.4);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.signin__tagline {
+  font-size: var(--font-size-title2);
+  opacity: 0.9;
+}
+.signin__brand .signin__console {
+  margin-top: var(--space-24);
+  font-size: var(--font-size-subheadline);
+  opacity: 0.8;
+}
+
+.signin__side {
+  display: grid;
+  place-items: center;
+  padding: var(--space-48) var(--space-24);
+}
+.signin__form {
+  width: min(380px, 100%);
+}
+
+/* A phone: the red across the top, its lower edge curved, and the form beneath it. */
+@media (max-width: 760px) {
+  .signin {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .signin__brand {
+    min-height: 220px;
+    padding: var(--space-48) var(--space-24) var(--space-48);
+    clip-path: ellipse(150% 100% at 50% 0%);
+  }
+  .signin__name {
+    font-size: var(--font-size-large-title);
+  }
+  .signin__brand .signin__console {
+    margin-top: var(--space-8);
+  }
+  .signin__side {
+    align-items: start;
+    padding: var(--space-16) var(--space-24) var(--space-32);
+  }
 }
 
 /* The full width of the card. Two classes, so it outranks .segmented, declared later. */
@@ -1152,17 +1201,6 @@ textarea {
   background: var(--surface-sunk);
 }
 
-.wordmark {
-  margin: 0 0 var(--space-16);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-title2);
-  font-weight: var(--font-weight-heading);
-  letter-spacing: -0.01em;
-}
-.wordmark__product {
-  color: var(--text-faint);
-  font-weight: 400;
-}
 .signin__submit {
   width: 100%;
 }
