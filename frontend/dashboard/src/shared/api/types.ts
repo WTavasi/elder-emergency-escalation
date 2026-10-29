@@ -257,7 +257,10 @@ export interface UserRow {
   createdAt: string;
   deactivatedAt: string | null;
   coverage: Coverage | null;
+  /** The elders' chains this account is in. */
   chainPlaces: number;
+  /** For an elder, how many people are in their own chain. */
+  chainSize: number;
 }
 
 export interface Coverage {

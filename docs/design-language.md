@@ -7,7 +7,13 @@ documentation. This file is the part that code has to obey.
 
 Red is a state, not a brand colour. `red-700` and `red-600` appear only on the panic
 control, on an event in `TRIGGERED` or `ESCALATED` state, and on a destructive
-confirmation. Never on navigation, headers, links, empty states, charts or brand bars.
+confirmation. Never on navigation, headers, empty states, charts or brand bars.
+
+Two exceptions are allowed and both are under review. The screens before sign-in carry
+MzaziCare's red, because no emergency can be on screen yet. And the filled buttons and
+text links of the app and the console take the red, as an Apple app's controls take its
+tint, which puts red on actions such as signing in and saving. No new use of either may be
+added while the review is open.
 
 Yellow means "you can still act on this". The caution yellow appears on the elder's
 screen only, and only at two moments: the ten seconds in which a pressed alert can still
@@ -27,8 +33,9 @@ to be seen, and the only ink on it is `onCaution`, the darkest one, at 12.7:1. T
 countdown ring's empty track is `cautionTrack`. All three are in the contrast gate.
 
 One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
-slightly deeper one, draws the rings behind the screens before sign-in, on the app and
-the console alike. They carry no meaning and are in no contrast pair, which is only
+slightly deeper one, draws the rings behind the app's screens before sign-in. The
+console's sign-in no longer uses it: since 29 October 2026 its rings are faint white over
+MzaziCare's red, as the app's way-in screens draw them. They carry no meaning and are in no contrast pair, which is only
 acceptable because nothing that has to be read is ever placed on them: the forms sit on
 cards. They are kept out of every screen after sign-in, where the red has to mean an
 emergency and nothing else.
@@ -76,8 +83,8 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
 - **Red means a person is needed.** An emergency nobody has answered gets a red dot at
   the start of its row in the list, as an unread message does, and the waiting count in
   red under the title. Nothing decorative is red after sign-in.
-- **Figures with tabular digits** (`.figures` in the app, the monospaced face in the
-  console): ages, ranks in a chain, phone numbers, the countdown. They line up down a
+- **Figures with tabular digits** (`.figures`, in the app and the console): ages, ranks
+  in a chain, phone numbers, the countdown. They line up down a
   column and do not jitter as they change.
 - **Apple's margins and steps.** A page's side margin is 20 points, 16 on the narrowest
   phones (`MzaziLayout.margin`), the same on every screen. Text takes Apple's named steps
@@ -140,30 +147,56 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
 
 ## Layout, in the console
 
-Dense, because it is read at a desk by somebody looking across many records at once.
+A Mac app, after Mail and System Settings, and dense, because it is read at a desk by
+somebody looking across many records at once.
 
-- **A frame that stays put.** The sidebar narrows to icons on a desktop and becomes a
-  drawer on a phone; the header holds the breadcrumb and the account menu, and nothing
-  else. No bell and no global search: the open count is already on the first section,
-  and History and Users each search their own records.
-- **Tables are tools.** A toolbar of filters and an export on top, a pager fixed to the
-  bottom saying how much of the whole is shown, figures right-aligned in the monospaced
-  face, states and bands centred. Users has a selection for bulk actions and a row menu;
-  History has neither, because the console is read-only over emergencies.
+- **A window frame.** A grey sidebar holds the sections, each with its count, and the
+  account at its foot, which opens a small menu upwards. The current section is a rounded
+  grey selection, never red. A button at its top hides it, and the same button in the
+  page's bar brings it back; on a phone it is a drawer behind that button. No bell and no
+  global search: the open count is already on the first section, and History and Users
+  each search their own records. The browser tab is named after the page, with the number
+  nobody has answered in front, so a background tab still says somebody is needed.
+- **Each page has a bar and a large title.** The bar along the top holds the page's
+  actions and, on an emergency, the way back; it turns translucent, with a hairline, once
+  something scrolls under it, and the page's name appears in its middle once the large
+  title has gone.
+- **Records are lists.** A whole row opens what it shows, with a chevron at its end; the
+  name is the link or button, so the keyboard reaches it, and the up and down arrows move
+  between rows. An emergency nobody has answered has a red dot before the name, as an
+  unread message has in Mail. Column headings are small and in title case and stay in
+  view as the list scrolls. On a phone a list becomes stacked rows, each value with its
+  heading beside it.
+- **Filters apply as they are chosen.** A search, pop-up menus and a range of dates, with
+  no Apply button; Command-F or Ctrl+F puts the cursor in the search. A pager fixed to the
+  bottom says how much of the whole is shown. Users can be chosen several at a time only
+  after pressing Select, as in Photos; History cannot, because the console is read-only
+  over emergencies.
+- **Questions are sheets.** A sheet drops from the top of the window with no close
+  button; a form's labels are right-aligned in a column to the left of its fields; the
+  buttons are at the bottom right, the one that goes ahead last and in MzaziCare red, the
+  grey Cancel before it. A confirmation is a narrower alert. A choice between a few things
+  is a segmented control: a grey track with the chosen segment raised on it in white.
+- **What happened is told in sentences.** An emergency's record reads as the app's does,
+  "Sent to Aisha Wanjiru and Brian Wanjiru", as numbered steps with the latest filled in.
+  The delivery attempts behind it are hidden under a disclosure until asked for.
+- **How fresh the board is, in small words.** "Updated just now" and a refresh button
+  beside it, as Mail says it; times on the live board are "4 min ago", with the exact time
+  on hover.
 - **Controls are 36 points where a mouse is used** and the full touch target where a
   finger is, chosen by the browser's own pointer media query.
-- **Primary actions are ink**, not a brand colour. Red stays the emergency's alone; a
-  worsening trend on the reporting screen is the one other place the warning red appears,
-  and always with an arrow and a signed figure beside it.
+- **Filled buttons and links are MzaziCare red**, under review as the app's are (see the
+  governing rule); other buttons are ink on the sunk grey with no outline. A worsening
+  trend on the reporting screen is the one other place the warning red appears, and
+  always with an arrow and a signed figure beside it.
 - **The parts the browser draws carry the design too.** Text selection takes the
   `selection` token, gated against body text in both themes; the caret is the focus blue;
   scrollbars are the control grey on the sunk surface, at full width so they are easy to
-  grab; links are underlined a little below the baseline. The app's fields follow the same
-  rule: Material would colour the caret and the selection with the emergency red.
+  grab. The app's fields follow the same rule: Material would colour the caret and the
+  selection with the emergency red.
 - **The status banner leads with the state pill**, and its outline turns red only while
   nobody has taken the emergency on. It used to carry a thick coloured stripe down its
-  left edge in every state. The sidebar's current page is marked by a sunk background,
-  weight and a thin ink line beside it: a navigation affordance, not a coloured stripe.
+  left edge in every state.
 
 Tracking and line weights are tokens like everything else: `type.tracking` tightens
 large type and opens small capitals, `stroke` holds the hairline, the heavier rule (the
@@ -180,16 +213,18 @@ critical, a triangle for elevated, a dot for standard, each beside its word. Red
 uses the `timer` token, which is gated as text on a surface in both themes; the
 `emergency` token is a fill.
 
-Red is never spent on anything that is not an emergency. The console's sign-in button,
-its reporting window picker and its lost-connection label all used to be red and no
-longer are.
+Red is never spent on anything that is not an emergency, save the two exceptions under
+review in the governing rule. The console's reporting window picker and its
+lost-connection label used to be red and no longer are; its sign-in button was ink from
+6 October and took MzaziCare red again on 29 October 2026 with the console's other filled
+buttons.
 
 ## Icons
 
 An icon beside a label, never an icon instead of one, and only where it earns its place.
 An icon earns it when it does one of three things:
 
-1. **Marks a place you go many times a day.** The console's four sections and the app's
+1. **Marks a place you go many times a day.** The console's sections and the app's
    Open and History views each carry one, beside the word.
 2. **Tells apart two actions that read alike.** "Call Grace" and "Call an emergency
    responder" both begin with "Call" and do different things. A phone and the emergency
@@ -205,8 +240,9 @@ The console draws the same Material Icons the app does, copied in as SVG paths (
 
 An icon that does none of these is decoration, and the design anti-patterns this project
 avoids include icons scattered for texture. Icon-only controls are reserved for secondary
-actions with a universally understood symbol, which in practice is sign out alone, and
-every one carries an accessible name.
+actions with a universally understood symbol, which in practice are the console's
+refresh, the button that hides and shows its sidebar, and the "…" that opens a row's menu,
+as on a Mac, and every one carries an accessible name.
 
 Glyphs are shared between an action and the state it produces, so they teach each other:
 "I am on my way" and the "Being handled" pill both show a running figure, "Close this
@@ -241,17 +277,32 @@ and holds before sign-in too, so an elder's phone stays large on the sign-in scr
 screen takes its sizes from the theme (`MzaziSizes`, the text theme) and never asks whose
 account it is, so the switch reaches every screen.
 
-In the console, Source Sans 3, with Atkinson Hyperlegible Mono for figures, both SIL Open
-Font Licence and self-hosted from `frontend/dashboard/public/fonts/`. Nothing is fetched
-from a font CDN, which matters for more than principle: the console reads an elder's name
-and address, so once signed in it makes no third-party request at all. The one exception is
+In the console, the computer's own face too (`system-ui`, the `type.family.system` token):
+SF Pro on a Mac, Segoe UI on Windows. Figures take the same face with tabular digits
+(`.figures`). Sizes are Apple's steps for a Mac (`type.console`):
+
+| Step | Size |
+| --- | --- |
+| Large title (a page's title) | 28, bold |
+| Title 1 | 22, bold |
+| Title 2 (a section's heading) | 17, bold |
+| Headline (names, buttons) | 15, semibold |
+| Body | 15, regular |
+| Callout | 14, regular |
+| Subheadline (secondary lines) | 13, regular |
+| Footnote (column headings) | 12, semibold, title case |
+
+Nothing is bundled and nothing is fetched from a font CDN, which matters for more than
+principle: the console reads an elder's name and address, so once signed in it makes no
+third-party request at all. The one exception is
 before sign-in, when Google sign-in is set up: the sign-in page fetches Google's button,
 and the console reloads after signing in so the page that shows anybody's details never
 carries it (`docs/running.md`, Google sign-in on the console).
 
 The app bundled its own faces from 30 September to 26 October 2026: Inclusive Sans for the
-elder, Source Sans 3 for everybody else and Atkinson Hyperlegible Mono for figures. Why
-that changed, and what was given up, is in `docs/decisions.md`.
+elder, Source Sans 3 for everybody else and Atkinson Hyperlegible Mono for figures. The
+console self-hosted Source Sans 3 and Atkinson Hyperlegible Mono until 29 October 2026.
+Why both changed, and what was given up, is in `docs/decisions.md`.
 
 Until 30 September 2026 this section described a set of fonts that no build ever loaded.
 The tokens named IBM Plex Sans and Archivo, nothing was bundled, and both surfaces fell
@@ -314,7 +365,7 @@ the action and its object; reduced-motion honoured.
 - Firebase, Africa's Talking, LiveKit and the OpenStreetMap services are named as
   processors in the privacy notice.
 - A named data contact with a real email and postal address appears in the privacy notice
-  and the dashboard footer.
+  and the console's Privacy and data panel, in the account menu.
 
 ## Claims the product must not make
 

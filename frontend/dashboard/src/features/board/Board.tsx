@@ -1,31 +1,23 @@
 import { useOpenAlerts } from '../../shared/state/OpenAlerts';
-import { Icon } from '../../shared/components/Icon';
+import { PageHeader } from '../../shared/components/PageHeader';
 import {
   AlertRow,
-  ConnectionStatus,
+  UpdatedStatus,
+  moveBetweenRows,
   Empty,
   ErrorNotice,
   Skeleton,
 } from '../../shared/components/parts';
-import { localTimezone } from '../../shared/utils/format';
 
 export function Board() {
-  const { alerts, error, loading, connection, reload } = useOpenAlerts();
+  const { alerts, error, loading, connection, updatedAt, reload } = useOpenAlerts();
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Open emergencies</h1>
-        </div>
-        <div className="row">
-          <ConnectionStatus state={connection} />
-          <button type="button" className="button--with-icon" onClick={reload}>
-            <Icon name="refresh" size={18} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Open emergencies"
+        actions={<UpdatedStatus state={connection} updatedAt={updatedAt} onRefresh={reload} />}
+      />
 
       {connection === 'offline' ? (
         <div className="notice" role="status">
@@ -36,7 +28,7 @@ export function Board() {
 
       {error ? <ErrorNotice message={error} onRetry={reload} /> : null}
 
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+      <div className="card grid">
         {loading ? (
           <Skeleton />
         ) : !alerts || alerts.length === 0 ? (
@@ -44,45 +36,40 @@ export function Board() {
             No emergency is open right now. This is the state the system should usually be in.
           </Empty>
         ) : (
-          <table>
-            <caption
-              className="micro"
-              style={{ captionSide: 'top', padding: 'var(--space-12)', textAlign: 'left' }}
-            >
-              {alerts.length} open, ordered by whoever has been waiting longest without an answer.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">
-                  <span className="visually-hidden">Waiting for an answer</span>
-                </th>
-                <th scope="col">Elder</th>
-                <th scope="col" className="center">
-                  State
-                </th>
-                <th scope="col" className="center">
-                  Severity
-                </th>
-                <th scope="col" className="num">
-                  Tier
-                </th>
-                <th scope="col">Answered by</th>
-                <th scope="col" className="num">
-                  Time left
-                </th>
-                {/* The time zone on the column it applies to, rather than in a line of text
-                    above the table. */}
-                <th scope="col" className="num" title={`Times in ${localTimezone()}`}>
-                  Raised <span className="th__note">{localTimezone()}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {alerts.map((alert) => (
-                <AlertRow key={alert.eventId} alert={alert} live />
-              ))}
-            </tbody>
-          </table>
+          <div className="grid__body">
+            <table className="list">
+              <caption className="list__caption">
+                {alerts.length} open, ordered by whoever has been waiting longest without an answer.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Elder</th>
+                  <th scope="col">State</th>
+                  <th scope="col">Severity</th>
+                  <th scope="col" className="num">
+                    Tier
+                  </th>
+                  <th scope="col">Answered by</th>
+                  <th scope="col" className="num">
+                    Time left
+                  </th>
+                  {/* How long ago, which is what matters on a live board; each time gives the
+                    exact clock time, with its zone, on hover. */}
+                  <th scope="col" className="num">
+                    Raised
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">Open</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody onKeyDown={moveBetweenRows}>
+                {alerts.map((alert) => (
+                  <AlertRow key={alert.eventId} alert={alert} live />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

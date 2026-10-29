@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../api/client';
 import type { AlertSummary, EmergencySnapshot, Severity } from '../api/types';
@@ -27,6 +27,8 @@ interface OpenAlertsValue {
   error: string | null;
   loading: boolean;
   connection: ConnectionState;
+  /** When the board last heard anything, loaded or pushed. Null before the first load. */
+  updatedAt: number | null;
   reload: () => void;
 }
 
@@ -42,8 +44,13 @@ const OpenAlertsContext = createContext<OpenAlertsValue | null>(null);
  */
 export function OpenAlertsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
-  const fetcher = useCallback(async () => order(await api.alerts({ open: true, limit: 200 })), []);
+  const fetcher = useCallback(async () => {
+    const alerts = order(await api.alerts({ open: true, limit: 200 }));
+    setUpdatedAt(Date.now());
+    return alerts;
+  }, []);
   const { data, error, loading, reload, setData } = useLoader(
     fetcher,
     'Could not load open emergencies.',
@@ -58,6 +65,7 @@ export function OpenAlertsProvider({ children }: { children: ReactNode }) {
   const apply = useCallback(
     (snapshot: EmergencySnapshot) => {
       let refetch = false;
+      setUpdatedAt(Date.now());
 
       setData((present) => {
         if (!present) return present;
@@ -97,8 +105,8 @@ export function OpenAlertsProvider({ children }: { children: ReactNode }) {
   const connection = useRealtime(session?.accessToken ?? null, apply);
 
   const value = useMemo(
-    () => ({ alerts: data, error, loading, connection, reload }),
-    [data, error, loading, connection, reload],
+    () => ({ alerts: data, error, loading, connection, updatedAt, reload }),
+    [data, error, loading, connection, updatedAt, reload],
   );
 
   return <OpenAlertsContext.Provider value={value}>{children}</OpenAlertsContext.Provider>;
@@ -108,4 +116,9 @@ export function useOpenAlerts(): OpenAlertsValue {
   const value = useContext(OpenAlertsContext);
   if (!value) throw new Error('useOpenAlerts must be used inside OpenAlertsProvider');
   return value;
+}
+
+/** The board when there is one: null for a page rendered on its own, as in a test. */
+export function useOpenAlertsIfAny(): OpenAlertsValue | null {
+  return useContext(OpenAlertsContext);
 }

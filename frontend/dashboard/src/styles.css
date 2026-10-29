@@ -7,28 +7,11 @@
 @import '@mzazicare/tokens/dist/tokens.css';
 
 /*
- * Self-hosted from public/fonts, never from a font CDN. The console is an internal tool
- * that reads an elder's name and address, so it makes no third-party request at all;
- * the content security policy in the API denies one anyway.
- *
- * Both faces are one variable file covering the whole weight range, which is why each
- * is declared once with a range rather than once per weight.
+ * The computer's own face, as Apple's and Microsoft's own apps use: SF Pro on a Mac,
+ * Segoe UI on Windows. Nothing is bundled or fetched, so the console still makes no
+ * third-party request at all. Figures are the same face with fixed-width digits
+ * (font-variant-numeric), so columns line up without a second, monospaced face.
  */
-@font-face {
-  font-family: 'Source Sans 3';
-  src: url('/fonts/SourceSans3-Variable.ttf') format('truetype-variations');
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Atkinson Hyperlegible Mono';
-  src: url('/fonts/AtkinsonHyperlegibleMono-Variable.ttf') format('truetype-variations');
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
 
 *,
 *::before,
@@ -61,7 +44,7 @@ body {
   font-family: var(--font-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-body);
-  line-height: 1.5;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -69,21 +52,34 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-family: var(--font-display);
   line-height: 1.2;
 }
 
+/* A page's title: Apple's large title, bold and slightly tightened. */
 h1 {
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-large-title);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.01em;
 }
+/* A section's heading, as Apple heads a group: smaller than you might expect, and bold. */
 h2 {
-  font-size: var(--font-size-h2);
+  font-size: var(--font-size-title2);
+  font-weight: var(--font-weight-strong);
 }
 
+/*
+  Links take the console's tint, MzaziCare red in its text-safe shade, as an app's links
+  take its accent colour. Underlined only when pointed at: a link stands on its own line
+  or in a control here, never inside a sentence where colour alone would have to mark it.
+*/
 a {
-  color: var(--focus);
+  color: var(--danger);
+  text-decoration: none;
   text-underline-offset: 0.18em;
   text-decoration-thickness: from-font;
+}
+a:hover {
+  text-decoration: underline;
 }
 
 /*
@@ -119,7 +115,7 @@ html {
   padding: var(--space-8) var(--space-16);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   transition: none;
 }
 .skip-link:focus {
@@ -128,21 +124,32 @@ html {
 
 /* ------------------------------------------------------------------ layout -- */
 
+/*
+  The window, after a Mac app: a grey sidebar on the left and the page beside it.
+  Pointer devices get Apple's compact rows; touch keeps the full touch target.
+*/
 .shell {
-  --sidebar-width: 232px;
+  --sidebar-width: 240px;
+  --sidebar-row: 32px;
+  --bar-height: 52px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
 }
-.shell--collapsed {
-  --sidebar-width: 64px;
+@media (pointer: coarse) {
+  .shell {
+    --sidebar-row: var(--min-touch-target);
+  }
+}
+.shell--sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+.shell--sidebar-hidden .sidebar {
+  display: none;
 }
 
-/*
-  The sidebar stays put while the page scrolls. Without this a long page, History above
-  all, carried the navigation away with it. Its own scroll is for a window too short for
-  the sidebar itself.
-*/
+/* The sidebar stays put while the page scrolls, and scrolls itself only in a window too
+   short for it. */
 .sidebar {
   position: sticky;
   top: 0;
@@ -151,9 +158,9 @@ html {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-16) var(--space-12);
-  background: var(--surface);
+  gap: var(--space-8);
+  padding: 0 var(--space-12) var(--space-12);
+  background: var(--surface-sunk);
   border-right: 1px solid var(--line);
 }
 
@@ -161,192 +168,167 @@ html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--min-touch-target);
-  padding: 0 var(--space-4);
+  min-height: var(--bar-height);
+  padding-left: var(--space-8);
 }
 
 .sidebar__brand {
-  font-family: var(--font-display);
-  font-size: var(--font-size-h2);
+  font-size: var(--font-size-title2);
   font-weight: var(--font-weight-heading);
-  letter-spacing: -0.01em;
   color: var(--text);
   text-decoration: none;
 }
-
-.sidebar .sidebar__close {
-  display: none;
+.sidebar__brand:hover {
+  text-decoration: none;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 2px;
 }
 
+/* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
+   rounded grey highlight, as a Mac sidebar marks it, never red: red is for emergencies. */
 .nav a {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-8);
-  min-height: 40px;
-  padding: 0 var(--space-12);
-  border-radius: var(--radius-input);
-  color: var(--text-soft);
-  font-size: var(--font-size-small);
+  min-height: var(--sidebar-row);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: var(--font-size-body);
   text-decoration: none;
 }
-
 .nav a:hover {
-  background: var(--surface-sunk);
-  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  text-decoration: none;
 }
-
 .nav a[aria-current='page'] {
-  background: var(--surface-sunk);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--text);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  font-weight: var(--font-weight-strong);
 }
-
-.nav__label {
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-12);
-}
-
 .nav a .icon {
-  flex: none;
-  color: var(--text-faint);
+  color: var(--text-soft);
 }
-
 .nav a[aria-current='page'] .icon {
   color: var(--text);
 }
-
-.nav__count {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-micro);
-  color: var(--text-soft);
-}
-
-.sidebar__collapse {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  min-height: 40px;
-  padding: 0 var(--space-12);
-  border: none;
-  background: none;
-  color: var(--text-soft);
-  font-size: var(--font-size-small);
-}
-
-/* Narrowed to icons: the words go, the names stay as tooltips and for screen readers. */
-.shell--collapsed .nav__text,
-.shell--collapsed .nav__count {
-  display: none;
-}
-.shell--collapsed .nav a,
-.shell--collapsed .sidebar__collapse,
-.shell--collapsed .sidebar__top {
-  justify-content: center;
-  padding: 0;
-}
-
-.frame {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* The header stays at the top of the page as it scrolls. */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  min-height: 56px;
-  padding: 0 var(--space-24);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
-
-.topbar .topbar__menu {
-  display: none;
-}
-
-.crumbs {
+.nav__text {
   flex: 1;
-  min-width: 0;
-}
-.crumbs ol {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--font-size-small);
-}
-.crumbs li {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.crumbs li + li::before {
-  content: '/';
-  margin-right: var(--space-8);
-  color: var(--text-faint);
-}
-.crumbs a {
+.nav__count {
   color: var(--text-soft);
-  text-decoration: none;
-}
-.crumbs a:hover {
-  color: var(--text);
-  text-decoration: underline;
-}
-.crumbs [aria-current='page'] {
-  color: var(--text);
-  font-weight: 600;
+  font-size: var(--font-size-subheadline);
+  font-variant-numeric: tabular-nums;
 }
 
 .main {
-  padding: var(--space-24);
+  padding: 0 var(--space-24) var(--space-32);
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
   min-width: 0;
 }
 
-.page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
+/*
+  A page's own bar: the way back on the left, the page's actions on the right, and its
+  title in the middle once the large title has scrolled away. Translucent over the page,
+  as Apple's bars are, with a hairline only once something is underneath it.
+*/
+.pagebar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-12);
+  min-height: var(--bar-height);
+  margin: 0 calc(var(--space-24) * -1) calc(var(--space-16) * -1);
+  padding: 0 var(--space-24);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--motion-quick) ease;
+}
+.pagebar--scrolled {
+  border-bottom-color: var(--line);
+}
+.pagebar__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.pagebar__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding-right: var(--space-8);
+  margin-left: calc(var(--space-8) * -1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pagebar__title {
+  font-weight: var(--font-weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity var(--motion-quick) ease;
+}
+.pagebar--scrolled .pagebar__title {
+  opacity: 1;
+}
+.pagebar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-8);
 }
 
-.page-head p {
-  margin: var(--space-4) 0 0;
+/* The large title, under the bar, with anything that belongs beside or beneath it. */
+.page-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-16);
+}
+.page-title h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+.page-title p {
+  margin: 0;
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+}
+
+/* A heading with its own control beside it, inside a section. */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
 }
 
 .scrim {
   display: none;
 }
 
-/* A phone: the sidebar becomes a drawer behind the menu button. */
+/* A phone: the sidebar becomes a drawer behind the button in the page's bar. */
 @media (max-width: 860px) {
-  .shell,
-  .shell--collapsed {
-    --sidebar-width: 272px;
+  .shell {
+    --sidebar-width: 280px;
     grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
@@ -367,38 +349,23 @@ html {
     z-index: 15;
     background: color-mix(in srgb, var(--text) 40%, transparent);
   }
-  .sidebar .sidebar__close,
-  .topbar .topbar__menu {
-    display: inline-grid;
-  }
-  .sidebar__collapse {
-    display: none;
-  }
-  .nav a {
-    min-height: var(--min-touch-target);
-  }
-  .shell--collapsed .nav__text,
-  .shell--collapsed .nav__count {
-    display: inline;
-  }
-  .shell--collapsed .nav a,
-  .shell--collapsed .sidebar__top {
-    justify-content: space-between;
-    padding: 0 var(--space-12);
-  }
-  .topbar {
-    padding: 0 var(--space-8);
-  }
-  .topbar .account__who {
-    display: none;
-  }
   .main {
-    padding: var(--space-16);
+    padding: 0 var(--space-16) var(--space-24);
+  }
+  .pagebar {
+    margin: 0 calc(var(--space-16) * -1) calc(var(--space-16) * -1);
+    padding: 0 var(--space-16);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .pagebar__title {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar {
+  .sidebar,
+  .pagebar,
+  .pagebar__title {
     transition: none;
   }
 }
@@ -422,7 +389,7 @@ html {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-group);
   padding: var(--space-16);
 }
 
@@ -444,12 +411,11 @@ html {
 }
 
 .micro {
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 
-.mono {
-  font-family: var(--font-mono);
+.figures {
   font-variant-numeric: tabular-nums;
 }
 
@@ -500,7 +466,7 @@ html {
   padding: 2px var(--space-8);
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -559,16 +525,15 @@ html {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
 }
 
 th {
   text-align: left;
-  font-size: var(--font-size-micro);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-strong);
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--line);
 }
@@ -576,12 +541,13 @@ th {
 td {
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--line-soft);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 tbody tr[aria-selected='true'] td,
+tbody tr:has(.row-link__name:focus-visible) td,
 tbody tr:hover td {
-  background: color-mix(in srgb, var(--surface-sunk) 50%, transparent);
+  background: color-mix(in srgb, var(--surface-sunk) 60%, transparent);
 }
 
 /* Figures right-aligned so their places line up; states and bands centred. */
@@ -605,31 +571,139 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* The urgency marker. A filled cell rather than a tinted card edge, so it reads as
-   data in a column instead of decoration wrapped around the row. */
-.urgency {
-  width: 4px;
-  padding: 0;
-  background: var(--line-soft);
+/* -------------------------------------------------------------------- lists -- */
+
+/*
+  A table drawn as an Apple list: rows that highlight under the pointer and open their
+  record when pressed anywhere, with a chevron at the end to say they do. The name is the
+  link, for the keyboard and for opening it in a new tab, and reads as plain text.
+*/
+.row-link {
+  cursor: pointer;
 }
-.urgency--live {
-  background: var(--emergency);
+.row-link__name {
+  color: var(--text);
+  font-weight: var(--font-weight-strong);
+}
+.row-link__name:hover {
+  text-decoration: none;
+}
+/* Where the name is a button, it still reads as the plain name. */
+button.row-link__name,
+button.row-link__name:hover:not(:disabled) {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: var(--font-weight-strong);
+  text-align: left;
+}
+td.chevron {
+  width: var(--space-24);
+  padding-left: 0;
+  color: var(--text-faint);
 }
 
+/* An emergency nobody has answered: a red dot before the name, as an unread message is
+   marked in Mail. The slot is kept when there is no dot, so the names line up. */
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot--unanswered {
+  background: var(--emergency);
+}
+.row-indent {
+  padding-left: calc(10px + var(--space-8));
+}
+
+.list__caption {
+  caption-side: top;
+  padding: var(--space-12) var(--space-12) var(--space-4);
+  text-align: left;
+  color: var(--text-soft);
+  font-size: var(--font-size-subheadline);
+}
+
+/* Column headings stay in view under the page's bar as a long list scrolls, where the
+   list is wide enough not to need scrolling sideways. */
+@media (min-width: 1100px) {
+  .grid .grid__body {
+    overflow-x: visible;
+  }
+  .list thead th {
+    position: sticky;
+    top: var(--bar-height);
+    z-index: 1;
+    background: var(--surface);
+  }
+}
+
+/*
+  A phone: each row becomes a list item of its own, the name on top and the facts
+  beneath it with their names, rather than a table to scroll sideways.
+*/
+@media (max-width: 860px) {
+  .list thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-12);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .list tbody tr:last-child {
+    border-bottom: none;
+  }
+  .list td {
+    display: block;
+    grid-column: 1;
+    padding: 2px 0;
+    border: none;
+    text-align: left;
+  }
+  .list td.chevron,
+  .list td.select-cell {
+    grid-column: 2;
+    grid-row: 1 / span 9;
+    align-self: center;
+  }
+  .list td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--text-soft);
+  }
+  .list td:empty {
+    display: none;
+  }
+}
+
+/*
+  A push button: solid, with rounded corners, grey unless it is the action the screen
+  leads to. No outline, as Apple's buttons have none; the words say what it is.
+*/
 button {
   min-height: var(--control-height);
   padding: 0 var(--space-16);
-  border-radius: var(--radius-input);
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: var(--surface-sunk);
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
 }
 
 button:disabled {
@@ -637,35 +711,32 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.button--emergency {
-  background: var(--emergency);
-  border-color: var(--emergency);
-  color: var(--on-emergency);
-}
-.button--emergency:hover:not(:disabled) {
-  background: var(--emergency-pressed);
-  border-color: var(--emergency-pressed);
-}
-
 label {
   display: block;
-  font-size: var(--font-size-small);
-  font-weight: 600;
+  font-size: var(--font-size-callout);
+  font-weight: var(--font-weight-strong);
   margin-bottom: var(--space-4);
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: var(--control-height);
   padding: 0 var(--space-12);
   /* The control colour, 3:1 against the page as WCAG 1.4.11 asks of a field's edge. The
      hairline colour it used was 1.3:1, so an empty field was close to invisible. */
   border: 1px solid var(--control);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text);
   font: inherit;
+}
+
+textarea {
+  padding: var(--space-8) var(--space-12);
+  resize: vertical;
+  line-height: 1.4;
 }
 
 .field {
@@ -674,7 +745,7 @@ select {
 
 .notice {
   padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   border: 1px solid var(--line);
   background: var(--surface-sunk);
 }
@@ -685,10 +756,9 @@ select {
   border-color: var(--pill-triggered-bd);
 }
 
-/* A countdown is the one number an operator reads under pressure, so it is set in
-   the monospaced face at display size and never animated. */
+/* A countdown is the one number an operator reads under pressure, so its digits keep
+   a fixed width, so it does not jitter as it counts, and it is never animated. */
 .countdown {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--timer);
@@ -703,29 +773,32 @@ select {
   gap: var(--space-12);
 }
 
+/* A figure as Health and Fitness show one: a short grey label over a large bold number,
+   and anything more in small type beneath. */
 .metric {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 2px;
 }
 
 .metric__value {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-h1);
-  font-weight: 500;
+  font-size: var(--font-size-large-title);
+  font-weight: var(--font-weight-heading);
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .metric__label {
   color: var(--text-soft);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-subheadline);
+  font-weight: var(--font-weight-strong);
 }
 
 .metric__note {
   margin-top: var(--space-4);
-  color: var(--text-faint);
-  font-size: var(--font-size-micro);
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
 }
 
 /* How a figure moved: green the right way, the warning red the wrong way, ink when
@@ -734,7 +807,7 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-soft);
 }
 .trend--good {
@@ -765,8 +838,7 @@ select {
 }
 .chart__axis {
   fill: var(--text-faint);
-  font-size: var(--font-size-micro);
-  font-family: var(--font-mono);
+  font-size: var(--font-size-subheadline);
 }
 .chart__line {
   fill: none;
@@ -799,10 +871,10 @@ select {
   transform: translateX(-50%);
   pointer-events: none;
   padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--text);
   color: var(--surface);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   white-space: nowrap;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 20%, transparent);
 }
@@ -815,77 +887,94 @@ select {
   opacity: 0.8;
 }
 
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.timeline li {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: var(--space-12);
-  padding: var(--space-12) 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.timeline li:last-child {
-  border-bottom: none;
-}
-
-.timeline__at {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-  font-size: var(--font-size-small);
-}
-
-.timeline__actor {
-  color: var(--text-soft);
-  font-size: var(--font-size-small);
-}
-
 .signin {
-  position: relative;
-  overflow: hidden;
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: var(--space-24);
+  grid-template-columns: minmax(320px, 5fr) 7fr;
 }
 
 /*
-  Rings spreading from the top-left corner, the way a call for help goes out to the
-  people around somebody: the same background the app's sign-in carries. A circle
-  centred on the corner, clipped round, filled with alternating bands. Decoration only,
-  in the decorative token pair, and nothing that has to be read sits on it.
+  MzaziCare's red with the care rings spreading from the corner, as the app's sign-in
+  draws them: faint white rings, a fainter wash between every other pair. Its right edge
+  is a long, shallow curve where it meets the form.
 */
-.signin::before {
-  --reach: 62vmax;
-  --step: calc(var(--reach) / 7);
+.signin__brand {
+  --ring-step: 72px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--space-48) var(--space-64) var(--space-48) var(--space-48);
+  background: var(--emergency);
+  color: var(--on-emergency);
+  clip-path: ellipse(100% 140% at 0% 50%);
+}
+.signin__brand::before {
   content: '';
   position: absolute;
-  top: calc(var(--reach) * -1);
-  left: calc(var(--reach) * -1);
-  width: calc(var(--reach) * 2);
-  height: calc(var(--reach) * 2);
-  border-radius: 50%;
-  border: 1.5px solid var(--decor-ring);
+  inset: 0;
   background: repeating-radial-gradient(
-    circle at center,
-    var(--decor-wash) 0 calc(var(--step) - 1.5px),
-    var(--decor-ring) calc(var(--step) - 1.5px) var(--step),
-    var(--bg) var(--step) calc(var(--step) * 2 - 1.5px),
-    var(--decor-ring) calc(var(--step) * 2 - 1.5px) calc(var(--step) * 2)
+    circle at 0% 0%,
+    color-mix(in srgb, var(--on-emergency) 6%, transparent) 0 calc(var(--ring-step) - 1.5px),
+    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) - 1.5px)
+      var(--ring-step),
+    transparent var(--ring-step) calc(var(--ring-step) * 2 - 1.5px),
+    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) * 2 - 1.5px)
+      calc(var(--ring-step) * 2)
   );
   pointer-events: none;
 }
-
-.signin__card {
+.signin__brand p {
   position: relative;
-  width: min(400px, 100%);
+  margin: 0;
+}
+.signin__name {
+  font-size: calc(var(--font-size-large-title) * 1.4);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.signin__tagline {
+  font-size: var(--font-size-title2);
+  opacity: 0.9;
+}
+.signin__brand .signin__console {
+  margin-top: var(--space-24);
+  font-size: var(--font-size-subheadline);
+  opacity: 0.8;
+}
+
+.signin__side {
+  display: grid;
+  place-items: center;
+  padding: var(--space-48) var(--space-24);
+}
+.signin__form {
+  width: min(380px, 100%);
+}
+
+/* A phone: the red across the top, its lower edge curved, and the form beneath it. */
+@media (max-width: 760px) {
+  .signin {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .signin__brand {
+    min-height: 220px;
+    padding: var(--space-48) var(--space-24) var(--space-48);
+    clip-path: ellipse(150% 100% at 50% 0%);
+  }
+  .signin__name {
+    font-size: var(--font-size-large-title);
+  }
+  .signin__brand .signin__console {
+    margin-top: var(--space-8);
+  }
+  .signin__side {
+    align-items: start;
+    padding: var(--space-16) var(--space-24) var(--space-32);
+  }
 }
 
 /* The full width of the card. Two classes, so it outranks .segmented, declared later. */
@@ -904,7 +993,7 @@ select {
   gap: var(--space-12);
   margin: var(--space-16) 0;
   color: var(--text-faint);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .signin__or::before,
 .signin__or::after {
@@ -959,17 +1048,18 @@ select {
   gap: var(--space-8);
 }
 
-/* The main action on a form. Inverse text rather than emergency red: red is a state,
-   and signing in is not an emergency. Text on surface is a gated pair, so the inverse
-   of it meets the same ratio. */
+/* The action a screen or a sheet leads to: MzaziCare red, as the app's buttons are.
+   White on the emergency red is a gated pair in both themes. Under review with the
+   app's, because red is otherwise kept for a person being needed. */
 .button--primary {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--surface);
+  background: var(--emergency);
+  color: var(--on-emergency);
 }
 .button--primary:hover:not(:disabled) {
-  background: var(--text-soft);
-  border-color: var(--text-soft);
+  background: var(--emergency-pressed);
+}
+.button--primary:disabled {
+  background: var(--surface-sunk);
 }
 
 .icon-button {
@@ -979,66 +1069,72 @@ select {
   padding: 0;
 }
 
-/* The live connection: a dot and a word, in neutral colours unless it has failed. */
+/* How fresh the board is, in small grey words, and a refresh button beside them. */
+.updated {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
 .connection {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-footnote);
   color: var(--text-soft);
-}
-.connection__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-faint);
-}
-.connection--live .connection__dot {
-  background: var(--pill-resolved-fg);
+  white-space: nowrap;
 }
 .connection--offline {
   color: var(--pill-notified-fg);
   font-weight: 600;
 }
 
-/* A segmented control: one outline, the chosen segment sunk and bold. */
+/* A segmented control, as Apple draws one: a grey track, and the chosen segment raised
+   on it in white. aria-pressed says which, for a screen reader. */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-input);
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
 }
 .segmented button {
+  min-height: calc(var(--control-height) - 4px);
+  padding: 0 var(--space-12);
   border: none;
-  border-radius: 0;
-  font-weight: 400;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
+  font-weight: var(--font-weight-body);
   color: var(--text-soft);
 }
-.segmented button + button {
-  border-left: 1px solid var(--line);
+.segmented button:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
 }
 .segmented button[aria-pressed='true'] {
-  background: var(--surface-sunk);
+  background: var(--surface);
   color: var(--text);
-  font-weight: 600;
-  box-shadow: inset 0 -3px 0 var(--text);
+  font-weight: var(--font-weight-strong);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 18%, transparent);
 }
 
-/* Who is signed in, top right, opening a small menu. */
+/* Who is signed in, at the foot of the sidebar, opening a small menu above it. */
 .account {
   position: relative;
+  margin-top: auto;
 }
 .account__button {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  min-height: 40px;
+  width: 100%;
+  min-height: 44px;
   padding: 0 var(--space-8);
-  border-color: transparent;
   background: none;
+  font-weight: var(--font-weight-body);
+  text-align: left;
 }
 .account__button:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .account__mark {
   flex: none;
@@ -1047,29 +1143,34 @@ select {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--surface-sunk);
-  border: 1px solid var(--line);
-  font-size: var(--font-size-micro);
-  font-weight: 600;
+  /* Soft ink with the surface on it: a pair gated as text in both themes. */
+  background: var(--text-soft);
+  color: var(--surface);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-strong);
 }
 .account__who {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   min-width: 0;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .account__name {
-  font-size: var(--font-size-small);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .account__role {
-  font-size: var(--font-size-micro);
-  color: var(--text-faint);
+  font-size: var(--font-size-subheadline);
+  color: var(--text-soft);
 }
 .account__role::first-letter {
   text-transform: uppercase;
+}
+.account .icon {
+  color: var(--text-soft);
 }
 
 /* A small list of actions under a button: the account menu, a row's menu. */
@@ -1081,10 +1182,16 @@ select {
   padding: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .menu--right {
+  right: 0;
+}
+.menu--up {
+  top: auto;
+  bottom: calc(100% + var(--space-4));
+  left: 0;
   right: 0;
 }
 .menu--fixed {
@@ -1099,7 +1206,7 @@ select {
   padding: 0 var(--space-12);
   border: none;
   background: none;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   text-align: left;
 }
 .menu button:hover:not(:disabled),
@@ -1107,42 +1214,35 @@ select {
   background: var(--surface-sunk);
 }
 
-.wordmark {
-  margin: 0 0 var(--space-16);
-  font-family: var(--font-display);
-  font-size: var(--font-size-h2);
-  font-weight: var(--font-weight-heading);
-  letter-spacing: -0.01em;
-}
-.wordmark__product {
-  color: var(--text-faint);
-  font-weight: 400;
-}
 .signin__submit {
   width: 100%;
 }
 
 /* Nothing to show: an icon, a title and a line, centred in the space. */
+/* Nothing to show, as Apple says it: a large grey symbol, a bold line, and one quieter
+   sentence beneath, centred in the space the list would fill. */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
   padding: var(--space-48) var(--space-24);
   text-align: center;
 }
 .empty__icon {
+  margin-bottom: var(--space-8);
   color: var(--text-faint);
 }
 .empty__title {
   margin: 0;
-  font-weight: 600;
-  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-heading);
+  font-size: var(--font-size-title2);
 }
 .empty__body {
   margin: 0;
   max-width: 44ch;
   color: var(--text-soft);
+  font-size: var(--font-size-callout);
 }
 
 /* Placeholder rows. Static on purpose: nothing on the console moves unless it means
@@ -1177,7 +1277,7 @@ select {
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-group);
 }
 /* The state pill at the start of the banner says what state it is in. While nobody has
    taken it on, the whole outline turns red as well: red is spent on a person being
@@ -1209,7 +1309,7 @@ select {
   flex-direction: column;
 }
 .banner__countdown {
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-large-title);
   line-height: 1.1;
 }
 
@@ -1247,15 +1347,14 @@ select {
   border-radius: 50%;
   border: 2px solid var(--line);
   background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .step__name {
   font-weight: 600;
 }
 .step__status {
   display: block;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   color: var(--text-soft);
 }
 .step--current .step__marker {
@@ -1274,6 +1373,21 @@ select {
 .step--later .step__name {
   font-weight: 400;
   color: var(--text-soft);
+}
+
+/* What happened, as the same numbered line: each step a sentence, the latest filled in. */
+.steps--timeline .step__name {
+  font-weight: var(--font-weight-body);
+}
+.step--latest .step__marker {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+}
+
+/* The heading of a section that opens, set where the chevron is. */
+.disclosure__summary h2 {
+  flex: 1;
 }
 
 /* A phone number: the country, then the number, on one line. */
@@ -1324,6 +1438,16 @@ select {
   width: auto;
 }
 
+.grid__toolbar-end {
+  margin-left: auto;
+}
+
+/* Filters as Apple's pop-up buttons: grey, borderless, the choice in the button. */
+.grid__toolbar select {
+  background-color: var(--surface-sunk);
+  border-color: transparent;
+}
+
 .grid__dates {
   display: inline-flex;
   align-items: center;
@@ -1359,7 +1483,7 @@ select {
   padding: var(--space-8) var(--space-12);
   background: var(--surface-sunk);
   border-bottom: 1px solid var(--line);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 
 /* A search field with its magnifier inside, at the front. */
@@ -1393,7 +1517,7 @@ select {
   padding: var(--space-8) var(--space-12);
   background: var(--surface);
   border-top: 1px solid var(--line);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .pager__range {
   margin: 0;
@@ -1412,9 +1536,20 @@ select {
 }
 
 .button--quiet {
-  border-color: transparent;
   background: none;
   color: var(--text-soft);
+}
+.button--quiet:hover:not(:disabled) {
+  background: var(--surface-sunk);
+  color: var(--text);
+}
+
+/* Buttons at the end of a row, side by side and kept on one line. */
+.row-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  white-space: nowrap;
 }
 
 /* A checkbox column: wide enough to hit, no wider. */
@@ -1429,14 +1564,15 @@ select {
   accent-color: var(--text);
 }
 
-/* Muted tint and darker ink for an account's status, never a bright pill. */
+/* An account's status where it is the exception: a muted tint and darker ink, never a
+   bright pill. */
 .status {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--space-8);
-  border-radius: var(--radius-input);
-  font-size: var(--font-size-micro);
-  font-weight: 600;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-strong);
   line-height: 1.8;
 }
 .status--active {
@@ -1453,13 +1589,21 @@ select {
   position: relative;
   display: inline-block;
 }
+/* Apple's "more" control: three dots in a small round button. */
 .row-menu > button {
-  width: var(--control-height);
+  width: 28px;
+  min-height: 28px;
   padding: 0;
   display: inline-grid;
   place-items: center;
-  border-color: transparent;
+  border-radius: 50%;
   background: none;
+  color: var(--text-soft);
+}
+.row-menu > button:hover:not(:disabled),
+.row-menu > button[aria-expanded='true'] {
+  background: var(--surface-sunk);
+  color: var(--text);
 }
 @media (hover: hover) {
   tbody tr .row-menu > button {
@@ -1485,21 +1629,37 @@ select {
 .modal__scrim {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--text) 40%, transparent);
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+  animation: scrim-in var(--motion-sheet) ease-out;
 }
 .modal__box {
   position: relative;
-  width: min(440px, 100%);
+  width: min(480px, 100%);
   max-height: calc(100vh - var(--space-32));
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-sheet);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--text) 20%, transparent);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--text) 24%, transparent);
+  animation: sheet-in var(--motion-sheet) var(--easing-decelerate);
 }
 .modal__box--wide {
-  width: min(560px, 100%);
+  width: min(600px, 100%);
+}
+.modal__box--alert {
+  width: min(400px, 100%);
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-8)) scale(0.98);
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* The side panel: the right edge, the full height, sliding in. */
@@ -1513,18 +1673,25 @@ select {
   max-height: none;
   border-radius: 0;
   border-width: 0 0 0 1px;
-  animation: sheet-in var(--motion-sheet) ease-out;
+  animation: panel-in var(--motion-sheet) ease-out;
 }
 .modal--side .modal__body {
   flex: 1;
 }
-@keyframes sheet-in {
+.modal--side .modal__head {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--line);
+}
+@keyframes panel-in {
   from {
     transform: translateX(var(--space-32));
     opacity: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .modal__box,
+  .modal__scrim,
   .modal--side .modal__box {
     animation: none;
   }
@@ -1534,26 +1701,72 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-24);
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-24) var(--space-24) var(--space-4);
 }
 .modal__head h2 {
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-title2);
+  font-weight: var(--font-weight-heading);
 }
 .modal__body {
-  padding: var(--space-16) var(--space-24);
+  padding: var(--space-8) var(--space-24) var(--space-16);
   overflow-y: auto;
+}
+.modal__body > p:first-child {
+  margin-top: 0;
 }
 .modal__foot {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-8);
-  padding: var(--space-12) var(--space-24);
-  border-top: 1px solid var(--line);
+  padding: var(--space-8) var(--space-24) var(--space-24);
 }
+
+/*
+  A form laid out as a Mac sheet lays one out: the labels in a column on the left, set
+  against the right edge, and the fields beside them, so the eye runs straight down the
+  fields. On a narrow screen the label goes above its field again.
+*/
+.form-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+.form-grid > label,
+.form-grid > .label {
+  margin: 0;
+  text-align: right;
+  font-weight: var(--font-weight-body);
+  color: var(--text-soft);
+}
+.form-grid > .form-grid__top {
+  align-self: start;
+  padding-top: calc((var(--control-height) - 1.4em) / 2);
+}
+.form-grid .field__hint {
+  margin-top: var(--space-4);
+}
+@media (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .form-grid > label,
+  .form-grid > .label {
+    text-align: left;
+    margin-top: var(--space-8);
+  }
+}
+.segmented--fill {
+  display: flex;
+}
+.segmented--fill button {
+  flex: 1;
+}
+
 .field__hint {
   margin: var(--space-4) 0 0;
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
 }
 .choices {
@@ -1561,7 +1774,7 @@ select {
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
 }
 .choices li + li {
   border-top: 1px solid var(--line-soft);
@@ -1584,7 +1797,7 @@ select {
 .label,
 legend {
   display: block;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
   font-weight: 600;
   margin-bottom: var(--space-4);
 }
@@ -1592,7 +1805,7 @@ legend {
   margin: 0 0 var(--space-16);
   padding: var(--space-12);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
 }
 .fieldset legend {
   padding: 0 var(--space-4);
@@ -1603,16 +1816,8 @@ legend {
 
 .pager__note {
   display: block;
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   color: var(--text-faint);
-}
-
-/* A heading with a small marker beside it. */
-.title-with-tag {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-12);
 }
 
 /* A quiet label with an explanation that opens on hover or keyboard focus. */
@@ -1622,11 +1827,11 @@ legend {
   align-items: center;
   padding: 0 var(--space-8);
   border: 1px solid var(--line);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--surface-sunk);
   color: var(--text-soft);
   font-family: var(--font-sans);
-  font-size: var(--font-size-micro);
+  font-size: var(--font-size-subheadline);
   font-weight: 600;
   line-height: 1.8;
   cursor: help;
@@ -1639,7 +1844,7 @@ legend {
   width: max-content;
   max-width: 320px;
   padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-control);
   background: var(--text);
   color: var(--surface);
   font-weight: 400;
@@ -1654,23 +1859,24 @@ legend {
   opacity: 1;
 }
 
-/* A button that reads as a link, for an action that opens something rather than doing it. */
+/* A button that reads as a link, for an action that opens something rather than doing
+   it: the console's red, as a link is. */
 .link-button {
   min-height: 0;
   padding: 0;
   border: none;
   background: none;
-  color: var(--focus);
-  font-weight: 400;
-  text-decoration: underline;
+  color: var(--danger);
+  font-weight: var(--font-weight-body);
 }
 .link-button:hover:not(:disabled) {
   background: none;
+  text-decoration: underline;
 }
 
 .prose h3 {
   margin: var(--space-16) 0 var(--space-4);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .prose h3:first-child {
   margin-top: 0;
@@ -1678,7 +1884,7 @@ legend {
 .prose p,
 .prose ul {
   margin: 0 0 var(--space-8);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-callout);
 }
 .prose ul {
   padding-left: var(--space-16);

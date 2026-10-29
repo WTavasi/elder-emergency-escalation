@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './shared/state/AuthContext';
-import { SignIn } from './features/auth/SignIn';
+import { SignIn, SignInBrand } from './features/auth/SignIn';
 import { Layout } from './shared/components/Layout';
 import { Board } from './features/board/Board';
 import { EventDetail } from './features/event-detail/EventDetail';
@@ -18,15 +18,18 @@ import { OpenAlertsProvider } from './shared/state/OpenAlerts';
 function NotAnAdministrator({ onSignOut }: { onSignOut: () => void }) {
   return (
     <main className="signin">
-      <div className="card signin__card stack">
-        <h1>This console is for administrators</h1>
-        <p className="muted">
-          Your account is signed in, but emergency operations screens are limited to administrator
-          accounts. Use the MzaziCare app to see the emergencies you are part of.
-        </p>
-        <button type="button" onClick={onSignOut}>
-          Sign out
-        </button>
+      <SignInBrand />
+      <div className="signin__side">
+        <div className="signin__form stack">
+          <h1>This console is for administrators</h1>
+          <p className="muted">
+            Your account is signed in, but emergency operations screens are limited to administrator
+            accounts. Use the MzaziCare app to see the emergencies you are part of.
+          </p>
+          <button type="button" className="button--primary" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
       </div>
     </main>
   );

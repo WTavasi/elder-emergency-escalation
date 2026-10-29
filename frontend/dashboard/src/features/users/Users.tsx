@@ -3,8 +3,18 @@ import { ApiError, api } from '../../shared/api/client';
 import type { Role, UserQuery, UserRow } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
-import { Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
+import { PageHeader } from '../../shared/components/PageHeader';
+import {
+  Empty,
+  ErrorNotice,
+  Pager,
+  Skeleton,
+  moveBetweenRows,
+  onControl,
+} from '../../shared/components/parts';
 import { useAuth } from '../../shared/state/AuthContext';
+import { useDebounced } from '../../shared/hooks/useDebounced';
+import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { UserForm } from './UserForm';
@@ -35,20 +45,11 @@ const COLUMNS: CsvColumn<UserRow>[] = [
   { header: 'Area', value: (row) => row.coverage?.areaName },
   { header: 'Radius km', value: (row) => row.coverage?.radiusKm },
   { header: 'Places in chains', value: (row) => row.chainPlaces },
+  { header: 'People in their chain', value: (row) => (row.role === 'ELDER' ? row.chainSize : '') },
   { header: 'Status', value: (row) => (row.deactivatedAt ? 'Deactivated' : 'Active') },
   { header: 'Deactivated', value: (row) => row.deactivatedAt },
   { header: 'Created', value: (row) => row.createdAt },
 ];
-
-/** Waits for the typing to stop, so a search is one request rather than one per key. */
-function useDebounced<T>(value: T, delay = 300): T {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
 
 type Pending =
   { kind: 'form'; user: UserRow | null } | { kind: 'deactivate'; users: UserRow[] } | null;
@@ -64,10 +65,15 @@ type Pending =
 export function Users() {
   const { session } = useAuth();
   const [search, setSearch] = useState('');
+  const searchField = useRef<HTMLInputElement>(null);
+  useFindShortcut(searchField);
   const [role, setRole] = useState<Role | ''>('');
   const [status, setStatus] = useState<UserQuery['status'] | ''>('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Choosing several accounts at once is a mode, as Select is on an iPhone: the boxes to
+  // tick appear only once it is on, and pressing a row then ticks it rather than opening it.
+  const [selecting, setSelecting] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -153,19 +159,30 @@ export function Users() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Users</h1>
-        </div>
-        <button
-          type="button"
-          className="button--primary"
-          onClick={() => setPending({ kind: 'form', user: null })}
-        >
-          <Icon name="personAdd" size={18} />
-          Add user
-        </button>
-      </div>
+      <PageHeader
+        title="Users"
+        actions={
+          <>
+            <button
+              type="button"
+              className="button--with-icon"
+              onClick={() => void exportCsv()}
+              disabled={exporting || total === 0}
+            >
+              <Icon name="download" size={18} />
+              {exporting ? 'Exporting' : 'Export CSV'}
+            </button>
+            <button
+              type="button"
+              className="button--primary"
+              onClick={() => setPending({ kind: 'form', user: null })}
+            >
+              <Icon name="personAdd" size={18} />
+              Add user
+            </button>
+          </>
+        }
+      />
 
       {message ? (
         <p className="notice" role="status">
@@ -181,7 +198,9 @@ export function Users() {
             <span className="visually-hidden">Search by name, phone or email</span>
             <input
               id="users-q"
+              ref={searchField}
               type="search"
+              aria-keyshortcuts="Meta+F Control+F"
               placeholder="Search name, phone or email"
               value={search}
               onChange={(changeEvent) => setSearch(changeEvent.target.value)}
@@ -218,19 +237,22 @@ export function Users() {
           </select>
           <button
             type="button"
-            className="button--with-icon"
-            style={{ marginLeft: 'auto' }}
-            onClick={() => void exportCsv()}
-            disabled={exporting || total === 0}
+            className="button--quiet grid__toolbar-end"
+            aria-pressed={selecting}
+            onClick={() => {
+              setSelecting((was) => !was);
+              setSelected(new Set());
+            }}
           >
-            <Icon name="download" size={18} />
-            {exporting ? 'Exporting' : 'Export CSV'}
+            {selecting ? 'Done' : 'Select'}
           </button>
         </div>
 
-        {selectedRows.length > 0 ? (
+        {selecting ? (
           <div className="grid__selection" role="region" aria-label="Selected accounts">
-            <strong>{selectedRows.length} selected</strong>
+            <strong>
+              {selectedRows.length === 0 ? 'None selected' : `${selectedRows.length} selected`}
+            </strong>
             {selectedRows.some((row) => !row.deactivatedAt) ? (
               <button
                 type="button"
@@ -252,9 +274,15 @@ export function Users() {
                 Reactivate
               </button>
             ) : null}
-            <button type="button" className="button--quiet" onClick={() => setSelected(new Set())}>
-              Clear selection
-            </button>
+            {selectedRows.length > 0 ? (
+              <button
+                type="button"
+                className="button--quiet"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear selection
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -272,27 +300,24 @@ export function Users() {
           </Empty>
         ) : (
           <div className="grid__body">
-            <table>
+            <table className="list">
               <thead>
                 <tr>
-                  <th scope="col" className="select-cell">
-                    <input
-                      type="checkbox"
-                      aria-label="Select every account on this page"
-                      checked={allOnPage}
-                      onChange={toggleAll}
-                    />
-                  </th>
+                  {selecting ? (
+                    <th scope="col" className="select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label="Select every account on this page"
+                        checked={allOnPage}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                  ) : null}
                   <th scope="col">Name</th>
                   <th scope="col">Phone</th>
                   <th scope="col">Role</th>
                   <th scope="col">Area</th>
-                  <th scope="col" className="num">
-                    In chains
-                  </th>
-                  <th scope="col" className="center">
-                    Status
-                  </th>
+                  <th scope="col">Chain</th>
                   <th scope="col" className="num">
                     Created
                   </th>
@@ -301,45 +326,70 @@ export function Users() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody onKeyDown={moveBetweenRows}>
                 {rows.map((row) => (
-                  <tr key={row.id} aria-selected={selected.has(row.id)}>
-                    <td className="select-cell">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${row.name}`}
-                        checked={selected.has(row.id)}
-                        onChange={() => toggle(row.id)}
-                      />
-                    </td>
+                  <tr
+                    key={row.id}
+                    className="row-link"
+                    aria-selected={selecting ? selected.has(row.id) : undefined}
+                    // The whole row opens the account, as a row in an Apple list does, or
+                    // ticks it while choosing several. The name is a button that does the
+                    // same, for the keyboard.
+                    onClick={(clickEvent) => {
+                      if (onControl(clickEvent)) return;
+                      if (selecting) toggle(row.id);
+                      else setPending({ kind: 'form', user: row });
+                    }}
+                  >
+                    {selecting ? (
+                      <td className="select-cell">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${row.name}`}
+                          checked={selected.has(row.id)}
+                          onChange={() => toggle(row.id)}
+                        />
+                      </td>
+                    ) : null}
                     <td>
-                      <strong>{row.name}</strong>
-                      {row.id === session?.user.id ? <span className="micro"> (you)</span> : null}
+                      <span className="row-inline">
+                        <button
+                          type="button"
+                          className="row-link__name"
+                          onClick={() =>
+                            selecting ? toggle(row.id) : setPending({ kind: 'form', user: row })
+                          }
+                        >
+                          {row.name}
+                        </button>
+                        {row.id === session?.user.id ? <span className="micro">(you)</span> : null}
+                        {/* Only the exception is marked: every other account is active. */}
+                        {row.deactivatedAt ? (
+                          <span className="status status--deactivated">Deactivated</span>
+                        ) : null}
+                      </span>
                       <div className="micro">{row.email ?? 'No email'}</div>
                     </td>
-                    <td className="mono">{row.phone}</td>
-                    <td>{ROLE_LABEL[row.role]}</td>
-                    <td>
+                    <td className="figures" data-label="Phone">
+                      {row.phone}
+                    </td>
+                    <td data-label="Role">{ROLE_LABEL[row.role]}</td>
+                    <td data-label="Area">
                       {row.coverage ? (
                         <>
                           {row.coverage.areaName}
                           <div className="micro">
-                            within <span className="mono">{row.coverage.radiusKm}</span> km
+                            within <span className="figures">{row.coverage.radiusKm}</span> km
                           </div>
                         </>
                       ) : (
                         <span className="muted">&ndash;</span>
                       )}
                     </td>
-                    <td className="mono num">{row.chainPlaces}</td>
-                    <td className="center">
-                      <span
-                        className={`status status--${row.deactivatedAt ? 'deactivated' : 'active'}`}
-                      >
-                        {row.deactivatedAt ? 'Deactivated' : 'Active'}
-                      </span>
+                    <td data-label="Chain">{chainText(row)}</td>
+                    <td className="figures num" data-label="Created">
+                      {dateOnly.format(new Date(row.createdAt))}
                     </td>
-                    <td className="mono num">{dateOnly.format(new Date(row.createdAt))}</td>
                     <td className="num">
                       <RowMenu
                         name={row.name}
@@ -410,6 +460,18 @@ export function Users() {
 }
 
 /**
+ * An account's place in the chains, in words: for an elder, the people in their own chain;
+ * for anybody else, the elders whose chains they are in.
+ */
+function chainText(row: UserRow): string {
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  if (row.role === 'ELDER') {
+    return row.chainSize === 0 ? 'Nobody yet' : count(row.chainSize, 'person', 'people');
+  }
+  return row.chainPlaces === 0 ? '\u2013' : count(row.chainPlaces, 'elder', 'elders');
+}
+
+/**
  * Says what deactivating will do before it does it, naming anybody who holds places in
  * elders' chains, because their alerts will go to the next person from now on.
  */
@@ -429,9 +491,10 @@ function DeactivateDialog({
     <Modal
       title={one ? `Deactivate ${one.name}?` : `Deactivate ${users.length} accounts?`}
       onClose={onClose}
+      alert
       footer={
         <>
-          <button type="button" className="button--quiet" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             Keep {one ? 'them' : 'them all'}
           </button>
           <button type="button" className="button--primary" onClick={onConfirm}>
@@ -440,7 +503,7 @@ function DeactivateDialog({
         </>
       }
     >
-      <p style={{ marginTop: 0 }}>
+      <p>
         {one ? 'They' : 'These accounts'} will be signed out straight away, will not be able to sign
         in, and will not be sent any emergency. Their history stays. You can reactivate{' '}
         {one ? 'the account' : 'them'} at any time.
@@ -521,7 +584,7 @@ function RowMenu({ name, items }: { name: string; items: MenuItem[] }) {
         aria-expanded={open}
         onClick={() => setOpen((was) => !was)}
       >
-        <Icon name="moreVert" label={`Actions for ${name}`} size={18} />
+        <Icon name="moreHoriz" label={`Actions for ${name}`} size={18} />
       </button>
       {place ? (
         <div

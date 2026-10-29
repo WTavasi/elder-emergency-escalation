@@ -1,8 +1,18 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ApiError, api, type AlertQuery } from '../../shared/api/client';
 import type { AlertSummary, EventState, Severity } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
-import { AlertRow, Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
+import { PageHeader } from '../../shared/components/PageHeader';
+import {
+  AlertRow,
+  Empty,
+  ErrorNotice,
+  Pager,
+  Skeleton,
+  moveBetweenRows,
+} from '../../shared/components/parts';
+import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
+import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { retentionSentence } from '../privacy/PrivacyPanel';
@@ -37,25 +47,58 @@ const PAGE_SIZE = 50;
 /** The most an export will fetch, two hundred at a time. */
 const EXPORT_LIMIT = 5000;
 
+/** When it was raised: the choices a person usually means, and a range of their own. */
+type Dates = 'any' | 'today' | 'week' | 'month' | 'custom';
+
+const DATES: { value: Dates; label: string }[] = [
+  { value: 'any', label: 'Any time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'Last 7 days' },
+  { value: 'month', label: 'Last 30 days' },
+  { value: 'custom', label: 'Custom range' },
+];
+
 interface Filters {
   q: string;
   state: EventState | '';
   severity: Severity | '';
+  dates: Dates;
+  /** Only read for a custom range. */
   from: string;
   to: string;
 }
 
-const NO_FILTERS: Filters = { q: '', state: '', severity: '', from: '', to: '' };
+const NO_FILTERS: Filters = { q: '', state: '', severity: '', dates: 'any', from: '', to: '' };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+function range(filters: Filters): Pick<AlertQuery, 'from' | 'to'> {
+  const now = new Date();
+  switch (filters.dates) {
+    case 'today':
+      return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString() };
+    case 'week':
+      return { from: new Date(now.getTime() - 7 * DAY).toISOString() };
+    case 'month':
+      return { from: new Date(now.getTime() - 30 * DAY).toISOString() };
+    case 'custom':
+      return {
+        from: filters.from ? new Date(filters.from).toISOString() : undefined,
+        // An end date means the whole of that day, which is what a person filling in a
+        // date field means by it.
+        to: filters.to ? new Date(`${filters.to}T23:59:59.999`).toISOString() : undefined,
+      };
+    default:
+      return {};
+  }
+}
 
 function toQuery(filters: Filters): AlertQuery {
   return {
     q: filters.q || undefined,
     state: filters.state ? [filters.state] : undefined,
     severity: filters.severity ? [filters.severity] : undefined,
-    from: filters.from ? new Date(filters.from).toISOString() : undefined,
-    // An end date means the whole of that day, which is what a person filling in a
-    // date field means by it.
-    to: filters.to ? new Date(`${filters.to}T23:59:59.999`).toISOString() : undefined,
+    ...range(filters),
   };
 }
 
@@ -91,13 +134,24 @@ const COLUMNS: CsvColumn<AlertSummary>[] = [
 export function History() {
   const [form, setForm] = useState<Filters>(NO_FILTERS);
 
-  // The filters the last search actually ran with. Kept apart from the form fields so
-  // that typing does not fire a query on every keystroke: the query changes when the
-  // operator submits.
-  const [applied, setApplied] = useState<Filters>(NO_FILTERS);
+  // Filters apply as they are chosen, as Apple's do, with no button to press. The search
+  // waits for the typing to stop, so it is one request rather than one per key.
+  const q = useDebounced(form.q);
+  const appliedKey = JSON.stringify({ ...form, q });
+  const applied = useMemo(() => JSON.parse(appliedKey) as Filters, [appliedKey]);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const searchField = useRef<HTMLInputElement>(null);
+  useFindShortcut(searchField);
+
+  // A new search starts at the first page, adjusted while rendering so it happens with the
+  // new filters rather than one render later.
+  const [lastKey, setLastKey] = useState(appliedKey);
+  if (lastKey !== appliedKey) {
+    setLastKey(appliedKey);
+    setPage(1);
+  }
 
   const fetcher = useCallback(
     () => api.alertPage({ ...toQuery(applied), limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
@@ -125,11 +179,6 @@ export function History() {
     setForm((was) => ({ ...was, [key]: value }));
   }
 
-  function apply(next: Filters) {
-    setApplied(next);
-    setPage(1);
-  }
-
   /** Every match for the applied filters, two hundred at a time, as one file. */
   async function exportCsv() {
     setExporting(true);
@@ -151,38 +200,33 @@ export function History() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Emergency history</h1>
-        </div>
-        <button
-          type="button"
-          className="button--with-icon"
-          onClick={() => void exportCsv()}
-          disabled={exporting || total === 0}
-        >
-          <Icon name="download" size={18} />
-          {exporting ? 'Exporting' : 'Export CSV'}
-        </button>
-      </div>
+      <PageHeader
+        title="History"
+        actions={
+          <button
+            type="button"
+            className="button--with-icon"
+            onClick={() => void exportCsv()}
+            disabled={exporting || total === 0}
+          >
+            <Icon name="download" size={18} />
+            {exporting ? 'Exporting' : 'Export CSV'}
+          </button>
+        }
+      />
 
       {exportError ? <ErrorNotice message={exportError} /> : null}
 
       <div className="card grid">
-        <form
-          className="grid__toolbar"
-          role="search"
-          onSubmit={(submitEvent) => {
-            submitEvent.preventDefault();
-            apply(form);
-          }}
-        >
+        <div className="grid__toolbar" role="search">
           <label className="search" htmlFor="filter-q">
             <Icon name="search" size={18} />
             <span className="visually-hidden">Search by elder or who attended</span>
             <input
               id="filter-q"
+              ref={searchField}
               type="search"
+              aria-keyshortcuts="Meta+F Control+F"
               placeholder="Search by elder or who attended"
               value={form.q}
               onChange={(changeEvent) => set('q', changeEvent.target.value)}
@@ -221,46 +265,55 @@ export function History() {
             ))}
           </select>
 
-          <span className="grid__dates">
-            <label className="visually-hidden" htmlFor="filter-from">
-              Raised on or after
-            </label>
-            <input
-              id="filter-from"
-              type="date"
-              value={form.from}
-              title="Raised on or after"
-              onChange={(changeEvent) => set('from', changeEvent.target.value)}
-            />
-            <span className="muted" aria-hidden="true">
-              to
-            </span>
-            <label className="visually-hidden" htmlFor="filter-to">
-              Raised on or before
-            </label>
-            <input
-              id="filter-to"
-              type="date"
-              value={form.to}
-              title="Raised on or before"
-              onChange={(changeEvent) => set('to', changeEvent.target.value)}
-            />
-          </span>
+          <label className="visually-hidden" htmlFor="filter-dates">
+            When it was raised
+          </label>
+          <select
+            id="filter-dates"
+            value={form.dates}
+            onChange={(changeEvent) => set('dates', changeEvent.target.value as Dates)}
+          >
+            {DATES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
-          <button type="submit">Apply</button>
+          {form.dates === 'custom' ? (
+            <span className="grid__dates">
+              <label className="visually-hidden" htmlFor="filter-from">
+                Raised on or after
+              </label>
+              <input
+                id="filter-from"
+                type="date"
+                value={form.from}
+                title="Raised on or after"
+                onChange={(changeEvent) => set('from', changeEvent.target.value)}
+              />
+              <span className="muted" aria-hidden="true">
+                to
+              </span>
+              <label className="visually-hidden" htmlFor="filter-to">
+                Raised on or before
+              </label>
+              <input
+                id="filter-to"
+                type="date"
+                value={form.to}
+                title="Raised on or before"
+                onChange={(changeEvent) => set('to', changeEvent.target.value)}
+              />
+            </span>
+          ) : null}
+
           {filtered ? (
-            <button
-              type="button"
-              className="button--quiet"
-              onClick={() => {
-                setForm(NO_FILTERS);
-                apply(NO_FILTERS);
-              }}
-            >
+            <button type="button" className="button--quiet" onClick={() => setForm(NO_FILTERS)}>
               Clear
             </button>
           ) : null}
-        </form>
+        </div>
 
         {error ? (
           <div className="grid__body">
@@ -276,19 +329,12 @@ export function History() {
           </Empty>
         ) : (
           <div className="grid__body">
-            <table>
+            <table className="list">
               <thead>
                 <tr>
-                  <th scope="col">
-                    <span className="visually-hidden">Waiting</span>
-                  </th>
                   <th scope="col">Elder</th>
-                  <th scope="col" className="center">
-                    State
-                  </th>
-                  <th scope="col" className="center">
-                    Severity
-                  </th>
+                  <th scope="col">State</th>
+                  <th scope="col">Severity</th>
                   <th scope="col" className="num">
                     Tier
                   </th>
@@ -299,9 +345,12 @@ export function History() {
                   <th scope="col" className="num">
                     Raised
                   </th>
+                  <th scope="col">
+                    <span className="visually-hidden">Open</span>
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody onKeyDown={moveBetweenRows}>
                 {result.items.map((alert) => (
                   <AlertRow key={alert.eventId} alert={alert} live={false} />
                 ))}

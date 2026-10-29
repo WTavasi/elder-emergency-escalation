@@ -22,8 +22,8 @@ class Notice extends StatelessWidget {
     final Color ink = isError ? theme.colorScheme.error : theme.colorScheme.onSurface;
     final TextStyle? style = theme.textTheme.bodyLarge?.copyWith(color: ink);
     // Sized to the text and centred on its first line, however large the type is.
-    final double size = (style?.fontSize ?? MzaziTypeStandard.body) * 1.25;
-    final double line = (style?.fontSize ?? MzaziTypeStandard.body) * (style?.height ?? 1.5);
+    final double size = (style?.fontSize ?? MzaziTypeApp.body) * 1.25;
+    final double line = (style?.fontSize ?? MzaziTypeApp.body) * (style?.height ?? 1.5);
 
     return Semantics(
       liveRegion: true,

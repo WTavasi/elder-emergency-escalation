@@ -61,6 +61,28 @@ export function formatClock(iso: string): string {
   return sameDay ? clock.format(at) : dateAndClock.format(at);
 }
 
+const dayAndMonth = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+
+/**
+ * How long ago, as a person says it: "just now", "4 min ago", "2 h ago", and the date once
+ * it is older than a day. For a live screen, where how long something has waited matters
+ * more than the time on the clock; the exact time goes on a tooltip beside it.
+ */
+export function formatAgo(atMs: number, nowMs: number): string {
+  const seconds = Math.max(0, Math.round((nowMs - atMs) / 1000));
+  if (seconds < 45) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return dayAndMonth.format(new Date(atMs));
+}
+
+/** The exact time, with its zone, for a tooltip. */
+export function formatExact(iso: string): string {
+  return `${new Date(iso).toLocaleString()} (${localTimezone()})`;
+}
+
 export function localTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
@@ -68,10 +90,4 @@ export function localTimezone(): string {
 /** Turns SEVERITY_EVALUATED into "severity evaluated", for the timeline. */
 export function humanise(value: string): string {
   return value.replace(/_/g, ' ').toLowerCase();
-}
-
-/** Seconds as a signed offset from the trigger, for the timeline gutter. */
-export function formatOffset(seconds: number): string {
-  if (seconds <= 0) return '0s';
-  return `+${formatDuration(seconds)}`;
 }

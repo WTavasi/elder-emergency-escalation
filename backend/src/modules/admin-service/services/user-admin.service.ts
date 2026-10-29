@@ -38,6 +38,8 @@ export interface UserRow {
   coverage: { areaName: string; latitude: number; longitude: number; radiusKm: number } | null;
   /** Places this account holds in elders' chains. */
   chainPlaces: number;
+  /** For an elder, how many people are in their own chain. Zero for everybody else. */
+  chainSize: number;
 }
 
 export interface UserPage {
@@ -59,7 +61,7 @@ const ROW_SELECT = {
   coverageLatitude: true,
   coverageLongitude: true,
   coverageRadiusKm: true,
-  _count: { select: { assignmentsAsCarer: true } },
+  _count: { select: { assignmentsAsCarer: true, assignmentsAsElder: true } },
 } satisfies Prisma.UserSelect;
 
 type RowSource = Prisma.UserGetPayload<{ select: typeof ROW_SELECT }>;
@@ -86,6 +88,7 @@ function toRow(user: RowSource): UserRow {
         }
       : null,
     chainPlaces: user._count.assignmentsAsCarer,
+    chainSize: user._count.assignmentsAsElder,
   };
 }
 

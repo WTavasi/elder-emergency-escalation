@@ -57,13 +57,14 @@ Each screen is a folder under `src/features/`; anything two screens share is und
 | `src/features/history/` | The searchable record |
 | `src/features/reporting/` | Response times, escalation depth, delivery reliability, trends |
 | `src/features/users/` | Every account: adding staff, editing, deactivating |
+| `src/features/volunteers/` | Vetting community volunteers |
 | `src/features/privacy/` | The privacy and data panel |
 | `src/shared/phone/` | The phone field with its country list, and reading a typed number |
 | `src/shared/api/` | The HTTP client, the socket, and the response types |
 | `src/shared/state/` | Who is signed in, and the live list of open emergencies |
 | `src/shared/components/` | The page layout and small shared parts |
-| `src/shared/hooks/` | Loading data, counting down |
-| `src/shared/utils/` | Formatting dates, durations and labels |
+| `src/shared/hooks/` | Loading data, counting down, the time now, keyboard shortcuts |
+| `src/shared/utils/` | Formatting dates, durations and labels; an emergency's record in sentences |
 
 `App.tsx` holds the routes, `main.tsx` starts the app, and `styles.css` is the one
 stylesheet. Tests sit beside the file they test.
@@ -71,16 +72,23 @@ stylesheet. Tests sit beside the file they test.
 ## Screens
 
 - **Open emergencies.** Everything still live, ordered by whoever has been waiting
-  longest without an answer, with the time left on the current tier counting down.
-  Updated by the socket, refreshed over HTTP when the socket drops.
+  longest without an answer, with the time left on the current tier counting down and
+  how long ago each was raised. Updated by the socket, refreshed over HTTP when the
+  socket drops; the bar says when it last heard anything.
 - **History.** The searchable record, a page at a time, by elder name, state, severity
-  and date, with a CSV export. Every filter is applied by the API, so records nobody
-  asked to see never reach the page.
+  and date, with a CSV export. Filters apply as they are chosen, and every one is applied
+  by the API, so records nobody asked to see never reach the page.
 - **Reporting.** Each figure for the period with how it moved against the period before,
   a daily chart, how far emergencies travelled down the chain, and per-channel delivery
   reliability.
 - **Users.** Every account, with adding responders and administrators, editing, and
-  deactivating or reactivating, one at a time or as a selection.
+  deactivating or reactivating, one at a time or several after pressing **Select**.
+- **Volunteers.** Community volunteers' applications, to approve or not, and the
+  approved ones, to suspend.
+
+A row in any list opens what it shows when pressed anywhere. From the keyboard, the up
+and down arrows move between rows and Return opens one; Command-F or Ctrl+F goes to the
+search on History and Users.
 
 ## Privacy, in layers
 
@@ -91,6 +99,11 @@ the care chain acts and an administrator reads, and a line under History giving 
 retention period the server actually enforces (`GET /api/v1/dashboard/policy`).
 
 ## Design
+
+The console follows a Mac app, as the mobile app follows an iPhone one: the computer's
+own face (`system-ui`, nothing bundled), a grey sidebar, a large title under a bar on
+each page, lists rather than spreadsheets, and sheets for questions. The rules are in
+`docs/design-language.md`, and why in `docs/decisions.md`.
 
 Every colour, space, radius and type size comes from `@mzazicare/tokens`. There is
 no literal colour anywhere in the stylesheet, because the contrast gate can only
@@ -110,4 +123,6 @@ npm run test -w @mzazicare/dashboard
 They cover the three things that fail quietly: the ordering rule that decides which
 emergency an operator works next, the token refresh path, which could otherwise loop
 against the API or leave a signed-in console whose every request is refused, and the
-duration formatting that the timeline and the reporting figures are read from.
+duration formatting that the timeline and the reporting figures are read from. Beside
+those, the sentences an emergency's record is told in, a list row opening its record and
+moving by keyboard, filters applying as they are chosen, and choosing several users.

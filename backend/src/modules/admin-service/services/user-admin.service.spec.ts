@@ -23,7 +23,7 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   coverageLatitude: null,
   coverageLongitude: null,
   coverageRadiusKm: null,
-  _count: { assignmentsAsCarer: 2 },
+  _count: { assignmentsAsCarer: 2, assignmentsAsElder: 0 },
   ...overrides,
 });
 
@@ -34,7 +34,13 @@ function build() {
       findUnique: jest.fn().mockResolvedValue(row()),
       count: jest.fn().mockResolvedValue(1),
       create: jest.fn((args: { data: Record<string, unknown> }) =>
-        Promise.resolve(row({ ...args.data, id: 'new', _count: { assignmentsAsCarer: 0 } })),
+        Promise.resolve(
+          row({
+            ...args.data,
+            id: 'new',
+            _count: { assignmentsAsCarer: 0, assignmentsAsElder: 0 },
+          }),
+        ),
       ),
       update: jest.fn().mockResolvedValue(row()),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -68,6 +74,24 @@ const responder = {
 
 describe('UserAdminService', () => {
   describe('listing', () => {
+    it("says how many places a carer holds, and how many people are in an elder's chain", async () => {
+      const { service, prisma } = build();
+      prisma.user.findMany.mockResolvedValue([
+        row(),
+        row({
+          id: 'elder-1',
+          name: 'Grace Wanjiru',
+          role: Role.ELDER,
+          _count: { assignmentsAsCarer: 0, assignmentsAsElder: 4 },
+        }),
+      ]);
+
+      const page = await service.list({ page: 1, pageSize: 25 });
+
+      expect(page.items[0]).toMatchObject({ chainPlaces: 2, chainSize: 0 });
+      expect(page.items[1]).toMatchObject({ chainPlaces: 0, chainSize: 4 });
+    });
+
     it('pages, and counts with the same filter', async () => {
       const { service, prisma } = build();
       prisma.user.count.mockResolvedValue(1240);

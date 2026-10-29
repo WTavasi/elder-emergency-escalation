@@ -2,13 +2,13 @@ import { useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
-import { useCrumb } from '../../shared/state/Breadcrumb';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
-import type { AlertDetail, ChainMember, Journey } from '../../shared/api/types';
+import type { AlertDetail, AuditEntry, ChainMember, Journey } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
+import { PageHeader } from '../../shared/components/PageHeader';
 import {
   Countdown,
   ErrorNotice,
@@ -21,10 +21,10 @@ import {
   distance,
   formatClock,
   formatDuration,
-  formatOffset,
   humanise,
   timeAway,
 } from '../../shared/utils/format';
+import { afterTheAlert, timelineSentence } from '../../shared/utils/timeline';
 
 /**
  * Where one person on the chain stands. Worked out from the tier the emergency has
@@ -86,7 +86,7 @@ function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () 
               : 'Nobody took it on'}
         </p>
       </div>
-      {open ? (
+      {open && alert.deadlineAt ? (
         <div className="banner__timer">
           <Icon name="timer" />
           <span>
@@ -127,22 +127,27 @@ export function EventDetail() {
   );
   useRealtime(session?.accessToken ?? null, onUpdate);
 
-  // The header's breadcrumb names the elder, and is the way back to the board.
-  useCrumb(alert?.elder.name ?? null);
-
   const [explaining, setExplaining] = useState(false);
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !alert) return <Skeleton rows={5} />;
 
   const factors = alert.severityFactors?.factors ?? [];
+  const timeline = firstThingsFirst(alert.timeline);
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="title-with-tag">
-            {alert.elder.name}
+      <PageHeader
+        title={alert.elder.name}
+        // Back to where an emergency like this one is listed: the board while it is open,
+        // the history once it is over.
+        back={
+          OPEN_STATES.includes(alert.state)
+            ? { to: '/', label: 'Open emergencies' }
+            : { to: '/history', label: 'History' }
+        }
+        titleAddon={
+          <>
             <TriggerTag trigger={alert.trigger} />
             {/*
               The short layer of the privacy notice, where the missing buttons would be:
@@ -155,27 +160,32 @@ export function EventDetail() {
                 elder&apos;s care chain. The server refuses them from an administrator account.
               </span>
             </span>
-          </h1>
-          <p>
-            Raised {formatClock(alert.triggeredAt)}
-            {alert.trigger === 'MISSED_CHECK_IN'
-              ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
-              : ''}
-            {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
-            {alert.withheld?.includes('location')
-              ? '. Location withheld at the elder\u2019s request'
-              : ''}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      >
+        <p>
+          Raised {formatClock(alert.triggeredAt)}
+          {alert.trigger === 'MISSED_CHECK_IN'
+            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
+            : ''}
+          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
+          {alert.withheld?.includes('location')
+            ? '. Location withheld at the elder\u2019s request'
+            : ''}
+        </p>
+      </PageHeader>
 
       <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
-      <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
-        {alert.responseSeconds === null
-          ? 'Not answered yet'
-          : `Answered in ${formatDuration(alert.responseSeconds)}`}
-        {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
-      </p>
+      {/* Only once there is something the banner does not say: until then it already
+        says nobody has taken it on. */}
+      {alert.responseSeconds !== null || alert.resolvedAt ? (
+        <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
+          {alert.responseSeconds === null
+            ? 'Not answered'
+            : `Answered in ${formatDuration(alert.responseSeconds)}`}
+          {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
+        </p>
+      ) : null}
 
       <OnTheWay alert={alert} />
       <Volunteers alert={alert} />
@@ -183,35 +193,34 @@ export function EventDetail() {
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
           <h2 id="timeline-heading">What happened</h2>
-          <p className="muted micro">
-            Times are offsets from the moment the alert was raised. An entry with no person against
-            it was the system acting on its own.
-          </p>
-          <ol className="timeline">
-            {alert.timeline.map((entry) => (
-              <li key={entry.id}>
-                <span className="timeline__at">{formatOffset(entry.secondsFromTrigger)}</span>
-                <span>
-                  <strong>{humanise(entry.action)}</strong>
-                  {entry.previousState && entry.newState ? (
-                    <span className="muted">
-                      {' '}
-                      {humanise(entry.previousState)} to {humanise(entry.newState)}
+          {/*
+            Numbered on a line from the first thing that happened to the latest, in the
+            app's sentences, with the latest filled in: the same drawing as the chain beside
+            it, and as the app's own page for an emergency.
+          */}
+          <ol className="steps steps--timeline">
+            {timeline.map((entry, index) => {
+              const latest = index === timeline.length - 1;
+              return (
+                <li key={entry.id} className={`step${latest ? ' step--latest' : ''}`}>
+                  <span className="step__marker" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span>
+                    <span className="step__name">
+                      {timelineSentence(entry, {
+                        chain: alert.chain,
+                        deliveries: alert.deliveries,
+                      })}
                     </span>
-                  ) : null}
-                  <div className="timeline__actor">
-                    {entry.actor ? `${entry.actor.name}, ${humanise(entry.actor.role)}` : 'system'}
-                    {byText(entry.detail)
-                      ? entry.action === 'EVENT_CREATED'
-                        ? ', by texting HELP'
-                        : ', by text reply'
-                      : null}
-                    {' at '}
-                    {formatClock(entry.occurredAt)}
-                  </div>
-                </span>
-              </li>
-            ))}
+                    <span className="step__status">
+                      {afterTheAlert(entry.secondsFromTrigger)},{' '}
+                      <span className="figures">{formatClock(entry.occurredAt)}</span>
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </section>
 
@@ -251,16 +260,25 @@ export function EventDetail() {
         </div>
       </div>
 
-      <section className="card stack" aria-labelledby="delivery-heading">
-        <h2 id="delivery-heading">Every delivery attempt</h2>
-        <p className="muted micro">
-          A failed push followed by an SMS to the same person is the fallback working, not two
-          separate faults.
-        </p>
-        {alert.deliveries.length === 0 ? (
-          <p className="muted">Nothing has been dispatched for this emergency.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
+      {/*
+        Folded away, as detail somebody opens when they want it: the sentences above already
+        say who was sent what, and this is the record of every message underneath them.
+      */}
+      {alert.deliveries.length === 0 ? (
+        <p className="muted">Nothing has been dispatched for this emergency.</p>
+      ) : (
+        <details className="card disclosure">
+          <summary className="disclosure__summary">
+            <h2 id="delivery-heading">
+              Show {alert.deliveries.length}{' '}
+              {alert.deliveries.length === 1 ? 'delivery attempt' : 'delivery attempts'}
+            </h2>
+          </summary>
+          <div className="disclosure__body">
+            <p className="muted micro">
+              A failed push followed by a text to the same person is the fallback working, not two
+              separate faults.
+            </p>
             <table>
               <thead>
                 <tr>
@@ -276,11 +294,11 @@ export function EventDetail() {
                 {alert.deliveries.map((delivery) => (
                   <tr key={delivery.id}>
                     <td>{delivery.recipient?.name ?? 'unknown'}</td>
-                    <td className="mono">{delivery.tier}</td>
+                    <td className="figures">{delivery.tier}</td>
                     <td>{delivery.channel.toLowerCase()}</td>
                     <td>{humanise(delivery.status)}</td>
                     <td className="micro">{delivery.failureReason ?? ''}</td>
-                    <td className="mono">
+                    <td className="figures">
                       {delivery.sentAt ? formatClock(delivery.sentAt) : 'not sent'}
                     </td>
                   </tr>
@@ -288,8 +306,8 @@ export function EventDetail() {
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </details>
+      )}
 
       {explaining ? (
         <Modal
@@ -329,9 +347,9 @@ export function EventDetail() {
                     {humanise(factor.key)}
                     {factor.detail ? <div className="micro">{factor.detail}</div> : null}
                   </td>
-                  <td className="mono num">{factor.weight}</td>
-                  <td className="mono num">{factor.value}</td>
-                  <td className="mono num">{factor.contribution}</td>
+                  <td className="figures num">{factor.weight}</td>
+                  <td className="figures num">{factor.value}</td>
+                  <td className="figures num">{factor.contribution}</td>
                 </tr>
               ))}
               <tr>
@@ -340,7 +358,7 @@ export function EventDetail() {
                 </td>
                 <td />
                 <td />
-                <td className="mono num">
+                <td className="figures num">
                   <strong>{alert.severityScore}</strong>
                 </td>
               </tr>
@@ -414,7 +432,7 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
           {formatClock(volunteer.acceptedAt)}
           {volunteer.distanceMetres !== null ? `, ${distance(volunteer.distanceMetres)} away` : ''}
           {volunteer.arrivedAt ? ` and arrived ${formatClock(volunteer.arrivedAt)}.` : '.'}
-          {volunteer.phone ? <span className="micro muted mono"> {volunteer.phone}</span> : null}
+          {volunteer.phone ? <span className="micro muted figures"> {volunteer.phone}</span> : null}
         </p>
       ) : volunteer.asked > 0 && OPEN_STATES.includes(alert.state) ? (
         <p className="micro muted">None has said they will go yet.</p>
@@ -452,11 +470,11 @@ function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
 }
 
 /**
- * Whether this step was taken by text rather than in the app: replying to an alert SMS,
- * or, for the alert itself, the elder texting HELP from a phone with no data.
+ * The record in order, with the alert itself always first. Scoring is written in the same
+ * instant as the alert, and an equal timestamp would otherwise let "Scored standard, 30"
+ * come before "Grace asked for help".
  */
-function byText(detail: unknown): boolean {
-  return (
-    typeof detail === 'object' && detail !== null && (detail as { via?: unknown }).via === 'sms'
-  );
+function firstThingsFirst(entries: AuditEntry[]): AuditEntry[] {
+  const created = entries.find((entry) => entry.action === 'EVENT_CREATED');
+  return created ? [created, ...entries.filter((entry) => entry !== created)] : entries;
 }

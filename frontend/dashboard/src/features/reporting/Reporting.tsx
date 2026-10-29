@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { api } from '../../shared/api/client';
 import { Icon } from '../../shared/components/Icon';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { formatDuration, humanise } from '../../shared/utils/format';
@@ -52,7 +53,7 @@ function Trend({
     <span className={`trend trend--${tone}`}>
       <Icon name={up ? 'trendingUp' : 'trendingDown'} size={16} />
       <span>
-        <span className="mono">{amount}</span> {versus}
+        <span className="figures">{amount}</span> {versus}
       </span>
     </span>
   );
@@ -81,29 +82,25 @@ export function Reporting() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Reporting</h1>
-        </div>
-        {/*
-          One segmented control rather than three buttons. The chosen window used to be
-          filled emergency red, which spent the one colour reserved for emergencies on a
-          date range; it is now marked the way a selected tab is, and aria-pressed says
-          which one is chosen.
-        */}
-        <div className="segmented" role="group" aria-label="Reporting window">
-          {WINDOWS.map((window) => (
-            <button
-              key={window}
-              type="button"
-              aria-pressed={days === window}
-              onClick={() => setDays(window)}
-            >
-              {window} days
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title="Reporting"
+        actions={
+          // One segmented control rather than three buttons, with aria-pressed saying
+          // which window is chosen.
+          <div className="segmented" role="group" aria-label="Reporting window">
+            {WINDOWS.map((window) => (
+              <button
+                key={window}
+                type="button"
+                aria-pressed={days === window}
+                onClick={() => setDays(window)}
+              >
+                {window} days
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {loading || !overview ? (
         <Skeleton rows={3} />
@@ -117,7 +114,7 @@ export function Reporting() {
                 <div className="metric__value">{overview.live.open}</div>
               </div>
               <div className="card metric">
-                <div className="metric__label">Waiting for somebody to answer</div>
+                <div className="metric__label">Not answered yet</div>
                 <div className="metric__value">{overview.live.unacknowledged}</div>
               </div>
               {Object.entries(overview.live.bySeverity).map(([band, count]) => (
@@ -156,8 +153,8 @@ export function Reporting() {
                   windowDays={days}
                 />
                 <div className="metric__note">
-                  From <span className="mono">{overview.responseTimes.sampleSize}</span> answered.
-                  Mean{' '}
+                  From <span className="figures">{overview.responseTimes.sampleSize}</span>{' '}
+                  answered. Mean{' '}
                   {overview.responseTimes.meanSeconds === null
                     ? 'none'
                     : formatDuration(overview.responseTimes.meanSeconds)}
@@ -196,15 +193,15 @@ export function Reporting() {
                   windowDays={days}
                 />
                 <div className="metric__note">
-                  <span className="mono">{overview.escalation.escalatedCount}</span> of{' '}
-                  <span className="mono">{overview.escalation.total}</span> closed.
+                  <span className="figures">{overview.escalation.escalatedCount}</span> of{' '}
+                  <span className="figures">{overview.escalation.total}</span> closed.
                 </div>
               </div>
             </div>
           </section>
 
           <section aria-labelledby="daily-heading" className="card stack">
-            <div className="page-head">
+            <div className="section-head">
               <h2 id="daily-heading">Day by day</h2>
               <div className="segmented" role="group" aria-label="What the chart shows">
                 <button
@@ -253,7 +250,7 @@ export function Reporting() {
                     Object.entries(overview.escalation.answeredAtTier).map(([tier, count]) => (
                       <tr key={tier}>
                         <td>Tier {tier}</td>
-                        <td className="mono">{count}</td>
+                        <td className="figures">{count}</td>
                       </tr>
                     ))
                   )}
@@ -264,7 +261,7 @@ export function Reporting() {
                         Counted once per emergency, however many tiers it climbed.
                       </div>
                     </td>
-                    <td className="mono">
+                    <td className="figures">
                       <strong>{overview.escalation.escalatedCount}</strong>
                       {overview.escalation.escalationRatePercent === null ? null : (
                         <div className="micro">
@@ -306,10 +303,10 @@ export function Reporting() {
                     overview.channels.map((row) => (
                       <tr key={row.channel}>
                         <td>{humanise(row.channel)}</td>
-                        <td className="mono">{row.attempted}</td>
-                        <td className="mono">{row.delivered}</td>
-                        <td className="mono">{row.failed}</td>
-                        <td className="mono">
+                        <td className="figures">{row.attempted}</td>
+                        <td className="figures">{row.delivered}</td>
+                        <td className="figures">{row.failed}</td>
+                        <td className="figures">
                           {row.successRatePercent === null ? 'none' : `${row.successRatePercent}%`}
                         </td>
                       </tr>

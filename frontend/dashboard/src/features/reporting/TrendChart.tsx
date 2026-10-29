@@ -214,7 +214,7 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
           }}
         >
           <div className="chart__tip-date">{dayLabel.format(parseDay(shown.date))}</div>
-          <div className="chart__tip-value mono">
+          <div className="chart__tip-value figures">
             {shownValue === null ? 'No answer that day' : format(shownValue, series)}
           </div>
           <div className="chart__tip-detail">

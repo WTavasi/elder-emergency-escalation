@@ -16,9 +16,13 @@ export function PhoneInput({
   value,
   onCountryChange,
   onChange,
+  labelHidden = false,
 }: {
   id: string;
   label: string;
+  /** For a form whose labels sit in a column of their own: the label is kept for a screen
+   * reader and the column carries the visible one. */
+  labelHidden?: boolean;
   country: Country;
   value: string;
   onCountryChange: (country: Country) => void;
@@ -28,7 +32,9 @@ export function PhoneInput({
 
   return (
     <div className="phone-input">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={labelHidden ? 'visually-hidden' : undefined}>
+        {label}
+      </label>
       <div className="phone-input__row">
         <label className="visually-hidden" htmlFor={countryId}>
           Country code

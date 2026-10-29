@@ -75,41 +75,40 @@ typography:
     fontSize: "13px"
     fontWeight: 600
     letterSpacing: "0.6px"
-  display:
-    fontFamily: "Source Sans 3, system-ui, sans-serif"
-    fontSize: "32px"
-    fontWeight: 700
-    lineHeight: 1.05
-    letterSpacing: "-1px"
-  headline:
-    fontFamily: "Source Sans 3, system-ui, sans-serif"
+  console-large-title:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "28px"
     fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.6px"
-  title:
-    fontFamily: "Source Sans 3, system-ui, sans-serif"
-    fontSize: "22px"
+    lineHeight: 1.15
+  console-title:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "17px"
+    fontWeight: 700
+    lineHeight: 1.25
+  console-headline:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "15px"
     fontWeight: 600
-    lineHeight: 1.2
-  body:
-    fontFamily: "Source Sans 3, system-ui, sans-serif"
-    fontSize: "16px"
+    lineHeight: 1.4
+  console-body:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "15px"
     fontWeight: 400
-    lineHeight: 1.5
-  label:
-    fontFamily: "Source Sans 3, system-ui, sans-serif"
-    fontSize: "14px"
+    lineHeight: 1.4
+  console-subheadline:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.4
+  console-footnote:
+    fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "12px"
     fontWeight: 600
-    letterSpacing: "1.2px"
-  figures:
-    fontFamily: "Atkinson Hyperlegible Mono, ui-monospace, monospace"
-    fontSize: "16px"
-    fontWeight: 400
 rounded:
   input: "4px"
   card: "8px"
   sheet: "12px"
+  control: "8px"
   elder-card: "16px"
   pill: "999px"
   app-field: "10px"
@@ -150,14 +149,16 @@ components:
     rounded: "{rounded.app-button}"
     height: "50px"
   button-primary-console:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.surface}"
-    typography: "{typography.body}"
-    rounded: "{rounded.input}"
-  button-outlined-console:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.emergency-red}"
+    textColor: "{colors.on-emergency}"
+    typography: "{typography.console-headline}"
+    rounded: "{rounded.control}"
+    height: "36px"
+  button-grey-console:
+    backgroundColor: "{colors.surface-sunk}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.input}"
+    typography: "{typography.console-headline}"
+    rounded: "{rounded.control}"
     height: "36px"
   button-call:
     backgroundColor: "{colors.waiting-amber-wash}"
@@ -192,8 +193,8 @@ length, nothing on it that is not information, and one red thing that means a pe
 needed. Every screen is measured against it. If a stranger picking up the phone could not
 tell within a second what is happening and what to press, the screen is not done.
 
-An iPhone app in the app, dense and tool-like in the console. The app follows Apple's
-conventions: the phone's own face (SF Pro) on Apple's type scale, 20-point margins,
+An iPhone app in the app, and a Mac app in the console, dense and tool-like because it is
+read at a desk. Both follow Apple's conventions. The app: the phone's own face (SF Pro) on Apple's type scale, 20-point margins,
 rounded solid buttons, and questions as sheets that slide up from the bottom. Type and
 spacing do the work boxes would otherwise do: lists run edge to edge under hairlines,
 sections open with a small-capitals label, and there are almost no cards. Colour is spent
@@ -201,15 +202,16 @@ on state, and on the way in, where MzaziCare's red fills the top of the screen. 
 mode is the same app at a larger size (22pt semibold body, 72pt buttons); it starts on
 for an elder and anybody can switch it. The elder's screen has the help button in the
 middle, where what replaces it appears too, and what the elder does next at the bottom,
-under the thumb.
+under the thumb. The console: the computer's own face, a grey sidebar, a large title on
+each page under a bar that turns translucent as the page scrolls, lists rather than
+spreadsheets, and questions as sheets with their buttons at the bottom right.
 
 **Key Characteristics:**
 
 - One red thing per screen, and it always means a person is needed.
 - Yellow means "you can still act": the ten seconds to stop an alert, and no connection.
 - State is said three ways: a glyph, a word and a colour, never colour alone.
-- One face everywhere in the app, the phone's own, larger in Elder mode rather than
-  different.
+- One face everywhere, the device's own, larger in Elder mode rather than different.
 - Felt as well as seen: four vibrations, each with one meaning.
 
 ## Colors
@@ -220,8 +222,9 @@ or grey, and every pair is gated for contrast in CI in both themes.
 ### Primary
 
 - **Emergency Red** (emergency-red): the help button, an emergency nobody has answered,
-  and a destructive confirmation. Nothing else. On the elder's no-connection screen it is
-  the first way to ask for help.
+  and a destructive confirmation. On the elder's no-connection screen it is the first way
+  to ask for help. Also, under review, the filled buttons and text links of both the app
+  and the console (see the One Red Rule).
 - **Emergency Edge** (emergency-edge): the help button's outline in dark mode, where the
   red alone is 2:1 against the page; the console banner's outline while nobody has the
   emergency.
@@ -231,7 +234,7 @@ or grey, and every pair is gated for contrast in CI in both themes.
 - **Caution Yellow** (caution-yellow) with **On-Caution Ink** (on-caution): the elder's
   ten seconds to stop an alert fill the screen with it, and the no-connection band uses
   it. The same in light and dark mode, at 12.7:1.
-- **Focus Blue** (focus-blue): focus rings, the text caret, links, and the iOS tint.
+- **Focus Blue** (focus-blue): focus rings and the text caret.
 
 ### Tertiary
 
@@ -240,7 +243,7 @@ or grey, and every pair is gated for contrast in CI in both themes.
 
 ### Neutral
 
-- **Ink** (ink): text, and primary actions in the console.
+- **Ink** (ink): text, and selected controls.
 - **Soft Ink** and **Faint Ink**: secondary text and captions, AAA and AA respectively.
 - **Control Grey** (control-grey): field outlines at 3:1, unselected controls.
 - **Hairline** (hairline): dividers.
@@ -250,9 +253,10 @@ or grey, and every pair is gated for contrast in CI in both themes.
 
 **The One Red Rule.** Red appears only where a person is needed: the help button, an
 unanswered emergency, a destructive confirmation. A selected switch, a ticked box, a
-spinner or a caret is never red. Two exceptions in the app: MzaziCare's red across the top
-of the screens on the way in, where no emergency can be on screen yet, and the app's
-filled buttons and text links, which are under review.
+spinner or a caret is never red. Two exceptions: MzaziCare's red on the way in (across the
+top of the app's screens, down the side of the console's sign-in), where no emergency can
+be on screen yet; and the filled buttons and text links of the app and the console, which
+take the red as an Apple app's controls take its tint, and are under review.
 
 **The You-Can-Still-Act Rule.** Yellow is spent on exactly two moments on the elder's
 screen, and never as decoration.
@@ -261,7 +265,8 @@ screen, and never as decoration.
 
 **App:** the phone's own face. SF Pro on an iPhone (its Display cut from 20 points up,
 its Text cut below, as Apple sets them), Roboto on Android. Nothing is bundled.
-**Console:** Source Sans 3, with Atkinson Hyperlegible Mono for figures, self-hosted.
+**Console:** the computer's own face (`system-ui`): SF Pro on a Mac, Segoe UI on
+Windows. Nothing is bundled, and figures take the same face with tabular digits.
 
 **Character:** In the app, Apple's own type, because a person reading in a hurry should
 not have to adjust to anything. The same face for everybody; Elder mode makes it larger
@@ -280,6 +285,18 @@ and heavier, it does not change it.
   hairline, as the Settings app heads its groups.
 - **Figures:** the same face with tabular digits, so times, phone numbers, codes and the
   countdown line up and do not jitter as they change.
+
+### Hierarchy (console)
+
+Apple's steps for a Mac, a little smaller than the phone's, because the console is read at
+a desk and holds many records at once.
+
+- **Large Title** (700, 28): a page's title, under its bar.
+- **Title** (700, 17): a section's heading.
+- **Headline** (600, 15): names in lists, and every button.
+- **Body** (400, 15): everything a person reads.
+- **Subheadline** (400, 13): secondary lines in the softer ink.
+- **Footnote** (600, 12): column headings, in title case rather than spaced capitals.
 
 ### Named Rules
 
@@ -304,15 +321,19 @@ the bottom of its screen. On the elder's screen the help button and the countdow
 share one layout and one size, so the ring appears exactly where the button was; what the
 elder does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb.
 Buttons are 50pt tall, 72pt in Elder mode; no touch target is under 48pt (72pt in Elder
-mode), and the console uses 36pt where a mouse is detected. The console keeps a fixed sidebar that
-narrows to icons on a desktop and becomes a drawer on a phone.
+mode), and the console uses 36pt where a mouse is detected. The console is laid out as a Mac
+window: a grey sidebar with the sections, their counts and the account at its foot, which
+can be hidden, and becomes a drawer on a phone; on each page, a bar that holds its actions
+and shows the page's name once the large title has scrolled under it. Records are lists:
+a whole row opens what it shows, with a chevron at its end.
 
 ## Elevation & Depth
 
 Flat. Depth comes from tone (page, surface, sunk surface) and hairlines, not shadows.
 Material's elevation tint is switched off, because it would tint every surface with the
-emergency red. In the console, chart tooltips, menus and dialogs carry a single soft
-shadow to show they float above the page, and nothing else does.
+emergency red. In the console, chart tooltips, menus and sheets carry a single soft
+shadow to show they float above the page, and nothing else does; the bar at the top of a
+page is translucent over what scrolls beneath it, as a Mac window's is.
 
 ### Named Rules
 
@@ -323,8 +344,9 @@ only for something that genuinely floats above the page.
 
 Rounded as iOS is in the app: 12px on buttons and grouped blocks, 10px on fields, 16px on
 the top corners of a sheet, fully round for the help button and state pills. The console
-stays square-ish: 4px on buttons and fields, 8px on its few cards, 12px on dialogs. Borders are hairlines; the only heavier lines are focus rings (3px), the progress
-steps' connector and the help button's dark-mode edge (4px).
+rounds as a Mac does: 8px on buttons, fields and controls, 12px on lists and sheets.
+Borders are hairlines; the only heavier lines are focus rings (3px), the progress steps'
+connector and the help button's dark-mode edge (4px).
 
 ### Named Rules
 
@@ -350,15 +372,13 @@ the bottom in the darkest ink with yellow text.
 ### Buttons
 
 - **Shape:** solid with rounded corners (12px) in the app, full width, 50pt tall (72pt in
-  Elder mode); gently squared (4px) in the console.
-- **Console primary:** ink with white text. Red is never a primary action colour there.
-- **App filled:** MzaziCare red, for the one action a screen leads to. The colour is under
-  review, because it puts red on actions that are not emergencies, such as signing in and
-  saving; see "Don't" below.
-- **App secondary:** ink on the sunk grey, no outline, as iOS's grey buttons are.
-- **App text:** MzaziCare red, not underlined, as an iPhone app's links take its tint.
-  Under review with the filled button. In the console, text actions stay ink and
-  underlined.
+  Elder mode); 8px corners in the console, as wide as their words.
+- **Filled:** MzaziCare red, for the one action a screen leads to, in the app and the
+  console alike. The colour is under review, because it puts red on actions that are not
+  emergencies, such as signing in and saving; see "Don't" below.
+- **Secondary:** ink on the sunk grey, no outline, as Apple's grey buttons are.
+- **Text:** MzaziCare red, not underlined (in the console, underlined under the pointer),
+  as an Apple app's links take its tint. Under review with the filled button.
 - **Call buttons:** amber wash with amber ink, because they reach a person.
 - **Focus:** a 3px Focus Blue ring.
 
@@ -390,11 +410,17 @@ Before the phone asks for a permission, a sheet says why in a sentence and has o
 button, Continue, after which the phone's own question appears. Permission is asked when
 the person presses the thing that needs it, never at start-up.
 
+In the console a question is a Mac sheet: it drops from the top of the window, with no
+close button, a form's labels right-aligned in a column to the left of their fields, and
+its buttons at the bottom right, the one that goes ahead last. A confirmation is a
+narrower alert. A choice between a few things is a segmented control, a grey track with
+the chosen segment raised on it.
+
 ### Navigation
 
 A bottom bar in the app with a sunk-surface pill on the current tab and a red badge
-with the number nobody has answered. In the console, a sidebar whose current page is
-marked by a sunk background, weight, and a thin ink line beside it.
+with the number nobody has answered. In the console, a grey sidebar whose current page is
+a rounded grey selection, never red, with each section's count beside it.
 
 ## Do's and Don'ts
 
@@ -417,9 +443,9 @@ marked by a sunk background, weight, and a thin ink line beside it.
 
 - **Don't** colour a selected control, a spinner or a caret with the emergency red.
 - **Don't** add a coloured stripe down the edge of a row, message or banner.
-- **Don't** bundle a face in the app, or choose one from the overused list for the
-  console.
-- **Don't** put a card, a gradient, glass or a decorative shadow on a working screen.
+- **Don't** bundle a face in the app or the console.
+- **Don't** put a card, a gradient, glass or a decorative shadow on a working screen. The
+  console's bar at the top of a page is the one translucent thing, as a Mac window's is.
 - **Don't** show a bare spinner where a sentence could say what is happening.
 - **Don't** add new uses of the red filled button for actions that are not emergencies
-  while the app's filled-button colour is under review.
+  while the filled-button colour is under review.

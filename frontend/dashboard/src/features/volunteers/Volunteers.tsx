@@ -6,6 +6,7 @@ import type {
   VolunteerTraining,
 } from '../../shared/api/types';
 import { Modal } from '../../shared/components/Modal';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 
@@ -82,18 +83,17 @@ export function Volunteers() {
   }
 
   const rows = data ?? [];
+  // Every row under Waiting is waiting, so the column would be empty there.
+  const showStatus = status !== 'PENDING' || rows.some((volunteer) => volunteer.deactivated);
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Volunteers</h1>
-          <p>
-            Community volunteers are asked to go to an elder near them only once approved here, only
-            while they say they are available, and only for elders who agreed to it.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Volunteers">
+        <p>
+          Community volunteers are asked to go to an elder near them only once approved here, only
+          while they say they are available, and only for elders who agreed to it.
+        </p>
+      </PageHeader>
 
       {message ? (
         <p className="notice" role="status">
@@ -123,21 +123,22 @@ export function Volunteers() {
         ) : error ? (
           <ErrorNotice message={error} onRetry={reload} />
         ) : rows.length === 0 ? (
-          <Empty title={status === 'PENDING' ? 'Nobody is waiting' : 'No volunteers here'}>
+          <Empty
+            icon="personAdd"
+            title={status === 'PENDING' ? 'Nobody is waiting' : 'No volunteers here'}
+          >
             {status === 'PENDING'
               ? 'New applications from the app appear here, oldest first.'
               : 'Try another filter.'}
           </Empty>
         ) : (
-          <table>
+          <table className="list">
             <thead>
               <tr>
                 <th scope="col">Volunteer</th>
                 <th scope="col">Can do</th>
                 <th scope="col">Area</th>
-                <th scope="col" className="center">
-                  Status
-                </th>
+                {showStatus ? <th scope="col">Status</th> : null}
                 <th scope="col" className="num">
                   Went
                 </th>
@@ -154,55 +155,59 @@ export function Volunteers() {
                 <tr key={volunteer.id}>
                   <td>
                     <strong>{volunteer.name}</strong>
-                    <div className="micro mono">{volunteer.phone}</div>
+                    <div className="micro figures">{volunteer.phone}</div>
                     {volunteer.email ? <div className="micro">{volunteer.email}</div> : null}
                   </td>
-                  <td>
+                  <td data-label="Can do">
                     {volunteer.training.map((kind) => TRAINING_LABEL[kind]).join(', ')}
                     {volunteer.note ? <div className="micro">{volunteer.note}</div> : null}
                   </td>
-                  <td>
+                  <td data-label="Area">
                     {volunteer.area ? (
                       <>
                         {volunteer.area.label}
                         <div className="micro">
-                          within <span className="mono">{volunteer.radiusKm}</span> km
+                          within <span className="figures">{volunteer.radiusKm}</span> km
                         </div>
                       </>
                     ) : (
                       <span className="muted">&ndash;</span>
                     )}
                   </td>
-                  <td className="center">
-                    <span
-                      className={`status status--${volunteer.status === 'APPROVED' && !volunteer.deactivated ? 'active' : 'deactivated'}`}
-                    >
-                      {volunteer.deactivated ? 'Deactivated' : STATUS_LABEL[volunteer.status]}
-                    </span>
-                    {volunteer.status === 'APPROVED' ? (
-                      <div className="micro">
-                        {volunteer.available ? 'Available now' : 'Not available'}
-                      </div>
-                    ) : null}
-                    {volunteer.reviewNote ? (
-                      <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
-                    ) : null}
-                  </td>
-                  <td className="mono num" title="Said they would go / reached the elder">
+                  {showStatus ? (
+                    <td data-label="Status">
+                      {/*
+                      The status in words only where the list does not already say it: every
+                      row under Waiting is waiting. An account deactivated is always said.
+                    */}
+                      {volunteer.deactivated ? (
+                        <span className="status status--deactivated">Deactivated</span>
+                      ) : status === undefined ? (
+                        <span>{STATUS_LABEL[volunteer.status]}</span>
+                      ) : null}
+                      {volunteer.status === 'APPROVED' ? (
+                        <div className="micro">
+                          {volunteer.available ? 'Available now' : 'Not available'}
+                        </div>
+                      ) : null}
+                      {volunteer.reviewNote ? (
+                        <div className="micro">&ldquo;{volunteer.reviewNote}&rdquo;</div>
+                      ) : null}
+                    </td>
+                  ) : null}
+                  <td
+                    className="figures num"
+                    data-label="Went"
+                    title="Said they would go / reached the elder"
+                  >
                     {volunteer.accepted} / {volunteer.arrived}
                   </td>
-                  <td className="mono num">{dateOnly.format(new Date(volunteer.appliedAt))}</td>
+                  <td className="figures num" data-label="Applied">
+                    {dateOnly.format(new Date(volunteer.appliedAt))}
+                  </td>
                   <td className="num">
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      {volunteer.status !== 'APPROVED' ? (
-                        <button
-                          type="button"
-                          disabled={busy || volunteer.deactivated}
-                          onClick={() => void decide(volunteer, 'approve')}
-                        >
-                          Approve
-                        </button>
-                      ) : null}
+                    {/* Side by side, the one that goes ahead on the right, as on a Mac. */}
+                    <div className="row-buttons">
                       {volunteer.status === 'PENDING' ? (
                         <button
                           type="button"
@@ -219,6 +224,16 @@ export function Volunteers() {
                           onClick={() => setDeciding({ volunteer, decision: 'suspend' })}
                         >
                           Suspend
+                        </button>
+                      ) : null}
+                      {volunteer.status !== 'APPROVED' ? (
+                        <button
+                          type="button"
+                          className="button--primary"
+                          disabled={busy || volunteer.deactivated}
+                          onClick={() => void decide(volunteer, 'approve')}
+                        >
+                          Approve
                         </button>
                       ) : null}
                     </div>
@@ -241,6 +256,7 @@ export function Volunteers() {
             setDeciding(null);
             setNote('');
           }}
+          alert
           footer={
             <>
               <button
