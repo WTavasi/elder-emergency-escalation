@@ -176,12 +176,16 @@ export function EventDetail() {
       </PageHeader>
 
       <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
-      <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
-        {alert.responseSeconds === null
-          ? 'Not answered yet'
-          : `Answered in ${formatDuration(alert.responseSeconds)}`}
-        {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
-      </p>
+      {/* Only once there is something the banner does not say: until then it already
+        says nobody has taken it on. */}
+      {alert.responseSeconds !== null || alert.resolvedAt ? (
+        <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
+          {alert.responseSeconds === null
+            ? 'Not answered'
+            : `Answered in ${formatDuration(alert.responseSeconds)}`}
+          {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
+        </p>
+      ) : null}
 
       <OnTheWay alert={alert} />
       <Volunteers alert={alert} />
