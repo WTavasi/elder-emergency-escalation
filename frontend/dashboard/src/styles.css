@@ -707,7 +707,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: var(--control-height);
   padding: 0 var(--space-12);
@@ -718,6 +719,12 @@ select {
   background: var(--surface);
   color: var(--text);
   font: inherit;
+}
+
+textarea {
+  padding: var(--space-8) var(--space-12);
+  resize: vertical;
+  line-height: 1.4;
 }
 
 .field {
@@ -1549,21 +1556,37 @@ select {
 .modal__scrim {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--text) 40%, transparent);
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+  animation: scrim-in var(--motion-sheet) ease-out;
 }
 .modal__box {
   position: relative;
-  width: min(440px, 100%);
+  width: min(480px, 100%);
   max-height: calc(100vh - var(--space-32));
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-sheet);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--text) 20%, transparent);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--text) 24%, transparent);
+  animation: sheet-in var(--motion-sheet) var(--easing-decelerate);
 }
 .modal__box--wide {
-  width: min(560px, 100%);
+  width: min(600px, 100%);
+}
+.modal__box--alert {
+  width: min(400px, 100%);
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-8)) scale(0.98);
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* The side panel: the right edge, the full height, sliding in. */
@@ -1577,18 +1600,25 @@ select {
   max-height: none;
   border-radius: 0;
   border-width: 0 0 0 1px;
-  animation: sheet-in var(--motion-sheet) ease-out;
+  animation: panel-in var(--motion-sheet) ease-out;
 }
 .modal--side .modal__body {
   flex: 1;
 }
-@keyframes sheet-in {
+.modal--side .modal__head {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--line);
+}
+@keyframes panel-in {
   from {
     transform: translateX(var(--space-32));
     opacity: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .modal__box,
+  .modal__scrim,
   .modal--side .modal__box {
     animation: none;
   }
@@ -1598,23 +1628,69 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-24);
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-24) var(--space-24) var(--space-4);
 }
 .modal__head h2 {
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-title2);
+  font-weight: var(--font-weight-heading);
 }
 .modal__body {
-  padding: var(--space-16) var(--space-24);
+  padding: var(--space-8) var(--space-24) var(--space-16);
   overflow-y: auto;
+}
+.modal__body > p:first-child {
+  margin-top: 0;
 }
 .modal__foot {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-8);
-  padding: var(--space-12) var(--space-24);
-  border-top: 1px solid var(--line);
+  padding: var(--space-8) var(--space-24) var(--space-24);
 }
+
+/*
+  A form laid out as a Mac sheet lays one out: the labels in a column on the left, set
+  against the right edge, and the fields beside them, so the eye runs straight down the
+  fields. On a narrow screen the label goes above its field again.
+*/
+.form-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+.form-grid > label,
+.form-grid > .label {
+  margin: 0;
+  text-align: right;
+  font-weight: var(--font-weight-body);
+  color: var(--text-soft);
+}
+.form-grid > .form-grid__top {
+  align-self: start;
+  padding-top: calc((var(--control-height) - 1.4em) / 2);
+}
+.form-grid .field__hint {
+  margin-top: var(--space-4);
+}
+@media (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .form-grid > label,
+  .form-grid > .label {
+    text-align: left;
+    margin-top: var(--space-8);
+  }
+}
+.segmented--fill {
+  display: flex;
+}
+.segmented--fill button {
+  flex: 1;
+}
+
 .field__hint {
   margin: var(--space-4) 0 0;
   font-size: var(--font-size-subheadline);

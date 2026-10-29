@@ -3,11 +3,14 @@ import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 
 /**
- * A dialog over the page: a title, its contents, and its buttons along the bottom.
+ * A sheet over the page, as a Mac app shows one: a bold title, its contents, and its
+ * buttons at the bottom right, the way out (Cancel, Keep it) in grey beside the action in
+ * red. There is no close button in a corner, as an Apple sheet has none; Escape and the way
+ * out close it. A panel along the side, for reading rather than answering, keeps one.
  *
- * Escape closes it, focus moves into it when it opens and back to whatever opened it
- * when it closes, and Tab stays inside it, which is what a screen reader user needs to
- * know they are somewhere else. The page behind is dimmed but not blurred.
+ * Focus moves into it when it opens and back to whatever opened it when it closes, and
+ * Tab stays inside it, which is what a screen reader user needs to know they are somewhere
+ * else. The page behind is dimmed but not blurred.
  */
 export function Modal({
   title,
@@ -15,6 +18,7 @@ export function Modal({
   footer,
   onClose,
   wide = false,
+  alert = false,
   side = false,
 }: {
   title: string;
@@ -22,6 +26,8 @@ export function Modal({
   footer: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  /** A short question with an answer or two, such as "Deactivate Mary Otieno?": narrower. */
+  alert?: boolean;
   /**
    * A panel along the right edge, full height, instead of a box in the middle: for
    * detail that sits beside the page rather than interrupting it.
@@ -76,16 +82,18 @@ export function Modal({
       <div className="modal__scrim" aria-hidden="true" onClick={onClose} />
       <div
         ref={box}
-        className={`modal__box${wide ? ' modal__box--wide' : ''}`}
+        className={`modal__box${wide ? ' modal__box--wide' : ''}${alert ? ' modal__box--alert' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
         <div className="modal__head">
           <h2 id={titleId}>{title}</h2>
-          <button type="button" className="icon-button button--quiet" onClick={onClose}>
-            <Icon name="close" label="Close" />
-          </button>
+          {side ? (
+            <button type="button" className="icon-button button--quiet" onClick={onClose}>
+              <Icon name="close" label="Close" />
+            </button>
+          ) : null}
         </div>
         <div className="modal__body">{children}</div>
         <div className="modal__foot">{footer}</div>

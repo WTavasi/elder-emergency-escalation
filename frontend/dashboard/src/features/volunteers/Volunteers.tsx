@@ -248,6 +248,7 @@ export function Volunteers() {
             setDeciding(null);
             setNote('');
           }}
+          alert
           footer={
             <>
               <button

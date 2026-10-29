@@ -451,9 +451,10 @@ function DeactivateDialog({
     <Modal
       title={one ? `Deactivate ${one.name}?` : `Deactivate ${users.length} accounts?`}
       onClose={onClose}
+      alert
       footer={
         <>
-          <button type="button" className="button--quiet" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             Keep {one ? 'them' : 'them all'}
           </button>
           <button type="button" className="button--primary" onClick={onConfirm}>
@@ -462,7 +463,7 @@ function DeactivateDialog({
         </>
       }
     >
-      <p style={{ marginTop: 0 }}>
+      <p>
         {one ? 'They' : 'These accounts'} will be signed out straight away, will not be able to sign
         in, and will not be sent any emergency. Their history stays. You can reactivate{' '}
         {one ? 'the account' : 'them'} at any time.
