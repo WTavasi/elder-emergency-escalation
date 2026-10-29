@@ -855,8 +855,8 @@ chosen because a capital I, a lowercase l and a 1 could not be confused and the 
 slashed. SF Pro draws I and l more alike. What carries the meaning on an elder's screen is
 words and context rather than a code to be read letter by letter, and codes and numbers
 are digits, which SF Pro keeps distinct; against that, the face every other app on the
-phone uses is the one the elder already reads every day. The console keeps Source Sans 3
-and Atkinson Hyperlegible Mono.
+phone uses is the one the elder already reads every day. The console kept Source Sans 3
+and Atkinson Hyperlegible Mono until it followed on 29 October 2026 (below).
 
 **One face for everybody, and Elder mode for size.** Before, the elder had a different
 face from everybody else. Now everybody has the same face, and Elder mode makes it larger
@@ -899,3 +899,64 @@ same order as everybody else's, with privacy and terms in a part of their own; a
 change-password form asks for the new password once, with a way to show it, rather than
 twice.
 
+## The console follows a Mac app, as the app follows an iPhone one
+
+Once the app followed Apple's conventions, the console was the odd one out: its own fonts,
+a breadcrumb bar repeating each page's title, spreadsheet-like tables with an Apply
+button, dialogs centred with a close cross, and ink buttons where the app's were red. On
+29 October 2026 it was reworked after Mail and System Settings, with four choices made by
+the project's owner: the computer's own face, MzaziCare red for actions as in the app, a
+sign-in like the app's, and a density close to a Mac's rather than a phone's.
+
+**The computer's own face, on Apple's Mac scale.** `system-ui`: SF Pro on a Mac, Segoe UI
+on Windows. Source Sans 3 and Atkinson Hyperlegible Mono are gone, and with them about
+700 KB of fonts and two licence files. Figures keep a fixed width with tabular digits
+rather than a monospaced face, which also ends odd spacing such as "1 . 5 km". Sizes take
+Apple's steps a little below the phone's (body 15, large title 28), because the console is
+read at a desk and holds many records at once. What was given up: Atkinson Hyperlegible
+Mono told 0 from O and 1 from l at a glance, which mattered for phone numbers. In the
+console those are always read in a column of other phone numbers, where the shape of the
+digits is enough; nothing there is typed back from the screen. The tokens lose the font
+names and the old console scale (`type.standard`), gain `type.family.system`,
+`type.console` and `radius.control`, and the app's generated Dart loses the two classes
+nothing read.
+
+**Red actions, under review with the app's.** The filled button and links take MzaziCare
+red, as the app's do, so the two surfaces read as one product. This adds red that does not
+mean an emergency to a second surface, so it joins the app's review rather than
+settling it; the governing rule in `docs/design-language.md` records both exceptions. The
+sidebar's selection is grey, not red, because a page being open is not an emergency.
+
+**A window frame.** A grey sidebar with each section's count and the account at its foot,
+which can be hidden; on each page a bar that holds its actions and, once the large title
+has scrolled away, the page's name. The browser tab carries the number nobody has
+answered, so a console left in a background tab still says somebody is needed.
+
+**Lists, not spreadsheets.** A whole row opens its record, with a chevron to say so, and
+an emergency nobody has answered is marked by a red dot before the name, as an unread
+message is in Mail, rather than by a coloured row. The Users table lost its Status column,
+because nearly every account is active, and says "Deactivated" beside the exception
+instead; it gained the size of each elder's chain. Choosing several users is behind a
+Select button, as in Photos, so the checkboxes are not in the way the rest of the time.
+
+**Filters apply as they are chosen**, as they do in Finder and Mail, and the date filter
+offers the ranges a person usually means (today, this week, this month) before a range of
+their own. The Apply button was a form's habit, not a tool's.
+
+**Sheets, not dialogs.** A question drops from the top of the window with its buttons at
+the bottom right, the one that goes ahead last; a form's labels sit right-aligned to the
+left of the fields; a choice between a few things is a segmented control.
+
+**What happened is told in sentences.** An emergency's record used to list audit actions
+("Tier dispatched", "+12s", "system"). It now uses the app's sentences ("Sent to Aisha
+Wanjiru and Brian Wanjiru", "12 seconds after the alert"), with two more that only an administrator
+needs: how the emergency was scored, and a message that could not be delivered and why.
+The delivery attempts are under a disclosure, because they explain the sentences rather
+than tell the story.
+
+Smaller changes in the same pass: "Updated just now" and a refresh button in place of a
+Live dot and a full Refresh button; times on the live board as "4 min ago", with the exact
+time on hover; up and down arrows and Return to move through and open rows; Command-F to
+the search on History and Users; the reporting figures drawn as Health draws them; and the
+sign-in as a red panel with the care rings beside the form, as the app's way in is red
+across the top.
