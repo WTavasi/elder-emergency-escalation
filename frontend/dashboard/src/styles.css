@@ -1383,6 +1383,16 @@ textarea {
   width: auto;
 }
 
+.grid__toolbar-end {
+  margin-left: auto;
+}
+
+/* Filters as Apple's pop-up buttons: grey, borderless, the choice in the button. */
+.grid__toolbar select {
+  background-color: var(--surface-sunk);
+  border-color: transparent;
+}
+
 .grid__dates {
   display: inline-flex;
   align-items: center;

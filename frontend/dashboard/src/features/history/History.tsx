@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ApiError, api, type AlertQuery } from '../../shared/api/client';
 import type { AlertSummary, EventState, Severity } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { AlertRow, Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
+import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { retentionSentence } from '../privacy/PrivacyPanel';
@@ -38,25 +39,58 @@ const PAGE_SIZE = 50;
 /** The most an export will fetch, two hundred at a time. */
 const EXPORT_LIMIT = 5000;
 
+/** When it was raised: the choices a person usually means, and a range of their own. */
+type Dates = 'any' | 'today' | 'week' | 'month' | 'custom';
+
+const DATES: { value: Dates; label: string }[] = [
+  { value: 'any', label: 'Any time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'Last 7 days' },
+  { value: 'month', label: 'Last 30 days' },
+  { value: 'custom', label: 'Custom range' },
+];
+
 interface Filters {
   q: string;
   state: EventState | '';
   severity: Severity | '';
+  dates: Dates;
+  /** Only read for a custom range. */
   from: string;
   to: string;
 }
 
-const NO_FILTERS: Filters = { q: '', state: '', severity: '', from: '', to: '' };
+const NO_FILTERS: Filters = { q: '', state: '', severity: '', dates: 'any', from: '', to: '' };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+function range(filters: Filters): Pick<AlertQuery, 'from' | 'to'> {
+  const now = new Date();
+  switch (filters.dates) {
+    case 'today':
+      return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString() };
+    case 'week':
+      return { from: new Date(now.getTime() - 7 * DAY).toISOString() };
+    case 'month':
+      return { from: new Date(now.getTime() - 30 * DAY).toISOString() };
+    case 'custom':
+      return {
+        from: filters.from ? new Date(filters.from).toISOString() : undefined,
+        // An end date means the whole of that day, which is what a person filling in a
+        // date field means by it.
+        to: filters.to ? new Date(`${filters.to}T23:59:59.999`).toISOString() : undefined,
+      };
+    default:
+      return {};
+  }
+}
 
 function toQuery(filters: Filters): AlertQuery {
   return {
     q: filters.q || undefined,
     state: filters.state ? [filters.state] : undefined,
     severity: filters.severity ? [filters.severity] : undefined,
-    from: filters.from ? new Date(filters.from).toISOString() : undefined,
-    // An end date means the whole of that day, which is what a person filling in a
-    // date field means by it.
-    to: filters.to ? new Date(`${filters.to}T23:59:59.999`).toISOString() : undefined,
+    ...range(filters),
   };
 }
 
@@ -92,13 +126,22 @@ const COLUMNS: CsvColumn<AlertSummary>[] = [
 export function History() {
   const [form, setForm] = useState<Filters>(NO_FILTERS);
 
-  // The filters the last search actually ran with. Kept apart from the form fields so
-  // that typing does not fire a query on every keystroke: the query changes when the
-  // operator submits.
-  const [applied, setApplied] = useState<Filters>(NO_FILTERS);
+  // Filters apply as they are chosen, as Apple's do, with no button to press. The search
+  // waits for the typing to stop, so it is one request rather than one per key.
+  const q = useDebounced(form.q);
+  const appliedKey = JSON.stringify({ ...form, q });
+  const applied = useMemo(() => JSON.parse(appliedKey) as Filters, [appliedKey]);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // A new search starts at the first page, adjusted while rendering so it happens with the
+  // new filters rather than one render later.
+  const [lastKey, setLastKey] = useState(appliedKey);
+  if (lastKey !== appliedKey) {
+    setLastKey(appliedKey);
+    setPage(1);
+  }
 
   const fetcher = useCallback(
     () => api.alertPage({ ...toQuery(applied), limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
@@ -124,11 +167,6 @@ export function History() {
 
   function set<K extends keyof Filters>(key: K, value: Filters[K]) {
     setForm((was) => ({ ...was, [key]: value }));
-  }
-
-  function apply(next: Filters) {
-    setApplied(next);
-    setPage(1);
   }
 
   /** Every match for the applied filters, two hundred at a time, as one file. */
@@ -170,14 +208,7 @@ export function History() {
       {exportError ? <ErrorNotice message={exportError} /> : null}
 
       <div className="card grid">
-        <form
-          className="grid__toolbar"
-          role="search"
-          onSubmit={(submitEvent) => {
-            submitEvent.preventDefault();
-            apply(form);
-          }}
-        >
+        <div className="grid__toolbar" role="search">
           <label className="search" htmlFor="filter-q">
             <Icon name="search" size={18} />
             <span className="visually-hidden">Search by elder or who attended</span>
@@ -222,46 +253,55 @@ export function History() {
             ))}
           </select>
 
-          <span className="grid__dates">
-            <label className="visually-hidden" htmlFor="filter-from">
-              Raised on or after
-            </label>
-            <input
-              id="filter-from"
-              type="date"
-              value={form.from}
-              title="Raised on or after"
-              onChange={(changeEvent) => set('from', changeEvent.target.value)}
-            />
-            <span className="muted" aria-hidden="true">
-              to
-            </span>
-            <label className="visually-hidden" htmlFor="filter-to">
-              Raised on or before
-            </label>
-            <input
-              id="filter-to"
-              type="date"
-              value={form.to}
-              title="Raised on or before"
-              onChange={(changeEvent) => set('to', changeEvent.target.value)}
-            />
-          </span>
+          <label className="visually-hidden" htmlFor="filter-dates">
+            When it was raised
+          </label>
+          <select
+            id="filter-dates"
+            value={form.dates}
+            onChange={(changeEvent) => set('dates', changeEvent.target.value as Dates)}
+          >
+            {DATES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
-          <button type="submit">Apply</button>
+          {form.dates === 'custom' ? (
+            <span className="grid__dates">
+              <label className="visually-hidden" htmlFor="filter-from">
+                Raised on or after
+              </label>
+              <input
+                id="filter-from"
+                type="date"
+                value={form.from}
+                title="Raised on or after"
+                onChange={(changeEvent) => set('from', changeEvent.target.value)}
+              />
+              <span className="muted" aria-hidden="true">
+                to
+              </span>
+              <label className="visually-hidden" htmlFor="filter-to">
+                Raised on or before
+              </label>
+              <input
+                id="filter-to"
+                type="date"
+                value={form.to}
+                title="Raised on or before"
+                onChange={(changeEvent) => set('to', changeEvent.target.value)}
+              />
+            </span>
+          ) : null}
+
           {filtered ? (
-            <button
-              type="button"
-              className="button--quiet"
-              onClick={() => {
-                setForm(NO_FILTERS);
-                apply(NO_FILTERS);
-              }}
-            >
+            <button type="button" className="button--quiet" onClick={() => setForm(NO_FILTERS)}>
               Clear
             </button>
           ) : null}
-        </form>
+        </div>
 
         {error ? (
           <div className="grid__body">

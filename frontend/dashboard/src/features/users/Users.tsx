@@ -6,6 +6,7 @@ import { Modal } from '../../shared/components/Modal';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Pager, Skeleton, onControl } from '../../shared/components/parts';
 import { useAuth } from '../../shared/state/AuthContext';
+import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { UserForm } from './UserForm';
@@ -42,16 +43,6 @@ const COLUMNS: CsvColumn<UserRow>[] = [
   { header: 'Created', value: (row) => row.createdAt },
 ];
 
-/** Waits for the typing to stop, so a search is one request rather than one per key. */
-function useDebounced<T>(value: T, delay = 300): T {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
-
 type Pending =
   { kind: 'form'; user: UserRow | null } | { kind: 'deactivate'; users: UserRow[] } | null;
 
@@ -70,6 +61,9 @@ export function Users() {
   const [status, setStatus] = useState<UserQuery['status'] | ''>('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Choosing several accounts at once is a mode, as Select is on an iPhone: the boxes to
+  // tick appear only once it is on, and pressing a row then ticks it rather than opening it.
+  const [selecting, setSelecting] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -229,11 +223,24 @@ export function Users() {
             <option value="active">Active</option>
             <option value="deactivated">Deactivated</option>
           </select>
+          <button
+            type="button"
+            className="button--quiet grid__toolbar-end"
+            aria-pressed={selecting}
+            onClick={() => {
+              setSelecting((was) => !was);
+              setSelected(new Set());
+            }}
+          >
+            {selecting ? 'Done' : 'Select'}
+          </button>
         </div>
 
-        {selectedRows.length > 0 ? (
+        {selecting ? (
           <div className="grid__selection" role="region" aria-label="Selected accounts">
-            <strong>{selectedRows.length} selected</strong>
+            <strong>
+              {selectedRows.length === 0 ? 'None selected' : `${selectedRows.length} selected`}
+            </strong>
             {selectedRows.some((row) => !row.deactivatedAt) ? (
               <button
                 type="button"
@@ -255,9 +262,15 @@ export function Users() {
                 Reactivate
               </button>
             ) : null}
-            <button type="button" className="button--quiet" onClick={() => setSelected(new Set())}>
-              Clear selection
-            </button>
+            {selectedRows.length > 0 ? (
+              <button
+                type="button"
+                className="button--quiet"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear selection
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -278,14 +291,16 @@ export function Users() {
             <table className="list">
               <thead>
                 <tr>
-                  <th scope="col" className="select-cell">
-                    <input
-                      type="checkbox"
-                      aria-label="Select every account on this page"
-                      checked={allOnPage}
-                      onChange={toggleAll}
-                    />
-                  </th>
+                  {selecting ? (
+                    <th scope="col" className="select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label="Select every account on this page"
+                        checked={allOnPage}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                  ) : null}
                   <th scope="col">Name</th>
                   <th scope="col">Phone</th>
                   <th scope="col">Role</th>
@@ -304,21 +319,26 @@ export function Users() {
                   <tr
                     key={row.id}
                     className="row-link"
-                    aria-selected={selected.has(row.id)}
-                    // The whole row opens the account, as a row in an Apple list does. The
-                    // menu at its end does the same from the keyboard.
+                    aria-selected={selecting ? selected.has(row.id) : undefined}
+                    // The whole row opens the account, as a row in an Apple list does, or
+                    // ticks it while choosing several. The menu at its end opens it from
+                    // the keyboard.
                     onClick={(clickEvent) => {
-                      if (!onControl(clickEvent)) setPending({ kind: 'form', user: row });
+                      if (onControl(clickEvent)) return;
+                      if (selecting) toggle(row.id);
+                      else setPending({ kind: 'form', user: row });
                     }}
                   >
-                    <td className="select-cell">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${row.name}`}
-                        checked={selected.has(row.id)}
-                        onChange={() => toggle(row.id)}
-                      />
-                    </td>
+                    {selecting ? (
+                      <td className="select-cell">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${row.name}`}
+                          checked={selected.has(row.id)}
+                          onChange={() => toggle(row.id)}
+                        />
+                      </td>
+                    ) : null}
                     <td>
                       <span className="row-inline">
                         <strong>{row.name}</strong>
