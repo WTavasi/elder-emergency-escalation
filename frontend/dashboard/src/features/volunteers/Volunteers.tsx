@@ -6,6 +6,7 @@ import type {
   VolunteerTraining,
 } from '../../shared/api/types';
 import { Modal } from '../../shared/components/Modal';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 
@@ -85,15 +86,12 @@ export function Volunteers() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Volunteers</h1>
-          <p>
-            Community volunteers are asked to go to an elder near them only once approved here, only
-            while they say they are available, and only for elders who agreed to it.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Volunteers">
+        <p>
+          Community volunteers are asked to go to an elder near them only once approved here, only
+          while they say they are available, and only for elders who agreed to it.
+        </p>
+      </PageHeader>
 
       {message ? (
         <p className="notice" role="status">

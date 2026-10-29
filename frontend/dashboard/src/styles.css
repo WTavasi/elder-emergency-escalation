@@ -124,21 +124,32 @@ html {
 
 /* ------------------------------------------------------------------ layout -- */
 
+/*
+  The window, after a Mac app: a grey sidebar on the left and the page beside it.
+  Pointer devices get Apple's compact rows; touch keeps the full touch target.
+*/
 .shell {
-  --sidebar-width: 232px;
+  --sidebar-width: 240px;
+  --sidebar-row: 32px;
+  --bar-height: 52px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
 }
-.shell--collapsed {
-  --sidebar-width: 64px;
+@media (pointer: coarse) {
+  .shell {
+    --sidebar-row: var(--min-touch-target);
+  }
+}
+.shell--sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+.shell--sidebar-hidden .sidebar {
+  display: none;
 }
 
-/*
-  The sidebar stays put while the page scrolls. Without this a long page, History above
-  all, carried the navigation away with it. Its own scroll is for a window too short for
-  the sidebar itself.
-*/
+/* The sidebar stays put while the page scrolls, and scrolls itself only in a window too
+   short for it. */
 .sidebar {
   position: sticky;
   top: 0;
@@ -147,9 +158,9 @@ html {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-16) var(--space-12);
-  background: var(--surface);
+  gap: var(--space-8);
+  padding: 0 var(--space-12) var(--space-12);
+  background: var(--surface-sunk);
   border-right: 1px solid var(--line);
 }
 
@@ -157,191 +168,167 @@ html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--min-touch-target);
-  padding: 0 var(--space-4);
+  min-height: var(--bar-height);
+  padding-left: var(--space-8);
 }
 
 .sidebar__brand {
-  font-family: var(--font-sans);
   font-size: var(--font-size-title2);
   font-weight: var(--font-weight-heading);
-  letter-spacing: -0.01em;
   color: var(--text);
   text-decoration: none;
 }
-
-.sidebar .sidebar__close {
-  display: none;
+.sidebar__brand:hover {
+  text-decoration: none;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 2px;
 }
 
+/* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
+   rounded grey highlight, as a Mac sidebar marks it, never red: red is for emergencies. */
 .nav a {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-8);
-  min-height: 40px;
-  padding: 0 var(--space-12);
+  min-height: var(--sidebar-row);
+  padding: 0 var(--space-8);
   border-radius: var(--radius-control);
-  color: var(--text-soft);
-  font-size: var(--font-size-callout);
+  color: var(--text);
+  font-size: var(--font-size-body);
   text-decoration: none;
 }
-
 .nav a:hover {
-  background: var(--surface-sunk);
-  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  text-decoration: none;
 }
-
 .nav a[aria-current='page'] {
-  background: var(--surface-sunk);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--text);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  font-weight: var(--font-weight-strong);
 }
-
-.nav__label {
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-12);
-}
-
 .nav a .icon {
-  flex: none;
-  color: var(--text-faint);
+  color: var(--text-soft);
 }
-
 .nav a[aria-current='page'] .icon {
   color: var(--text);
 }
-
-.nav__count {
-  font-size: var(--font-size-subheadline);
-  color: var(--text-soft);
-}
-
-.sidebar__collapse {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  min-height: 40px;
-  padding: 0 var(--space-12);
-  border: none;
-  background: none;
-  color: var(--text-soft);
-  font-size: var(--font-size-callout);
-}
-
-/* Narrowed to icons: the words go, the names stay as tooltips and for screen readers. */
-.shell--collapsed .nav__text,
-.shell--collapsed .nav__count {
-  display: none;
-}
-.shell--collapsed .nav a,
-.shell--collapsed .sidebar__collapse,
-.shell--collapsed .sidebar__top {
-  justify-content: center;
-  padding: 0;
-}
-
-.frame {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* The header stays at the top of the page as it scrolls. */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  min-height: 56px;
-  padding: 0 var(--space-24);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
-
-.topbar .topbar__menu {
-  display: none;
-}
-
-.crumbs {
+.nav__text {
   flex: 1;
-  min-width: 0;
-}
-.crumbs ol {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--font-size-callout);
-}
-.crumbs li {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.crumbs li + li::before {
-  content: '/';
-  margin-right: var(--space-8);
-  color: var(--text-faint);
-}
-.crumbs a {
+.nav__count {
   color: var(--text-soft);
-  text-decoration: none;
-}
-.crumbs a:hover {
-  color: var(--text);
-  text-decoration: underline;
-}
-.crumbs [aria-current='page'] {
-  color: var(--text);
-  font-weight: 600;
+  font-size: var(--font-size-subheadline);
+  font-variant-numeric: tabular-nums;
 }
 
 .main {
-  padding: var(--space-24);
+  padding: 0 var(--space-24) var(--space-32);
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
   min-width: 0;
 }
 
-.page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
+/*
+  A page's own bar: the way back on the left, the page's actions on the right, and its
+  title in the middle once the large title has scrolled away. Translucent over the page,
+  as Apple's bars are, with a hairline only once something is underneath it.
+*/
+.pagebar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-12);
+  min-height: var(--bar-height);
+  margin: 0 calc(var(--space-24) * -1) calc(var(--space-16) * -1);
+  padding: 0 var(--space-24);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--motion-quick) ease;
+}
+.pagebar--scrolled {
+  border-bottom-color: var(--line);
+}
+.pagebar__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.pagebar__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding-right: var(--space-8);
+  margin-left: calc(var(--space-8) * -1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pagebar__title {
+  font-weight: var(--font-weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity var(--motion-quick) ease;
+}
+.pagebar--scrolled .pagebar__title {
+  opacity: 1;
+}
+.pagebar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-8);
 }
 
-.page-head p {
-  margin: var(--space-4) 0 0;
+/* The large title, under the bar, with anything that belongs beside or beneath it. */
+.page-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-16);
+}
+.page-title h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+.page-title p {
+  margin: 0;
   color: var(--text-soft);
-  font-size: var(--font-size-callout);
+}
+
+/* A heading with its own control beside it, inside a section. */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
 }
 
 .scrim {
   display: none;
 }
 
-/* A phone: the sidebar becomes a drawer behind the menu button. */
+/* A phone: the sidebar becomes a drawer behind the button in the page's bar. */
 @media (max-width: 860px) {
-  .shell,
-  .shell--collapsed {
-    --sidebar-width: 272px;
+  .shell {
+    --sidebar-width: 280px;
     grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
@@ -362,38 +349,23 @@ html {
     z-index: 15;
     background: color-mix(in srgb, var(--text) 40%, transparent);
   }
-  .sidebar .sidebar__close,
-  .topbar .topbar__menu {
-    display: inline-grid;
-  }
-  .sidebar__collapse {
-    display: none;
-  }
-  .nav a {
-    min-height: var(--min-touch-target);
-  }
-  .shell--collapsed .nav__text,
-  .shell--collapsed .nav__count {
-    display: inline;
-  }
-  .shell--collapsed .nav a,
-  .shell--collapsed .sidebar__top {
-    justify-content: space-between;
-    padding: 0 var(--space-12);
-  }
-  .topbar {
-    padding: 0 var(--space-8);
-  }
-  .topbar .account__who {
-    display: none;
-  }
   .main {
-    padding: var(--space-16);
+    padding: 0 var(--space-16) var(--space-24);
+  }
+  .pagebar {
+    margin: 0 calc(var(--space-16) * -1) calc(var(--space-16) * -1);
+    padding: 0 var(--space-16);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .pagebar__title {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar {
+  .sidebar,
+  .pagebar,
+  .pagebar__title {
     transition: none;
   }
 }
@@ -1014,21 +986,24 @@ select {
   box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 18%, transparent);
 }
 
-/* Who is signed in, top right, opening a small menu. */
+/* Who is signed in, at the foot of the sidebar, opening a small menu above it. */
 .account {
   position: relative;
+  margin-top: auto;
 }
 .account__button {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  min-height: 40px;
+  width: 100%;
+  min-height: 44px;
   padding: 0 var(--space-8);
-  border-color: transparent;
   background: none;
+  font-weight: var(--font-weight-body);
+  text-align: left;
 }
 .account__button:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .account__mark {
   flex: none;
@@ -1037,29 +1012,34 @@ select {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--surface-sunk);
-  border: 1px solid var(--line);
-  font-size: var(--font-size-subheadline);
-  font-weight: 600;
+  /* Soft ink with the surface on it: a pair gated as text in both themes. */
+  background: var(--text-soft);
+  color: var(--surface);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-strong);
 }
 .account__who {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   min-width: 0;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .account__name {
-  font-size: var(--font-size-callout);
-  font-weight: 600;
+  font-weight: var(--font-weight-strong);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .account__role {
   font-size: var(--font-size-subheadline);
-  color: var(--text-faint);
+  color: var(--text-soft);
 }
 .account__role::first-letter {
   text-transform: uppercase;
+}
+.account .icon {
+  color: var(--text-soft);
 }
 
 /* A small list of actions under a button: the account menu, a row's menu. */
@@ -1075,6 +1055,12 @@ select {
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .menu--right {
+  right: 0;
+}
+.menu--up {
+  top: auto;
+  bottom: calc(100% + var(--space-4));
+  left: 0;
   right: 0;
 }
 .menu--fixed {
@@ -1597,14 +1583,6 @@ legend {
   display: block;
   font-size: var(--font-size-subheadline);
   color: var(--text-faint);
-}
-
-/* A heading with a small marker beside it. */
-.title-with-tag {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-12);
 }
 
 /* A quiet label with an explanation that opens on hover or keyboard focus. */

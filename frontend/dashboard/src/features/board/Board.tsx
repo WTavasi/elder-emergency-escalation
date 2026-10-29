@@ -1,5 +1,6 @@
 import { useOpenAlerts } from '../../shared/state/OpenAlerts';
 import { Icon } from '../../shared/components/Icon';
+import { PageHeader } from '../../shared/components/PageHeader';
 import {
   AlertRow,
   ConnectionStatus,
@@ -14,18 +15,18 @@ export function Board() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Open emergencies</h1>
-        </div>
-        <div className="row">
-          <ConnectionStatus state={connection} />
-          <button type="button" className="button--with-icon" onClick={reload}>
-            <Icon name="refresh" size={18} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Open emergencies"
+        actions={
+          <>
+            <ConnectionStatus state={connection} />
+            <button type="button" className="button--with-icon" onClick={reload}>
+              <Icon name="refresh" size={18} />
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       {connection === 'offline' ? (
         <div className="notice" role="status">

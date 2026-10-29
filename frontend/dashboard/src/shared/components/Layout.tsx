@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
-import { CrumbProvider, useCurrentCrumb } from '../state/Breadcrumb';
 import { useOpenAlerts } from '../state/OpenAlerts';
+import { ShellContext } from '../state/Shell';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PrivacyPanel } from '../../features/privacy/PrivacyPanel';
 import { humanise } from '../utils/format';
 import { Icon, type IconName } from './Icon';
@@ -15,7 +16,10 @@ const SECTIONS: { to: string; label: string; icon: IconName }[] = [
   { to: '/volunteers', label: 'Volunteers', icon: 'personAdd' },
 ];
 
-const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
+const HIDDEN_KEY = 'mzazicare.sidebar.hidden';
+
+/** Where the sidebar becomes a drawer behind a button rather than a column. */
+const NARROW = '(max-width: 860px)';
 
 /** Up to two initials, for the account mark. Never a photo: the console stores none. */
 function initials(name: string): string {
@@ -26,49 +30,42 @@ function initials(name: string): string {
 }
 
 /** A per-browser convenience, so it lives in localStorage and survives being blocked. */
-function readCollapsed(): boolean {
+function readHidden(): boolean {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === 'true';
+    return localStorage.getItem(HIDDEN_KEY) === 'true';
   } catch {
     return false;
   }
 }
 
-function writeCollapsed(collapsed: boolean): void {
+function writeHidden(hidden: boolean): void {
   try {
-    localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+    localStorage.setItem(HIDDEN_KEY, String(hidden));
   } catch {
     // Remembered for this page only.
   }
 }
 
 /**
- * The frame every signed-in screen sits in.
+ * The window every signed-in screen sits in, after a Mac app such as Mail or System
+ * Settings: a sidebar of sections on the left, in grey, and the page beside it.
  *
- * A sidebar of sections that can be narrowed to its icons on a desktop and becomes a
- * drawer behind a menu button on a phone, and a header that stays put while the page
- * scrolls, with where you are and who you are signed in as. Nothing else goes in the
- * header: the open count is already on the first section, and there is no search that
- * spans the whole console, so a bell or a global search box would be decoration.
+ * The sidebar can be hidden with the button at its top, which then appears in the page's
+ * own bar to bring it back; on a phone it is a drawer behind that button instead. Who is
+ * signed in sits at its foot, as an account does in System Settings. There is no bar
+ * across the top of the window: each page carries its own (see PageHeader), with its
+ * title and its actions, so nothing is said twice.
  */
 export function Layout() {
-  return (
-    <CrumbProvider>
-      <Frame />
-    </CrumbProvider>
-  );
-}
-
-function Frame() {
   const { alerts } = useOpenAlerts();
   const openCount = alerts?.length ?? null;
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const narrow = useMediaQuery(NARROW);
+  const [hidden, setHidden] = useState(readHidden);
   // The drawer is open for the page it was opened on, so moving to another page closes
   // it: a drawer still open after choosing where to go is in the way of where you went.
   const [drawerFor, setDrawerFor] = useState<string | null>(null);
-  const drawerOpen = drawerFor === location.pathname;
-  const setDrawerOpen = (open: boolean) => setDrawerFor(open ? location.pathname : null);
+  const drawerOpen = narrow && drawerFor === location.pathname;
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -79,133 +76,89 @@ function Frame() {
     return () => document.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
-  function toggleCollapsed() {
-    setCollapsed((was) => {
-      writeCollapsed(!was);
-      return !was;
-    });
+  function hide() {
+    if (narrow) {
+      setDrawerFor(null);
+      return;
+    }
+    setHidden(true);
+    writeHidden(true);
   }
 
+  const shell = useMemo(
+    () => ({
+      sidebarShown: narrow ? drawerOpen : !hidden,
+      showSidebar: () => {
+        if (narrow) {
+          setDrawerFor(location.pathname);
+          return;
+        }
+        setHidden(false);
+        writeHidden(false);
+      },
+    }),
+    [narrow, drawerOpen, hidden, location.pathname],
+  );
+
   return (
-    <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
-      <a className="skip-link" href="#main">
-        Skip to main content
-      </a>
+    <ShellContext.Provider value={shell}>
+      <div className={`shell${!narrow && hidden ? ' shell--sidebar-hidden' : ''}`}>
+        <a className="skip-link" href="#main">
+          Skip to main content
+        </a>
 
-      {drawerOpen ? (
-        <div className="scrim" aria-hidden="true" onClick={() => setDrawerOpen(false)} />
-      ) : null}
+        {drawerOpen ? (
+          <div className="scrim" aria-hidden="true" onClick={() => setDrawerFor(null)} />
+        ) : null}
 
-      <aside id="sidebar" className={`sidebar${drawerOpen ? ' sidebar--open' : ''}`}>
-        <div className="sidebar__top">
-          <Link to="/" className="sidebar__brand">
-            {collapsed ? 'M' : 'MzaziCare'}
-          </Link>
-          <button
-            type="button"
-            className="icon-button sidebar__close"
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Close navigation"
-          >
-            <Icon name="close" />
-          </button>
-        </div>
+        <aside id="sidebar" className={`sidebar${drawerOpen ? ' sidebar--open' : ''}`}>
+          <div className="sidebar__top">
+            <Link to="/" className="sidebar__brand">
+              MzaziCare
+            </Link>
+            <button
+              type="button"
+              className="icon-button button--quiet"
+              onClick={hide}
+              aria-controls="sidebar"
+              aria-expanded={true}
+            >
+              <Icon name="sidebar" label={narrow ? 'Close the sidebar' : 'Hide the sidebar'} />
+            </button>
+          </div>
 
-        {/*
-          An icon beside each section name, never instead of it. Narrowed to icons, each
-          link keeps its name for a screen reader and as a tooltip.
-        */}
-        <nav className="nav" aria-label="Sections">
-          {SECTIONS.map((section) => {
-            const count = section.to === '/' ? openCount : null;
-            return (
-              <NavLink
-                key={section.to}
-                to={section.to}
-                end={section.to === '/'}
-                title={collapsed ? section.label : undefined}
-              >
-                <span className="nav__label">
-                  <Icon name={section.icon} />
+          {/* An icon beside each section's name, never instead of it. */}
+          <nav className="nav" aria-label="Sections">
+            {SECTIONS.map((section) => {
+              const count = section.to === '/' ? openCount : null;
+              return (
+                <NavLink key={section.to} to={section.to} end={section.to === '/'}>
+                  <Icon name={section.icon} size={18} />
                   <span className="nav__text">{section.label}</span>
-                </span>
-                {count !== null ? (
-                  <span className="nav__count" aria-label={`${count} open`}>
-                    {count}
-                  </span>
-                ) : null}
-              </NavLink>
-            );
-          })}
-        </nav>
+                  {count ? (
+                    <span className="nav__count" aria-label={`${count} open`}>
+                      {count}
+                    </span>
+                  ) : null}
+                </NavLink>
+              );
+            })}
+          </nav>
 
-        <button
-          type="button"
-          className="sidebar__collapse"
-          onClick={toggleCollapsed}
-          aria-expanded={!collapsed}
-          aria-controls="sidebar"
-        >
-          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} />
-          <span className="nav__text">Collapse</span>
-          {collapsed ? <span className="visually-hidden">Expand the sidebar</span> : null}
-        </button>
-      </aside>
-
-      <div className="frame">
-        <header className="topbar">
-          <button
-            type="button"
-            className="icon-button topbar__menu"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open navigation"
-            aria-controls="sidebar"
-            aria-expanded={drawerOpen}
-          >
-            <Icon name="menu" />
-          </button>
-          <Breadcrumbs pathname={location.pathname} />
           <AccountMenu />
-        </header>
+        </aside>
 
         <main className="main" id="main">
           <Outlet />
         </main>
       </div>
-    </div>
-  );
-}
-
-/** Where you are: the section, then the record when you are inside one. */
-function Breadcrumbs({ pathname }: { pathname: string }) {
-  const current = useCurrentCrumb();
-  const inEmergency = pathname.startsWith('/emergencies/');
-  const section =
-    SECTIONS.find((candidate) =>
-      candidate.to === '/' ? pathname === '/' || inEmergency : pathname.startsWith(candidate.to),
-    ) ?? SECTIONS[0]!;
-
-  return (
-    <nav className="crumbs" aria-label="Breadcrumb">
-      <ol>
-        {inEmergency ? (
-          <>
-            <li>
-              <Link to={section.to}>{section.label}</Link>
-            </li>
-            <li aria-current="page">{current ?? 'Emergency'}</li>
-          </>
-        ) : (
-          <li aria-current="page">{section.label}</li>
-        )}
-      </ol>
-    </nav>
+    </ShellContext.Provider>
   );
 }
 
 /**
- * Who is signed in, and signing out, behind one compact control. Sign out sits inside
- * the menu rather than on the bar, so it is never pressed on the way to something else.
+ * Who is signed in, and signing out, at the foot of the sidebar. Sign out sits inside the
+ * menu rather than on the page, so it is never pressed on the way to something else.
  */
 function AccountMenu() {
   const { session, signOut } = useAuth();
@@ -233,24 +186,8 @@ function AccountMenu() {
 
   return (
     <div className="account" ref={box}>
-      <button
-        type="button"
-        className="account__button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
-      >
-        <span className="account__mark" aria-hidden="true">
-          {initials(session.user.name)}
-        </span>
-        <span className="account__who">
-          <span className="account__name">{session.user.name}</span>
-          <span className="account__role">{humanise(session.user.role)}</span>
-        </span>
-        <Icon name="expandMore" size={18} />
-      </button>
       {open ? (
-        <div className="menu menu--right" role="menu">
+        <div className="menu menu--up" role="menu">
           <button
             type="button"
             role="menuitem"
@@ -268,6 +205,22 @@ function AccountMenu() {
           </button>
         </div>
       ) : null}
+      <button
+        type="button"
+        className="account__button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <span className="account__mark" aria-hidden="true">
+          {initials(session.user.name)}
+        </span>
+        <span className="account__who">
+          <span className="account__name">{session.user.name}</span>
+          <span className="account__role">{humanise(session.user.role)}</span>
+        </span>
+        <Icon name="unfold" size={18} />
+      </button>
       {privacy ? <PrivacyPanel signedIn onClose={() => setPrivacy(false)} /> : null}
     </div>
   );

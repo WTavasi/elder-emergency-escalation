@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ApiError, api, type AlertQuery } from '../../shared/api/client';
 import type { AlertSummary, EventState, Severity } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { AlertRow, Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
@@ -151,20 +152,20 @@ export function History() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Emergency history</h1>
-        </div>
-        <button
-          type="button"
-          className="button--with-icon"
-          onClick={() => void exportCsv()}
-          disabled={exporting || total === 0}
-        >
-          <Icon name="download" size={18} />
-          {exporting ? 'Exporting' : 'Export CSV'}
-        </button>
-      </div>
+      <PageHeader
+        title="History"
+        actions={
+          <button
+            type="button"
+            className="button--with-icon"
+            onClick={() => void exportCsv()}
+            disabled={exporting || total === 0}
+          >
+            <Icon name="download" size={18} />
+            {exporting ? 'Exporting' : 'Export CSV'}
+          </button>
+        }
+      />
 
       {exportError ? <ErrorNotice message={exportError} /> : null}
 

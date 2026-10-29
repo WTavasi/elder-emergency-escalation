@@ -109,3 +109,8 @@ export function useOpenAlerts(): OpenAlertsValue {
   if (!value) throw new Error('useOpenAlerts must be used inside OpenAlertsProvider');
   return value;
 }
+
+/** The board when there is one: null for a page rendered on its own, as in a test. */
+export function useOpenAlertsIfAny(): OpenAlertsValue | null {
+  return useContext(OpenAlertsContext);
+}

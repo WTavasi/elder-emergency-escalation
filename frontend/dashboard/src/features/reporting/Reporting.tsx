@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { api } from '../../shared/api/client';
 import { Icon } from '../../shared/components/Icon';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { formatDuration, humanise } from '../../shared/utils/format';
@@ -81,29 +82,25 @@ export function Reporting() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Reporting</h1>
-        </div>
-        {/*
-          One segmented control rather than three buttons. The chosen window used to be
-          filled emergency red, which spent the one colour reserved for emergencies on a
-          date range; it is now marked the way a selected tab is, and aria-pressed says
-          which one is chosen.
-        */}
-        <div className="segmented" role="group" aria-label="Reporting window">
-          {WINDOWS.map((window) => (
-            <button
-              key={window}
-              type="button"
-              aria-pressed={days === window}
-              onClick={() => setDays(window)}
-            >
-              {window} days
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title="Reporting"
+        actions={
+          // One segmented control rather than three buttons, with aria-pressed saying
+          // which window is chosen.
+          <div className="segmented" role="group" aria-label="Reporting window">
+            {WINDOWS.map((window) => (
+              <button
+                key={window}
+                type="button"
+                aria-pressed={days === window}
+                onClick={() => setDays(window)}
+              >
+                {window} days
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {loading || !overview ? (
         <Skeleton rows={3} />
@@ -204,7 +201,7 @@ export function Reporting() {
           </section>
 
           <section aria-labelledby="daily-heading" className="card stack">
-            <div className="page-head">
+            <div className="section-head">
               <h2 id="daily-heading">Day by day</h2>
               <div className="segmented" role="group" aria-label="What the chart shows">
                 <button

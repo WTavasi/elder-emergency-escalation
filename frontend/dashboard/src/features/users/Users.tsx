@@ -3,6 +3,7 @@ import { ApiError, api } from '../../shared/api/client';
 import type { Role, UserQuery, UserRow } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
+import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Pager, Skeleton } from '../../shared/components/parts';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useLoader } from '../../shared/hooks/useLoader';
@@ -153,19 +154,30 @@ export function Users() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Users</h1>
-        </div>
-        <button
-          type="button"
-          className="button--primary"
-          onClick={() => setPending({ kind: 'form', user: null })}
-        >
-          <Icon name="personAdd" size={18} />
-          Add user
-        </button>
-      </div>
+      <PageHeader
+        title="Users"
+        actions={
+          <>
+            <button
+              type="button"
+              className="button--with-icon"
+              onClick={() => void exportCsv()}
+              disabled={exporting || total === 0}
+            >
+              <Icon name="download" size={18} />
+              {exporting ? 'Exporting' : 'Export CSV'}
+            </button>
+            <button
+              type="button"
+              className="button--primary"
+              onClick={() => setPending({ kind: 'form', user: null })}
+            >
+              <Icon name="personAdd" size={18} />
+              Add user
+            </button>
+          </>
+        }
+      />
 
       {message ? (
         <p className="notice" role="status">
@@ -216,16 +228,6 @@ export function Users() {
             <option value="active">Active</option>
             <option value="deactivated">Deactivated</option>
           </select>
-          <button
-            type="button"
-            className="button--with-icon"
-            style={{ marginLeft: 'auto' }}
-            onClick={() => void exportCsv()}
-            disabled={exporting || total === 0}
-          >
-            <Icon name="download" size={18} />
-            {exporting ? 'Exporting' : 'Export CSV'}
-          </button>
         </div>
 
         {selectedRows.length > 0 ? (

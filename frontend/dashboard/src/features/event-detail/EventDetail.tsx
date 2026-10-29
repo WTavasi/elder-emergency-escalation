@@ -2,13 +2,13 @@ import { useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
-import { useCrumb } from '../../shared/state/Breadcrumb';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
 import type { AlertDetail, ChainMember, Journey } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
+import { PageHeader } from '../../shared/components/PageHeader';
 import {
   Countdown,
   ErrorNotice,
@@ -127,9 +127,6 @@ export function EventDetail() {
   );
   useRealtime(session?.accessToken ?? null, onUpdate);
 
-  // The header's breadcrumb names the elder, and is the way back to the board.
-  useCrumb(alert?.elder.name ?? null);
-
   const [explaining, setExplaining] = useState(false);
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
@@ -139,10 +136,17 @@ export function EventDetail() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="title-with-tag">
-            {alert.elder.name}
+      <PageHeader
+        title={alert.elder.name}
+        // Back to where an emergency like this one is listed: the board while it is open,
+        // the history once it is over.
+        back={
+          OPEN_STATES.includes(alert.state)
+            ? { to: '/', label: 'Open emergencies' }
+            : { to: '/history', label: 'History' }
+        }
+        titleAddon={
+          <>
             <TriggerTag trigger={alert.trigger} />
             {/*
               The short layer of the privacy notice, where the missing buttons would be:
@@ -155,19 +159,20 @@ export function EventDetail() {
                 elder&apos;s care chain. The server refuses them from an administrator account.
               </span>
             </span>
-          </h1>
-          <p>
-            Raised {formatClock(alert.triggeredAt)}
-            {alert.trigger === 'MISSED_CHECK_IN'
-              ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
-              : ''}
-            {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
-            {alert.withheld?.includes('location')
-              ? '. Location withheld at the elder\u2019s request'
-              : ''}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      >
+        <p>
+          Raised {formatClock(alert.triggeredAt)}
+          {alert.trigger === 'MISSED_CHECK_IN'
+            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
+            : ''}
+          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
+          {alert.withheld?.includes('location')
+            ? '. Location withheld at the elder\u2019s request'
+            : ''}
+        </p>
+      </PageHeader>
 
       <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
       <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
