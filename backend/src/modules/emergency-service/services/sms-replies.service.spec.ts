@@ -147,7 +147,7 @@ describe('SmsRepliesService', () => {
 
     expect(t.escalation.acknowledge).toHaveBeenCalledWith('event-1', 'family-1', undefined, 'sms');
     const [reply] = t.sent();
-    expect(reply).toContain('you are going to Grace');
+    expect(reply).toContain("You're going to Grace");
     // During an open emergency the elder's number is disclosed to the people asked.
     expect(reply).toContain('+254700000010');
     expect(reply.length).toBeLessThanOrEqual(SMS_LIMIT);
@@ -174,7 +174,7 @@ describe('SmsRepliesService', () => {
     );
 
     await expect(t.service.handle('+254700000030', '1')).resolves.toBe('taken');
-    expect(t.sent()).toEqual(['MzaziCare: Mary is already going to Grace. Thank you.']);
+    expect(t.sent()).toEqual(['MzaziCare: Mary is already going to Grace. Thanks.']);
   });
 
   it('says so when the alert has moved past the tier that asked them', async () => {
@@ -201,21 +201,21 @@ describe('SmsRepliesService', () => {
     });
 
     await expect(t.service.handle('+254700000030', '1')).resolves.toBe('taken');
-    expect(t.sent()).toEqual(['MzaziCare: you are already going to Grace. Thank you.']);
+    expect(t.sent()).toEqual(["MzaziCare: you're already going to Grace. Thanks."]);
   });
 
   it('says nothing is waiting when nothing is', async () => {
     const t = build({ asked: null, taken: null });
 
     await expect(t.service.handle('+254700000030', 'yes')).resolves.toBe('nothing-waiting');
-    expect(t.sent()[0]).toContain('no alert waiting');
+    expect(t.sent()[0]).toContain('no alert is waiting');
   });
 
   it('repeats the two answers to anything it cannot read', async () => {
     const t = build();
 
     await expect(t.service.handle('+254700000030', 'what happened?')).resolves.toBe('unclear');
-    expect(t.sent()[0]).toContain('Reply 1 if you can go, 2 if you cannot.');
+    expect(t.sent()[0]).toContain('Reply 1 to go, 2 if you cannot.');
     expect(t.escalation.acknowledge).not.toHaveBeenCalled();
     expect(t.escalation.decline).not.toHaveBeenCalled();
   });
@@ -262,7 +262,7 @@ describe('SmsRepliesService', () => {
 
       expect(t.checkIns.answer).toHaveBeenCalledWith('elder-1', 'sms');
       expect(t.escalation.acknowledge).not.toHaveBeenCalled();
-      expect(t.sent()[0]).toContain('all right');
+      expect(t.sent()[0]).toContain("you're OK");
     });
 
     it('a late 1 that withdrew the alert says the family was told', async () => {
@@ -271,7 +271,7 @@ describe('SmsRepliesService', () => {
 
       await t.service.handle('+254700000010', 'ndio');
 
-      expect(t.sent()[0]).toContain('Your family has been told');
+      expect(t.sent()[0]).toContain("We've told your family");
     });
 
     it('anything else is not taken as a call for help, and says how to ask for it', async () => {
@@ -281,7 +281,7 @@ describe('SmsRepliesService', () => {
 
       expect(t.checkIns.answer).not.toHaveBeenCalled();
       expect(t.alerts.create).not.toHaveBeenCalled();
-      expect(t.sent()[0]).toContain('reply HELP');
+      expect(t.sent()[0]).toContain('Reply HELP');
       expect(t.sent()[0]).toContain('call 999');
     });
   });
@@ -296,7 +296,7 @@ describe('SmsRepliesService', () => {
 
       expect(t.alerts.create).toHaveBeenCalledWith('elder-1', {}, { via: 'sms' });
       expect(t.checkIns.answer).not.toHaveBeenCalled();
-      expect(t.sent()[0]).toContain('we have told the people who look after you');
+      expect(t.sent()[0]).toContain("we've told your family");
       expect(t.sent()[0].length).toBeLessThanOrEqual(SMS_LIMIT);
     });
 
@@ -321,7 +321,7 @@ describe('SmsRepliesService', () => {
       await expect(t.service.handle('+254700000010', 'SOS')).resolves.toBe('already-raised');
 
       expect(t.alerts.create).not.toHaveBeenCalled();
-      expect(t.sent()[0]).toContain('already been told');
+      expect(t.sent()[0]).toContain("we've already told your family");
     });
 
     it('is only read from an elder: anybody else texting HELP raises nothing', async () => {

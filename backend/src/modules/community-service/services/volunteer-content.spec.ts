@@ -40,6 +40,6 @@ describe('what volunteers are told', () => {
   it('the circle is told the volunteer goes beside them, not instead of them', () => {
     const message = volunteerMessages.toTheCircle('Joseph Kamau', 'Grace Wanjiru', 600);
     expect(message.body).toContain('Joseph Kamau');
-    expect(message.body).toContain('Nothing else changes');
+    expect(message.body).toContain('still ask you as usual');
   });
 });

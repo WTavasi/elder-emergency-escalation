@@ -28,14 +28,14 @@ describe('composeNotification', () => {
 
   it('says plainly that nobody has responded when escalating', () => {
     const message = forState(EventState.ESCALATED);
-    expect(message.title).toMatch(/Still unanswered/);
-    expect(message.body).toContain('Nobody has responded');
+    expect(message.title).toBe('Grace still needs help');
+    expect(message.body).toContain('No one has answered yet');
   });
 
   it('never reads as a fresh call for help once somebody is with the elder', () => {
     const message = forState(EventState.ON_SCENE);
     expect(message.title).toBe('Someone is with Grace');
-    expect(message.body).toContain('No action needed');
+    expect(message.body).toBe('Nothing for you to do.');
     expect(message.data.action).toBe('view');
   });
 
@@ -43,7 +43,7 @@ describe('composeNotification', () => {
     const message = forState(EventState.CANCELLED);
     expect(message.title).toBe('Grace cancelled the alert');
     expect(message.body).toMatch(/Call to check/);
-    expect(message.body).toMatch(/reopen/);
+    expect(message.body).toMatch(/Reopen the alert/);
     expect(message.data.action).toBe('confirm_cancellation');
   });
 
@@ -51,9 +51,7 @@ describe('composeNotification', () => {
     const message = forState(EventState.TRIGGERED, { addressLabel: null });
     expect(message.body).not.toContain('undefined');
     expect(message.body).not.toContain(' at .');
-    expect(message.body).toBe(
-      'Grace Wanjiru raised an emergency alert. Open MzaziCare to respond.',
-    );
+    expect(message.body).toBe('Grace Wanjiru asked for help. Tap to respond.');
   });
 
   it('carries no personal data in the push payload', () => {
@@ -165,7 +163,7 @@ describe('composeNotification, a missed check-in', () => {
   });
 
   it('asks for a call first', () => {
-    expect(missed(EventState.TRIGGERED).body).toContain('call');
+    expect(missed(EventState.TRIGGERED).body).toMatch(/^Call /);
   });
 
   it('offers the reply digits only when replies are read', () => {

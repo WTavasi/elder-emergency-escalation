@@ -28,7 +28,7 @@ export interface ComposedNotification {
 export const SMS_LIMIT = 160;
 
 /** The two answers an alert SMS offers when replies are on. Digits, so any phone can send them. */
-export const REPLY_ASK = 'Reply 1 if you can go, 2 if you cannot.';
+export const REPLY_ASK = 'Reply 1 to go, 2 if you cannot.';
 
 /**
  * The word an elder texts to ask for help when the app has no data. Here, beside the
@@ -64,14 +64,14 @@ export function composeNotification(context: NotificationContext): ComposedNotif
     case EventState.CANCELLED:
       if (missed) {
         // Withdrawn because the elder answered the check-in late. Still an invitation to
-        // call: "I am all right" pressed by somebody else is exactly what a check-in
+        // call: "I'm OK" pressed by somebody else is exactly what a check-in
         // cannot rule out.
         return {
           title: `${firstName(name)} answered the check-in`,
-          body: `${name} answered late and says they are all right. Call if you want to be sure.`,
+          body: `${name} answered late and says they're OK. Call if you want to be sure.`,
           sms: capSms(
-            `MzaziCare: ${name} answered the check-in late and says they are all right. Call if you want to be sure.`,
-            `MzaziCare: ${firstName(name)} answered the check-in late and is all right.`,
+            `MzaziCare: ${name} answered the check-in late and says they're OK. Call if you want to be sure.`,
+            `MzaziCare: ${firstName(name)} answered the check-in late and is OK.`,
           ),
           data: { ...data, action: 'view' },
         };
@@ -81,9 +81,9 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       // closing the matter: an elder can cancel by mistake, or under pressure.
       return {
         title: `${firstName(name)} cancelled the alert`,
-        body: `${name} marked it a false alarm. Call to check that all is well. If you cannot reach them, you can reopen the alert.`,
+        body: `Marked as a false alarm. Call to check they're OK. No answer? Reopen the alert.`,
         sms: capSms(
-          `MzaziCare: ${name} cancelled their emergency alert and marked it a false alarm. Please call to check.`,
+          `MzaziCare: ${name} cancelled their alert as a false alarm. Please call to check they're OK.`,
           `MzaziCare: ${firstName(name)} cancelled their alert. Please call to check.`,
         ),
         data: { ...data, action: 'confirm_cancellation' },
@@ -93,42 +93,42 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       if (missed) {
         // Nobody raised an alarm, so the next tier is told what actually happened.
         return {
-          title: `Still unanswered: ${firstName(name)} missed a check-in`,
-          body: `${name} did not answer the daily check-in and nobody has checked on them yet. Please call or go round.`,
+          title: `${firstName(name)} missed a check-in`,
+          body: 'No one has checked on them yet. Call or visit.',
           sms: context.replyByText
             ? capSms(
-                `MzaziCare: ${name} did not answer today's check-in and nobody has checked yet. ${REPLY_ASK}`,
-                `MzaziCare: ${firstName(name)} missed a check-in, nobody has checked. ${REPLY_ASK}`,
+                `MzaziCare: ${name} missed today's check-in and no one has checked yet. ${REPLY_ASK}`,
+                `MzaziCare: ${firstName(name)} missed a check-in. No one has checked. ${REPLY_ASK}`,
               )
             : capSms(
-                `MzaziCare: ${name} did not answer today's check-in and nobody has checked on them yet. Please call.`,
-                `MzaziCare: ${firstName(name)} missed a check-in and nobody has checked. Please call.`,
+                `MzaziCare: ${name} missed today's check-in and no one has checked yet. Please call.`,
+                `MzaziCare: ${firstName(name)} missed a check-in. No one has checked. Please call.`,
               ),
           data: { ...data, action: 'respond', trigger: AlertTrigger.MISSED_CHECK_IN },
         };
       }
       return {
-        title: `Still unanswered: ${firstName(name)} needs help`,
-        body: `Nobody has responded to ${name}'s alert${at}. Open MzaziCare to respond.`,
+        title: `${firstName(name)} still needs help`,
+        body: `${name} asked for help${at}. No one has answered yet. Tap to respond.`,
         sms: context.replyByText
           ? capSms(
-              `MzaziCare: nobody has answered ${name}'s alert${at} yet. ${REPLY_ASK} Or call 999.`,
+              `MzaziCare: ${name} still needs help${at}. No one has answered. ${REPLY_ASK} Or call 999.`,
               `MzaziCare: ${name} still needs help. ${REPLY_ASK}`,
             )
           : capSms(
-              `MzaziCare: ${name} raised an emergency alert${at} and nobody has responded yet. Please respond or call 999.`,
-              `MzaziCare: ${name} needs help and nobody has responded. Please respond or call 999.`,
+              `MzaziCare: ${name} still needs help${at}. No one has answered. Please respond or call 999.`,
+              `MzaziCare: ${name} still needs help. Please respond or call 999.`,
             ),
         data: { ...data, action: 'respond' },
       };
 
     case EventState.ACKNOWLEDGED:
       return {
-        title: `Someone is responding to ${firstName(name)}'s alert`,
-        body: `${name}'s emergency has been acknowledged. No action needed from you.`,
+        title: `Someone is on the way to ${firstName(name)}`,
+        body: 'Nothing for you to do.',
         sms: capSms(
-          `MzaziCare: ${name}'s emergency alert has been acknowledged. No action needed from you.`,
-          `MzaziCare: ${firstName(name)}'s alert has been acknowledged.`,
+          `MzaziCare: someone is on the way to ${name}. Nothing for you to do.`,
+          `MzaziCare: someone is on the way to ${firstName(name)}.`,
         ),
         data: { ...data, action: 'view' },
       };
@@ -138,9 +138,9 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       // must not read as a fresh call for help.
       return {
         title: `Someone is with ${firstName(name)}`,
-        body: `A member of ${name}'s care circle is with them now. No action needed from you.`,
+        body: 'Nothing for you to do.',
         sms: capSms(
-          `MzaziCare: someone is with ${name} now. No action needed from you.`,
+          `MzaziCare: someone is with ${name} now. Nothing for you to do.`,
           `MzaziCare: someone is with ${firstName(name)} now.`,
         ),
         data: { ...data, action: 'view' },
@@ -149,10 +149,10 @@ export function composeNotification(context: NotificationContext): ComposedNotif
     case EventState.RESOLVED:
       return {
         title: `${firstName(name)}'s alert is closed`,
-        body: `The emergency for ${name} has been resolved.`,
+        body: `${name}'s emergency is over.`,
         sms: capSms(
-          `MzaziCare: the emergency for ${name} has been resolved.`,
-          `MzaziCare: ${firstName(name)}'s emergency is resolved.`,
+          `MzaziCare: ${name}'s emergency is over.`,
+          `MzaziCare: ${firstName(name)}'s emergency is over.`,
         ),
         data: { ...data, action: 'view' },
       };
@@ -162,15 +162,15 @@ export function composeNotification(context: NotificationContext): ComposedNotif
         // Said for what it is: nobody pressed for help, somebody did not answer. The ask
         // is to call first, which settles most of these in a minute.
         return {
-          title: `${firstName(name)} did not answer today's check-in`,
-          body: `${name} did not answer the daily check-in. Please call to check on them.`,
+          title: `${firstName(name)} missed today's check-in`,
+          body: `Call ${firstName(name)} to check on them.`,
           sms: context.replyByText
             ? capSms(
-                `MzaziCare: ${name} did not answer today's check-in. Please call to check. ${REPLY_ASK}`,
+                `MzaziCare: ${name} missed today's check-in. Please call to check. ${REPLY_ASK}`,
                 `MzaziCare: ${firstName(name)} missed a check-in. Please call. ${REPLY_ASK}`,
               )
             : capSms(
-                `MzaziCare: ${name} did not answer today's check-in. Please call to check on them.`,
+                `MzaziCare: ${name} missed today's check-in. Please call to check on them.`,
                 `MzaziCare: ${firstName(name)} missed a check-in. Please call to check.`,
               ),
           data: { ...data, action: 'respond', trigger: AlertTrigger.MISSED_CHECK_IN },
@@ -180,15 +180,15 @@ export function composeNotification(context: NotificationContext): ComposedNotif
       const urgent = context.severity === Severity.CRITICAL;
       return {
         title: urgent ? `${firstName(name)} needs help now` : `${firstName(name)} needs help`,
-        body: `${name} raised an emergency alert${at}. Open MzaziCare to respond.`,
+        body: `${name} asked for help${at}. Tap to respond.`,
         sms: context.replyByText
           ? capSms(
-              `MzaziCare: ${name} raised an emergency alert${at}. ${REPLY_ASK} Call 999 if you cannot reach them.`,
+              `MzaziCare: ${name} needs help${at}. ${REPLY_ASK} Cannot reach them? Call 999.`,
               `MzaziCare: ${name} needs help. ${REPLY_ASK} Or call 999.`,
             )
           : capSms(
-              `MzaziCare: ${name} raised an emergency alert${at}. Please respond, or call 999 if you cannot reach them.`,
-              `MzaziCare: ${name} raised an emergency alert. Please respond or call 999.`,
+              `MzaziCare: ${name} needs help${at}. Please respond, or call 999 if you cannot reach them.`,
+              `MzaziCare: ${name} needs help. Please respond or call 999.`,
             ),
         data: { ...data, action: 'respond' },
       };
@@ -258,7 +258,7 @@ export const accountMessages = {
   },
 
   alreadyRegistered(): string {
-    return 'Somebody tried to create a MzaziCare account with this number, which already has one. If it was you, sign in instead. If not, you can ignore this.';
+    return 'Someone tried to sign up to MzaziCare with this number. If it was you, sign in instead. If not, ignore this.';
   },
 
   /**
@@ -274,23 +274,23 @@ export const accountMessages = {
   /** Added to an elder's chain, with an account already. */
   addedToChain(inviterName: string, elderName: string): string {
     return capSms(
-      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare emergency contacts. You will be alerted if ${firstName(elderName)} asks for help.`,
-      `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare emergency contacts.`,
+      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare contacts. We'll alert you if ${firstName(elderName)} needs help.`,
+      `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare contacts.`,
     );
   },
 
   /** Taken out of an elder's chain by their caregiver. */
   removedFromChain(removerName: string, elderName: string): string {
     return capSms(
-      `${firstName(removerName)} removed you from ${elderName}'s MzaziCare emergency contacts. You will no longer be alerted for ${firstName(elderName)}.`,
-      `${firstName(removerName)} removed you from ${firstName(elderName)}'s MzaziCare emergency contacts.`,
+      `${firstName(removerName)} removed you from ${elderName}'s MzaziCare contacts. We'll stop alerting you for ${firstName(elderName)}.`,
+      `${firstName(removerName)} removed you from ${firstName(elderName)}'s MzaziCare contacts.`,
     );
   },
 
   /** Added to an elder's chain, with no account yet. */
   invitedToChain(inviterName: string, elderName: string): string {
     return capSms(
-      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare emergency contacts. Install the MzaziCare app and sign up with this number to be alerted.`,
+      `${firstName(inviterName)} added you to ${elderName}'s MzaziCare contacts. Install MzaziCare and sign up with this number to get alerts.`,
       `${firstName(inviterName)} added you to ${firstName(elderName)}'s MzaziCare contacts. Sign up in the MzaziCare app with this number.`,
     );
   },

@@ -128,7 +128,7 @@ describe('PhoneVerificationService', () => {
     await service.start(PHONE);
 
     expect(sms.send).toHaveBeenCalledTimes(1);
-    expect(sms.send.mock.calls[0][1]).toContain('already has one');
+    expect(sms.send.mock.calls[0][1]).toContain('If it was you, sign in instead');
     expect(redis.hashes.has(`verify:code:${PHONE}`)).toBe(false);
   });
 

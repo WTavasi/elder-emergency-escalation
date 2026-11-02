@@ -129,7 +129,7 @@ export class SmsRepliesService {
       return 'limited';
     }
 
-    // An elder's text asks for help or answers their check-in, "are you all right?";
+    // An elder's text asks for help or answers their check-in, "are you OK?";
     // anybody else's is a reply to an alert they were asked to answer.
     const intent = readReply(text);
     const outcome =
@@ -185,9 +185,9 @@ export class SmsRepliesService {
         await this.sms.send(
           phone,
           capSms(
-            `MzaziCare: thank you, you are going to ${name}. Call ${name} on ${elder.phone}.` +
+            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.` +
               (place ? ` Address: ${place}.` : ''),
-            `MzaziCare: thank you, you are going to ${name}. Call ${name} on ${elder.phone}.`,
+            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.`,
           ),
         );
         return 'accepted';
@@ -196,7 +196,7 @@ export class SmsRepliesService {
       await this.escalation.decline(asked.eventId, userId, 'Replied by text', 'sms');
       await this.sms.send(
         phone,
-        `MzaziCare: thank you for telling us. The next person is being asked to help ${name}.`,
+        `MzaziCare: thanks for telling us. We're asking the next person to help ${name}.`,
       );
       return 'declined';
     } catch (error) {
@@ -207,10 +207,7 @@ export class SmsRepliesService {
       if (error instanceof ForbiddenException) {
         // Asked at a tier the alert has already moved past, so a decline no longer
         // applies to them. Nothing is wrong; it has simply gone on without them.
-        await this.sms.send(
-          phone,
-          `MzaziCare: ${name}'s alert has already moved on to others. Thank you.`,
-        );
+        await this.sms.send(phone, `MzaziCare: ${name}'s alert has moved on to others. Thanks.`);
         return 'moved-on';
       }
       throw error;
@@ -235,8 +232,8 @@ export class SmsRepliesService {
       await this.sms.send(
         phone,
         open.owner
-          ? `MzaziCare: ${firstName(open.owner.name)} is coming to you. Stay where you are if you can.`
-          : 'MzaziCare: the people who look after you have already been told. Someone will call you.',
+          ? `MzaziCare: ${firstName(open.owner.name)} is coming to you. Stay where you are if it's safe.`
+          : "MzaziCare: we've already told your family. Keep your phone near you.",
       );
       return 'already-raised';
     }
@@ -244,13 +241,13 @@ export class SmsRepliesService {
     await this.alerts.create(elderId, {}, { via: 'sms' });
     await this.sms.send(
       phone,
-      'MzaziCare: we have told the people who look after you. Someone will call you. If you can, call 999 too.',
+      "MzaziCare: we've told your family. If you can, call 999 too. Keep your phone near you.",
     );
     return 'raised';
   }
 
   /**
-   * An elder's reply to "are you all right? Reply 1 if you are". A 1 answers it, exactly
+   * An elder's reply to "are you OK? Reply 1 if you are". A 1 answers it, exactly
    * as the button in the app does, including withdrawing an alert raised because it was
    * missed. HELP is read before this, by [raiseByText]. Anything else is not taken as a
    * call for help, which would turn a mistyped reply into an emergency; the elder is told
@@ -264,17 +261,17 @@ export class SmsRepliesService {
     if (intent !== 'accept') {
       await this.sms.send(
         phone,
-        `MzaziCare: if you need help, reply ${HELP_WORD}, press the help button in MzaziCare or call 999. Reply 1 if you are all right.`,
+        `MzaziCare: need help? Reply ${HELP_WORD} or call 999. Reply 1 if you're OK.`,
       );
       return 'unclear';
     }
 
     const outcome = await this.checkIns.answer(elderId, 'sms');
     const text = {
-      answered: 'MzaziCare: thank you. Your family can see you are all right.',
-      withdrawn: 'MzaziCare: thank you. Your family has been told you are all right.',
-      noted: 'MzaziCare: thank you. Someone is already coming, and they know you answered.',
-      nothing: 'MzaziCare: there is nothing to answer just now. Thank you.',
+      answered: "MzaziCare: thanks. Your family can see you're OK.",
+      withdrawn: "MzaziCare: thanks. We've told your family you're OK.",
+      noted: 'MzaziCare: thanks. Someone is already coming and knows you answered.',
+      nothing: 'MzaziCare: nothing to answer right now. Thanks.',
     }[outcome];
     await this.sms.send(phone, text);
     return outcome === 'nothing' ? 'nothing-waiting' : 'checked-in';
@@ -304,14 +301,14 @@ export class SmsRepliesService {
     // signal. They are told it stands, not that somebody else has it.
     const text =
       taken.event.owner.id === userId
-        ? `MzaziCare: you are already going to ${elder}. Thank you.`
-        : `MzaziCare: ${firstName(taken.event.owner.name)} is already going to ${elder}. Thank you.`;
+        ? `MzaziCare: you're already going to ${elder}. Thanks.`
+        : `MzaziCare: ${firstName(taken.event.owner.name)} is already going to ${elder}. Thanks.`;
     await this.sms.send(phone, text);
     return true;
   }
 
   /**
-   * A volunteer's reply to "Reply 1 if you can go". The same accept and decline as the
+   * A volunteer's reply to "Reply 1 to go". The same accept and decline as the
    * app, and an acceptance is answered with who and where, since a volunteer who replied
    * by text may have no app open to read it in.
    */
@@ -331,7 +328,7 @@ export class SmsRepliesService {
   }
 
   private async nothingWaiting(phone: string): Promise<ReplyOutcome> {
-    await this.sms.send(phone, 'MzaziCare: there is no alert waiting for your answer. Thank you.');
+    await this.sms.send(phone, 'MzaziCare: no alert is waiting for your answer. Thanks.');
     return 'nothing-waiting';
   }
 
