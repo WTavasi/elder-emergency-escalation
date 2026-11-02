@@ -15,6 +15,7 @@ import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
+import { severityWord } from '../../shared/utils/format';
 import { retentionSentence } from '../privacy/PrivacyPanel';
 
 const STATES: EventState[] = [
@@ -34,11 +35,11 @@ const STATES: EventState[] = [
 const STATE_OPTION: Record<EventState, string> = {
   TRIGGERED: 'Waiting, nobody told yet',
   NOTIFIED: 'Waiting, people told',
-  ACKNOWLEDGED: 'Being handled',
-  ON_SCENE: 'Help arrived',
-  ESCALATED: 'Escalated',
+  ACKNOWLEDGED: 'On the way',
+  ON_SCENE: 'Help is there',
+  ESCALATED: 'Moved on',
   RESOLVED: 'Closed',
-  CANCELLED: 'Withdrawn',
+  CANCELLED: 'Cancelled',
 };
 
 const SEVERITIES: Severity[] = ['STANDARD', 'ELEVATED', 'CRITICAL'];
@@ -260,7 +261,7 @@ export function History() {
             <option value="">Any severity</option>
             {SEVERITIES.map((value) => (
               <option key={value} value={value}>
-                {value.charAt(0) + value.slice(1).toLowerCase()}
+                {severityWord(value)}
               </option>
             ))}
           </select>

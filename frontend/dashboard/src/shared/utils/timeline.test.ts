@@ -44,7 +44,7 @@ describe('the record of an emergency, in sentences', () => {
       'Grace Wanjiru asked for help, by text',
     );
     expect(say(entry('EVENT_CREATED', { trigger: 'MISSED_CHECK_IN' }))).toBe(
-      'The daily check-in went unanswered',
+      'Missed the daily check-in',
     );
   });
 
@@ -58,14 +58,14 @@ describe('the record of an emergency, in sentences', () => {
 
   it('says where it moved on to, or that there was nobody further', () => {
     expect(say(entry('ESCALATED', { fromTier: 1, toTier: 2 }))).toBe(
-      'Nobody answered in time, so it moved on to Aisha Wanjiru and Brian Wanjiru',
+      'No answer in time. Now asking Aisha Wanjiru and Brian Wanjiru',
     );
-    expect(say(entry('ESCALATED', {}))).toBe('Nobody answered, and there is nobody further to ask');
+    expect(say(entry('ESCALATED', {}))).toBe('No answer. No one else to ask');
   });
 
   it('says how it was scored, and whether the second scoring changed the band', () => {
     expect(say(entry('SEVERITY_EVALUATED', { score: 48, band: 'ELEVATED' }))).toBe(
-      'Scored elevated, 48',
+      'Scored high, 48',
     );
     expect(
       say(
@@ -76,7 +76,7 @@ describe('the record of an emergency, in sentences', () => {
           severityBefore: 'ELEVATED',
         }),
       ),
-    ).toBe('Scored again once the cancel window closed: critical, 60, was elevated');
+    ).toBe('Scored again once the cancel window closed: critical, 60, was high');
   });
 
   it('names the person a message failed to reach, and why', () => {
@@ -96,7 +96,7 @@ describe('the record of an emergency, in sentences', () => {
   });
 
   it('says when, relative to the alert, in words', () => {
-    expect(afterTheAlert(0)).toBe('When the alert was raised');
+    expect(afterTheAlert(0)).toBe('At the start');
     expect(afterTheAlert(1)).toBe('1 second after the alert');
     expect(afterTheAlert(70)).toBe('1 minute after the alert');
     expect(afterTheAlert(7200)).toBe('2 hours after the alert');
