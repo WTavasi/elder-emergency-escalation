@@ -315,17 +315,14 @@ class _ConsentQuestion extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(
-          'Before you start, please read what was agreed for you.',
-          style: theme.textTheme.bodyLarge,
-        ),
+        Text('Please read what your caregiver agreed for you.', style: theme.textTheme.bodyLarge),
         const SizedBox(height: MzaziSpace.s8),
         Row(
           children: <Widget>[
             Expanded(
               child: SizedBox(
                 height: MzaziSizes.of(context).control,
-                child: OutlinedButton(onPressed: onRead, child: const Text('Read it')),
+                child: OutlinedButton(onPressed: onRead, child: const Text('Read now')),
               ),
             ),
             const SizedBox(width: MzaziSpace.s12),
@@ -363,8 +360,8 @@ class _Header extends StatelessWidget {
         if (me != null)
           IconButton(
             onPressed: me,
-            icon: const Icon(Icons.account_circle_outlined, semanticLabel: 'You and your privacy'),
-            tooltip: 'You and your privacy',
+            icon: const Icon(Icons.account_circle_outlined, semanticLabel: 'Your account'),
+            tooltip: 'Your account',
             constraints: BoxConstraints(
               minWidth: MzaziSizes.of(context).target,
               minHeight: MzaziSizes.of(context).target,
@@ -415,17 +412,17 @@ class _Body extends StatelessWidget {
       AlertPhase.cancelled when fromCheckIn => _Finished(
         alerts: alerts,
         headline: 'Thank you',
-        detail: 'Your family has been told you are all right. You can press for help at any time.',
+        detail: "We've told your family you're OK. Press for help anytime.",
       ),
       AlertPhase.cancelled => _Finished(
         alerts: alerts,
-        headline: 'Cancelled',
-        detail: 'Nobody is being called. You can press for help again at any time.',
+        headline: 'Alert stopped',
+        detail: "We've told your family you're OK. Press for help anytime.",
       ),
       AlertPhase.closed => _Finished(
         alerts: alerts,
-        headline: 'This is finished',
-        detail: 'Your emergency has been closed. You can press for help again at any time.',
+        headline: 'Emergency closed',
+        detail: 'Press for help again anytime.',
       ),
     };
   }
@@ -466,7 +463,7 @@ class _Idle extends StatelessWidget {
             ),
             const SizedBox(height: MzaziSpace.s16),
           ] else if (answered != null && answered != CheckInAnswer.nothing) ...<Widget>[
-            const Notice(message: 'Thank you. Your family can see you are all right.'),
+            const Notice(message: "Thanks. Your family can see you're OK."),
             const SizedBox(height: MzaziSpace.s16),
           ],
           _HelpCaption(sending: sending),
@@ -600,8 +597,7 @@ class _HelpCaption extends StatelessWidget {
 
   final bool sending;
 
-  static const String waiting =
-      'Press the red circle and the people who look after you will be told straight away.';
+  static const String waiting = 'Press the red button for help. We tell your family right away.';
   static const String sent = 'Sending your alert…';
 
   @override
@@ -619,9 +615,8 @@ class _HelpCaption extends StatelessWidget {
 class _CountdownHeading extends StatelessWidget {
   const _CountdownHeading();
 
-  static const String title = 'Help is on the way';
-  static const String body =
-      'Your caregiver has been told. If you pressed by mistake, you can stop this.';
+  static const String title = 'Alert sent';
+  static const String body = 'Your caregiver has the alert. Pressed by mistake? Stop it below.';
 
   @override
   Widget build(BuildContext context) {
@@ -692,7 +687,7 @@ class _CancellableState extends State<_Cancellable> {
           ),
           // Says what it does, in the words the person would use. "Cancel" alone is
           // ambiguous when the thing on screen is already called a cancellation.
-          child: const Text('I am all right, stop this'),
+          child: const Text('Stop alert'),
         ),
       ),
     );
@@ -742,9 +737,7 @@ class _Unreachable extends StatelessWidget {
     }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('This phone cannot send a text. Call $emergencyNumber instead.'),
-      ),
+      const SnackBar(content: Text('This phone cannot send texts. Call $emergencyNumber.')),
     );
   }
 
@@ -792,11 +785,10 @@ class _Unreachable extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      Text('Not sent yet', style: theme.textTheme.headlineLarge),
+                      Text('Alert not sent yet', style: theme.textTheme.headlineLarge),
                       const SizedBox(height: MzaziSpace.s8),
                       Text(
-                        'Your phone cannot reach MzaziCare. It will keep trying. '
-                        'Ask for help another way now:',
+                        "No internet. We'll keep trying. Get help another way now:",
                         style: theme.textTheme.bodyLarge,
                       ),
                     ],
@@ -809,10 +801,7 @@ class _Unreachable extends StatelessWidget {
                 // Away from the thumb, so it is not pressed on the way to the others.
                 Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: TextButton(
-                    onPressed: alerts.stopTrying,
-                    child: const Text('I am all right, stop trying'),
-                  ),
+                  child: TextButton(onPressed: alerts.stopTrying, child: const Text('Stop trying')),
                 ),
                 const SizedBox(height: MzaziSpace.s16),
                 const Spacer(),
@@ -948,12 +937,9 @@ class _CheckInPrompt extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('Are you all right?', style: theme.textTheme.headlineSmall),
+          Text('Are you OK?', style: theme.textTheme.headlineSmall),
           const SizedBox(height: MzaziSpace.s4),
-          Text(
-            'Your family would like to know. Press below if you are.',
-            style: theme.textTheme.bodyLarge,
-          ),
+          Text('Your family wants to know.', style: theme.textTheme.bodyLarge),
           if (failure != null) ...<Widget>[
             const SizedBox(height: MzaziSpace.s8),
             Notice(message: failure, isError: true),
@@ -961,10 +947,7 @@ class _CheckInPrompt extends StatelessWidget {
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
             height: MzaziSizes.of(context).control,
-            child: FilledButton(
-              onPressed: busy ? null : onAnswer,
-              child: const Text('I am all right'),
-            ),
+            child: FilledButton(onPressed: busy ? null : onAnswer, child: const Text("I'm OK")),
           ),
         ],
       ),
@@ -1002,8 +985,8 @@ class _MissedCheckIn extends StatelessWidget {
         liveRegion: true,
         child: Text(
           coming == null
-              ? 'Thank you. Your family can see you answered.'
-              : 'Thank you. $coming is still coming, and can see you answered.',
+              ? "Thanks. Your family can see you're OK."
+              : 'Thanks. $coming is still coming and knows you answered.',
           style: theme.textTheme.bodyLarge,
         ),
       );
@@ -1012,10 +995,7 @@ class _MissedCheckIn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(
-          'You did not answer the check-in, so your family has been told.',
-          style: theme.textTheme.bodyLarge,
-        ),
+        Text('You missed the check-in, so we told your family.', style: theme.textTheme.bodyLarge),
         if (failure != null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Notice(message: failure, isError: true),
@@ -1023,10 +1003,7 @@ class _MissedCheckIn extends StatelessWidget {
         const SizedBox(height: MzaziSpace.s12),
         SizedBox(
           height: MzaziSizes.of(context).control,
-          child: OutlinedButton(
-            onPressed: busy ? null : onAnswer,
-            child: const Text('I am all right'),
-          ),
+          child: OutlinedButton(onPressed: busy ? null : onAnswer, child: const Text("I'm OK")),
         ),
       ],
     );
@@ -1057,9 +1034,8 @@ class _CheckInSetUpQuestion extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
-          '$who would like MzaziCare to check on you every day at ${schedule.timesInWords}. '
-          'If you do not answer within ${schedule.graceMinutes} minutes, your family is told. '
-          'Is that all right?',
+          '$who wants us to check on you each day at ${schedule.timesInWords}. '
+          'No answer in ${schedule.graceMinutes} minutes? We tell your family. Is that OK?',
           style: theme.textTheme.bodyLarge,
         ),
         const SizedBox(height: MzaziSpace.s8),
@@ -1078,10 +1054,7 @@ class _CheckInSetUpQuestion extends StatelessWidget {
             Expanded(
               child: SizedBox(
                 height: MzaziSizes.of(context).control,
-                child: TextButton(
-                  onPressed: busy ? null : onNo,
-                  child: const Text('No, thank you'),
-                ),
+                child: TextButton(onPressed: busy ? null : onNo, child: const Text('No thanks')),
               ),
             ),
           ],
@@ -1119,10 +1092,7 @@ class _Finished extends StatelessWidget {
         const Spacer(),
         SizedBox(
           height: MzaziSizes.of(context).control,
-          child: FilledButton(
-            onPressed: alerts.reset,
-            child: const Text('Back to the help button'),
-          ),
+          child: FilledButton(onPressed: alerts.reset, child: const Text('Back to help button')),
         ),
       ],
     );

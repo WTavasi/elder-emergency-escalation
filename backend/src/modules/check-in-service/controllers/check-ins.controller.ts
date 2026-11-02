@@ -69,7 +69,7 @@ export class CheckInsController {
     return this.checkIns.forElder(user.userId);
   }
 
-  /** "I am all right." */
+  /** "I'm OK." */
   @Roles(Role.ELDER)
   @HttpCode(HttpStatus.OK)
   @Post('check-ins/answer')

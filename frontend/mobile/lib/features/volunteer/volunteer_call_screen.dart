@@ -40,8 +40,8 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
   Future<void> _withdraw(VolunteerController volunteer) async {
     final bool? sure = await showActionSheet<bool>(
       context,
-      title: 'You can no longer go?',
-      message: 'The other volunteers nearby will be asked again. If you can, call to say so.',
+      title: 'Can no longer go?',
+      message: "We'll ask other volunteers nearby. If you can, call to say you're not coming.",
       actions: const <SheetAction<bool>>[
         SheetAction<bool>(
           'I cannot go',
@@ -49,7 +49,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
           icon: Icons.do_not_disturb_on_outlined,
           destructive: true,
         ),
-        SheetAction<bool>('I am still going', false, icon: Icons.directions_walk),
+        SheetAction<bool>("I'm still going", false, icon: Icons.directions_walk),
       ],
     );
     if (sure == true && mounted) {
@@ -97,9 +97,9 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
   String _headline(VolunteerCall call) {
     final VolunteerCallElder? elder = call.elder;
     if (elder != null) {
-      return call.arrivedAt != null ? 'You are with ${_first(elder.name)}' : elder.name;
+      return call.arrivedAt != null ? "You're with ${_first(elder.name)}" : elder.name;
     }
-    if (!call.open) return 'This emergency is over';
+    if (!call.open) return 'This emergency has ended';
     return '${call.severity == Severity.critical ? 'Urgent: someone' : 'Someone'} '
         '${roughDistance(call.distanceMetres)} away needs help';
   }
@@ -109,9 +109,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
     final VolunteerCallElder? elder = call.elder;
 
     if (!call.open) {
-      return <Widget>[
-        Text('Thank you for being ready to help.', style: theme.textTheme.bodyLarge),
-      ];
+      return <Widget>[Text('Thanks for being ready to help.', style: theme.textTheme.bodyLarge)];
     }
 
     if (call.going && elder != null) {
@@ -131,7 +129,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
         const SizedBox(height: MzaziSpace.s16),
         Text(
           call.circleOwner == null
-              ? '$first\'s family has been told you are going. They are still being asked too.'
+              ? "We've told $first's family you're going. We're still asking them too."
               : '${call.circleOwner} from $first\'s family is also on the way.',
           style: theme.textTheme.bodyMedium,
         ),
@@ -144,7 +142,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     SwipeToConfirm(
-                      label: 'Swipe when you are with $first',
+                      label: "Swipe when you're with $first",
                       enabled: !volunteer.busy,
                       onConfirmed: () =>
                           unawaited(volunteer.answer(widget.eventId, VolunteerAnswer.arrived)),
@@ -160,8 +158,8 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
                   ],
                 )
               : Text(
-                  'Their family can see you are there. Stay until someone from the family or the '
-                  'emergency services takes over, if you can.',
+                  "Their family can see you're there. Stay until family or emergency services "
+                  'arrive, if you can.',
                   key: const ValueKey<String>('arrived'),
                   style: theme.textTheme.bodyLarge,
                 ),
@@ -172,7 +170,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
     if (call.takenByAnother) {
       return <Widget>[
         Text(
-          'Another volunteer is on the way. Thank you for being ready.',
+          'Another volunteer is going. Thanks for being ready.',
           style: theme.textTheme.bodyLarge,
         ),
       ];
@@ -180,8 +178,8 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
 
     return <Widget>[
       Text(
-        'An older person needs help. If you say you will go, you are told who they are, '
-        'where, and their number, and their family is told you are coming.',
+        "An older person needs help. Tap I can go to see who and where. We'll tell their "
+        "family you're coming.",
         style: theme.textTheme.bodyLarge,
       ),
       const SizedBox(height: MzaziSpace.s24),

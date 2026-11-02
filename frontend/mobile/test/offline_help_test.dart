@@ -281,10 +281,10 @@ void main() {
 
     test('the message to the family says who, why it came this way, and where', () {
       final String message = OfflineHelp.messageFor(grace);
-      expect(message, startsWith('HELP. Grace needs help now.'));
-      expect(message, contains('could not connect'));
+      expect(message, startsWith('HELP: Grace needs help now.'));
+      expect(message, contains('without internet'));
       expect(message, contains('Home: Kilimani, Nairobi.'));
-      expect(message, endsWith('Please call Grace.'));
+      expect(message, contains('Please call Grace.'));
     });
   });
 
@@ -374,7 +374,7 @@ void main() {
           final Rect button = tester.getRect(
             find.descendant(of: find.byType(PanicButton), matching: find.byType(InkWell)),
           );
-          final Rect words = tester.getRect(find.textContaining('Press the red circle'));
+          final Rect words = tester.getRect(find.textContaining('Press the red button'));
           // In the middle of the screen, with its explanation just above it. A little lower
           // at large text sizes, where the words above it take more of the screen.
           expect(button.center.dy, inInclusiveRange(size.height / 3, size.height * 0.7));
@@ -395,7 +395,7 @@ void main() {
           expect(ring.height, closeTo(button.height, 0.5));
           // And the way out below it, on screen.
           expect(
-            tester.getRect(find.text('I am all right, stop this')).bottom,
+            tester.getRect(find.text('Stop alert')).bottom,
             lessThanOrEqualTo(size.height),
           );
           await done(tester, alerts);
@@ -459,9 +459,9 @@ void main() {
 
         final ThemeData theme = Theme.of(tester.element(find.byType(CountdownRing)));
         expect(theme.scaffoldBackgroundColor, MzaziColorsLight.caution);
-        expect(find.bySemanticsLabel('10 seconds left to stop this'), findsOneWidget);
+        expect(find.bySemanticsLabel('10 seconds to stop the alert'), findsOneWidget);
 
-        final Rect stop = tester.getRect(filled('I am all right, stop this'));
+        final Rect stop = tester.getRect(filled('Stop alert'));
         expect(stop.center.dy, greaterThan(860 * 0.75));
         await done(tester, alerts);
       },
@@ -490,7 +490,7 @@ void main() {
 
       expect(alerts.phase, AlertPhase.unreachable);
       expect(find.text('No connection'), findsOneWidget);
-      expect(find.text('Not sent yet'), findsOneWidget);
+      expect(find.text('Alert not sent yet'), findsOneWidget);
       // The address, for telling whoever answers a call.
       expect(find.text('Your address: Kilimani, Nairobi'), findsOneWidget);
       // Everything to press fits on a phone's screen without scrolling: the space a
@@ -507,7 +507,7 @@ void main() {
 
       await tester.tap(find.text('Text my family'));
       await tester.pump();
-      expect(opened.last.toString(), startsWith('sms:+254700000020,+254700000030?body=HELP.'));
+      expect(opened.last.toString(), startsWith('sms:+254700000020,+254700000030?body=HELP%3A'));
 
       await tester.tap(find.text('Call 999'));
       await tester.pump();
@@ -544,7 +544,7 @@ void main() {
 
       await tester.tap(find.text('Get\nhelp'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('I am all right, stop trying'));
+      await tester.tap(find.text('Stop trying'));
       await tester.pumpAndSettle();
 
       expect(find.text('No connection'), findsNothing);

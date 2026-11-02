@@ -198,18 +198,12 @@ class WayThere extends ChangeNotifier {
     _lastSent = null;
     notifyListeners();
 
-    _readings = _source.watch().listen(
-      (Fix fix) {
-        _latest = fix;
-        // The first reading goes at once, so the elder sees a time within seconds of
-        // somebody setting off rather than after the first full interval.
-        if (_lastSent == null) unawaited(_send());
-      },
-      onError: (Object _) => _halt(
-        SharingState.stopped,
-        'Your location stopped coming through, so sharing has stopped.',
-      ),
-    );
+    _readings = _source.watch().listen((Fix fix) {
+      _latest = fix;
+      // The first reading goes at once, so the elder sees a time within seconds of
+      // somebody setting off rather than after the first full interval.
+      if (_lastSent == null) unawaited(_send());
+    }, onError: (Object _) => _halt(SharingState.stopped, 'Lost your location. Sharing stopped.'));
     _ticker = Timer.periodic(every, (Timer _) => unawaited(_send()));
   }
 
@@ -289,12 +283,7 @@ class WayThere extends ChangeNotifier {
 /// Why location access stands in the way, said so the person knows what to do.
 String accessProblem(LocationAccess access) => switch (access) {
   LocationAccess.granted => '',
-  LocationAccess.denied =>
-    'Your way there is not being shared yet. Allow MzaziCare to use your location to '
-        'share it.',
-  LocationAccess.deniedForever =>
-    'Location is turned off for MzaziCare. Allow it in your phone settings to share '
-        'your way there.',
-  LocationAccess.serviceOff =>
-    'Location is switched off on this phone. Turn it on to share your way there.',
+  LocationAccess.denied => 'Location is not shared yet. Allow location to share it.',
+  LocationAccess.deniedForever => 'Location is off for MzaziCare. Turn it on in Settings.',
+  LocationAccess.serviceOff => 'Location is off on this phone. Turn it on to share.',
 };

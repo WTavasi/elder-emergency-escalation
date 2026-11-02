@@ -14,12 +14,11 @@ import 'way_there.dart';
 Future<bool> explainLocation(BuildContext context) async {
   final bool? go = await showActionSheet<bool>(
     context,
-    title: 'Share your way there',
+    title: 'Share live location',
     message:
-        'MzaziCare uses this phone\'s location only while you are on your way to an '
-        'emergency you took on, so the person waiting can see roughly how long you will '
-        'be. It stops when you arrive, and where you were is not kept.\n\n'
-        'Your phone will ask next. Choose "Allow While Using App".',
+        "We use your location only while you're on the way to an emergency. The person "
+        'waiting sees how far away you are. It stops when you arrive, and we do not keep it.'
+        '\n\nNext, your phone will ask. Choose "Allow While Using App".',
     actions: const <SheetAction<bool>>[
       SheetAction<bool>('Continue', true, icon: Icons.my_location, primary: true),
     ],

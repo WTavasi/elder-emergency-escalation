@@ -111,7 +111,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ? AuthFrame(tall: true, child: _numberStep(context))
           : AuthFrame(
               onBack: context.watch<AuthController>().isBusy ? null : _changeNumber,
-              backLabel: 'Change the number',
+              backLabel: 'Change number',
               child: _passwordStep(context),
             ),
     );
@@ -124,7 +124,7 @@ class _SignInScreenState extends State<SignInScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const StepHeading(title: 'Sign in', lead: 'Enter the number on your account.'),
+        const StepHeading(title: 'Sign in', lead: 'Enter your phone number.'),
         const SizedBox(height: MzaziSpace.s24),
         Form(
           key: _numberForm,
@@ -198,24 +198,20 @@ class _SignInScreenState extends State<SignInScreen> {
                 alignment: AlignmentDirectional.centerEnd,
                 child: TextButton(
                   onPressed: auth.isBusy ? null : () => unawaited(_forgotPassword()),
-                  child: const Text('Forgot your password?'),
+                  child: const Text('Forgot password?'),
                 ),
               ),
               const SizedBox(height: MzaziSpace.s8),
               FilledButton(
                 onPressed: auth.isBusy ? null : () => unawaited(_submit()),
-                child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
+                child: Text(auth.isBusy ? 'Signing in…' : 'Sign in'),
               ),
             ],
           ),
         ),
         const SizedBox(height: MzaziSpace.s32),
         // An elder may never have known the password a caregiver set.
-        Text(
-          'No password? Elders can sign in with a code instead.',
-          style: theme.textTheme.bodyLarge,
-          textAlign: TextAlign.center,
-        ),
+        Text('Elder?', style: theme.textTheme.bodyLarge, textAlign: TextAlign.center),
         const SizedBox(height: MzaziSpace.s12),
         OutlinedButton(
           onPressed: auth.isBusy ? null : () => unawaited(_signInWithCode()),

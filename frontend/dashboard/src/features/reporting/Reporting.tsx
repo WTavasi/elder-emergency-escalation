@@ -4,7 +4,7 @@ import { Icon } from '../../shared/components/Icon';
 import { PageHeader } from '../../shared/components/PageHeader';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
-import { formatDuration, humanise } from '../../shared/utils/format';
+import { formatDuration, humanise, severityWord } from '../../shared/utils/format';
 import { TrendChart, type Series } from './TrendChart';
 
 const WINDOWS = [7, 30, 90];
@@ -119,7 +119,7 @@ export function Reporting() {
               </div>
               {Object.entries(overview.live.bySeverity).map(([band, count]) => (
                 <div className="card metric" key={band}>
-                  <div className="metric__label">Open and {band.toLowerCase()}</div>
+                  <div className="metric__label">Open, {severityWord(band).toLowerCase()}</div>
                   <div className="metric__value">{count}</div>
                 </div>
               ))}

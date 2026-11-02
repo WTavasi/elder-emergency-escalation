@@ -138,7 +138,7 @@ describe('ChainService', () => {
         data: { elderlyId: ELDER.id, responderId: 'family-1', priorityOrder: 2 },
       });
       expect(prisma.chainInvitation.create).not.toHaveBeenCalled();
-      expect(sms.send.mock.calls[0][1]).toContain("Grace Wanjiru's MzaziCare emergency contacts");
+      expect(sms.send.mock.calls[0][1]).toContain("Grace Wanjiru's MzaziCare contacts");
     });
 
     it('holds the place for a number with no account yet', async () => {

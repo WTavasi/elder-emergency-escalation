@@ -77,7 +77,7 @@ void main() {
     await pump(tester, Role.caregiver);
 
     expect(inBar('1'), findsOneWidget);
-    expect(find.text('1 waiting for somebody'), findsOneWidget);
+    expect(find.text('1 waiting for an answer'), findsOneWidget);
   });
 
   testWidgets('the account tab is where signing out lives now', (WidgetTester tester) async {
@@ -86,7 +86,7 @@ void main() {
     await tester.tap(inBar('Me'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign out of this phone'), findsOneWidget);
+    expect(find.text('Sign out'), findsOneWidget);
   });
 
   testWidgets('every tab is a full touch target', (WidgetTester tester) async {
@@ -107,20 +107,20 @@ void main() {
 
   testWidgets('history can be searched, and the open list cannot', (WidgetTester tester) async {
     await pump(tester, Role.caregiver);
-    expect(find.text('Elder or who attended'), findsNothing);
+    expect(find.text('Search by name'), findsNothing);
 
     await tester.tap(find.text('History'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Elder or who attended'), findsOneWidget);
+    expect(find.text('Search by name'), findsOneWidget);
     expect(find.byTooltip('Choose dates'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Elder or who attended'),
+      find.widgetWithText(TextField, 'Search by name'),
       'nobody like this',
     );
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Clear the search'), findsOneWidget);
+    expect(find.byTooltip('Clear search'), findsOneWidget);
   });
 }

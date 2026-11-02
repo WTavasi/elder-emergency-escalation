@@ -54,8 +54,8 @@ class ElderMeScreen extends StatelessWidget {
   Future<void> _signOut(BuildContext context) => confirmSignOut(
     context,
     message:
-        'While you are signed out, this phone cannot ask for help. To sign back in you '
-        'will need a code sent by text, or one from your caregiver.',
+        "This phone cannot ask for help while you're signed out. To sign back in, you'll "
+        'need a code by text or from your caregiver.',
   );
 
   @override
@@ -78,7 +78,7 @@ class ElderMeScreen extends StatelessWidget {
             : ListView(
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
-                  const PageTitle('You'),
+                  const PageTitle('Me'),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: margin),
                     child: Column(
@@ -118,7 +118,7 @@ class ElderMeScreen extends StatelessWidget {
                         OutlinedButton.icon(
                           onPressed: () => unawaited(_signOut(context)),
                           icon: const Icon(Icons.logout),
-                          label: const Text('Sign out of this phone'),
+                          label: const Text('Sign out'),
                         ),
                       ],
                     ),
@@ -215,19 +215,19 @@ class _WhoComesState extends State<_WhoComes> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SectionLabel('Who comes when you press for help'),
+        const SectionLabel('Who we ask when you press for help'),
         const SizedBox(height: MzaziSpace.s8),
         if (carers == null)
           _failed
-              ? Text('This could not be loaded just now.', style: theme.textTheme.bodyLarge)
+              ? Text('Could not load this. Try again later.', style: theme.textTheme.bodyLarge)
               : const SizedBox(height: MzaziSpace.s24)
         else if (carers.isEmpty)
-          Text('Nobody yet. Ask your caregiver to add someone.', style: theme.textTheme.bodyLarge)
+          Text('No one yet. Ask your caregiver to add someone.', style: theme.textTheme.bodyLarge)
         else
           for (final Carer carer in carers) ...<Widget>[
             Text(carer.name, style: theme.textTheme.titleMedium),
             Text(
-              carer.place == 1 ? '${_role(carer.role)}, asked first' : _role(carer.role),
+              carer.place == 1 ? '${_role(carer.role)} · asked first' : _role(carer.role),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s8),

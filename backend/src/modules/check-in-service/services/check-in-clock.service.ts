@@ -20,7 +20,7 @@ export interface TickResult {
  * Asks, reminds and, when nobody answered, raises the alert.
  *
  * A check-in is a time of day, so this runs on a one-minute clock rather than a Redis
- * key per check-in: a minute late is nothing for "are you all right?", and the clock has
+ * key per check-in: a minute late is nothing for "are you OK?", and the clock has
  * nothing to lose in a restart because everything it acts on is in the database. Each
  * step is a conditional write (one check-in per elder per time, PENDING to MISSED only
  * once), so a second API instance, or a tick that overlaps the last, does nothing twice.
@@ -112,7 +112,7 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
       });
       if (due.length === 0) continue;
 
-      // Nobody is asked "are you all right?" in the middle of an emergency of their own.
+      // Nobody is asked "are you OK?" in the middle of an emergency of their own.
       const busy = await this.prisma.emergencyEvent.findFirst({
         where: { elderlyId: elder.id, state: { in: OPEN_STATES } },
         select: { id: true },

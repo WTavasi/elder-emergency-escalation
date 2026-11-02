@@ -58,7 +58,9 @@ class CountdownRing extends StatelessWidget {
                     Text(
                       '$secondsLeft',
                       style: theme.textTheme.displayLarge?.figures,
-                      semanticsLabel: '$secondsLeft seconds left to stop this',
+                      semanticsLabel: secondsLeft == 1
+                          ? '1 second to stop the alert'
+                          : '$secondsLeft seconds to stop the alert',
                     ),
                     ExcludeSemantics(
                       child: Text(

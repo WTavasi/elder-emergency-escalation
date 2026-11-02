@@ -60,9 +60,9 @@ void main() {
   }
 
   Future<void> fillReset(WidgetTester tester, String code) async {
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), code);
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), code);
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Brand-new-2026');
-    await tester.tap(find.text('Set my new password'));
+    await tester.tap(find.text('Save new password'));
     await settle(tester);
   }
 
@@ -73,7 +73,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '0712 345 678');
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Forgot your password?'));
+    await tester.tap(find.text('Forgot password?'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ForgotPasswordScreen), findsOneWidget);
@@ -93,7 +93,7 @@ void main() {
     expect(t.bodies.single, <String, dynamic>{'phone': '+254712345678'});
     // The same words whether or not the number has an account.
     expect(find.textContaining('If +254712345678 has an account'), findsOneWidget);
-    expect(find.textContaining('Send a new code in'), findsOneWidget);
+    expect(find.textContaining('Resend code in'), findsOneWidget);
 
     await fillReset(tester, '123456');
 
@@ -131,9 +131,9 @@ void main() {
     expect(find.textContaining('again'), findsNothing);
     expect(find.byTooltip('Show password'), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), '123456');
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'short');
-    await tester.tap(find.text('Set my new password'));
+    await tester.tap(find.text('Save new password'));
     await settle(tester);
 
     expect(find.text('Use at least 8 characters.'), findsOneWidget);

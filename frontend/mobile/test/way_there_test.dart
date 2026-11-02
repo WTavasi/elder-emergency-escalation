@@ -101,7 +101,7 @@ void main() {
 
       final String? problem = await t.way.setEnabled(true);
 
-      expect(problem, contains('phone settings'));
+      expect(problem, contains('in Settings'));
       expect(t.way.enabled, isFalse);
       expect(t.way.access, LocationAccess.deniedForever);
       // Only the read. A switch that says "on" for a phone that cannot share is the
@@ -231,7 +231,7 @@ void main() {
 
       expect(t.way.state, SharingState.stopped);
       expect(t.way.eventId, 'event-1');
-      expect(t.way.problem, contains('switched off'));
+      expect(t.way.problem, contains('off on this phone'));
       expect(source.readings.hasListener, isFalse);
       t.way.dispose();
     });

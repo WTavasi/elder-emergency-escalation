@@ -378,7 +378,7 @@ export class VolunteerCallsService {
   }
 
   /**
-   * A reply by text to "Reply 1 if you can go". Applies to the newest open emergency
+   * A reply by text to "Reply 1 to go". Applies to the newest open emergency
    * this volunteer was asked about and has not answered.
    */
   async answerByText(

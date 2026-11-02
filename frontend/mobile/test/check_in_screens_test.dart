@@ -135,11 +135,11 @@ void main() {
       final _Server server = _Server();
       await show(tester, server);
 
-      expect(find.textContaining('Off. MzaziCare can ask Grace'), findsOneWidget);
+      expect(find.textContaining('Off. We can ask Grace'), findsOneWidget);
 
       await tester.tap(find.text('Set up'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Grace will be asked to agree'), findsOneWidget);
+      expect(find.textContaining("We'll ask Grace if they're OK"), findsOneWidget);
 
       await tester.tap(find.text('Ask every day'));
       await tester.pumpAndSettle();
@@ -154,7 +154,7 @@ void main() {
         'times': <String>['09:00'],
         'graceMinutes': 30,
       });
-      expect(find.textContaining('once Grace agrees on their phone'), findsOneWidget);
+      expect(find.textContaining('after Grace agrees on their phone'), findsOneWidget);
       expect(find.text('Change times'), findsOneWidget);
     });
 
@@ -196,7 +196,7 @@ void main() {
       );
       await show(tester, server);
 
-      expect(find.textContaining('Every day at 09:00. If Grace does not answer'), findsOneWidget);
+      expect(find.textContaining('Daily at 09:00. No answer in'), findsOneWidget);
       expect(find.text('Today 09:00: answered in the app'), findsOneWidget);
       expect(find.text('Change times'), findsNothing);
       expect(find.text('Set up'), findsNothing);
@@ -215,7 +215,7 @@ void main() {
       await show(tester, server, forElder: true);
 
       expect(
-        find.textContaining('Every day at 09:00 and 18:00. If you do not answer'),
+        find.textContaining('Daily at 09:00 and 18:00. No answer in'),
         findsOneWidget,
       );
       expect(find.text('Change times'), findsOneWidget);
@@ -252,16 +252,16 @@ void main() {
       );
       await show(tester, server);
 
-      expect(find.text('Are you all right?'), findsOneWidget);
+      expect(find.text('Are you OK?'), findsOneWidget);
       // Above the help button, never in its place.
       expect(find.byType(PanicButton), findsOneWidget);
 
-      await tester.tap(find.text('I am all right'));
+      await tester.tap(find.text("I'm OK"));
       await tester.pumpAndSettle();
 
       expect(server.asked('POST', '/check-ins/answer'), 1);
-      expect(find.text('Are you all right?'), findsNothing);
-      expect(find.text('Thank you. Your family can see you are all right.'), findsOneWidget);
+      expect(find.text('Are you OK?'), findsNothing);
+      expect(find.text("Thanks. Your family can see you're OK."), findsOneWidget);
     });
 
     testWidgets('asks the elder to agree to a check-in somebody else set up', (
@@ -276,7 +276,7 @@ void main() {
       await show(tester, server);
 
       expect(
-        find.textContaining('Mary would like MzaziCare to check on you every day at 09:00'),
+        find.textContaining('Mary wants us to check on you each day at 09:00'),
         findsOneWidget,
       );
 
@@ -299,16 +299,16 @@ void main() {
       await show(tester, server);
 
       expect(
-        find.text('You did not answer the check-in, so your family has been told.'),
+        find.text('You missed the check-in, so we told your family.'),
         findsOneWidget,
       );
 
-      await tester.tap(find.text('I am all right'));
+      await tester.tap(find.text("I'm OK"));
       await tester.pumpAndSettle();
 
       expect(server.asked('POST', '/check-ins/answer'), 1);
       expect(find.text('Thank you'), findsOneWidget);
-      expect(find.textContaining('Your family has been told you are all right'), findsOneWidget);
+      expect(find.textContaining("We've told your family you're OK"), findsOneWidget);
     });
   });
 
@@ -407,12 +407,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Grace did not answer a daily check-in. Nobody pressed for help, so call first.'),
+        find.text('Call Grace first. They missed a daily check-in. No one pressed for help.'),
         findsOneWidget,
       );
-      expect(find.text('The daily check-in went unanswered'), findsOneWidget);
+      expect(find.text('Missed the daily check-in'), findsOneWidget);
       expect(find.text('Grace Wanjiru answered the check-in late'), findsOneWidget);
-      expect(find.text('Withdrawn: Grace Wanjiru answered the check-in'), findsOneWidget);
+      expect(find.text('Cancelled: Grace Wanjiru answered the check-in'), findsOneWidget);
       expect(find.text('Grace Wanjiru asked for help'), findsNothing);
 
       controller.dispose();

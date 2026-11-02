@@ -77,7 +77,7 @@ describe('CheckInMessenger', () => {
   it('says so when it is the reminder, and stays inside one text', async () => {
     const t = build({ replies: true });
     await t.messenger.ask({ ...GRACE, pushToken: null }, 'c', true, MORNING);
-    expect(t.text()).toContain('you have not answered yet');
+    expect(t.text()).toContain("we're waiting to hear from you");
     expect(t.text().length).toBeLessThanOrEqual(SMS_LIMIT);
   });
 

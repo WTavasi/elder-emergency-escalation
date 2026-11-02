@@ -45,10 +45,10 @@ export class CheckInMessenger {
   ): Promise<'push' | 'sms' | 'none'> {
     const first = firstName(elder.name);
     const part = partOfDay(now, elder.timezone);
-    const title = reminder ? `${first}, are you all right?` : `Good ${part}, ${first}`;
+    const title = reminder ? `${first}, are you OK?` : `Good ${part}, ${first}`;
     const body = reminder
-      ? 'You have not answered yet. Open MzaziCare and press "I am all right".'
-      : 'Are you all right? Open MzaziCare to let your family know.';
+      ? "We're waiting to hear from you. Open MzaziCare and tap I'm OK."
+      : 'Are you OK? Open MzaziCare to tell your family.';
 
     if (elder.pushToken) {
       try {
@@ -70,12 +70,12 @@ export class CheckInMessenger {
     const replies = Boolean(this.config.get<string>('SMS_INBOUND_TOKEN'));
     const text = replies
       ? capSms(
-          `MzaziCare: ${reminder ? `${first}, you have not answered yet.` : `Good ${part}, ${first}.`} Are you all right? Reply 1 if you are.`,
-          `MzaziCare: ${first}, are you all right? Reply 1 if you are.`,
+          `MzaziCare: ${reminder ? `${first}, we're waiting to hear from you.` : `Good ${part}, ${first}.`} Are you OK? Reply 1 if you are.`,
+          `MzaziCare: ${first}, are you OK? Reply 1 if you are.`,
         )
       : capSms(
-          `MzaziCare: ${reminder ? `${first}, you have not answered yet.` : `Good ${part}, ${first}.`} Are you all right? Open MzaziCare to say so.`,
-          `MzaziCare: ${first}, are you all right? Open MzaziCare to say so.`,
+          `MzaziCare: ${reminder ? `${first}, we're waiting to hear from you.` : `Good ${part}, ${first}.`} Are you OK? Open MzaziCare to say so.`,
+          `MzaziCare: ${first}, are you OK? Open MzaziCare to say so.`,
         );
     const sent = await this.sms.send(elder.phone, text);
     if (!sent) this.logger.warn(`Check-in could not reach ${redactPhone(elder.phone)} at all`);

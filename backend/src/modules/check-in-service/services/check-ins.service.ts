@@ -54,7 +54,7 @@ export type AnswerOutcome = 'answered' | 'withdrawn' | 'noted' | 'nothing';
 const DEFAULT_GRACE_MINUTES = 30;
 
 /**
- * Daily check-ins: "are you all right?" at times the elder chose, or agreed to.
+ * Daily check-ins: "are you OK?" at times the elder chose, or agreed to.
  *
  * Opt-in twice over. Nothing exists until somebody sets it up, and when somebody other
  * than the elder sets it up, nothing is sent until the elder agrees on their own phone.
@@ -184,7 +184,7 @@ export class CheckInsService {
   }
 
   /**
-   * "I am all right." Answers the check-in waiting, or, if it was already missed and its
+   * "I'm OK." Answers the check-in waiting, or, if it was already missed and its
    * alert is still open, answers that late: withdrawn if nobody has taken it on, noted on
    * the alert if somebody has.
    */

@@ -26,7 +26,7 @@ class SeverityMark extends StatelessWidget {
 
   static String word(Severity severity) => switch (severity) {
     Severity.standard => 'Standard',
-    Severity.elevated => 'Elevated',
+    Severity.elevated => 'High',
     Severity.critical => 'Critical',
   };
 

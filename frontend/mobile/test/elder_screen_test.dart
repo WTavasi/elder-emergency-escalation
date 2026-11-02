@@ -123,10 +123,10 @@ void main() {
     expect(calls.last.method, 'POST');
     expect(calls.last.path, '/api/v1/elders/elder-1/sign-in-code');
     expect(find.text('482 913'), findsOneWidget);
-    expect(find.textContaining('Works for 10:00'), findsOneWidget);
+    expect(find.textContaining('Expires in 10:00'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    expect(find.textContaining('Works for 9:58'), findsOneWidget);
+    expect(find.textContaining('Expires in 9:58'), findsOneWidget);
   });
 
   testWidgets('nobody else in the circle is offered it', (WidgetTester tester) async {
@@ -144,7 +144,7 @@ void main() {
     expect(find.text('Needs some help'), findsOneWidget);
     expect(find.text('Mary Otieno'), findsOneWidget);
     expect(find.text('Aisha Otieno'), findsOneWidget);
-    expect(find.text('They are staying somewhere else'), findsOneWidget);
+    expect(find.text("They're away from home"), findsOneWidget);
   });
 
   testWidgets('says the family are asked together when there is more than one', (
@@ -155,9 +155,9 @@ void main() {
 
     expect(find.text('Aisha Otieno'), findsOneWidget);
     expect(find.text('Brian Otieno'), findsOneWidget);
-    expect(find.text('Family, asked together'), findsNWidgets(2));
+    expect(find.text('Family · asked together'), findsNWidgets(2));
     // Both at the same place in the order, so both carry the same number.
-    expect(find.bySemanticsLabel(RegExp('Tier 2')), findsNWidgets(2));
+    expect(find.bySemanticsLabel(RegExp('Group 2')), findsNWidgets(2));
     // The caregiver, alone in theirs, is not.
     expect(find.text('Caregiver'), findsOneWidget);
     semantics.dispose();
@@ -167,14 +167,14 @@ void main() {
     await pump(tester);
 
     expect(find.text('Family'), findsOneWidget);
-    expect(find.text('Family, asked together'), findsNothing);
+    expect(find.text('Family · asked together'), findsNothing);
   });
 
   testWidgets('offers "back home" while a stay is recorded', (WidgetTester tester) async {
     await pump(tester, atHome: false);
 
     expect(find.text('Staying at South B, Nairobi'), findsOneWidget);
-    expect(find.text('They are back home'), findsOneWidget);
+    expect(find.text('Mark as back home'), findsOneWidget);
   });
 
   testWidgets('a family member sees the details but cannot change them', (
@@ -182,11 +182,11 @@ void main() {
   ) async {
     await pump(tester, canEdit: false);
 
-    expect(find.text('Change their home'), findsNothing);
+    expect(find.text('Change home'), findsNothing);
     expect(find.text('Add a family member'), findsNothing);
     expect(find.byIcon(Icons.person_remove_outlined), findsNothing);
     // Anybody in the chain may still say where she is staying.
-    expect(find.text('They are staying somewhere else'), findsOneWidget);
+    expect(find.text("They're away from home"), findsOneWidget);
   });
 
   testWidgets('removing somebody asks first, then takes them out', (WidgetTester tester) async {
@@ -216,7 +216,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.person_remove_outlined));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Keep them'));
+    await tester.tap(find.text('Keep'));
     await tester.pumpAndSettle();
 
     expect(calls.any((Exchange c) => c.method == 'DELETE'), isFalse);
@@ -227,11 +227,11 @@ void main() {
   ) async {
     await pump(tester, withheld: true);
 
-    expect(find.textContaining('Their number is not shared, at their request'), findsOneWidget);
+    expect(find.textContaining('Their number is hidden at their request'), findsOneWidget);
     expect(find.byIcon(Icons.phone), findsNothing);
-    expect(find.text('Not shared, at their request'), findsNWidgets(2));
-    expect(find.text('Change their home'), findsNothing);
-    expect(find.text('They are staying somewhere else'), findsNothing);
+    expect(find.text('Hidden at their request'), findsNWidgets(2));
+    expect(find.text('Change home'), findsNothing);
+    expect(find.text("They're away from home"), findsNothing);
     expect(find.text('Privacy and consent'), findsOneWidget);
   });
 }

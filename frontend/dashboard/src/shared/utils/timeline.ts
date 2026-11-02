@@ -1,4 +1,5 @@
 import type { AuditEntry, ChainMember, DeliveryAttempt } from '../api/types';
+import { severityWord } from './format';
 
 /** The parts of an audit entry's detail that a sentence can use. Every field is optional. */
 interface Detail {
@@ -37,12 +38,12 @@ export interface TimelineContext {
  */
 export function timelineSentence(entry: AuditEntry, context: TimelineContext): string {
   const detail = detailOf(entry);
-  const who = entry.actor?.name ?? 'Somebody';
+  const who = entry.actor?.name ?? 'Someone';
   const byText = detail.via === 'sms';
 
   switch (entry.action) {
     case 'EVENT_CREATED':
-      if (detail.trigger === 'MISSED_CHECK_IN') return 'The daily check-in went unanswered';
+      if (detail.trigger === 'MISSED_CHECK_IN') return 'Missed the daily check-in';
       return byText ? `${who} asked for help, by text` : `${who} asked for help`;
     case 'SEVERITY_EVALUATED':
       return scored(detail);
@@ -55,13 +56,13 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
     case 'CHECKED_IN_LATE':
       return `${who} answered the check-in late`;
     case 'VOLUNTEERS_ASKED':
-      return 'Volunteers nearby were asked';
+      return 'Asked volunteers nearby';
     case 'VOLUNTEER_ACCEPTED':
-      return `${who}, a volunteer, said they would go`;
+      return `${who} (volunteer) is going`;
     case 'VOLUNTEER_WITHDREW':
-      return `${who}, a volunteer, could no longer go`;
+      return `${who} (volunteer) can no longer go`;
     case 'VOLUNTEER_ARRIVED':
-      return `${who}, a volunteer, arrived`;
+      return `${who} (volunteer) arrived`;
     case 'ACKNOWLEDGED':
       return byText ? `${who} is on the way, by text` : `${who} is on the way`;
     case 'ARRIVED':
@@ -71,13 +72,13 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
     case 'DECLINED':
       return byText ? `${who} cannot come, by text` : `${who} cannot come`;
     case 'RESPONDER_REQUESTED':
-      return `${who} called for an emergency responder`;
+      return `${who} asked for an emergency responder`;
     case 'RESOLVED':
       return `${who} closed it`;
     case 'CANCELLED':
       return detail.reason === 'checked-in-late'
-        ? `Withdrawn: ${who} answered the check-in`
-        : `${who} withdrew it`;
+        ? `Cancelled: ${who} answered the check-in`
+        : `${who} cancelled it`;
     case 'REOPENED':
       return `${who} reopened it`;
     default:
@@ -89,7 +90,7 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
 
 /** Relative to the alert, in units a person reads without counting zeroes. */
 export function afterTheAlert(seconds: number): string {
-  if (seconds <= 0) return 'When the alert was raised';
+  if (seconds <= 0) return 'At the start';
   const count = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
   if (seconds < 60) return `${count(seconds, 'second')} after the alert`;
   const minutes = Math.floor(seconds / 60);
@@ -100,9 +101,11 @@ export function afterTheAlert(seconds: number): string {
 /** "Scored critical, 60", and on the second scoring, whether the band changed. */
 function scored(detail: Detail): string {
   if (!detail.band || detail.score === undefined) return 'Scored for severity';
-  const band = detail.band.toLowerCase();
+  const band = severityWord(detail.band).toLowerCase();
   if (detail.stage !== 'cancel_window_closed') return `Scored ${band}, ${detail.score}`;
-  const before = detail.severityBefore?.toLowerCase();
+  const before = detail.severityBefore
+    ? severityWord(detail.severityBefore).toLowerCase()
+    : undefined;
   const changed = before && before !== band ? `, was ${before}` : '';
   return `Scored again once the cancel window closed: ${band}, ${detail.score}${changed}`;
 }
@@ -110,7 +113,7 @@ function scored(detail: Detail): string {
 /** Names the people at the tier, because "Sent to Mary Otieno" says more than "tier 1". */
 function dispatched(detail: Detail, chain: ChainMember[]): string {
   const tier = detail.tier ?? detail.fromTier;
-  if (tier === undefined) return 'Sent to the first people to ask';
+  if (tier === undefined) return 'Sent to group 1';
   const names = chain.filter((member) => member.priorityOrder === tier).map((m) => m.name);
   if (names.length === 0) {
     const count = detail.recipients ?? 0;
@@ -120,13 +123,13 @@ function dispatched(detail: Detail, chain: ChainMember[]): string {
 }
 
 function escalated(detail: Detail, chain: ChainMember[]): string {
-  if (detail.toTier === undefined) return 'Nobody answered, and there is nobody further to ask';
+  if (detail.toTier === undefined) return 'No answer. No one else to ask';
   const names = chain
     .filter((member) => member.priorityOrder === detail.toTier)
     .map((member) => member.name);
   return names.length === 0
-    ? 'Nobody answered in time, so it moved on'
-    : `Nobody answered in time, so it moved on to ${list(names)}`;
+    ? 'No answer in time. Asking the next group'
+    : `No answer in time. Now asking ${list(names)}`;
 }
 
 /** "A push to Mary Otieno could not be delivered: no registered device". */

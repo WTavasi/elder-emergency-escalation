@@ -69,9 +69,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Section labels are set in capitals.
-    expect(find.text('WHO COMES WHEN YOU PRESS FOR HELP'), findsOneWidget);
+    expect(find.text('WHO WE ASK WHEN YOU PRESS FOR HELP'), findsOneWidget);
     expect(find.text('Mary Otieno'), findsOneWidget);
-    expect(find.text('Caregiver, asked first'), findsOneWidget);
+    expect(find.text('Caregiver · asked first'), findsOneWidget);
     expect(find.text('Call Mary'), findsOneWidget);
     expect(find.text('Privacy notice'), findsOneWidget);
   });
@@ -79,10 +79,10 @@ void main() {
   testWidgets('asks before signing out, and staying changes nothing', (WidgetTester tester) async {
     final ({AuthController auth, List<Exchange> calls}) t = await pump(tester);
 
-    await tester.tap(find.text('Sign out of this phone'));
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign out of this phone?'), findsOneWidget);
+    expect(find.text('Sign out?'), findsOneWidget);
     await tester.tap(find.text('Stay signed in'));
     await tester.pumpAndSettle();
 
@@ -93,9 +93,10 @@ void main() {
   testWidgets('signs out once the elder says so', (WidgetTester tester) async {
     final ({AuthController auth, List<Exchange> calls}) t = await pump(tester);
 
-    await tester.tap(find.text('Sign out of this phone'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+    // The sheet's own Sign out, over the page's.
+    await tester.tap(find.text('Sign out').last);
     await tester.pumpAndSettle();
 
     expect(t.auth.isSignedIn, isFalse);
@@ -114,7 +115,7 @@ void main() {
     // The privacy part comes before signing out, which is last.
     expect(
       tester.getCenter(find.text('PRIVACY AND TERMS')).dy,
-      lessThan(tester.getCenter(find.text('Sign out of this phone')).dy),
+      lessThan(tester.getCenter(find.text('Sign out')).dy),
     );
   });
 }

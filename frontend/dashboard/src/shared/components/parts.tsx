@@ -6,7 +6,7 @@ import type { AlertSummary, AlertTrigger, EventState, Severity } from '../api/ty
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
 import { useNow } from '../hooks/useNow';
-import { formatAgo, formatClock, formatDuration, formatExact } from '../utils/format';
+import { formatAgo, formatClock, formatDuration, formatExact, severityWord } from '../utils/format';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -41,11 +41,11 @@ const SEVERITY_GLYPH: Record<Severity, IconName> = {
 export const STATE_LABEL: Record<EventState, string> = {
   TRIGGERED: 'Waiting',
   NOTIFIED: 'Waiting',
-  ACKNOWLEDGED: 'Being handled',
-  ON_SCENE: 'Help arrived',
-  ESCALATED: 'Escalated',
+  ACKNOWLEDGED: 'On the way',
+  ON_SCENE: 'Help is there',
+  ESCALATED: 'Moved on',
   RESOLVED: 'Closed',
-  CANCELLED: 'Withdrawn',
+  CANCELLED: 'Cancelled',
 };
 
 /** The state, spelled out, with a glyph. Colour is a third channel, never the only one. */
@@ -62,7 +62,7 @@ export function SeverityLabel({ severity, score }: { severity: Severity; score?:
   return (
     <span className={`severity severity--${severity}`}>
       <Icon name={SEVERITY_GLYPH[severity]} size={16} />
-      {severity.charAt(0) + severity.slice(1).toLowerCase()}
+      {severityWord(severity)}
       {score === undefined ? null : <span className="figures muted"> {score}</span>}
     </span>
   );

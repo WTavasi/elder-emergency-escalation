@@ -41,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
             : ListView(
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
-                  const PageTitle('My account'),
+                  const PageTitle('Me'),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
                     child: Column(
@@ -78,7 +78,7 @@ class ProfileScreen extends StatelessWidget {
                         OutlinedButton.icon(
                           onPressed: () => unawaited(_signOut(context, account)),
                           icon: const Icon(Icons.logout),
-                          label: const Text('Sign out of this phone'),
+                          label: const Text('Sign out'),
                         ),
                       ],
                     ),
@@ -95,10 +95,9 @@ class ProfileScreen extends StatelessWidget {
   static Future<void> _signOut(BuildContext context, Account account) => confirmSignOut(
     context,
     message: account.role.responds || account.role == Role.communityResponder
-        ? 'While you are signed out, emergencies will not appear on this phone. If you are '
-              'asked to help, you will be sent a text instead. To sign back in you will need '
+        ? "Alerts stop on this phone. We'll text you instead. To sign back in, you'll need "
               'your number and password.'
-        : 'To sign back in you will need your number and password.',
+        : "To sign back in, you'll need your number and password.",
   );
 
   static String _roleLabel(Role role) => switch (role) {
@@ -140,13 +139,12 @@ class _DetailsFormState extends State<_DetailsForm> {
       _email.text.trim() != (widget.account.email ?? '');
 
   Future<void> _changePhone() async {
-    final bool? changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(builder: (_) => const ChangePhoneScreen()),
-    );
+    final bool? changed = await Navigator.of(context)
+        .push<bool>(MaterialPageRoute<bool>(builder: (_) => const ChangePhoneScreen()));
     if (changed == true && mounted) {
       setState(() {
         _error = null;
-        _saved = 'Number changed. Any other phone signed in to this account will be signed out.';
+        _saved = 'Number changed. Other phones are signed out.';
       });
     }
   }
@@ -211,7 +209,7 @@ class _DetailsFormState extends State<_DetailsForm> {
               if (email.isEmpty) return null;
               return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
                   ? null
-                  : 'That does not look like an email address.';
+                  : 'Enter a valid email address.';
             },
           ),
           const SizedBox(height: MzaziSpace.s16),
@@ -230,7 +228,7 @@ class _DetailsFormState extends State<_DetailsForm> {
               child: InputDecorator(
                 decoration: const InputDecoration(
                   labelText: 'Phone number',
-                  helperText: 'You sign in with this number. Changing it needs a code.',
+                  helperText: "You sign in with this number. We'll text a code to change it.",
                   helperMaxLines: 2,
                 ),
                 child: Row(
@@ -244,9 +242,7 @@ class _DetailsFormState extends State<_DetailsForm> {
                       'Change',
                       style: theme.textTheme.bodyLarge
                           ?.weighted(theme.textTheme.labelLarge?.fontWeight ?? MzaziWeight.strong)
-                          .copyWith(
-                            color: _busy ? theme.disabledColor : theme.colorScheme.primary,
-                          ),
+                          .copyWith(color: _busy ? theme.disabledColor : theme.colorScheme.primary),
                     ),
                   ],
                 ),
@@ -257,7 +253,7 @@ class _DetailsFormState extends State<_DetailsForm> {
           FilledButton.icon(
             onPressed: _busy || !_changed ? null : () => unawaited(_save()),
             icon: const Icon(Icons.save_outlined),
-            label: Text(_busy ? 'Saving' : 'Save changes'),
+            label: Text(_busy ? 'Saving…' : 'Save changes'),
           ),
         ],
       ),
@@ -325,10 +321,7 @@ class _PasswordFormState extends State<_PasswordForm> {
             const SizedBox(height: MzaziSpace.s12),
           ],
           if (_done) ...<Widget>[
-            const Notice(
-              message:
-                  'Password changed. Any other phone signed in to this account will be signed out.',
-            ),
+            const Notice(message: 'Password changed. Other phones are signed out.'),
             const SizedBox(height: MzaziSpace.s12),
           ],
           PasswordField(
@@ -353,7 +346,7 @@ class _PasswordFormState extends State<_PasswordForm> {
           OutlinedButton.icon(
             onPressed: _busy ? null : () => unawaited(_change()),
             icon: const Icon(Icons.lock_reset),
-            label: Text(_busy ? 'Changing' : 'Change password'),
+            label: Text(_busy ? 'Changing…' : 'Change password'),
           ),
         ],
       ),
@@ -393,11 +386,10 @@ class _WayThereSetting extends StatelessWidget {
             const SizedBox(height: MzaziSpace.s8),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Share my way there'),
+              title: const Text('Share live location'),
               subtitle: const Text(
-                'When you take an emergency on, the elder sees how long you will be and '
-                'the rest of the circle sees where you are, until you arrive. Where you '
-                'were is not kept.',
+                "When you're on your way to an emergency, they see how far away you are. "
+                'It stops when you arrive. We do not keep it.',
               ),
               value: way.enabled,
               onChanged: !way.isLoaded || way.isSaving
@@ -470,8 +462,18 @@ class _StandingState extends State<_Standing> {
 
   static String _day(DateTime when) {
     const List<String> months = <String>[
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${when.day} ${months[when.month - 1]} ${when.year}';
   }
@@ -483,7 +485,10 @@ class _StandingState extends State<_Standing> {
 
     if (profile == null) {
       return _failed
-          ? Text('Your circles and record could not be loaded.', style: theme.textTheme.bodySmall)
+          ? Text(
+              'Could not load your care circles. Try again later.',
+              style: theme.textTheme.bodySmall,
+            )
           : const SizedBox(height: MzaziSpace.s24);
     }
 
@@ -492,7 +497,7 @@ class _StandingState extends State<_Standing> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (profile.circles.isNotEmpty) ...<Widget>[
-          const SectionLabel('Your circles'),
+          const SectionLabel('Your care circles'),
           const SizedBox(height: MzaziSpace.s8),
           for (final CirclePlace circle in profile.circles)
             Padding(
@@ -505,21 +510,18 @@ class _StandingState extends State<_Standing> {
           const SizedBox(height: MzaziSpace.s24),
         ],
         if (record != null) ...<Widget>[
-          const SectionLabel('Your record'),
+          const SectionLabel('Your history'),
           const SizedBox(height: MzaziSpace.s8),
           Text(
             record.answered == 0
-                ? 'You have not taken an emergency on yet.'
+                ? 'No emergencies yet.'
                 : record.answered == 1
-                ? 'You have answered 1 emergency.'
-                : 'You have answered ${record.answered} emergencies.',
+                ? "You've helped with 1 emergency."
+                : "You've helped with ${record.answered} emergencies.",
             style: theme.textTheme.bodyLarge,
           ),
           if (record.medianResponseSeconds case final int seconds)
-            Text(
-              'You usually answer in ${_duration(seconds)}.',
-              style: theme.textTheme.bodyLarge,
-            ),
+            Text('You usually answer in ${_duration(seconds)}.', style: theme.textTheme.bodyLarge),
           if (record.lastAnsweredAt case final DateTime last)
             Text('Last answered on ${_day(last)}.', style: theme.textTheme.bodySmall),
         ],

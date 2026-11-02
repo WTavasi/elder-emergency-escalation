@@ -144,12 +144,12 @@ class _ChangePhoneScreenState extends State<ChangePhoneScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
-            'You sign in with your number, and it is the number your care circle rings. '
-            'We will text a code to the new one to check it is yours.',
+            'You sign in with this number, and your care circle calls it. '
+            "We'll text a code to the new number.",
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: MzaziSpace.s8),
-          Text('Now: $current', style: theme.textTheme.bodySmall),
+          Text('Current: $current', style: theme.textTheme.bodySmall),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(controller: _phone, label: 'New phone number'),
           if (!elder) ...<Widget>[
@@ -171,7 +171,7 @@ class _ChangePhoneScreenState extends State<ChangePhoneScreen> {
           FilledButton.icon(
             onPressed: _busy ? null : () => unawaited(_sendCode()),
             icon: const Icon(Icons.sms_outlined),
-            label: Text(_busy ? 'Sending' : 'Text a code to the new number'),
+            label: Text(_busy ? 'Sending…' : 'Text a code to the new number'),
           ),
         ],
       ),
@@ -187,7 +187,7 @@ class _ChangePhoneScreenState extends State<ChangePhoneScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
-            'A six-digit code is on its way to $_sentTo. It works for 10 minutes.',
+            "We've texted a 6-digit code to $_sentTo. It expires in 10 minutes.",
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: MzaziSpace.s24),
@@ -198,20 +198,19 @@ class _ChangePhoneScreenState extends State<ChangePhoneScreen> {
           CodeField(controller: _code, onSubmitted: (_) => unawaited(_confirm())),
           const SizedBox(height: MzaziSpace.s16),
           Text(
-            'Your old number will be told, and any other phone signed in to your account '
-            'will be signed out.',
+            "We'll text your old number. Other phones will be signed out.",
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: MzaziSpace.s24),
           FilledButton.icon(
             onPressed: _busy ? null : () => unawaited(_confirm()),
             icon: const Icon(Icons.check),
-            label: Text(_busy ? 'Changing' : 'Change my number'),
+            label: Text(_busy ? 'Changing…' : 'Change number'),
           ),
           const SizedBox(height: MzaziSpace.s16),
           TextButton(
             onPressed: _cooldown > 0 || _busy ? null : () => unawaited(_sendCode()),
-            child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+            child: Text(_cooldown > 0 ? 'Resend code in $_cooldown s' : 'Resend code'),
           ),
           TextButton(onPressed: _startOver, child: const Text('Use a different number')),
         ],

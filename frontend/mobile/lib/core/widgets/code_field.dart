@@ -9,7 +9,7 @@ import '../theme/theme.dart';
 class CodeField extends StatelessWidget {
   const CodeField({
     required this.controller,
-    this.label = 'Six-digit code',
+    this.label = '6-digit code',
     this.autofocus = true,
     this.onSubmitted,
     super.key,
@@ -39,7 +39,7 @@ class CodeField extends StatelessWidget {
       ),
       decoration: InputDecoration(labelText: label),
       onFieldSubmitted: onSubmitted,
-      validator: (String? value) => (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
+      validator: (String? value) => (value?.length ?? 0) == 6 ? null : 'Enter all 6 digits.',
     );
   }
 }

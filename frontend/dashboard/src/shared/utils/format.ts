@@ -87,6 +87,21 @@ export function localTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/**
+ * The severity bands in the app's words. "Elevated" was the database's word, and a hard one
+ * for anybody reading in a second language, so the middle band is called High.
+ */
+export const SEVERITY_LABEL: Record<string, string> = {
+  STANDARD: 'Standard',
+  ELEVATED: 'High',
+  CRITICAL: 'Critical',
+};
+
+/** A band's word, or the raw value tidied if the server sends one this does not know. */
+export function severityWord(band: string): string {
+  return SEVERITY_LABEL[band] ?? band.charAt(0) + band.slice(1).toLowerCase();
+}
+
 /** Turns SEVERITY_EVALUATED into "severity evaluated", for the timeline. */
 export function humanise(value: string): string {
   return value.replace(/_/g, ' ').toLowerCase();

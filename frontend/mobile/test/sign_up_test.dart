@@ -77,9 +77,9 @@ void main() {
   }
 
   Future<void> finish(WidgetTester tester) async {
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), '123456');
     await tester.enterText(find.widgetWithText(TextFormField, 'Choose a password'), 'Dev!2026x');
-    await tester.tap(find.text('Create my account'));
+    await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
   }
 
@@ -105,7 +105,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pump(tester);
-    expect(find.textContaining('By continuing you agree to the terms of use'), findsOneWidget);
+    expect(find.textContaining('By continuing, you agree to the terms of use'), findsOneWidget);
 
     await tester.tapOnText(find.textRange.ofSubstring('privacy notice'));
     await tester.pumpAndSettle();
@@ -128,9 +128,9 @@ void main() {
     expect(t.calls.single.path, '/api/v1/auth/verify-phone');
     expect(t.bodies.single, <String, dynamic>{'phone': '+254712345678'});
     expect(find.text('STEP 2 OF 2'), findsOneWidget);
-    expect(find.text('Check your messages'), findsOneWidget);
+    expect(find.text('Check your texts'), findsOneWidget);
     // The resend button waits out the server's own cooldown.
-    expect(find.textContaining('Send a new code in'), findsOneWidget);
+    expect(find.textContaining('Resend code in'), findsOneWidget);
 
     await finish(tester);
 
@@ -196,7 +196,7 @@ void main() {
     final ({List<Map<String, dynamic>> bodies, List<Exchange> calls}) t = await pump(tester);
     await tester.tap(find.text('Volunteer'));
     await tester.pump();
-    expect(find.textContaining('nobody asks you anything until an administrator'), findsOneWidget);
+    expect(find.textContaining("We only ask you once you're approved"), findsOneWidget);
     await fillDetails(tester);
     await sendAndWait(tester);
     await finish(tester);

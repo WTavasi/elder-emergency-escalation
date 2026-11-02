@@ -97,24 +97,21 @@ class _CheckInSettingsState extends State<CheckInSettings> {
     final CheckInSchedule? schedule = overview.schedule;
     if (schedule == null || !schedule.enabled) {
       return widget.forElder
-          ? 'Off. MzaziCare can ask you each day whether you are all right, and tell your '
-                'family if you do not answer.'
-          : 'Off. MzaziCare can ask $_first each day whether they are all right, and tell '
-                'the people below if they do not answer. $_first is asked to agree first.';
+          ? "Off. We can ask you each day if you're OK, and tell your family if you do not answer."
+          : "Off. We can ask $_first each day if they're OK. No answer? We tell the people below. "
+                '$_first must agree first.';
     }
     final String times = schedule.timesInWords;
     final int grace = schedule.graceMinutes;
     if (schedule.waitingForElder) {
       return widget.forElder
-          ? 'Every day at $times, once you agree on your home screen.'
-          : 'Every day at $times, once $_first agrees on their phone. Nothing is asked '
-                'until then.';
+          ? 'Daily at $times, after you agree on your home screen.'
+          : 'Daily at $times, after $_first agrees on their phone.';
     }
     return widget.forElder
-        ? 'Every day at $times. If you do not answer within $grace minutes, your family '
-              'is told.'
-        : 'Every day at $times. If $_first does not answer within $grace minutes, the '
-              'people below are alerted, as for a press of the help button.';
+        ? 'Daily at $times. No answer in $grace minutes? We tell your family.'
+        : 'Daily at $times. No answer in $grace minutes? We alert the people below, like a '
+              'help-button press.';
   }
 
   @override
@@ -176,8 +173,8 @@ String describeCheckIn(CheckIn checkIn, {DateTime? now}) {
   final String what = switch (checkIn.status) {
     CheckInStatus.pending => 'waiting for an answer',
     CheckInStatus.answered => 'answered $by',
-    CheckInStatus.missed when checkIn.answeredLate => 'not answered in time, then answered $by',
-    CheckInStatus.missed => 'not answered, the chain was alerted',
+    CheckInStatus.missed when checkIn.answeredLate => 'late, then answered $by',
+    CheckInStatus.missed => 'missed, care circle alerted',
   };
   return '$when $clock: $what';
 }
@@ -267,11 +264,9 @@ class _CheckInSheetState extends State<CheckInSheet> {
             const SizedBox(height: MzaziSpace.s8),
             Text(
               widget.forElder
-                  ? 'Each day at these times you are asked whether you are all right. One '
-                        'press answers it.'
-                  : 'Each day at these times ${widget.elderFirstName} is asked whether they '
-                        'are all right. ${widget.elderFirstName} will be asked to agree '
-                        'before it starts.',
+                  ? "We'll ask if you're OK at these times each day. One tap answers."
+                  : "We'll ask ${widget.elderFirstName} if they're OK at these times each day. "
+                        '${widget.elderFirstName} must agree first.',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s16),

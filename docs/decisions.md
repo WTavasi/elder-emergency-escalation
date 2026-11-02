@@ -960,3 +960,34 @@ time on hover; up and down arrows and Return to move through and open rows; Comm
 the search on History and Users; the reporting figures drawn as Health draws them; and the
 sign-in as a red panel with the care rings beside the form, as the app's way in is red
 across the top.
+
+## The app speaks in short, plain sentences
+
+The app's wording was correct but did not sound like a real app. It avoided
+contractions ("I am all right, stop this"), leaned on the passive ("Your family has been
+told"), used the system's own words (tier, escalated, acknowledged, vetted) and ran
+sentences long. On 2 November 2026 every screen, sheet and error, and every push and
+text the server sends, was rewritten to the rules now under Wording in
+`docs/design-language.md`: short sentences, the action first, MzaziCare speaking as "we",
+simple words for somebody reading in a second language, and no promise the product
+cannot keep.
+
+Four changes go beyond style:
+
+- **Nothing promises help before anybody has answered.** The countdown said "Help is on
+  the way" the moment the button was pressed, and the waiting screen said "Someone will
+  call you". It now says "Alert sent" and "We've told your family", and asks the elder to
+  keep their phone near them.
+- **"Call an emergency responder" is now "Ask for an emergency responder".** It sends a
+  request through MzaziCare and rings nobody, so a carer who pressed it could wait for a
+  phone that never rang.
+- **The states and the middle severity band have everyday names**, in the app and the
+  console alike: On the way, Help is there, Moved on and Cancelled for Being handled,
+  Help arrived, Escalated and Withdrawn; High for Elevated. The stored values are
+  unchanged.
+- **"Share my way there" is "Share live location"**, the name people already know.
+
+Negatives are written out (cannot, do not) while positive contractions are used, because
+"can't" read in a hurry is easily taken for "can". Nothing is set in bold inside a
+sentence: Elder mode carries the size and weight. The privacy notice and terms keep their
+full sentences, and still name the old "Share my way there" until they are next revised.

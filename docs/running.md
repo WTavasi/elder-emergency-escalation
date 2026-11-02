@@ -410,7 +410,7 @@ push address. Android is enough for the demonstration.
 
 ### Step 8 (optional). Share the way there
 
-A caregiver who turns on **Share my way there** and takes an emergency on shares where
+A caregiver who turns on **Share live location** and takes an emergency on shares where
 they are until they arrive. Grace's phone shows "Mary Otieno is coming" with the minutes
 left; anybody else in the circle also gets a "See where Mary is" button. Nobody has to
 drive anywhere to try it: both emulators can pretend to move.
@@ -419,8 +419,8 @@ You need two sessions: the elder (Grace, `+254700000010`) and the caregiver (Mar
 `+254700000020`). The easiest pair is the Android emulator for Mary and the iOS Simulator
 for Grace, or Postman for Grace (folder **2b** raises her alert).
 
-1. **Turn sharing on as Mary.** Sign in as Mary, open **Me**, and switch on **Share my
-   way there**. The phone asks for location access; choose **While using the app**, and
+1. **Turn sharing on as Mary.** Sign in as Mary, open **Me**, and switch on **Share live
+   location**. The phone asks for location access; choose **While using the app**, and
    on Android keep **Precise** selected. The switch only stays on once access is
    allowed.
 
@@ -434,12 +434,12 @@ for Grace, or Postman for Grace (folder **2b** raises her alert).
 
 3. **Raise an alert as Grace**, from her app or with Postman.
 
-4. **Take it on as Mary.** Open the alert and press **I am on my way**. Within a few
+4. **Take it on as Mary.** Open the alert and press **I'm on my way**. Within a few
    seconds the screen says **About N minutes to Grace**, and Grace's screen moves to
    **Coming** with the same time.
 
 5. **Move Mary closer.** Set the emulator's location to Grace's home, `-1.2833, 36.7833`.
-   Within about 12 seconds, inside 100 m, the alert becomes **Help arrived** on its own,
+   Within about 12 seconds, inside 100 m, the alert becomes **Help is there** on its own,
    and sharing stops. To try the manual way instead, swipe **Swipe when you are with
    Grace** at the bottom of Mary's screen before moving her.
 
@@ -448,7 +448,7 @@ for Grace, or Postman for Grace (folder **2b** raises her alert).
    Location → City Run** moves the phone continuously, though around Cupertino rather
    than Nairobi, so the minutes will be large.
 
-While sharing, Android shows a **Sharing your way there** notification and iOS shows the
+While sharing, Android shows a **Sharing live location** notification and iOS shows the
 blue location indicator. Both disappear when sharing stops.
 
 **Real road times.** By default the time is a straight-line estimate. To use real routes,
@@ -463,7 +463,7 @@ unless you are looking at the times.
 
 ### Step 9 (optional). Answer an alert by text
 
-An alert SMS can end "Reply 1 if you can go, 2 if you cannot", and the reply takes the
+An alert SMS can end "Reply 1 to go, 2 if you cannot", and the reply takes the
 alert on or declines it, exactly as the app's buttons do. It is off until the API is
 given a secret for the address the replies come to.
 
@@ -517,7 +517,7 @@ ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.
 
 7. **Raise an alert as Grace** and let it reach tier 2: in the app or Postman, have Mary
    decline it (folder 3 does this). The simulator's **Messages** shows the alert from
-   `12345`, ending "Reply 1 if you can go, 2 if you cannot." Brian Wanjiru shares tier 2,
+   `12345`, ending "Reply 1 to go, 2 if you cannot." Brian Wanjiru shares tier 2,
    so he is texted at the same moment; launch a second simulator with `+254700000032`
    to watch both.
 
@@ -628,21 +628,21 @@ check-in. Nothing to install: it runs inside the API, on a one-minute clock.
    15 minutes (the shortest is 10, set with Postman) and press **Save**. The section
    now says it is waiting for Grace to agree.
 
-**2. Agree as Grace.** Sign in as Grace. Above the help button: **Mary would like
-MzaziCare to check on you every day at ...**. Press **Yes, check on me**.
+**2. Agree as Grace.** Sign in as Grace. Above the help button: **Mary wants us to
+check on you each day at ...**. Press **Yes, check on me**.
 
-**3. Answer it.** At the time, within a minute, Grace's screen shows **Are you all
-right?** with **I am all right**. Without push on this phone the screen looks every two
+**3. Answer it.** At the time, within a minute, Grace's screen shows **Are you OK?**
+with **I'm OK**. Without push on this phone the screen looks every two
 minutes, so it can take that long; the API's terminal shows the text it would have sent
 (`Check-ins: 1 asked`). Press it, and Mary's page lists **Today ...: answered in the
 app**.
 
 **4. Miss one.** Set another time two minutes ahead (as Mary, and agree again as Grace,
-or as Grace on her own **You** page, which needs no agreement) and leave it. Half way
+or as Grace on her own **Me** page, which needs no agreement) and leave it. Half way
 through the time to answer she is asked again. At the deadline Mary gets an alert marked
 **Missed check-in**, and the console board shows the same tag. Grace's screen says her
-family was told; pressing **I am all right** now withdraws the alert, and Mary is told
-Grace answered. If Mary had pressed **I am on my way** first, the alert stays and only
+family was told; pressing **I'm OK** now withdraws the alert, and Mary is told
+Grace answered. If Mary had pressed **I'm on my way** first, the alert stays and only
 records the answer.
 
 **By text.** With replies on (Step 9), the check-in text ends "Reply 1 if you are". In
@@ -686,7 +686,7 @@ asked and when Daniel accepted and arrived. Mary's buttons are unchanged: Daniel
 beside the chain, not instead of it. When Mary closes the alert, Daniel is thanked and
 his screen no longer shows Grace's details.
 
-**By text.** With replies on (Step 9), Daniel's text ends "Reply 1 if you can go". A
+**By text.** With replies on (Step 9), Daniel's text ends "Reply 1 to go". A
 reply of 1 from his number accepts and is answered with Grace's name, address and
 number.
 

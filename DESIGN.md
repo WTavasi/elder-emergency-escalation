@@ -366,8 +366,8 @@ grey with "Sending…" while the request travels. In dark mode, a brighter red e
 ### Countdown
 
 The ten seconds to stop an alert: the whole screen in Caution Yellow, the seconds inside
-a ring that empties, a light vibration each second, and "I am all right, stop this" at
-the bottom in the darkest ink with yellow text.
+a ring that empties, a light vibration each second, and **Stop alert** at the bottom in
+the darkest ink with yellow text.
 
 ### Buttons
 
@@ -384,9 +384,9 @@ the bottom in the darkest ink with yellow text.
 
 ### State pills and marks
 
-A glyph and a word in the state's ink (Waiting, Being handled, Escalated, Closed,
-Withdrawn); pills in table cells in the console. Severity is an octagon, a triangle or a
-dot beside its word.
+A glyph and a word in the state's ink (Waiting, On the way, Help is there, Moved on,
+Closed, Cancelled); pills in table cells in the console. Severity is an octagon, a
+triangle or a dot beside its word: Critical, High, Standard.
 
 ### Inputs / Fields
 

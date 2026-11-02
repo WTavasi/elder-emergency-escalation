@@ -66,7 +66,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '0712 345 678');
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(find.text('No password? Elders can sign in with a code instead.'), findsOneWidget);
+    expect(find.text('Elder?'), findsOneWidget);
     await tester.tap(find.text('Sign in with a code'));
     await tester.pumpAndSettle();
 
@@ -86,7 +86,7 @@ void main() {
     // The same words whoever the number belongs to.
     expect(find.textContaining('If +254712345678 belongs to an elder'), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), '123456');
     await tester.tap(find.text('Sign in'));
     await settle(tester);
 
@@ -103,9 +103,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(t.calls, isEmpty);
-    expect(find.textContaining('your caregiver sees on your page'), findsOneWidget);
+    expect(find.textContaining("from your caregiver's app"), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '000000');
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), '000000');
     await tester.tap(find.text('Sign in'));
     await settle(tester);
 

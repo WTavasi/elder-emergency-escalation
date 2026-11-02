@@ -115,7 +115,7 @@ void main() {
     await t.call.join();
 
     expect(t.call.status, CallStatus.failed);
-    expect(t.call.error, contains('ring instead'));
+    expect(t.call.error, contains('call by phone'));
     expect(t.room.left, isTrue);
     t.call.dispose();
   });

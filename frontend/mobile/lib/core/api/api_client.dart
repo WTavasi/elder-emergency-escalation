@@ -553,7 +553,11 @@ class ApiClient {
   /// Giving one consent after registration: help from nearby volunteers, say. The elder
   /// for themselves, or their caregiver on their behalf, which the elder then confirms.
   Future<ConsentView> grantConsent(String elderId, ConsentKind kind) async => ConsentView.fromJson(
-    await _send('POST', '/elders/$elderId/consent/grant', body: <String, dynamic>{'type': kind.wire}),
+    await _send(
+      'POST',
+      '/elders/$elderId/consent/grant',
+      body: <String, dynamic>{'type': kind.wire},
+    ),
   );
 
   // ------------------------------------------------------------ volunteering --
@@ -586,14 +590,13 @@ class ApiClient {
   );
 
   /// "I'm available", or not.
-  Future<VolunteerProfile> setVolunteerAvailable(bool available) async =>
-      VolunteerProfile.fromJson(
-        await _send(
-          'PUT',
-          '/volunteer/me/availability',
-          body: <String, dynamic>{'available': available},
-        ),
-      );
+  Future<VolunteerProfile> setVolunteerAvailable(bool available) async => VolunteerProfile.fromJson(
+    await _send(
+      'PUT',
+      '/volunteer/me/availability',
+      body: <String, dynamic>{'available': available},
+    ),
+  );
 
   /// The emergencies this volunteer was asked about, open ones first.
   Future<List<VolunteerCall>> volunteerCalls() async {
@@ -606,14 +609,13 @@ class ApiClient {
       _call(await _send('GET', '/volunteer/calls/$eventId'));
 
   /// "I can go", "I cannot go", "I can no longer go", "I'm here".
-  Future<VolunteerCall> answerVolunteerCall(String eventId, VolunteerAnswer answer) async =>
-      _call(
-        await _send(
-          'POST',
-          '/volunteer/calls/$eventId/${answer.path}',
-          body: const <String, dynamic>{},
-        ),
-      );
+  Future<VolunteerCall> answerVolunteerCall(String eventId, VolunteerAnswer answer) async => _call(
+    await _send(
+      'POST',
+      '/volunteer/calls/$eventId/${answer.path}',
+      body: const <String, dynamic>{},
+    ),
+  );
 
   static VolunteerCall _call(Map<String, dynamic> body) {
     final VolunteerCall? call = VolunteerCall.fromJson(body);
@@ -636,11 +638,7 @@ class ApiClient {
     await _send(
       'PUT',
       '/elders/$elderId/check-ins',
-      body: <String, dynamic>{
-        'enabled': enabled,
-        'times': times,
-        'graceMinutes': ?graceMinutes,
-      },
+      body: <String, dynamic>{'enabled': enabled, 'times': times, 'graceMinutes': ?graceMinutes},
     ),
   );
 
@@ -697,9 +695,9 @@ class ApiClient {
   /// fix. A release build keeps to the plain sentence: the exception's own text, a
   /// SocketException and an errno, means nothing to the person holding the phone.
   String _unreachable(Object error) {
-    if (!kDebugMode) return 'Could not reach MzaziCare. Check the connection.';
-    return 'Could not reach MzaziCare at ${Uri.parse(baseUrl).origin}. '
-        'Check the connection. ($error)';
+    if (!kDebugMode) return 'No connection. Check your internet and try again.';
+    return 'No connection to ${Uri.parse(baseUrl).origin}. '
+        'Check your internet and try again. ($error)';
   }
 
   /// The decoded body, whatever JSON shape it is.
@@ -814,7 +812,7 @@ class ApiClient {
       if (message is String && message.isNotEmpty) return message;
       if (message is List && message.isNotEmpty) return message.join(', ');
     }
-    return 'Something went wrong (error $statusCode).';
+    return 'Something went wrong. Try again. (Error $statusCode)';
   }
 }
 

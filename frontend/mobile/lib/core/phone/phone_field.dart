@@ -167,7 +167,7 @@ class _CountryListState extends State<_CountryList> {
           ),
           Expanded(
             child: matches.isEmpty
-                ? const Center(child: Text('No country matches that.'))
+                ? const Center(child: Text('No matches.'))
                 : ListView.builder(
                     controller: scroll,
                     itemCount: matches.length,

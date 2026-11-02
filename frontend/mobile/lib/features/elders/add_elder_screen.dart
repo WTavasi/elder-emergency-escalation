@@ -134,7 +134,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register somebody')),
+      appBar: AppBar(title: const Text('Add someone')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -158,8 +158,8 @@ class _AddElderScreenState extends State<AddElderScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
-            'Their account is for asking for help. They sign in with their own phone number and '
-            'the password you choose here, so pick one you can tell them.',
+            "They'll use this account to ask for help. They sign in with their phone number and "
+            'this password, so choose one you can tell them.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: MzaziSpace.s24),
@@ -179,17 +179,17 @@ class _AddElderScreenState extends State<AddElderScreen> {
             controller: _relationship,
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
-              labelText: 'How you are related to them',
+              labelText: 'Your relationship to them',
               helperText: 'For example: daughter, son, nurse',
             ),
             validator: (String? v) =>
-                (v == null || v.trim().length < 2) ? 'Say how you are related.' : null,
+                (v == null || v.trim().length < 2) ? 'Enter your relationship.' : null,
           ),
           const SizedBox(height: MzaziSpace.s24),
           Text('How much help do they need day to day?', style: theme.textTheme.titleMedium),
           const SizedBox(height: MzaziSpace.s4),
           Text(
-            'This helps decide how urgent an alert from them is.',
+            'This helps us judge how urgent their alerts are.',
             style: theme.textTheme.bodySmall,
           ),
           RadioGroup<CareLevel?>(
@@ -225,7 +225,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
             textInputAction: TextInputAction.next,
             autofillHints: const <String>[AutofillHints.newPassword],
             decoration: const InputDecoration(
-              labelText: 'A password for them',
+              labelText: 'Their password',
               helperText: 'At least 8 characters',
             ),
             validator: (String? v) =>
@@ -235,9 +235,8 @@ class _AddElderScreenState extends State<AddElderScreen> {
           TextFormField(
             controller: _confirm,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'The same password again'),
-            validator: (String? v) =>
-                v == _password.text ? null : 'The two passwords are different.',
+            decoration: const InputDecoration(labelText: 'Confirm password'),
+            validator: (String? v) => v == _password.text ? null : 'Passwords do not match.',
           ),
           const SizedBox(height: MzaziSpace.s16),
           CheckboxListTile(
@@ -245,12 +244,12 @@ class _AddElderScreenState extends State<AddElderScreen> {
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             title: Text(
-              '$_firstName agrees, or I may agree for them, to MzaziCare keeping these details '
-              'and sharing their home with the people asked to help them.',
+              '$_firstName agrees (or I agree for them) that MzaziCare keeps these details and '
+              'shares their address with their helpers.',
             ),
             subtitle: _showChecks && !_consent
                 ? Text(
-                    'This has to be agreed before they can be registered.',
+                    'Agree to this to continue.',
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                   )
                 : null,
@@ -264,7 +263,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
           FilledButton.icon(
             onPressed: _busy ? null : () => unawaited(_sendCode()),
             icon: const Icon(Icons.sms_outlined),
-            label: Text(_busy ? 'Sending' : 'Send a code to their phone'),
+            label: Text(_busy ? 'Sending…' : 'Send a code to their phone'),
           ),
         ],
       ),
@@ -282,8 +281,8 @@ class _AddElderScreenState extends State<AddElderScreen> {
           Text('Enter the code from their phone', style: theme.textTheme.headlineSmall),
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            'A six-digit code is on its way to $_sentTo by SMS, if it is not already registered. '
-            'It works for 10 minutes.',
+            "If $_sentTo is new to MzaziCare, we've texted it a 6-digit code. "
+            'It expires in 10 minutes.',
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: MzaziSpace.s24),
@@ -303,20 +302,20 @@ class _AddElderScreenState extends State<AddElderScreen> {
               fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
-            decoration: const InputDecoration(labelText: 'Six-digit code'),
+            decoration: const InputDecoration(labelText: '6-digit code'),
             onFieldSubmitted: (_) => unawaited(_register()),
-            validator: (String? v) => (v?.length ?? 0) == 6 ? null : 'The code has six digits.',
+            validator: (String? v) => (v?.length ?? 0) == 6 ? null : 'Enter all 6 digits.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           FilledButton.icon(
             onPressed: _busy ? null : () => unawaited(_register()),
             icon: const Icon(Icons.check),
-            label: Text(_busy ? 'Registering' : 'Register $_firstName'),
+            label: Text(_busy ? 'Adding…' : 'Add $_firstName'),
           ),
           const SizedBox(height: MzaziSpace.s16),
           TextButton(
             onPressed: _cooldown > 0 || _busy ? null : () => unawaited(_sendCode()),
-            child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+            child: Text(_cooldown > 0 ? 'Resend code in $_cooldown s' : 'Resend code'),
           ),
           TextButton(
             onPressed: () => setState(() {
@@ -324,7 +323,7 @@ class _AddElderScreenState extends State<AddElderScreen> {
               _code.clear();
               _error = null;
             }),
-            child: const Text('Change their details'),
+            child: const Text('Edit details'),
           ),
         ],
       ),

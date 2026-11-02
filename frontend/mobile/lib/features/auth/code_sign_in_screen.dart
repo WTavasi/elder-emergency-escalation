@@ -151,10 +151,8 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
         children: <Widget>[
           const StepHeading(
             step: 1,
-            title: 'No password needed',
-            lead:
-                'For elders. Use the number of this phone, then a code we text to it, or a '
-                'code from your caregiver.',
+            title: 'Sign in with a code',
+            lead: "For elders. We'll text a code to this phone, or use one from your caregiver.",
           ),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(controller: _phone, textInputAction: TextInputAction.done),
@@ -168,7 +166,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
             height: MzaziSizes.of(context).control,
             child: FilledButton(
               onPressed: _requesting ? null : () => unawaited(_textCode()),
-              child: Text(_requesting ? 'Sending' : 'Text me a code'),
+              child: Text(_requesting ? 'Sending…' : 'Text me a code'),
             ),
           ),
           const SizedBox(height: MzaziSpace.s12),
@@ -197,9 +195,9 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
             step: 2,
             title: 'Enter the code',
             lead: _texted
-                ? 'If $_phoneNumber belongs to an elder, a six-digit code is on its way by '
-                      'text. A code from your caregiver works here too.'
-                : 'Type the six-digit code your caregiver sees on your page in their app.',
+                ? "If $_phoneNumber belongs to an elder, a 6-digit code is on its way. "
+                      "Your caregiver's code also works."
+                : "Enter the 6-digit code from your caregiver's app.",
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -212,7 +210,7 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
             height: MzaziSizes.of(context).control,
             child: FilledButton(
               onPressed: auth.isBusy ? null : () => unawaited(_signIn()),
-              child: Text(auth.isBusy ? 'Signing in' : 'Sign in'),
+              child: Text(auth.isBusy ? 'Signing in…' : 'Sign in'),
             ),
           ),
           const SizedBox(height: MzaziSpace.s16),
@@ -220,9 +218,9 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
             onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_textCode()),
             child: Text(
               _cooldown > 0
-                  ? 'Text a new code in $_cooldown s'
+                  ? 'Resend code in $_cooldown s'
                   : _texted
-                  ? 'Text a new code'
+                  ? 'Resend code'
                   : 'Text me a code instead',
             ),
           ),

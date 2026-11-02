@@ -36,14 +36,14 @@ export const volunteerMessages = {
     const urgent = severity === Severity.CRITICAL;
     return {
       title: urgent ? 'Urgent: someone near you needs help' : 'Someone near you needs help',
-      body: `An older person ${far} away needs help. Open MzaziCare to say whether you can go.`,
+      body: `An older person ${far} away needs help. Can you go?`,
       sms: replies
         ? capSms(
-            `MzaziCare: an older person ${far} away needs help. Reply 1 if you can go, 2 if you cannot.`,
+            `MzaziCare: an older person ${far} away needs help. Reply 1 to go, 2 if you cannot.`,
             `MzaziCare: someone ${far} away needs help. Reply 1 to go, 2 if not.`,
           )
         : capSms(
-            `MzaziCare: an older person ${far} away needs help. Open MzaziCare to say whether you can go.`,
+            `MzaziCare: an older person ${far} away needs help. Can you go? Open MzaziCare to answer.`,
             `MzaziCare: someone ${far} away needs help. Open MzaziCare.`,
           ),
       data: { type: 'volunteer-call', eventId },
@@ -55,9 +55,9 @@ export const volunteerMessages = {
     const far = roughDistance(distanceMetres);
     return {
       title: 'Still needed nearby',
-      body: `The volunteer who was going cannot. An older person ${far} away still needs help.`,
+      body: `The volunteer who was going cannot. An older person ${far} away still needs help. Can you go?`,
       sms: capSms(
-        `MzaziCare: the volunteer who was going cannot. An older person ${far} away still needs help. Open MzaziCare to say whether you can go.`,
+        `MzaziCare: the volunteer who was going cannot. An older person ${far} away still needs help. Open MzaziCare to answer.`,
         `MzaziCare: still needed, someone ${far} away. Open MzaziCare.`,
       ),
       data: { type: 'volunteer-call', eventId },
@@ -68,8 +68,8 @@ export const volunteerMessages = {
   covered(eventId: string): VolunteerMessage {
     return {
       title: 'Someone else is going',
-      body: 'Another volunteer is on the way. Thank you for being ready.',
-      sms: 'MzaziCare: another volunteer is on the way. Thank you for being ready.',
+      body: 'Another volunteer is going. Thanks for being ready.',
+      sms: 'MzaziCare: another volunteer is going. Thanks for being ready.',
       data: { type: 'volunteer-call', eventId },
     };
   },
@@ -77,8 +77,8 @@ export const volunteerMessages = {
   /** The emergency closed before this volunteer was needed, or while they were going. */
   over(eventId: string, wasGoing: boolean, elderName: string): VolunteerMessage {
     const text = wasGoing
-      ? `${firstName(elderName)}'s emergency has been closed. Thank you for going.`
-      : 'You are no longer needed for that emergency. Thank you for being ready.';
+      ? `${firstName(elderName)}'s emergency is closed. Thank you for going.`
+      : "You're no longer needed for that emergency. Thanks for being ready.";
     return {
       title: wasGoing ? 'The emergency is closed' : 'No longer needed',
       body: text,
@@ -91,20 +91,20 @@ export const volunteerMessages = {
   acceptedByText(elderName: string, addressLabel: string | null, phone: string): string {
     const where = addressLabel ? ` at ${addressLabel}` : '';
     return capSms(
-      `MzaziCare: thank you. ${elderName}${where}. Phone ${phone}. Their family has been told you are coming.`,
+      `MzaziCare: thanks. ${elderName}${where}. Phone ${phone}. We've told their family you're coming.`,
       `MzaziCare: thank you. ${firstName(elderName)}${where}. Phone ${phone}.`,
     );
   },
 
   /** To the people already told about the emergency. */
   toTheCircle(volunteerName: string, elderName: string, distanceMetres: number): VolunteerMessage {
-    const text = `${volunteerName}, a vetted community volunteer ${roughDistance(distanceMetres)} away, is going to ${firstName(elderName)}. Nothing else changes for you.`;
+    const text = `${volunteerName}, a checked volunteer ${roughDistance(distanceMetres)} away, is going to ${firstName(elderName)}. We'll still ask you as usual.`;
     return {
       title: `A volunteer is going to ${firstName(elderName)}`,
       body: text,
       sms: capSms(
         `MzaziCare: ${text}`,
-        `MzaziCare: ${firstName(volunteerName)}, a community volunteer, is going to ${firstName(elderName)}.`,
+        `MzaziCare: ${firstName(volunteerName)}, a volunteer, is going to ${firstName(elderName)}.`,
       ),
       data: { type: 'volunteer-update' },
     };

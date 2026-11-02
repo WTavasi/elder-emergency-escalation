@@ -89,7 +89,7 @@ class CallButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('This device cannot place calls. Dial this number from a phone:'),
+          const Text('This device cannot make calls. Call this number from a phone:'),
           const SizedBox(height: MzaziSpace.s12),
           // Selectable, so it can be copied into another app rather than retyped.
           SelectableText(phone, style: Theme.of(context).textTheme.titleLarge?.figures),

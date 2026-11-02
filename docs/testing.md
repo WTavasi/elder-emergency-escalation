@@ -69,8 +69,8 @@ something real.
 
 Expect about 245 tests across 29 files. They cover the API client's headers and its
 refresh path, the model parsing including the malformed cases, the elder's alert phases
-and what the elder sees while help is coming (who, how long, never where), sharing the
-way there (asked for location only when it is turned on, sends at once, stops on
+and what the elder sees while help is coming (who, how long, never where), sharing live
+location (asked for location only when it is turned on, sends at once, stops on
 arrival, on a refusal and on signing out), "I'm here" and the arrival on the detail
 screen, talking through the app (a token from the API, the microphone on, the elder's
 phone announcing who is joining and joining on the speaker by itself, "Not now", hanging
@@ -284,7 +284,7 @@ exercises everything:
 
 1. Sign in as Grace, `+254700000010`. You get the panic control at the larger type scale.
 2. Press it. The phone vibrates and the screen turns yellow: a ten second countdown in a
-   ring that empties, with **I am all right, stop this** at the bottom.
+   ring that empties, with **Stop alert** at the bottom.
 3. Let it run out. The screen says help is coming, and the dashboard board shows the
    emergency appear.
 4. On a second device or simulator, sign in as Mary, `+254700000020`, who is tier one for
@@ -292,7 +292,7 @@ exercises everything:
 5. Open it and press **I cannot come**. Confirm. The emergency escalates immediately
    rather than waiting out the rest of the window, which is visible on the dashboard as
    the tier changing.
-6. Raise another, and this time press **I am on my way**. The list entry changes to say
+6. Raise another, and this time press **I'm on my way**. The list entry changes to say
    Mary is responding, and the dashboard shows the same.
 7. Close it with an outcome.
 
@@ -306,7 +306,7 @@ server's own wording, and acknowledging one somebody else has already taken retu
 1. Sign in as Grace in the app with the API running, so the app saves her carers'
    numbers on the phone.
 2. Stop the API (Ctrl+C in its terminal) and press the help button. After a moment the
-   screen says **Not sent yet** under a yellow **No connection** band, with Grace's
+   screen says **Alert not sent yet** under a yellow **No connection** band, with Grace's
    address and the ways to ask: **Text my family**, **Call Mary** and **Call 999**, and
    **Text HELP to MzaziCare** too if the API was started with `AT_SHORTCODE` and
    `SMS_INBOUND_TOKEN`. Each opens the phone's messages app or dialler, filled in.

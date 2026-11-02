@@ -64,7 +64,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
               // nobody has answered yet. Anything else here was stating the obvious.
               PageTitle(
                 'Alerts',
-                subtitle: alerts.openOnly && waiting > 0 ? '$waiting waiting for somebody' : null,
+                subtitle: alerts.openOnly && waiting > 0 ? '$waiting waiting for an answer' : null,
                 subtitleColor: theme.colorScheme.error,
               ),
               _ViewSwitch(openOnly: alerts.openOnly, onChanged: alerts.setOpenOnly),
@@ -117,17 +117,17 @@ class _AlertListScreenState extends State<AlertListScreen> {
                 alerts.openOnly
                     ? 'All clear'
                     : alerts.isSearching
-                    ? 'Nothing found'
+                    ? 'No matches'
                     : 'No history yet',
                 style: theme.textTheme.titleLarge,
               ),
               const SizedBox(height: MzaziSpace.s8),
               Text(
                 alerts.openOnly
-                    ? 'No open alerts. You will see one here the moment it is raised.'
+                    ? 'No open alerts. New alerts appear here right away.'
                     : alerts.isSearching
-                    ? 'No alerts match. Try part of a name, or other dates.'
-                    : 'Alerts you were part of will be listed here once there are some.',
+                    ? 'Try part of a name, or other dates.'
+                    : 'Alerts you helped with will show here.',
                 style: theme.textTheme.bodyLarge,
               ),
             ],
@@ -267,7 +267,7 @@ class _HistorySearchState extends State<_HistorySearch> {
       firstDate: DateTime(today.year - 2),
       lastDate: today,
       initialDateRange: widget.alerts.days,
-      helpText: 'Alerts raised between',
+      helpText: 'Show alerts from',
       saveText: 'Show',
     );
     if (picked != null) await widget.alerts.setDays(picked);
@@ -290,12 +290,12 @@ class _HistorySearchState extends State<_HistorySearch> {
                   controller: _text,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: 'Elder or who attended',
+                    hintText: 'Search by name',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _text.text.isEmpty
                         ? null
                         : IconButton(
-                            tooltip: 'Clear the search',
+                            tooltip: 'Clear search',
                             icon: const Icon(Icons.close),
                             onPressed: () {
                               _text.clear();
@@ -542,10 +542,10 @@ class _AlertRow extends StatelessWidget {
   static String? _who(AlertSummary alert) {
     // In history, who attended, which is also what a search by name finds.
     if (!alert.state.isOpen) {
-      return alert.ownerName == null ? null : '${alert.ownerName} attended';
+      return alert.ownerName == null ? null : '${alert.ownerName} helped';
     }
-    if (alert.state == EventState.onScene) return '${alert.ownerName} is there';
-    if (alert.isAnswered) return '${alert.ownerName} is responding';
-    return 'Tier ${alert.currentTier}';
+    if (alert.state == EventState.onScene) return '${alert.ownerName} is with them';
+    if (alert.isAnswered) return '${alert.ownerName} is on the way';
+    return 'Asking group ${alert.currentTier}';
   }
 }

@@ -133,7 +133,7 @@ void main() {
       );
       expect(
         describeCheckIn(at(DateTime(2026, 10, 19, 9), status: 'MISSED'), now: now),
-        'Mon 09:00: not answered, the chain was alerted',
+        'Mon 09:00: missed, care circle alerted',
       );
       expect(
         describeCheckIn(
@@ -145,7 +145,7 @@ void main() {
           ),
           now: now,
         ),
-        'Mon 09:00: not answered in time, then answered in the app',
+        'Mon 09:00: late, then answered in the app',
       );
     });
   });

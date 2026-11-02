@@ -74,11 +74,11 @@ class StatePill extends StatelessWidget {
   static String label(EventState state) => switch (state) {
     EventState.triggered => 'Waiting',
     EventState.notified => 'Waiting',
-    EventState.acknowledged => 'Being handled',
-    EventState.onScene => 'Help arrived',
-    EventState.escalated => 'Escalated',
+    EventState.acknowledged => 'On the way',
+    EventState.onScene => 'Help is there',
+    EventState.escalated => 'Moved on',
     EventState.resolved => 'Closed',
-    EventState.cancelled => 'Withdrawn',
+    EventState.cancelled => 'Cancelled',
   };
 }
 
@@ -88,5 +88,5 @@ String elapsedSince(DateTime moment, {DateTime? now}) {
   if (gap.inSeconds < 60) return 'just now';
   if (gap.inMinutes < 60) return '${gap.inMinutes} min ago';
   if (gap.inHours < 24) return '${gap.inHours} hr ago';
-  return '${gap.inDays} d ago';
+  return gap.inDays == 1 ? '1 day ago' : '${gap.inDays} days ago';
 }
