@@ -107,7 +107,7 @@ were asked about outside them (an emergency responder matched by area). An emerg
 caller is not part of returns 404 rather than 403, so the API does not confirm that an id
 exists.
 
-**On the way, and arrived.** A person who turned on "Share my way there"
+**On the way, and arrived.** A person who turned on "Share live location"
 (`PATCH /auth/me/preferences { shareWayThere: true }`) and took an emergency on can send
 their position while they travel. The server works out the time to the elder (an OSRM
 route when `ROUTING_PROVIDER=osrm`, otherwise a straight-line estimate), keeps the last
@@ -363,7 +363,7 @@ thanks the one going. Audit actions: `VOLUNTEER_ACCEPTED`, `VOLUNTEER_WITHDREW`,
 `VOLUNTEER_ARRIVED`.
 
 Volunteers are never participants: they cannot open `/alerts/:id`, take an emergency on,
-decline, close, talk in the voice room or share their way there.
+decline, close, talk in the voice room or share their live location.
 
 ## Reporting
 

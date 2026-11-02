@@ -53,10 +53,11 @@ hairline colour it replaced was 1.3:1. Both are in the contrast gate.
 | --- | --- | --- | --- |
 | `TRIGGERED` | filled red pill | glyph and "Waiting" in red | created, nobody notified yet |
 | `NOTIFIED` | amber pill | glyph and "Waiting" in red | dispatched, ack timer running |
-| `ACKNOWLEDGED` | blue pill | glyph and "Being handled" in blue | someone owns it |
-| `ESCALATED` | outlined red pill | glyph and "Escalated" in red | a tier timed out |
+| `ACKNOWLEDGED` | blue pill | glyph and "On the way" in blue | someone owns it |
+| `ON_SCENE` | blue pill | glyph and "Help is there" in blue | the person who took it on arrived |
+| `ESCALATED` | outlined red pill | glyph and "Moved on" in red | a tier timed out |
 | `RESOLVED` | green pill | glyph and "Closed" in green | closed with an outcome |
-| `CANCELLED` | neutral pill | glyph and "Withdrawn" in grey | withdrawn inside the grace window |
+| `CANCELLED` | neutral pill | glyph and "Cancelled" in grey | withdrawn inside the grace window |
 
 The console keeps its pills, which sit in table cells. The app writes the state inline,
 a glyph and a word in the state's ink, because a capsule inside a row inside a card was
@@ -103,9 +104,9 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   as the countdown's heading, the band below as tall as the button's explanation, both
   measured at the current width and text size. On the smallest phones, where that would
   leave a circle under 144 points, the screen scrolls instead. What the elder does next sits at the bottom, in the reach
-  of a thumb: **I am all right, stop this**, the ways to ask for help without a
-  connection, **Back to the help button**. A control that undoes something, such as
-  **stop trying**, is kept away from the thumb so it is not pressed on the way to the
+  of a thumb: **Stop alert**, the ways to ask for help without a connection, **Back to
+  help button**. A control that undoes something, such as **Stop trying**, is kept away
+  from the thumb so it is not pressed on the way to the
   others.
 - **Feedback is felt as well as seen.** Four vibrations and no more: a press that starts
   something, something confirmed (the help button), a tick for each second of the
@@ -204,12 +205,15 @@ progress steps' connecting line and the help button's dark-mode edge) and the fo
 ring.
 
 The app follows this as of 1 October 2026 and the console as of 6 October 2026. Both use
-the same words: Waiting, Being handled, Escalated, Closed, Withdrawn. The console's
+the same words: Waiting, On the way, Help is there, Moved on, Closed, Cancelled. The
+words changed on 2 November 2026 from Being handled, Help arrived, Escalated and
+Withdrawn, which were the system's words rather than a person's. The console's
 history filter alone keeps the two waiting states apart, because it is for looking a
 record up rather than deciding what to do.
 
 Severity is shown the same way, after Carbon's status-indicator pattern: an octagon for
-critical, a triangle for elevated, a dot for standard, each beside its word. Red as text
+critical, a triangle for high, a dot for standard, each beside its word. The middle band
+is stored as `ELEVATED` and shown as High, an easier word in a second language. Red as text
 uses the `timer` token, which is gated as text on a surface in both themes; the
 `emergency` token is a fill.
 
@@ -218,6 +222,38 @@ review in the governing rule. The console's reporting window picker and its
 lost-connection label used to be red and no longer are; its sign-in button was ink from
 6 October and took MzaziCare red again on 29 October 2026 with the console's other filled
 buttons.
+
+## Wording
+
+Text is read by somebody frightened, hurried or reading in a second language, so it is
+written to be understood in a second.
+
+- **Short.** One idea per sentence. Fragments are fine: "No answer in 30 minutes? We tell
+  your family." On an emergency screen, a sentence of more than about eight words is
+  probably two.
+- **The action first.** Buttons and instructions start with the verb: **Stop alert**,
+  **Call Grace first**, **Reply 1 to go**.
+- **Somebody does it.** Active voice, and MzaziCare speaks as "we": "We've told your
+  family", never "Your family has been told".
+- **Like a person talks.** Everyday contractions that are positive (I'm, you're, we'll,
+  it's). Negatives are written out (cannot, do not, will not), because "can't" read in a
+  hurry or in a second language is easily taken for "can".
+- **Simple words.** OK rather than all right, call rather than ring, someone rather than
+  somebody, right away rather than straight away, text rather than SMS, 6-digit rather
+  than six-digit. No idioms: never mind, sorted out, go round.
+- **No system words.** Not tier, escalated, acknowledged, configured or vetted. A tier is
+  a "group", an escalation "moved on", a vetted volunteer a "checked volunteer".
+- **Only true promises.** "Alert sent" until somebody answers, never "Help is on the
+  way". No "Someone will call you": "Keep your phone near you" gives the person something
+  to do instead.
+- **Tap and press.** Press for the help button, a large control that feels physical. Tap
+  everywhere else, as every phone app says.
+- **They, not she.** An elder can be a man. Anybody whose name is not known is "they".
+- **No em dashes** in the interface, and no bold inside a sentence: Elder mode already
+  carries the weight.
+
+The privacy notice and terms of use are written to a different standard, in full
+sentences, because they have to be complete before they are short.
 
 ## Icons
 
@@ -245,8 +281,8 @@ refresh, the button that hides and shows its sidebar, and the "…" that opens a
 as on a Mac, and every one carries an accessible name.
 
 Glyphs are shared between an action and the state it produces, so they teach each other:
-"I am on my way" and the "Being handled" pill both show a running figure, "Close this
-emergency" and the "Closed" pill both show a tick.
+"I'm on my way" and the "On the way" pill both show a running figure, "Close emergency"
+and the "Closed" pill both show a tick.
 
 The elder's panic control gets no icon. It is one large labelled circle, and anything added
 to it competes with the only thing that screen is for.

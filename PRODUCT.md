@@ -86,9 +86,10 @@ offers texting and calling instead of an error.
 ## Brand Commitments
 
 - The name is **MzaziCare**.
-- Voice: plain words a person would say, addressed to "you"; controls name the action
-  ("I am all right, stop this", not "Cancel"); progress said in words, never a bare
-  spinner; the elder is never told who declined to come.
+- Voice: short, plain words a person would say, addressed to "you"; MzaziCare speaks as
+  "we"; controls start with the action ("Stop alert", not "Cancel"); progress said in
+  words, never a bare spinner; the elder is never told who declined to come. The rules
+  are under Wording in `docs/design-language.md`.
 - Red is reserved for a person being needed. See DESIGN.md.
 
 ## Evidence on Hand
