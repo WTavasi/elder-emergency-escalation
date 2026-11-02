@@ -110,7 +110,7 @@ class _EldersScreenState extends State<EldersScreen> {
                   child: FilledButton.icon(
                     onPressed: () => unawaited(_add()),
                     icon: const Icon(Icons.person_add_alt_1_outlined),
-                    label: const Text('Register somebody I look after'),
+                    label: const Text('Add someone you care for'),
                   ),
                 ),
             ],
@@ -156,12 +156,12 @@ class _ElderRow extends StatelessWidget {
             ),
             const SizedBox(width: MzaziSpace.s12),
             Semantics(
-              label: 'You are asked at tier ${elder.myTier}',
+              label: 'You are in group ${elder.myTier}',
               excludeSemantics: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
-                  Text('TIER', style: theme.textTheme.labelSmall),
+                  Text('GROUP', style: theme.textTheme.labelSmall),
                   Text('${elder.myTier}', style: theme.textTheme.titleLarge?.figures),
                 ],
               ),
@@ -194,14 +194,12 @@ class _Empty extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Nobody yet', style: theme.textTheme.titleLarge),
+          Text('No one yet', style: theme.textTheme.titleLarge),
           const SizedBox(height: MzaziSpace.s8),
           Text(
             isCaregiver
-                ? 'Register the person you look after. You will be first to be asked when they '
-                      'need help.'
-                : 'A caregiver adds you to the person you are family to. Once they have, that '
-                      'person appears here.',
+                ? "Add the person you care for. We'll ask you first when they need help."
+                : "Your relative's caregiver adds you. They'll appear here.",
             style: theme.textTheme.bodyLarge,
           ),
         ],

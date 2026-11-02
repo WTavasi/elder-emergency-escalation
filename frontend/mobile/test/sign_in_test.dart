@@ -101,7 +101,7 @@ void main() {
 
     expect(find.text('Enter your password'), findsOneWidget);
     expect(find.text('+254712345678'), findsOneWidget);
-    expect(find.text('Forgot your password?'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsOneWidget);
 
     await signIn(tester, 'Dev!2026');
 
@@ -153,7 +153,7 @@ void main() {
 
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Change the number'));
+    await tester.tap(find.byTooltip('Change number'));
     await tester.pumpAndSettle();
     expect(find.text('Continue'), findsOneWidget);
   });
@@ -169,7 +169,7 @@ void main() {
     );
     // And the touch target is still full size.
     expect(
-      tester.getSize(find.byTooltip('Change the number')).width,
+      tester.getSize(find.byTooltip('Change number')).width,
       greaterThanOrEqualTo(MzaziA11y.standardMinTouchTarget),
     );
   });

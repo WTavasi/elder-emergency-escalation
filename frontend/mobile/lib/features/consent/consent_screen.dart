@@ -143,12 +143,12 @@ class _ConsentScreenState extends State<ConsentScreen> {
       message: _withdrawEffect(item.kind),
       actions: <SheetAction<bool>>[
         SheetAction<bool>(
-          endsService ? 'Stop MzaziCare' : 'Withdraw',
+          _stopLabel(item.kind),
           true,
           icon: Icons.remove_circle_outline,
           destructive: true,
         ),
-        const SheetAction<bool>('Keep it', false, icon: Icons.close),
+        const SheetAction<bool>('Keep', false, icon: Icons.close),
       ],
     );
     if (!mounted) return;
@@ -170,47 +170,49 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   String _title(ConsentKind kind) => switch (kind) {
     ConsentKind.dataProcessing =>
-      _isElder ? 'Looking after your information' : 'Looking after their information',
-    ConsentKind.locationSharing => _isElder ? 'Sharing where you are' : 'Sharing where they are',
+      _isElder ? 'Keeping your information' : 'Keeping their information',
+    ConsentKind.locationSharing => _isElder ? 'Sharing your address' : 'Sharing their address',
     ConsentKind.contactSharing =>
       _isElder ? 'Sharing your phone number' : 'Sharing their phone number',
-    ConsentKind.communityHelp =>
-      _isElder ? 'Help from volunteers near you' : 'Help from volunteers near them',
+    ConsentKind.communityHelp => 'Help from nearby volunteers',
   };
 
   String _meaning(ConsentKind kind) => switch (kind) {
     ConsentKind.dataProcessing =>
       _isElder
-          ? 'MzaziCare keeps your name, number, home and how much help you need, so it can '
-                'tell the right people when you ask for help.'
-          : 'MzaziCare keeps their name, number, home and how much help they need, so it '
-                'can tell the right people when they ask for help.',
+          ? 'We keep your name, number, address and how much help you need, so we can alert '
+                'the right people.'
+          : 'We keep their name, number, address and how much help they need, so we can alert '
+                'the right people.',
     ConsentKind.locationSharing =>
       _isElder
-          ? 'The people who look after you can see your home and any place you are staying.'
-          : 'The people who look after them can see their home and any place they are '
-                'staying.',
+          ? "The people who look after you see your address and where you're staying."
+          : "The people who look after them see their address and where they're staying.",
     ConsentKind.contactSharing =>
       _isElder
           ? 'The people who look after you can see your number and call you from the app.'
           : 'The people who look after them can see their number and call them from the app.',
     ConsentKind.communityHelp =>
       _isElder
-          ? 'When you need help urgently, or no emergency service covers your area, vetted '
-                'volunteers living near you can be asked to come too. The one who says they '
-                'will come is told your name, address and number. Your family is still asked '
-                'as before.'
-          : 'When they need help urgently, or no emergency service covers their area, vetted '
-                'volunteers living nearby can be asked to come too. The one who says they will '
-                'come is told their name, address and number. Their chain is still asked as '
-                'before.',
+          ? "If it's urgent, or no emergency service covers your area, we can ask checked "
+                'volunteers near you to come. The one who says yes sees your name, address and '
+                'number. We still ask your family.'
+          : "If it's urgent, or no emergency service covers their area, we can ask checked "
+                'volunteers near them to come. The one who says yes sees their name, address '
+                'and number. We still ask their care circle.',
+  };
+
+  /// The button that withdraws one consent, named after what it stops.
+  String _stopLabel(ConsentKind kind) => switch (kind) {
+    ConsentKind.dataProcessing => 'Stop MzaziCare',
+    ConsentKind.communityHelp => 'Stop volunteer help',
+    _ => 'Stop sharing',
   };
 
   String _withdrawTitle(ConsentKind kind) => switch (kind) {
-    ConsentKind.dataProcessing =>
-      _isElder ? 'Stop MzaziCare for you?' : 'Stop MzaziCare for $_name?',
+    ConsentKind.dataProcessing => _isElder ? 'Stop using MzaziCare?' : 'Stop MzaziCare for $_name?',
     ConsentKind.locationSharing =>
-      _isElder ? 'Stop sharing where you are?' : 'Stop sharing where $_name is?',
+      _isElder ? 'Stop sharing your address?' : "Stop sharing $_name's address?",
     ConsentKind.contactSharing =>
       _isElder ? 'Stop sharing your phone number?' : "Stop sharing $_name's phone number?",
     ConsentKind.communityHelp =>
@@ -220,29 +222,28 @@ class _ConsentScreenState extends State<ConsentScreen> {
   String _withdrawEffect(ConsentKind kind) => switch (kind) {
     ConsentKind.dataProcessing =>
       _isElder
-          ? 'You will not be able to ask for help with this app any more, and you will be '
-                'signed out. Your history is kept, and an administrator can restore your '
-                'account.'
-          : '$_name will not be able to ask for help with this app any more. Their history '
-                'is kept, and an administrator can restore the account.',
+          ? "You will not be able to ask for help with this app. You'll be signed out. We "
+                'keep your history, and an administrator can turn it back on.'
+          : '$_name will not be able to ask for help with this app. We keep their history, '
+                'and an administrator can turn it back on.',
     ConsentKind.locationSharing =>
       _isElder
-          ? 'The people who look after you will no longer see your home or where you are '
-                'staying. In an emergency, the people helping you still see where to go.'
-          : 'Nobody looking after $_name will see their home or where they are staying any '
-                'more. In an emergency, the people helping still see where to go.',
+          ? 'The people who look after you will no longer see your address. In an '
+                'emergency, helpers still see where to go.'
+          : "The people who look after $_name will no longer see their address. In an "
+                'emergency, helpers still see where to go.',
     ConsentKind.contactSharing =>
       _isElder
           ? 'The people who look after you will no longer see your number. In an '
-                'emergency, the people helping you can still call you.'
-          : "Nobody looking after $_name will see their number any more. In an emergency, "
-                'the people helping can still call them.',
+                'emergency, helpers can still call you.'
+          : 'The people who look after $_name will no longer see their number. In an '
+                'emergency, helpers can still call them.',
     ConsentKind.communityHelp =>
       _isElder
-          ? 'Volunteers will not be asked to come to you. Your family and the emergency '
-                'services are asked as before.'
-          : 'Volunteers will not be asked to come to $_name. Their chain and the emergency '
-                'services are asked as before.',
+          ? "We'll stop asking volunteers to come. We still ask your family and emergency "
+                'services.'
+          : "We'll stop asking volunteers to come to $_name. We still ask their care circle "
+                'and emergency services.',
   };
 
   String _status(ConsentItem item) {
@@ -262,11 +263,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
   String _onBehalfLine(ConsentView view) {
     final ConsentItem? given = view.givenOnBehalf;
     final String? who = given?.givenByName;
-    if (who == null) return 'MzaziCare needs your agreement to these.';
+    if (who == null) return 'Please review these.';
 
     final String relation = given?.givenByRelationship?.trim() ?? '';
     final String byWhom = relation.isEmpty ? who : '$who ($relation)';
-    return '$byWhom agreed to these for you. Do you agree to them yourself?';
+    return '$byWhom agreed to these for you. Do you agree?';
   }
 
   @override
@@ -331,9 +332,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
           const SizedBox(height: MzaziSpace.s16),
         ],
         Text(
-          'In an emergency, the people helping you always see what they need to reach you. '
-          'You can change your mind at any time. Tap the round button at the top of your '
-          'screen, then Privacy and consent.',
+          'In an emergency, helpers always see what they need to reach you. Change your mind '
+          'anytime: tap the round button at the top, then Privacy and consent.',
           style: theme.textTheme.bodyLarge,
         ),
         if (error != null) ...<Widget>[
@@ -378,8 +378,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
           Notice(message: error, isError: true),
           const SizedBox(height: MzaziSpace.s16),
         ],
-        if (view.items.isEmpty)
-          Text('Nothing has been recorded yet.', style: theme.textTheme.bodyLarge),
+        if (view.items.isEmpty) Text('Nothing agreed yet.', style: theme.textTheme.bodyLarge),
         for (final ConsentItem item in view.items) ...<Widget>[
           SectionLabel(_title(item.kind)),
           Text(_meaning(item.kind), style: theme.textTheme.bodyLarge),
@@ -390,20 +389,21 @@ class _ConsentScreenState extends State<ConsentScreen> {
           ),
           // Help from volunteers is never given at registration, so it is agreed to here;
           // location and contact sharing can be agreed to again once withdrawn.
-          if (!item.active && view.canWithdraw && item.kind != ConsentKind.dataProcessing)
-            ...<Widget>[
-              const SizedBox(height: MzaziSpace.s8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: target),
-                  child: FilledButton.tonal(
-                    onPressed: _busy ? null : () => unawaited(_give(item)),
-                    child: Text(_isElder ? 'Agree' : 'Agree for $_name'),
-                  ),
+          if (!item.active &&
+              view.canWithdraw &&
+              item.kind != ConsentKind.dataProcessing) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: target),
+                child: FilledButton.tonal(
+                  onPressed: _busy ? null : () => unawaited(_give(item)),
+                  child: Text(_isElder ? 'Agree' : 'Agree for $_name'),
                 ),
               ),
-            ],
+            ),
+          ],
           if (item.active && view.canWithdraw) ...<Widget>[
             const SizedBox(height: MzaziSpace.s8),
             Align(
@@ -412,9 +412,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 constraints: BoxConstraints(minHeight: target),
                 child: OutlinedButton(
                   onPressed: _busy ? null : () => unawaited(_withdraw(item)),
-                  child: Text(
-                    item.kind == ConsentKind.dataProcessing ? 'Stop MzaziCare' : 'Withdraw',
-                  ),
+                  child: Text(_stopLabel(item.kind)),
                 ),
               ),
             ),
@@ -423,16 +421,16 @@ class _ConsentScreenState extends State<ConsentScreen> {
         ],
         Text(
           _isElder
-              ? 'In an emergency, the people helping you always see what they need to reach '
-                    'you, whatever you have withdrawn.'
-              : 'In an emergency, the people helping $_name always see what they need to '
-                    'reach them, whatever has been withdrawn.',
+              ? 'In an emergency, helpers always see what they need to reach you, even if you '
+                    'turn sharing off.'
+              : 'In an emergency, helpers always see what they need to reach $_name, even if '
+                    'sharing is off.',
           style: theme.textTheme.bodyMedium,
         ),
         if (!view.canWithdraw) ...<Widget>[
           const SizedBox(height: MzaziSpace.s12),
           Text(
-            'Only $_name or their caregiver can withdraw these.',
+            'Only $_name or their caregiver can change these.',
             style: theme.textTheme.bodyMedium,
           ),
         ],

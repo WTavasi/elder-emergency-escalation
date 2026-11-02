@@ -25,7 +25,7 @@ class HelpProgress extends StatelessWidget {
   /// the order they happen. There is no "done" step, because a closed emergency moves
   /// the elder to its own screen and a fourth dot here could never light up. Three also
   /// leaves each word a third of the width, which the elder's type size needs.
-  static const List<String> _steps = <String>['Told', 'Coming', 'Here'];
+  static const List<String> _steps = <String>['Sent', 'Coming', 'Here'];
 
   @override
   Widget build(BuildContext context) {
@@ -45,23 +45,24 @@ class HelpProgress extends StatelessWidget {
     final String headline = switch (step) {
       2 => '${coming ?? 'Help'} is with you',
       1 => '$coming is coming',
-      _ => 'Help is on the way',
+      _ => "We've told your family",
     };
     // Who the volunteer is, said once: in place of a family name when they are the one
     // coming, and as well as it when both are.
     final String? volunteerLine = helperVolunteer == null
         ? null
         : owner == null
-        ? '$helperVolunteer is a volunteer who lives near you. Your family has been told too.'
-        : '$helperVolunteer, a volunteer who lives near you, is ${(volunteer?.hasArrived ?? false) ? 'with you' : 'coming too'}.';
+        ? "$helperVolunteer is a volunteer who lives near you. We've told your family too."
+        : '$helperVolunteer, a volunteer near you, is ${(volunteer?.hasArrived ?? false) ? 'also with you' : 'also coming'}.';
     // The time only, while they are on their way.
     final String? when = step == 1 && journey != null
         ? '${_capitalised(timeAway(journey.etaSeconds))} away.'
         : null;
-    final String detail = switch (step) {
-      2 => 'Help has reached you.',
-      1 => 'Stay where you are if you can.',
-      _ => 'The people who look after you have been told. Waiting for someone to answer.',
+    // Nothing under the headline once somebody is with them: it would only repeat it.
+    final String? detail = switch (step) {
+      2 => null,
+      1 => "Stay where you are if it's safe.",
+      _ => 'Waiting for someone to answer.',
     };
 
     return Semantics(
@@ -92,12 +93,12 @@ class HelpProgress extends StatelessWidget {
             const SizedBox(height: MzaziSpace.s12),
           ],
           if (!compact) ...<Widget>[
-            Text(detail, style: theme.textTheme.bodyLarge),
+            if (detail != null) Text(detail, style: theme.textTheme.bodyLarge),
             const Spacer(),
             Text(
               arrived
-                  ? 'You do not need to do anything else.'
-                  : 'Someone will call you. You do not need to do anything else.',
+                  ? "That's all you need to do."
+                  : "Keep your phone near you. That's all you need to do.",
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

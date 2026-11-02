@@ -76,7 +76,7 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
     if (!mounted || !done) return;
     setState(() {
       _showMissing = false;
-      _saved = first ? 'Sent. You will get a text when it is decided.' : 'Saved.';
+      _saved = first ? "Sent. We'll text you with the decision." : 'Saved.';
     });
   }
 
@@ -101,9 +101,9 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    'When someone near you needs help, you may be asked to go. You are told '
-                    'how far away they are first, and who and where only once you say you '
-                    'will go. Their family is asked as usual; you go alongside them.',
+                    "We may ask you to help someone near you. You'll see how far away they "
+                    'are. You see who and where only after you say yes. We still ask their '
+                    'family too.',
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: MzaziSpace.s24),
@@ -139,12 +139,12 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
                     decoration: InputDecoration(
                       labelText: _training.contains(VolunteerTraining.other)
                           ? 'What else can you do?'
-                          : 'Anything the reviewer should know (optional)',
+                          : 'Anything else we should know? (optional)',
                       errorText:
                           _showMissing &&
                               _training.contains(VolunteerTraining.other) &&
                               _note.text.trim().isEmpty
-                          ? 'Say what your other training is.'
+                          ? 'Describe your other training.'
                           : null,
                     ),
                   ),
@@ -156,13 +156,13 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
                     onChosen: (AddressMatch match) => setState(() => _area = match),
                     title: 'Where can you help?',
                     explanation:
-                        'Usually your home. You are asked about people within the distance '
-                        'below of this place, and never told where you are matched from.',
+                        'Usually your home. We ask you about people within this distance. '
+                        'We never share this place.',
                     chosenPrefix: 'Area',
                   ),
                   const SizedBox(height: MzaziSpace.s16),
                   Text(
-                    'How far you will go: ${_kilometres(_radiusKm)}',
+                    "How far you'll go: ${_kilometres(_radiusKm)}",
                     style: theme.textTheme.titleSmall,
                   ),
                   Slider(
@@ -187,9 +187,9 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
                         : () => unawaited(_send(volunteer)),
                     child: Text(
                       !applied
-                          ? 'Send my application'
+                          ? 'Send application'
                           : profile.status == VolunteerStatus.rejected
-                          ? 'Send it again'
+                          ? 'Send again'
                           : 'Save changes',
                     ),
                   ),

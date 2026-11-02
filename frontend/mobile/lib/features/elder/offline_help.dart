@@ -66,8 +66,8 @@ class OfflineHelp extends ChangeNotifier {
     final String name = account.name.trim().split(RegExp(r'\s+')).first;
     final String? home = account.home?.addressLabel;
     final String where = home == null || home.isEmpty ? '' : ' Home: $home.';
-    return 'HELP. $name needs help now. This was sent from the MzaziCare app, '
-        'which could not connect.$where Please call $name.';
+    return 'HELP: $name needs help now.$where Please call $name. '
+        'Sent by MzaziCare without internet.';
   }
 
   @override

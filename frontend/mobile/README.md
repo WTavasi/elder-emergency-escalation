@@ -93,9 +93,8 @@ phone already is.
    request travels the button greys and says "Sending…".
 2. **Cancellable.** The alert has already gone to the first person in the chain. For
    ten seconds the screen turns yellow, the seconds left sit inside a ring that empties,
-   and the phone taps lightly once a second. **I am all right, stop this** is at the
-   bottom.
-3. **Not sent yet.** The press could not reach MzaziCare. A yellow **No connection**
+   and the phone taps lightly once a second. **Stop alert** is at the bottom.
+3. **Alert not sent yet.** The press could not reach MzaziCare. A yellow **No connection**
    band, the elder's address, and other ways to ask, each of which opens the phone's
    own messages app or dialler already filled in:
    - **Text HELP to MzaziCare**, when the server reads texts. This raises the same alert
@@ -105,13 +104,12 @@ phone already is.
    - **Call** the first person in the chain, or **999**.
 
    The app keeps trying to send the alert every 15 seconds. When it goes through, the
-   screen moves on to the countdown by itself. **I am all right, stop trying** goes back
-   to the button.
+   screen moves on to the countdown by itself. **Stop trying** goes back to the button.
 4. **Live.** Help is coming, with three large steps ticked off as they happen: sent,
    the people who look after them told, and who is coming once somebody acknowledges.
 5. **Finished.** Cancelled or closed, with a way back to the button.
 
-The numbers for the "Not sent yet" screen are fetched whenever the app opens with a
+The numbers for the "Alert not sent yet" screen are fetched whenever the app opens with a
 connection and kept on the phone in secure storage, so they are there when the
 connection is not. They are cleared when the elder signs out.
 
@@ -194,7 +192,7 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | `lib/core/offline/` | What the elder's phone keeps for asking without a connection, and text links |
 | `lib/core/live/` | Live updates over the socket |
 | `lib/core/push/` | Push notifications, when the build has a Firebase project |
-| `lib/core/location/` | A responder's way there, shared only when they turn it on |
+| `lib/core/location/` | A responder's live location, shared only when they turn it on |
 | `lib/core/voice/` | Calls through the app |
 | `lib/core/phone/` | The phone field, its country list and reading a typed number |
 | `lib/core/theme/` | The theme, built from the design tokens, and the light or dark setting |
@@ -234,7 +232,7 @@ quietly, and the tests that guard them:
   frightened person actually does, raise exactly one.
 - **A refused request leaves the control pressable.** The worst moment to strand
   somebody with nothing to press is immediately after a failed call for help.
-- **No connection never strands the elder.** The "Not sent yet" screen offers texting
+- **No connection never strands the elder.** The "Alert not sent yet" screen offers texting
   and calling, the alert is sent by itself when the connection returns, and an alert a
   HELP text already raised is picked up rather than raised twice
   (`test/offline_help_test.dart`).

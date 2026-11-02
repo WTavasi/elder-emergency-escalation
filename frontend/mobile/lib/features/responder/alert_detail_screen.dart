@@ -126,10 +126,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             ],
             if (!alert.state.isOpen) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
-              Text(
-                'This emergency is closed. Nothing more to do.',
-                style: theme.textTheme.bodyLarge,
-              ),
+              Text('Emergency closed. Nothing more to do.', style: theme.textTheme.bodyLarge),
             ],
             const SizedBox(height: MzaziSpace.s32),
             if (detail == null && controller.isLoading)
@@ -145,7 +142,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             ],
             if (controller.loadError != null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
-              Text('Could not refresh: ${controller.loadError}', style: theme.textTheme.bodySmall),
+              Text(
+                'Could not update this screen. ${controller.loadError}',
+                style: theme.textTheme.bodySmall,
+              ),
             ],
           ],
         ),
@@ -231,7 +231,7 @@ class _Header extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
             StatePill(state: alert.state),
-            SeverityMark(severity: alert.severity, suffix: ' severity'),
+            SeverityMark(severity: alert.severity),
           ],
         ),
         if (alert.fromMissedCheckIn) ...<Widget>[
@@ -239,14 +239,14 @@ class _Header extends StatelessWidget {
           // Said first, because it changes what to do: nobody pressed for help, and a
           // call settles most of these in a minute.
           Text(
-            '${alert.elderName.split(' ').first} did not answer a daily check-in. Nobody '
-            'pressed for help, so call first.',
+            'Call ${alert.elderName.split(' ').first} first. They missed a daily check-in. '
+            'No one pressed for help.',
             style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
           ),
         ],
         const SizedBox(height: MzaziSpace.s12),
         Text(
-          'Raised ${elapsedSince(alert.triggeredAt)}, at tier ${alert.currentTier}.',
+          'Raised ${elapsedSince(alert.triggeredAt)}. Asking group ${alert.currentTier}.',
           style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         if (alert.ownerName != null) ...<Widget>[
@@ -254,7 +254,7 @@ class _Header extends StatelessWidget {
           Text(
             alert.arrivedAt != null
                 ? '${alert.ownerName} arrived ${elapsedSince(alert.arrivedAt!)}.'
-                : '${alert.ownerName} is responding.',
+                : '${alert.ownerName} is on the way.',
             style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
           ),
         ],
@@ -316,7 +316,7 @@ class _Actions extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: busy ? null : controller.acknowledge,
               icon: const Icon(Icons.directions_run),
-              label: const Text('I am on my way'),
+              label: const Text("I'm on my way"),
             ),
           ),
           const SizedBox(height: MzaziSpace.s8),
@@ -365,7 +365,7 @@ class _Actions extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SwipeToConfirm(
-            label: 'Swipe when you are with $first',
+            label: "Swipe when you're with $first",
             enabled: !busy,
             onConfirmed: () => unawaited(controller.arrived()),
           ),
@@ -374,7 +374,7 @@ class _Actions extends StatelessWidget {
           const SizedBox(height: MzaziSpace.s4),
           TextButton(
             onPressed: busy ? null : () => _chooseOutcome(context),
-            child: const Text('Close this emergency'),
+            child: const Text('Close emergency'),
           ),
         ],
       );
@@ -388,7 +388,7 @@ class _Actions extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: busy ? null : () => _chooseOutcome(context),
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Close this emergency'),
+            label: const Text('Close emergency'),
           ),
         ),
         const SizedBox(height: MzaziSpace.s8),
@@ -435,7 +435,7 @@ class _Actions extends StatelessWidget {
                   onPressed: busy ? null : controller.requestResponder,
                   child: const StackedLabel(
                     icon: Icons.emergency,
-                    label: 'Call an emergency responder',
+                    label: 'Ask for an emergency responder',
                   ),
                 ),
               ),
@@ -455,9 +455,7 @@ class _Actions extends StatelessWidget {
     final bool? confirmed = await showActionSheet<bool>(
       context,
       title: 'Cannot come?',
-      message:
-          'The emergency will stop waiting on you and move on to the next person straight '
-          'away.',
+      message: "We'll ask the next person right away.",
       content: TextField(
         controller: reason,
         maxLength: 200,
@@ -474,7 +472,7 @@ class _Actions extends StatelessWidget {
           icon: Icons.do_not_disturb_on_outlined,
           primary: true,
         ),
-        SheetAction<bool>('Never mind', false, icon: Icons.close),
+        SheetAction<bool>('Go back', false, icon: Icons.close),
       ],
     );
 
@@ -566,7 +564,7 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
                     ),
                     if (_writing) ...<Widget>[
                       const SizedBox(height: MzaziSpace.s4),
-                      Text('A sentence is enough.', style: theme.textTheme.bodySmall),
+                      Text('One sentence is enough.', style: theme.textTheme.bodySmall),
                     ],
                   ],
                 ),
@@ -620,8 +618,8 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
           minLines: 2,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
-            hintText: 'She had locked herself out and a neighbour let her in',
-            errorText: _tooShort ? 'Say briefly what happened.' : null,
+            hintText: 'Locked out. A neighbour let them in.',
+            errorText: _tooShort ? 'Add a few words about what happened.' : null,
           ),
           onChanged: (String _) {
             if (_tooShort) setState(() => _tooShort = false);
@@ -688,7 +686,7 @@ class _WhatHappened extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SectionLabel('What has happened'),
+        const SectionLabel('What happened'),
         const SizedBox(height: MzaziSpace.s16),
         if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
@@ -718,27 +716,27 @@ class _WhatHappened extends StatelessWidget {
       entry.action != 'SEVERITY_EVALUATED' && entry.action != 'NOTIFICATION_FAILED';
 
   String _sentence(TimelineEntry entry) {
-    final String who = entry.actorName ?? 'Somebody';
+    final String who = entry.actorName ?? 'Someone';
 
     return switch (entry.action) {
       'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
-        'The daily check-in went unanswered',
+        'Missed the daily check-in',
       'EVENT_CREATED' => entry.byText ? '$who asked for help, by text' : '$who asked for help',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
-      'VOLUNTEERS_ASKED' => 'Volunteers nearby were asked',
-      'VOLUNTEER_ACCEPTED' => '$who, a volunteer, said they would go',
-      'VOLUNTEER_WITHDREW' => '$who, a volunteer, could no longer go',
-      'VOLUNTEER_ARRIVED' => '$who, a volunteer, arrived',
+      'VOLUNTEERS_ASKED' => 'Asked volunteers nearby',
+      'VOLUNTEER_ACCEPTED' => '$who (volunteer) is going',
+      'VOLUNTEER_WITHDREW' => '$who (volunteer) can no longer go',
+      'VOLUNTEER_ARRIVED' => '$who (volunteer) arrived',
       'TIER_DISPATCHED' => _dispatched(entry),
       'ESCALATED' => _escalated(entry),
       'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
       'ARRIVED' => '$who arrived',
       'VOICE_JOINED' => '$who joined the call',
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
-      'RESPONDER_REQUESTED' => '$who called for an emergency responder',
+      'RESPONDER_REQUESTED' => '$who asked for an emergency responder',
       'RESOLVED' => '$who closed it',
-      'CANCELLED' when entry.reason == 'checked-in-late' => 'Withdrawn: $who answered the check-in',
-      'CANCELLED' => '$who withdrew it',
+      'CANCELLED' when entry.reason == 'checked-in-late' => 'Cancelled: $who answered the check-in',
+      'CANCELLED' => '$who cancelled it',
       'REOPENED' => '$who reopened it',
       // An action added on the server after this screen was written. Better a tidied
       // version of the real name than a blank line pretending nothing happened.
@@ -750,7 +748,7 @@ class _WhatHappened extends StatelessWidget {
   /// Otieno" is worth more to a reader than "Sent to tier 1".
   String _dispatched(TimelineEntry entry) {
     final int? tier = entry.tier;
-    if (tier == null) return 'Sent to the first people to ask';
+    if (tier == null) return 'Sent to group 1';
 
     final List<String> names = chain
         .where((ChainMember m) => m.priorityOrder == tier)
@@ -767,7 +765,7 @@ class _WhatHappened extends StatelessWidget {
 
   String _escalated(TimelineEntry entry) {
     final int? to = entry.toTier;
-    if (to == null) return 'Nobody answered, and there is nobody further to ask';
+    if (to == null) return 'No answer. No one else to ask';
 
     final List<String> names = chain
         .where((ChainMember m) => m.priorityOrder == to)
@@ -775,13 +773,13 @@ class _WhatHappened extends StatelessWidget {
         .toList();
 
     return names.isEmpty
-        ? 'Nobody answered in time, so it moved on'
-        : 'Nobody answered in time, so it moved on to ${names.join(' and ')}';
+        ? 'No answer in time. Asking the next group'
+        : 'No answer in time. Now asking ${names.join(' and ')}';
   }
 
   /// Relative to the alert, in units a person reads without counting zeroes.
   static String _when(int seconds) {
-    if (seconds <= 0) return 'when the alert was raised';
+    if (seconds <= 0) return 'at the start';
     if (seconds < 60) return '$seconds ${seconds == 1 ? 'second' : 'seconds'} after the alert';
     final int minutes = seconds ~/ 60;
     if (minutes < 60) return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} after the alert';
@@ -810,11 +808,11 @@ class _Chain extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SectionLabel('Who is being asked'),
+        const SectionLabel("Who we're asking"),
         if (members.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: MzaziSpace.s16),
-            child: Text('Nobody is configured for this elder.', style: theme.textTheme.bodyMedium),
+            child: Text('No one is set up to help yet.', style: theme.textTheme.bodyMedium),
           )
         else
           for (final ChainMember member in members) ...<Widget>[
@@ -829,13 +827,13 @@ class _Chain extends StatelessWidget {
                     child: Text(
                       '${member.priorityOrder}',
                       style: theme.textTheme.titleLarge?.figures,
-                      semanticsLabel: 'Tier ${member.priorityOrder}',
+                      semanticsLabel: 'Group ${member.priorityOrder}',
                     ),
                   ),
                   Expanded(child: Text(member.name, style: theme.textTheme.bodyLarge)),
                   if (member.priorityOrder == currentTier)
                     Text(
-                      'Asked now',
+                      'Asking now',
                       style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
                     ),
                 ],
@@ -876,13 +874,13 @@ class _Volunteer extends StatelessWidget {
 
     final String line = volunteer.going && name != null
         ? volunteer.hasArrived
-              ? '$name, a vetted community volunteer, is with $elderFirst.'
-              : '$name, a vetted community volunteer${metres == null ? '' : ' ${roughDistance(metres)} away'}, is on the way.'
+              ? '$name, a checked volunteer, is with $elderFirst.'
+              : '$name, a checked volunteer${metres == null ? '' : ' ${roughDistance(metres)} away'}, is on the way.'
         : volunteer.asked == 0
-        ? 'No volunteer was available nearby.'
+        ? 'No volunteers free nearby.'
         : open
-        ? '${volunteer.asked} nearby ${volunteer.asked == 1 ? 'volunteer was' : 'volunteers were'} asked. None has said yet.'
-        : '${volunteer.asked} nearby ${volunteer.asked == 1 ? 'volunteer was' : 'volunteers were'} asked.';
+        ? 'Asked ${volunteer.asked} ${volunteer.asked == 1 ? 'volunteer' : 'volunteers'} nearby. No answer yet.'
+        : 'Asked ${volunteer.asked} ${volunteer.asked == 1 ? 'volunteer' : 'volunteers'} nearby.';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -894,7 +892,12 @@ class _Volunteer extends StatelessWidget {
           const SizedBox(height: MzaziSpace.s12),
           SizedBox(
             width: double.infinity,
-            child: CallButton(name: name.split(' ').first, phone: phone, canOpen: canOpen, open: openLink),
+            child: CallButton(
+              name: name.split(' ').first,
+              phone: phone,
+              canOpen: canOpen,
+              open: openLink,
+            ),
           ),
         ],
       ],
@@ -956,7 +959,7 @@ class _OnTheWay extends StatelessWidget {
         const SizedBox(height: MzaziSpace.s8),
         Text(
           latest == null
-              ? 'Finding where you are'
+              ? 'Finding your location…'
               : '${_capitalised(timeAway(latest.etaSeconds))} to $elder',
           style: theme.textTheme.titleLarge,
         ),
@@ -999,20 +1002,19 @@ class _OnTheWay extends StatelessWidget {
       ];
     } else if (way.enabled) {
       children = <Widget>[
-        Text('Your way there is not being shared.', style: theme.textTheme.bodyMedium),
+        Text('Your location is not shared.', style: theme.textTheme.bodyMedium),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
             onPressed: () => unawaited(shareWithPermission(context, way, alert.eventId)),
-            child: const Text('Share my way there'),
+            child: const Text('Share live location'),
           ),
         ),
       ];
     } else {
       children = <Widget>[
         Text(
-          'Turn on "Share my way there" under Me, and $elder will see how long you '
-          'will be.',
+          'Turn on Share live location in Me. $elder will see how far away you are.',
           style: theme.textTheme.bodyMedium,
         ),
       ];
@@ -1069,10 +1071,9 @@ class _OnTheWay extends StatelessWidget {
   static Future<void> _confirmStop(BuildContext context, WayThere way, String elder) async {
     final bool? stop = await showActionSheet<bool>(
       context,
-      title: 'Stop sharing your way there?',
+      title: 'Stop sharing location?',
       message:
-          '$elder will no longer see how long you will be, and the rest of the circle will '
-          'not see where you are. You can share again from this screen.',
+          '$elder and the care circle will no longer see where you are. You can share again here.',
       actions: const <SheetAction<bool>>[
         SheetAction<bool>(
           'Stop sharing',
@@ -1160,7 +1161,7 @@ class _Talk extends StatelessWidget {
         ),
         if (startedBy != null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s4),
-          Text('$startedBy has started a call.', style: theme.textTheme.bodySmall),
+          Text('$startedBy started a call.', style: theme.textTheme.bodySmall),
         ],
       ],
     );

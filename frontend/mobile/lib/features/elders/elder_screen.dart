@@ -102,9 +102,9 @@ class _ElderScreenState extends State<ElderScreen> {
   Future<void> _recordStay() async {
     final AddressMatch? place = await _pickPlace(
       title: 'Where are they staying?',
-      explanation: 'Alerts from them go to this place until you record that they are back home.',
+      explanation: 'We send helpers here until you mark them back home.',
       prefix: 'Staying at',
-      action: 'Record this stay',
+      action: 'Save',
     );
     if (place != null) await _act(() => widget.api.setPlace(widget.elderId, place));
   }
@@ -112,11 +112,9 @@ class _ElderScreenState extends State<ElderScreen> {
   Future<void> _changeHome() async {
     final AddressMatch? home = await _pickPlace(
       title: 'Where is their home?',
-      explanation:
-          'Alerts from them are sent here whenever no stay elsewhere is recorded, and the '
-          'away-from-home part of their severity is measured from here.',
+      explanation: "We send helpers here unless they're staying somewhere else.",
       prefix: 'Home',
-      action: 'Save as their home',
+      action: 'Save',
     );
     if (home != null) {
       await _act(() async => widget.api.updateElder(widget.elderId, home: home));
@@ -146,19 +144,18 @@ class _ElderScreenState extends State<ElderScreen> {
   Future<void> _remove(ChainPlace place) async {
     final bool? confirmed = await showActionSheet<bool>(
       context,
-      title: place.isInvited ? 'Withdraw the invitation?' : 'Remove ${place.name}?',
+      title: place.isInvited ? 'Cancel invite?' : 'Remove ${place.name}?',
       message: place.isInvited
-          ? 'The place held for ${place.phone} is released. Nothing is sent to them.'
-          : '${place.name} will no longer be asked when ${widget.elderName} needs help. '
-                'They will get an SMS saying so.',
+          ? 'We will not text them.'
+          : "We'll stop asking ${place.name} when ${widget.elderName} needs help, and text them to say so.",
       actions: <SheetAction<bool>>[
         SheetAction<bool>(
-          place.isInvited ? 'Withdraw' : 'Remove',
+          place.isInvited ? 'Cancel invite' : 'Remove',
           true,
           icon: Icons.person_remove_outlined,
           destructive: true,
         ),
-        const SheetAction<bool>('Keep them', false, icon: Icons.close),
+        const SheetAction<bool>('Keep', false, icon: Icons.close),
       ],
     );
     if (confirmed == true) {
@@ -188,11 +185,8 @@ class _ElderScreenState extends State<ElderScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => PairingSheet(
-        api: widget.api,
-        elderId: widget.elderId,
-        elderName: widget.elderName,
-      ),
+      builder: (_) =>
+          PairingSheet(api: widget.api, elderId: widget.elderId, elderName: widget.elderName),
     );
   }
 
@@ -255,14 +249,13 @@ class _ElderScreenState extends State<ElderScreen> {
                 ),
               ] else
                 const _Fact(
-                  'Their number is not shared, at their request. In an emergency it is shown '
-                  'to whoever is helping.',
+                  'Their number is hidden at their request. Helpers see it in an emergency.',
                 ),
               const SizedBox(height: MzaziSpace.s32),
-              const SectionLabel('Where they are now'),
+              const SectionLabel('Where they are'),
               _Fact(
                 elder.place.withheld
-                    ? 'Not shared, at their request'
+                    ? 'Hidden at their request'
                     : elder.place.isAtHome
                     ? 'At home'
                     : 'Staying at ${elder.place.label ?? 'a recorded place'}',
@@ -274,7 +267,7 @@ class _ElderScreenState extends State<ElderScreen> {
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => unawaited(_recordStay()),
                   icon: const Icon(Icons.luggage_outlined),
-                  label: const Text('They are staying somewhere else'),
+                  label: const Text("They're away from home"),
                 )
               else
                 OutlinedButton.icon(
@@ -282,7 +275,7 @@ class _ElderScreenState extends State<ElderScreen> {
                       ? null
                       : () => unawaited(_act(() => widget.api.clearPlace(widget.elderId))),
                   icon: const Icon(Icons.home_outlined),
-                  label: const Text('They are back home'),
+                  label: const Text('Mark as back home'),
                 ),
               const SizedBox(height: MzaziSpace.s32),
               // The value first and the change beside the label, the way a settings page
@@ -292,14 +285,14 @@ class _ElderScreenState extends State<ElderScreen> {
                 trailing: elder.canEdit && !elder.withheld.contains('location')
                     ? TextButton(
                         onPressed: _busy ? null : () => unawaited(_changeHome()),
-                        child: const Text('Change their home'),
+                        child: const Text('Change home'),
                       )
                     : null,
               ),
               _Fact(
                 elder.withheld.contains('location')
-                    ? 'Not shared, at their request'
-                    : elder.home?.label ?? 'No home recorded',
+                    ? 'Hidden at their request'
+                    : elder.home?.label ?? 'No home address yet',
               ),
               const SizedBox(height: MzaziSpace.s16),
               SectionLabel(
@@ -315,10 +308,10 @@ class _ElderScreenState extends State<ElderScreen> {
               ),
               _Fact(elder.careLevel?.label ?? 'Not sure'),
               const SizedBox(height: MzaziSpace.s16),
-              const SectionLabel('Who is asked, in order'),
+              const SectionLabel('Who we ask, in order'),
               const SizedBox(height: MzaziSpace.s12),
               Text(
-                'An emergency responder near the alert is asked last, chosen by area.',
+                'Last, we ask an emergency responder near them.',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: MzaziSpace.s8),
@@ -359,8 +352,7 @@ class _ElderScreenState extends State<ElderScreen> {
                 const SizedBox(height: MzaziSpace.s32),
                 const SectionLabel('Their phone'),
                 const _Fact(
-                  'Signed out, or a new phone? Sign it in with a code from here, with no '
-                  'password to remember.',
+                  'New phone or signed out? Sign them in with a code. No password needed.',
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -388,14 +380,14 @@ class _ElderScreenState extends State<ElderScreen> {
   /// What somebody is, and, where several people share their place, that they are asked
   /// at the same moment rather than one after another.
   static String _placeLabel(ChainPlace place, {required int together}) {
-    if (place.isInvited) return 'Invited. Their place is held until they sign up.';
+    if (place.isInvited) return 'Invited. Waiting for them to sign up.';
     final String role = switch (place.role) {
       Role.caregiver => 'Caregiver',
       Role.familyMember => 'Family',
       Role.emergencyResponder => 'Emergency responder',
       _ => '',
     };
-    return together > 1 && role.isNotEmpty ? '$role, asked together' : role;
+    return together > 1 && role.isNotEmpty ? '$role · asked together' : role;
   }
 }
 
@@ -435,7 +427,7 @@ class _ChainRow extends StatelessWidget {
             child: Text(
               '${place.tier}',
               style: theme.textTheme.titleLarge?.figures,
-              semanticsLabel: 'Tier ${place.tier}',
+              semanticsLabel: 'Group ${place.tier}',
             ),
           ),
           Expanded(
@@ -452,7 +444,7 @@ class _ChainRow extends StatelessWidget {
             IconButton(
               onPressed: onRemove,
               icon: const Icon(Icons.person_remove_outlined),
-              tooltip: place.isInvited ? 'Withdraw the invitation' : 'Remove ${place.name}',
+              tooltip: place.isInvited ? 'Cancel invite' : 'Remove ${place.name}',
             )
           else if (place.isInvited)
             Padding(
@@ -611,8 +603,8 @@ class _AddFamilySheetState extends State<_AddFamilySheet> {
             Text('Add a family member', style: theme.textTheme.titleLarge),
             const SizedBox(height: MzaziSpace.s8),
             Text(
-              'They are asked, with the rest of the family, if the caregiver does not answer. '
-              'They will get an SMS saying you added them.',
+              'We ask them, with the rest of the family, if the caregiver does not answer. '
+              "We'll text them to say you added them.",
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: MzaziSpace.s16),
@@ -638,7 +630,7 @@ class _AddFamilySheetState extends State<_AddFamilySheet> {
             FilledButton.icon(
               onPressed: _busy ? null : () => unawaited(_submit()),
               icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: Text(_busy ? 'Adding' : 'Add them'),
+              label: Text(_busy ? 'Adding…' : 'Add'),
             ),
           ],
         ),

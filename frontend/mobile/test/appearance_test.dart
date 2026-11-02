@@ -45,7 +45,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Same as this phone'), findsOneWidget);
+      expect(find.text('Automatic'), findsOneWidget);
       expect(find.byIcon(Icons.check), findsOneWidget);
 
       await tester.tap(find.text('Light'));
@@ -66,7 +66,7 @@ void main() {
         ),
       );
 
-      for (final String label in <String>['Same as this phone', 'Light', 'Dark']) {
+      for (final String label in <String>['Automatic', 'Light', 'Dark']) {
         final Size row = tester.getSize(
           find.ancestor(of: find.text(label), matching: find.byType(ListTile)),
         );

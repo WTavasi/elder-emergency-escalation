@@ -83,7 +83,7 @@ void main() {
   ) async {
     await pump(tester, (_) => json(<String, dynamic>{}));
 
-    expect(find.text('My account'), findsOneWidget);
+    expect(find.text('Me'), findsOneWidget);
     expect(find.text('Caregiver'), findsOneWidget);
     expect(find.text('+254700000020'), findsOneWidget);
     // Nothing to save until something changes.
@@ -107,7 +107,7 @@ void main() {
         tester.getTopLeft(find.ancestor(of: text, matching: find.byType(InputDecorator)).first).dy;
     expect(into(find.text('+254700000020')), into(find.text('Mary Otieno').last));
     expect(
-      into(find.text('You sign in with this number. Changing it needs a code.')),
+      into(find.text("You sign in with this number. We'll text a code to change it.")),
       into(find.text('At least 8 characters')),
     );
 
@@ -139,7 +139,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Asked first for Grace Wanjiru'), findsOneWidget);
-    expect(find.text('You have answered 3 emergencies.'), findsOneWidget);
+    expect(find.text("You've helped with 3 emergencies."), findsOneWidget);
     expect(find.text('You usually answer in about 2 minutes.'), findsOneWidget);
     expect(find.text('Last answered on 9 October 2026.'), findsOneWidget);
   });
@@ -174,8 +174,8 @@ void main() {
     expect(seen.first.path, '/api/v1/auth/me/phone/code');
     expect(seen.first.body, <String, dynamic>{'phone': '+254711000111', 'password': 'Dev!2026'});
 
-    await tester.enterText(find.widgetWithText(TextFormField, 'Six-digit code'), '123456');
-    await tester.tap(find.text('Change my number'));
+    await tester.enterText(find.widgetWithText(TextFormField, '6-digit code'), '123456');
+    await tester.tap(find.text('Change number'));
     await tester.pump();
     // The page closes, which stops its countdown, and then the profile can settle.
     await tester.pump(const Duration(seconds: 1));
@@ -205,12 +205,12 @@ void main() {
     await tester.pumpAndSettle();
     final AuthController auth = tester.element(find.byType(ProfileScreen)).read<AuthController>();
 
-    await tester.tap(find.text('Sign out of this phone'));
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign out of this phone?'), findsOneWidget);
+    expect(find.text('Sign out?'), findsOneWidget);
     // Said for a caregiver: what they will miss, and how they will still be reached.
-    expect(find.textContaining('you will be sent a text instead'), findsOneWidget);
+    expect(find.textContaining("We'll text you instead"), findsOneWidget);
     await tester.tap(find.text('Stay signed in'));
     await tester.pumpAndSettle();
 
@@ -231,9 +231,10 @@ void main() {
     await tester.pumpAndSettle();
     final AuthController auth = tester.element(find.byType(ProfileScreen)).read<AuthController>();
 
-    await tester.tap(find.text('Sign out of this phone'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+    // The sheet's own Sign out, over the page's.
+    await tester.tap(find.text('Sign out').last);
     await tester.pumpAndSettle();
 
     expect(auth.isSignedIn, isFalse);
@@ -306,7 +307,7 @@ void main() {
       'currentPassword': 'Dev!2026',
       'newPassword': 'Another!2026',
     });
-    expect(find.textContaining('will be signed out'), findsOneWidget);
+    expect(find.textContaining('Other phones are signed out'), findsOneWidget);
   });
 
   group('share my way there', () {
@@ -338,7 +339,7 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      final Finder toggle = find.widgetWithText(SwitchListTile, 'Share my way there');
+      final Finder toggle = find.widgetWithText(SwitchListTile, 'Share live location');
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
 
       await tester.tap(toggle);
@@ -360,7 +361,7 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Share my way there'));
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Share live location'));
       await tester.pumpAndSettle();
 
       // Apple's pattern: one way on, called Continue, and the phone asks only after it.
@@ -381,11 +382,11 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Share my way there'));
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Share live location'));
       await tester.pumpAndSettle();
 
       expect(t.patches, isEmpty);
-      expect(find.textContaining('phone settings'), findsOneWidget);
+      expect(find.textContaining('in Settings'), findsOneWidget);
       expect(find.text('Open settings'), findsOneWidget);
       t.way.dispose();
     });

@@ -56,9 +56,9 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   String _status(VoiceCall call) => switch (call.status) {
-    CallStatus.idle || CallStatus.connecting => 'Connecting',
+    CallStatus.idle || CallStatus.connecting => 'Connecting…',
     CallStatus.waiting => 'Waiting for $_first to join',
-    CallStatus.talking => 'On the call with ${call.others.join(' and ')}',
+    CallStatus.talking => 'On a call with ${call.others.join(' and ')}',
     CallStatus.ended => 'Call ended',
     CallStatus.failed => 'Not connected',
   };
@@ -118,13 +118,12 @@ class _CallScreenState extends State<CallScreen> {
                   // The one thing worth knowing before speaking: who hears it, and how.
                   if (call.status == CallStatus.waiting || call.status == CallStatus.talking)
                     Text(
-                      '$_first hears you on the phone\'s speaker if MzaziCare is open on it. '
-                      'Say who you are first.',
+                      'Say who you are first. $_first hears you on speaker if MzaziCare is open.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium,
                     ),
                   if (call.status == CallStatus.failed) ...<Widget>[
-                    Notice(message: call.error ?? 'The call could not connect.', isError: true),
+                    Notice(message: call.error ?? 'Could not connect the call.', isError: true),
                     const SizedBox(height: MzaziSpace.s16),
                     FilledButton(
                       onPressed: () => unawaited(call.join()),

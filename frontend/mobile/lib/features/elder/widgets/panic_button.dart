@@ -55,7 +55,7 @@ class PanicButton extends StatelessWidget {
             enabled: enabled,
             // Spelled out for a screen reader, because "Get help" beside a red circle
             // reads very differently from "Get help" alone.
-            label: 'Get help now. Alerts the people who look after you.',
+            label: 'Get help. Alerts your family right away.',
             child: OverflowBox(
               minWidth: diameter,
               maxWidth: diameter,

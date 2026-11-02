@@ -157,9 +157,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const StepHeading(
             step: 1,
             title: 'Create your account',
-            lead:
-                'For caregivers, family and volunteers. An elder is registered by their '
-                'caregiver.',
+            lead: 'For caregivers, family and volunteers. Elders: your caregiver signs you up.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           Text('I am', style: theme.textTheme.titleMedium),
@@ -180,17 +178,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
             onSelectionChanged: (Set<Role> chosen) => setState(() => _role = chosen.first),
           ),
           const SizedBox(height: MzaziSpace.s8),
-          Text(
-            switch (_role) {
-              Role.caregiver =>
-                'You look after somebody day to day and will be asked first. You can register them once your account exists.',
-              Role.communityResponder =>
-                'You can be asked to help older people living near you. You apply once your account exists, and nobody asks you anything until an administrator approves it.',
-              _ =>
-                'A caregiver adds you to the person you are family to. Sign up with the number they used.',
-            },
-            style: theme.textTheme.bodySmall,
-          ),
+          Text(switch (_role) {
+            Role.caregiver =>
+              'You look after someone day to day. We ask you first. Add them after you sign up.',
+            Role.communityResponder => "Help older people near you. Apply after you sign up. We only ask you once you're approved.",
+            _ => "Your relative's caregiver adds you. Sign up with the number they used.",
+          }, style: theme.textTheme.bodySmall),
           const SizedBox(height: MzaziSpace.s24),
           TextFormField(
             controller: _name,
@@ -215,7 +208,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const SizedBox(height: MzaziSpace.s32),
           FilledButton(
             onPressed: _requesting ? null : () => unawaited(_sendCode()),
-            child: Text(_requesting ? 'Sending' : 'Agree and send a code'),
+            child: Text(_requesting ? 'Sending…' : 'Agree and send a code'),
           ),
           const SizedBox(height: MzaziSpace.s16),
           const _SmallPrint(),
@@ -236,10 +229,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         children: <Widget>[
           StepHeading(
             step: 2,
-            title: 'Check your messages',
-            lead:
-                'If $_sentTo can receive it, a six-digit code is on its way by SMS. It works '
-                'for 10 minutes.',
+            title: 'Check your texts',
+            lead: "We've sent a text to $_sentTo. The code expires in 10 minutes.",
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -260,9 +251,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
-            decoration: const InputDecoration(labelText: 'Six-digit code'),
-            validator: (String? value) =>
-                (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
+            decoration: const InputDecoration(labelText: '6-digit code'),
+            validator: (String? value) => (value?.length ?? 0) == 6 ? null : 'Enter all 6 digits.',
           ),
           const SizedBox(height: MzaziSpace.s16),
           PasswordField(
@@ -277,7 +267,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const SizedBox(height: MzaziSpace.s32),
           FilledButton(
             onPressed: auth.isBusy ? null : () => unawaited(_create()),
-            child: Text(auth.isBusy ? 'Creating your account' : 'Create my account'),
+            child: Text(auth.isBusy ? 'Creating account…' : 'Create account'),
           ),
           const SizedBox(height: MzaziSpace.s8),
           Wrap(
@@ -286,9 +276,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: <Widget>[
               TextButton(
                 onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
-                child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+                child: Text(_cooldown > 0 ? 'Resend code in $_cooldown s' : 'Resend code'),
               ),
-              TextButton(onPressed: _changeDetails, child: const Text('Change my details')),
+              TextButton(onPressed: _changeDetails, child: const Text('Edit details')),
             ],
           ),
         ],
@@ -336,11 +326,11 @@ class _SmallPrintState extends State<_SmallPrint> {
       TextSpan(
         style: base,
         children: <InlineSpan>[
-          const TextSpan(text: 'By continuing you agree to the '),
+          const TextSpan(text: 'By continuing, you agree to the '),
           TextSpan(text: 'terms of use', style: link, recognizer: _terms),
-          const TextSpan(text: ' and confirm you have read the '),
+          const TextSpan(text: " and confirm you've read the "),
           TextSpan(text: 'privacy notice', style: link, recognizer: _privacy),
-          const TextSpan(text: ', which says what MzaziCare keeps about you.'),
+          const TextSpan(text: '.'),
         ],
       ),
       textAlign: TextAlign.center,

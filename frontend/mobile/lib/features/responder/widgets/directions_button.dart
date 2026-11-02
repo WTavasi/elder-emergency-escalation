@@ -64,7 +64,7 @@ class DirectionsButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('No maps app could be opened. Search for this place instead:'),
+          const Text('Could not open maps. Search for this place:'),
           const SizedBox(height: MzaziSpace.s12),
           SelectableText(
             addressLabel ?? '$latitude, $longitude',

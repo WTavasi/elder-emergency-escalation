@@ -222,7 +222,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Nobody asks you anything until you are approved'), findsOneWidget);
+      expect(find.textContaining("We only ask you once you're approved"), findsOneWidget);
       await tester.tap(find.text('Apply to volunteer'));
       expect(opened, isTrue);
       // Nothing to list, so nothing was asked for.
@@ -241,13 +241,13 @@ void main() {
 
       expect(find.text('Someone about 300 m away'), findsOneWidget);
       expect(find.text('Urgent'), findsOneWidget);
-      expect(find.text('Nobody will ask you until you turn this on.'), findsOneWidget);
+      expect(find.text('Turn this on to get requests.'), findsOneWidget);
 
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
 
       expect(server.sent.last, <String, dynamic>{'available': true});
-      expect(find.textContaining('You can be asked when someone near Kileleshwa'), findsOneWidget);
+      expect(find.textContaining('We may ask you when someone near Kileleshwa'), findsOneWidget);
     });
   });
 
@@ -277,7 +277,7 @@ void main() {
       expect(find.text('Grace Wanjiru'), findsOneWidget);
       expect(find.text('Kileleshwa, Nairobi'), findsOneWidget);
       expect(find.text('Get directions'), findsOneWidget);
-      expect(find.text('Swipe when you are with Grace'), findsOneWidget);
+      expect(find.text("Swipe when you're with Grace"), findsOneWidget);
       expect(find.text('I can no longer go'), findsOneWidget);
     });
 
@@ -294,7 +294,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(server.asked('POST', '/volunteer/calls/event-1/decline'), 1);
-      expect(find.text('You said you cannot go'), findsOneWidget);
+      expect(find.text('You said no'), findsOneWidget);
       // Changing their mind is still possible while nobody else has gone.
       expect(find.text('I can go'), findsOneWidget);
     });
@@ -311,7 +311,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('This emergency is over'), findsOneWidget);
+      expect(find.text('This emergency has ended'), findsOneWidget);
       expect(find.textContaining('Grace'), findsNothing);
     });
   });
@@ -327,7 +327,7 @@ void main() {
       await tester.pumpWidget(_withVolunteer(controller, VolunteeringScreen(api: server.api)));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Send my application'));
+      await tester.tap(find.text('Send application'));
       await tester.pumpAndSettle();
 
       expect(find.text('Choose at least one.'), findsOneWidget);
@@ -346,7 +346,7 @@ void main() {
 
       await tester.tap(find.text('CPR'));
       await tester.pump();
-      await tester.tap(find.text('Send it again'));
+      await tester.tap(find.text('Send again'));
       await tester.pumpAndSettle();
 
       final Map<String, dynamic> body = server.sent.last;
@@ -446,7 +446,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Joseph Kamau, a vetted community volunteer about 300 m away, is on the way.'),
+        find.text('Joseph Kamau, a checked volunteer about 300 m away, is on the way.'),
         findsOneWidget,
       );
       expect(find.text('Call Joseph'), findsOneWidget);

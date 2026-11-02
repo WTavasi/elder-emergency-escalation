@@ -97,9 +97,9 @@ class DevicePositionSource implements PositionSource {
       accuracy: LocationAccuracy.high,
       intervalDuration: const Duration(seconds: 10),
       foregroundNotificationConfig: const ForegroundNotificationConfig(
-        notificationTitle: 'Sharing your way there',
-        notificationText: 'MzaziCare stops sharing your location when you arrive.',
-        notificationChannelName: 'Sharing your way there',
+        notificationTitle: 'Sharing live location',
+        notificationText: 'Stops when you arrive.',
+        notificationChannelName: 'Sharing live location',
         setOngoing: true,
       ),
     ),

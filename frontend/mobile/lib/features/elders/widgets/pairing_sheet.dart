@@ -15,7 +15,12 @@ import '../../../core/widgets/notice.dart';
 /// the whole job. On the elder's phone: Elder? Sign in with a code, their number, then
 /// this code.
 class PairingSheet extends StatefulWidget {
-  const PairingSheet({required this.api, required this.elderId, required this.elderName, super.key});
+  const PairingSheet({
+    required this.api,
+    required this.elderId,
+    required this.elderName,
+    super.key,
+  });
 
   final ApiClient api;
   final String elderId;
@@ -86,7 +91,12 @@ class _PairingSheetState extends State<PairingSheet> {
     final int seconds = _left.inSeconds % 60;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(MzaziSpace.s24, MzaziSpace.s8, MzaziSpace.s24, MzaziSpace.s24),
+      padding: const EdgeInsets.fromLTRB(
+        MzaziSpace.s24,
+        MzaziSpace.s8,
+        MzaziSpace.s24,
+        MzaziSpace.s24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,8 +104,8 @@ class _PairingSheetState extends State<PairingSheet> {
           Text('Sign in $_first\'s phone', style: theme.textTheme.titleLarge),
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            'On $_first\'s phone, choose "Elder? Sign in with a code", type their number, '
-            'then this code. It works once.',
+            "On $_first's phone, tap Sign in with a code, enter their number, then this code. "
+            'It works once.',
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: MzaziSpace.s24),
@@ -124,8 +134,8 @@ class _PairingSheetState extends State<PairingSheet> {
             const SizedBox(height: MzaziSpace.s8),
             Text(
               expired
-                  ? 'This code has expired.'
-                  : 'Works for $minutes:${seconds.toString().padLeft(2, '0')} more',
+                  ? 'Get a new code to continue.'
+                  : 'Expires in $minutes:${seconds.toString().padLeft(2, '0')}',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],

@@ -160,9 +160,9 @@ class _ElderCallState extends State<ElderCall> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('$_who is joining to talk to you', style: theme.textTheme.titleLarge),
+          Text('$_who is calling you', style: theme.textTheme.titleLarge),
           const SizedBox(height: MzaziSpace.s8),
-          Text('Your phone will use its speaker.', style: theme.textTheme.bodyLarge),
+          Text("You'll hear them on speaker.", style: theme.textTheme.bodyLarge),
           const SizedBox(height: MzaziSpace.s12),
           ConstrainedBox(
             constraints: elderTarget,
@@ -178,11 +178,11 @@ class _ElderCallState extends State<ElderCall> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
-            connecting ? 'Connecting to $_who' : 'Talking with $_who',
+            connecting ? 'Connecting to $_who' : 'On a call with $_who',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: MzaziSpace.s8),
-          Text('You are on speaker. Speak normally.', style: theme.textTheme.bodyLarge),
+          Text("You're on speaker. Speak normally.", style: theme.textTheme.bodyLarge),
           const SizedBox(height: MzaziSpace.s12),
           ConstrainedBox(
             constraints: elderTarget,
@@ -204,7 +204,7 @@ class _ElderCallState extends State<ElderCall> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (call?.status == CallStatus.failed) ...<Widget>[
-          Notice(message: call?.error ?? 'The call could not connect.', isError: true),
+          Notice(message: call?.error ?? 'Could not connect the call.', isError: true),
           const SizedBox(height: MzaziSpace.s12),
         ],
         ConstrainedBox(

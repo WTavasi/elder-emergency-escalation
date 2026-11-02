@@ -111,7 +111,7 @@ class AppearancePicker extends StatelessWidget {
   final AppearanceController controller;
 
   static const List<(ThemeMode, String, IconData)> _choices = <(ThemeMode, String, IconData)>[
-    (ThemeMode.system, 'Same as this phone', Icons.smartphone_outlined),
+    (ThemeMode.system, 'Automatic', Icons.smartphone_outlined),
     (ThemeMode.light, 'Light', Icons.light_mode_outlined),
     (ThemeMode.dark, 'Dark', Icons.dark_mode_outlined),
   ];

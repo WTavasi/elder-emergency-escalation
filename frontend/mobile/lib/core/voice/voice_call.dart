@@ -94,7 +94,7 @@ class VoiceCall extends ChangeNotifier {
         ..add(
           room.dropped.listen((void _) {
             unawaited(_teardown());
-            _set(CallStatus.failed, error: 'The call dropped. You can join it again.');
+            _set(CallStatus.failed, error: 'Call dropped. Join again.');
           }),
         );
       await room.connect(access.url, access.token);
@@ -114,10 +114,7 @@ class VoiceCall extends ChangeNotifier {
       // The room itself refused or could not be reached, or the microphone was not
       // allowed. Said plainly, with the way out: ringing is always there.
       await _teardown();
-      _set(
-        CallStatus.failed,
-        error: 'The call could not connect. Check the microphone is allowed, or ring instead.',
-      );
+      _set(CallStatus.failed, error: 'Could not connect. Allow the microphone, or call by phone.');
     }
   }
 
@@ -151,8 +148,9 @@ class VoiceCall extends ChangeNotifier {
   Future<void> _teardown() async {
     final VoiceRoom? room = _room;
     _room = null;
-    final List<StreamSubscription<Object?>> listening =
-        List<StreamSubscription<Object?>>.of(_subscriptions);
+    final List<StreamSubscription<Object?>> listening = List<StreamSubscription<Object?>>.of(
+      _subscriptions,
+    );
     _subscriptions.clear();
     _others = const <String>[];
     _since = null;

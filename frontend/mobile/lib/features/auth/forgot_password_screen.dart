@@ -140,8 +140,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: <Widget>[
           const StepHeading(
             step: 1,
-            title: 'Forgot your password?',
-            lead: 'We will send a code by SMS to the number on your account.',
+            title: 'Reset your password',
+            lead: "We'll text a code to the number on your account.",
           ),
           const SizedBox(height: MzaziSpace.s24),
           PhoneField(
@@ -156,7 +156,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: MzaziSpace.s24),
           FilledButton(
             onPressed: _requesting ? null : () => unawaited(_sendCode()),
-            child: Text(_requesting ? 'Sending' : 'Send me a code'),
+            child: Text(_requesting ? 'Sending…' : 'Send me a code'),
           ),
         ],
       ),
@@ -177,8 +177,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             step: 2,
             title: 'Choose a new password',
             lead:
-                'If $_sentTo has an account, a six-digit code is on its way by SMS. '
-                'It works for 10 minutes.',
+                "If $_sentTo has an account, we've texted it a 6-digit code. "
+                'It expires in 10 minutes.',
           ),
           const SizedBox(height: MzaziSpace.s24),
           if (error != null) ...<Widget>[
@@ -199,9 +199,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               fontFeatures: MzaziTheme.figures,
               letterSpacing: 8,
             ),
-            decoration: const InputDecoration(labelText: 'Six-digit code'),
-            validator: (String? value) =>
-                (value?.length ?? 0) == 6 ? null : 'The code has six digits.',
+            decoration: const InputDecoration(labelText: '6-digit code'),
+            validator: (String? value) => (value?.length ?? 0) == 6 ? null : 'Enter all 6 digits.',
           ),
           const SizedBox(height: MzaziSpace.s16),
           PasswordField(
@@ -216,7 +215,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: MzaziSpace.s24),
           FilledButton(
             onPressed: auth.isBusy ? null : () => unawaited(_reset()),
-            child: Text(auth.isBusy ? 'Saving' : 'Set my new password'),
+            child: Text(auth.isBusy ? 'Saving…' : 'Save new password'),
           ),
           const SizedBox(height: MzaziSpace.s8),
           Wrap(
@@ -225,7 +224,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             children: <Widget>[
               TextButton(
                 onPressed: _cooldown > 0 || _requesting ? null : () => unawaited(_sendCode()),
-                child: Text(_cooldown > 0 ? 'Send a new code in $_cooldown s' : 'Send a new code'),
+                child: Text(_cooldown > 0 ? 'Resend code in $_cooldown s' : 'Resend code'),
               ),
               TextButton(onPressed: _changeNumber, child: const Text('Use a different number')),
             ],

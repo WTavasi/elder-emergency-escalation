@@ -40,7 +40,7 @@ PhoneReading readPhone(Country country, String typed) {
     final String full = '+$digits';
     return _e164.hasMatch(full)
         ? PhoneReading._(full, null)
-        : const PhoneReading._(null, 'That does not look like a full international number.');
+        : const PhoneReading._(null, 'Enter the full number with the country code.');
   }
 
   if (country.trunk.isNotEmpty &&
@@ -50,14 +50,14 @@ PhoneReading readPhone(Country country, String typed) {
   }
 
   if (digits.length < country.minLength) {
-    return PhoneReading._(null, 'That number is too short for ${country.name}.');
+    return PhoneReading._(null, 'Too short for a ${country.name} number.');
   }
   if (digits.length > country.maxLength) {
-    return PhoneReading._(null, 'That number is too long for ${country.name}.');
+    return PhoneReading._(null, 'Too long for a ${country.name} number.');
   }
 
   final String full = '+${country.dial}$digits';
   return _e164.hasMatch(full)
       ? PhoneReading._(full, null)
-      : PhoneReading._(null, 'That does not look like a ${country.name} number.');
+      : PhoneReading._(null, 'Not a valid ${country.name} number.');
 }

@@ -120,7 +120,7 @@ class _ConsoleOnly extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  'Administrators work from the web console, not the app.',
+                  'Administrators use the web console, not this app.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),

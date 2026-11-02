@@ -15,7 +15,7 @@ Future<void> confirmSignOut(BuildContext context, {required String message}) asy
   final AuthController auth = context.read<AuthController>();
   final bool? sure = await showActionSheet<bool>(
     context,
-    title: 'Sign out of this phone?',
+    title: 'Sign out?',
     message: message,
     actions: const <SheetAction<bool>>[
       SheetAction<bool>('Sign out', true, icon: Icons.logout, destructive: true),

@@ -43,8 +43,8 @@ void main() {
     final SemanticsHandle semantics = tester.ensureSemantics();
     await show(tester, emergency());
 
-    expect(find.text('Help is on the way'), findsOneWidget);
-    expect(find.bySemanticsLabel('Step 1 of 3, Told'), findsOneWidget);
+    expect(find.text("We've told your family"), findsOneWidget);
+    expect(find.bySemanticsLabel('Step 1 of 3, Sent'), findsOneWidget);
     semantics.dispose();
   });
 
@@ -87,7 +87,7 @@ void main() {
     await show(tester, emergency(owned: true, eta: 540));
 
     // Every label on one line: no taller than a single line of its own style.
-    for (final String step in <String>['Told', 'Coming', 'Here']) {
+    for (final String step in <String>['Sent', 'Coming', 'Here']) {
       final Text label = tester.widget<Text>(find.text(step));
       expect(label.maxLines, 1, reason: '$step may wrap');
     }

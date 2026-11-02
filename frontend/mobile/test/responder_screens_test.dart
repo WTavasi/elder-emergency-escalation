@@ -51,9 +51,9 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await tester.pumpAndSettle();
 
-    expect(find.text('I am on my way'), findsOneWidget);
+    expect(find.text("I'm on my way"), findsOneWidget);
     expect(find.text('I cannot come'), findsOneWidget);
-    expect(find.text('Close this emergency'), findsNothing);
+    expect(find.text('Close emergency'), findsNothing);
 
     controller.dispose();
   });
@@ -80,10 +80,10 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    expect(find.text('Close this emergency'), findsOneWidget);
-    expect(find.text('Call an emergency responder'), findsOneWidget);
-    expect(find.text('I am on my way'), findsNothing);
-    expect(find.text('Peter Mwangi is responding.'), findsOneWidget);
+    expect(find.text('Close emergency'), findsOneWidget);
+    expect(find.text('Ask for an emergency responder'), findsOneWidget);
+    expect(find.text("I'm on my way"), findsNothing);
+    expect(find.text('Peter Mwangi is on the way.'), findsOneWidget);
 
     controller.dispose();
   });
@@ -99,8 +99,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('This emergency is closed. Nothing more to do.'), findsOneWidget);
-    expect(find.text('I am on my way'), findsNothing);
+    expect(find.text('Emergency closed. Nothing more to do.'), findsOneWidget);
+    expect(find.text("I'm on my way"), findsNothing);
 
     controller.dispose();
   });
@@ -122,7 +122,7 @@ void main() {
     expect(find.text('Away from home'), findsNothing);
 
     // The band stays, because it is what says who to attend to first.
-    expect(find.text('Elevated severity'), findsOneWidget);
+    expect(find.text('High'), findsOneWidget);
 
     controller.dispose();
   });
@@ -186,10 +186,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Grace Wanjiru asked for help'), findsOneWidget);
-    expect(find.text('when the alert was raised'), findsOneWidget);
+    expect(find.text('at the start'), findsOneWidget);
 
     // The escalation names the person it moved on to, taken from the chain.
-    expect(find.text('Nobody answered in time, so it moved on to Aisha Otieno'), findsOneWidget);
+    expect(find.text('No answer in time. Now asking Aisha Otieno'), findsOneWidget);
     expect(find.text('Sent to Peter Mwangi'), findsOneWidget);
 
     // The scoring entry is dropped rather than translated: it is the system talking to
@@ -198,7 +198,7 @@ void main() {
     expect(find.text('2 minutes after the alert'), findsOneWidget);
 
     // And none of the enum names survive.
-    expect(find.text('Escalated'), findsNothing);
+    expect(find.text('Moved on'), findsNothing);
     expect(find.text('Triggered'), findsNothing);
     expect(find.textContaining('+120s'), findsNothing);
 
@@ -223,7 +223,7 @@ void main() {
     expect(find.text('Cannot come?'), findsOneWidget);
     expect(posts, 0);
 
-    await tester.tap(find.text('Never mind'));
+    await tester.tap(find.text('Go back'));
     await tester.pumpAndSettle();
     expect(posts, 0);
 
@@ -252,7 +252,7 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Close this emergency'));
+    await tester.tap(find.text('Close emergency'));
     await tester.pumpAndSettle();
 
     expect(find.text('How did it end?'), findsOneWidget);
@@ -297,7 +297,7 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Close this emergency'));
+    await tester.tap(find.text('Close emergency'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Something else'));
     // pump rather than pumpAndSettle from here on. The field autofocuses and a focused
@@ -312,7 +312,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(posts, 0);
-    expect(find.text('Say briefly what happened.'), findsOneWidget);
+    expect(find.text('Add a few words about what happened.'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'She locked herself out');
     await tester.tap(find.widgetWithText(FilledButton, 'Save and close'));
@@ -344,11 +344,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Call Grace'), findsOneWidget);
-      expect(find.text('Call an emergency responder'), findsOneWidget);
+      expect(find.text('Ask for an emergency responder'), findsOneWidget);
 
       // Side by side means the same row, so the same vertical position.
       final double callY = tester.getCenter(find.text('Call Grace')).dy;
-      final double responderY = tester.getCenter(find.text('Call an emergency responder')).dy;
+      final double responderY = tester.getCenter(find.text('Ask for an emergency responder')).dy;
       expect((callY - responderY).abs(), lessThan(24));
 
       controller.dispose();
@@ -396,7 +396,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Ringing her before deciding whether to set off is the most natural first move.
-      expect(find.text('I am on my way'), findsOneWidget);
+      expect(find.text("I'm on my way"), findsOneWidget);
       expect(find.text('Call Grace'), findsOneWidget);
 
       controller.dispose();
@@ -469,7 +469,7 @@ void main() {
       // Not a button that silently does nothing. The number, selectable, to dial by hand.
       expect(opened, isFalse);
       expect(
-        find.text('This device cannot place calls. Dial this number from a phone:'),
+        find.text('This device cannot make calls. Call this number from a phone:'),
         findsOneWidget,
       );
       // Matched on the widget itself: SelectableText renders through an editable field
@@ -502,7 +502,7 @@ void main() {
 
       expect(find.textContaining('Call Grace'), findsNothing);
       // The responder button still has the row to itself.
-      expect(find.text('Call an emergency responder'), findsOneWidget);
+      expect(find.text('Ask for an emergency responder'), findsOneWidget);
 
       controller.dispose();
     });
@@ -550,7 +550,7 @@ void main() {
     );
 
     final Map<String, Finder> controls = <String, Finder>{
-      'I am on my way': button('I am on my way'),
+      "I'm on my way": button("I'm on my way"),
       'I cannot come': button('I cannot come'),
       'Call Grace': button('Call Grace'),
     };
@@ -605,9 +605,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Swipe when you are with Grace'), findsOneWidget);
+      expect(find.text("Swipe when you're with Grace"), findsOneWidget);
       // Closing is still possible on the way, a step back from arriving.
-      expect(find.text('Close this emergency'), findsOneWidget);
+      expect(find.text('Close emergency'), findsOneWidget);
 
       await tester.drag(find.byIcon(Icons.arrow_forward), const Offset(2000, 0));
       await tester.pumpAndSettle();
@@ -615,8 +615,8 @@ void main() {
 
       expect(t.calls.map((Exchange e) => e.path), contains('/api/v1/alerts/event-1/arrived'));
       expect(find.text('Peter Mwangi arrived just now.'), findsOneWidget);
-      expect(find.text('Help arrived'), findsOneWidget);
-      expect(find.text('Swipe when you are with Grace'), findsNothing);
+      expect(find.text('Help is there'), findsOneWidget);
+      expect(find.text("Swipe when you're with Grace"), findsNothing);
 
       controller.dispose();
     });
@@ -659,7 +659,7 @@ void main() {
       expect(find.text('Peter is about 9 minutes away'), findsOneWidget);
       expect(find.text('4.2 km by road, updated just now.'), findsOneWidget);
       // Not theirs, so nothing to swipe.
-      expect(find.text('Swipe when you are with Grace'), findsNothing);
+      expect(find.text("Swipe when you're with Grace"), findsNothing);
 
       await tester.ensureVisible(find.text('See where Peter is'));
       await tester.tap(find.text('See where Peter is'));
@@ -732,7 +732,7 @@ void main() {
 
       await tester.tap(stopOnPage);
       await tester.pumpAndSettle();
-      expect(find.text('Stop sharing your way there?'), findsOneWidget);
+      expect(find.text('Stop sharing location?'), findsOneWidget);
 
       await tester.tap(find.text('Keep sharing'));
       await tester.pumpAndSettle();
@@ -753,7 +753,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(t.way.isSharingFor('event-1'), isFalse);
-      expect(find.text('Share my way there'), findsOneWidget);
+      expect(find.text('Share live location'), findsOneWidget);
       await finish(tester, t);
     });
 
@@ -839,7 +839,7 @@ void main() {
         _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Peter has started a call.'), findsOneWidget);
+      expect(find.text('Peter started a call.'), findsOneWidget);
 
       await tester.tap(find.text('Talk to Grace'));
       // Not pumpAndSettle: the call screen redraws its timer every second while the
@@ -854,7 +854,7 @@ void main() {
 
       room.present(<String>['Grace']);
       await tester.pump();
-      expect(find.text('On the call with Grace'), findsOneWidget);
+      expect(find.text('On a call with Grace'), findsOneWidget);
 
       await tester.tap(find.byTooltip('End'));
       await tester.pumpAndSettle();

@@ -49,7 +49,7 @@ void main() {
   ) async {
     final ({FakeVoiceRoom room, List<Exchange> calls}) t = await show(tester, emergency());
 
-    expect(find.text('Mary is joining to talk to you'), findsOneWidget);
+    expect(find.text('Mary is calling you'), findsOneWidget);
     expect(t.calls, isEmpty);
 
     await tester.pump(const Duration(seconds: 1));
@@ -60,7 +60,7 @@ void main() {
     expect(t.calls.single.path, '/api/v1/alerts/event-1/voice');
     expect(t.room.microphone, isTrue);
     expect(t.room.speaker, isTrue);
-    expect(find.text('Talking with Mary'), findsOneWidget);
+    expect(find.text('On a call with Mary'), findsOneWidget);
     expect(find.text('End call'), findsOneWidget);
 
     // Leaving the screen, which happens when the emergency closes, hangs up.

@@ -112,26 +112,24 @@ class AlertDetailController extends ChangeNotifier {
   }
 
   Future<void> acknowledge() =>
-      _act(() => _api.acknowledge(eventId), 'You are marked as responding.');
+      _act(() => _api.acknowledge(eventId), "Done. We've told the others you're going.");
 
-  Future<void> decline({String? reason}) => _act(
-    () => _api.decline(eventId, reason: reason),
-    'Recorded. The emergency will not wait on you.',
-  );
+  Future<void> decline({String? reason}) =>
+      _act(() => _api.decline(eventId, reason: reason), "Done. We're asking the next person.");
 
   Future<void> resolve(Outcome outcome, {String? note}) => _act(
     () => _api.resolve(eventId, outcome, note: note),
-    'Closed as ${outcome.label.toLowerCase()}.',
+    'Emergency closed: ${outcome.label.toLowerCase()}.',
   );
 
   Future<void> requestResponder() =>
-      _act(() => _api.requestResponder(eventId), 'An emergency responder has been requested.');
+      _act(() => _api.requestResponder(eventId), "We've asked for an emergency responder.");
 
   /// "I'm here." Stops the sharing first: nobody needs the way there once it is over.
   Future<void> arrived() {
     wayThere?.stopFor(eventId);
-    final String elder = _detail?.summary.elderName.split(' ').first ?? 'her';
-    return _act(() => _api.arrived(eventId), 'Recorded that you are with $elder.');
+    final String elder = _detail?.summary.elderName.split(' ').first ?? 'them';
+    return _act(() => _api.arrived(eventId), "Saved: you're with $elder.");
   }
 
   /// A call with the elder in this emergency's voice room, not yet joined. The screen

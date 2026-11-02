@@ -272,7 +272,7 @@ void main() {
       expect(t.way.isSharingFor('event-1'), isFalse);
       expect(t.controller.isOnTheWay, isFalse);
       expect(t.controller.detail?.summary.state, EventState.onScene);
-      expect(t.controller.confirmation, 'Recorded that you are with Grace.');
+      expect(t.controller.confirmation, "Saved: you're with Grace.");
       t.controller.dispose();
       t.way.dispose();
     });

@@ -58,7 +58,7 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await tester.pumpWidget(host(const PanicButton(onPressed: _noop, label: 'Get help')));
 
-      expect(find.bySemanticsLabel(RegExp('Get help now')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('Get help. Alerts')), findsOneWidget);
       handle.dispose();
     });
 

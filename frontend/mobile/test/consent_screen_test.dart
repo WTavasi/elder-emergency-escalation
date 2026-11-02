@@ -147,22 +147,22 @@ void main() {
     );
 
     // Section labels are set in capitals; the words a screen reader hears are unchanged.
-    expect(find.text('SHARING WHERE THEY ARE'), findsOneWidget);
+    expect(find.text('SHARING THEIR ADDRESS'), findsOneWidget);
     expect(find.text('Agreed by Mary Otieno on 1 October 2026'), findsNWidgets(3));
 
-    await tester.tap(find.text('Withdraw').first);
+    await tester.tap(find.text('Stop sharing').first);
     await tester.pumpAndSettle();
-    expect(find.text('Keep it'), findsOneWidget);
+    expect(find.text('Keep'), findsOneWidget);
 
-    await tester.tap(find.text('Keep it'));
+    await tester.tap(find.text('Keep'));
     await tester.pumpAndSettle();
     expect(t.bodies, isEmpty);
 
-    // Processing has "Stop MzaziCare", so the first "Withdraw" is location sharing.
-    await tester.tap(find.text('Withdraw').first);
+    // Processing has "Stop MzaziCare", so the first "Stop sharing" is location sharing.
+    await tester.tap(find.text('Stop sharing').first);
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(BottomSheet), matching: find.text('Withdraw')),
+      find.descendant(of: find.byType(BottomSheet), matching: find.text('Stop sharing')),
     );
     await tester.pumpAndSettle();
 
@@ -182,7 +182,7 @@ void main() {
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Stop MzaziCare'));
     await tester.pumpAndSettle();
-    expect(find.text('Stop MzaziCare for you?'), findsOneWidget);
+    expect(find.text('Stop using MzaziCare?'), findsOneWidget);
 
     await tester.tap(
       find.descendant(of: find.byType(BottomSheet), matching: find.text('Stop MzaziCare')),
@@ -197,8 +197,8 @@ void main() {
   testWidgets('a family member can read but not withdraw', (WidgetTester tester) async {
     await pump(tester, audience: ConsentAudience.careCircle, canWithdraw: false);
 
-    expect(find.text('Withdraw'), findsNothing);
+    expect(find.text('Stop sharing'), findsNothing);
     expect(find.text('Stop MzaziCare'), findsNothing);
-    expect(find.text('Only Grace or their caregiver can withdraw these.'), findsOneWidget);
+    expect(find.text('Only Grace or their caregiver can change these.'), findsOneWidget);
   });
 }

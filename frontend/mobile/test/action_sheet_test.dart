@@ -23,7 +23,7 @@ void main() {
               onPressed: () async => answers.add(
                 await showActionSheet<bool>(
                   context,
-                  title: 'Sign out of this phone?',
+                  title: 'Sign out?',
                   message: 'While you are signed out, this phone cannot ask for help.',
                   actions: const <SheetAction<bool>>[
                     SheetAction<bool>('Sign out', true, icon: Icons.logout, destructive: true),
@@ -79,7 +79,7 @@ void main() {
     testWidgets('answers nothing when swiped away', (WidgetTester tester) async {
       final List<bool?> answers = await show(tester);
 
-      await tester.fling(find.text('Sign out of this phone?'), const Offset(0, 600), 2000);
+      await tester.fling(find.text('Sign out?'), const Offset(0, 600), 2000);
       await tester.pumpAndSettle();
 
       expect(find.byType(BottomSheet), findsNothing);

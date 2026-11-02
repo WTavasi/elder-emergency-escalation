@@ -677,15 +677,15 @@ class AlertDetail {
 /// How an emergency ended. The subset a caregiver can choose from: cancellation is the
 /// elder's own path, and no-response is something the system concludes, not a person.
 enum Outcome {
-  handledAtHome('HANDLED_AT_HOME', 'Handled at home', 'Sorted out where she was'),
+  handledAtHome('HANDLED_AT_HOME', 'Handled at home', 'Solved where they were'),
   falseAlarm('FALSE_ALARM', 'False alarm', 'No help was needed'),
   responderAttended(
     'RESPONDER_ATTENDED',
-    'An emergency responder attended',
-    'An ambulance or responder came out',
+    'Emergency responder came',
+    'An ambulance or responder came',
   ),
-  hospitalTransfer('HOSPITAL_TRANSFER', 'Taken to hospital', 'She was moved for treatment'),
-  other('OTHER', 'Something else', 'None of these fit. You will be asked to say what happened');
+  hospitalTransfer('HOSPITAL_TRANSFER', 'Taken to hospital', 'Moved for treatment'),
+  other('OTHER', 'Something else', "You'll describe what happened");
 
   const Outcome(this.wire, this.label, this.hint);
 
@@ -1129,9 +1129,9 @@ class CheckInSchedule {
     final Object? setBy = json['setBy'];
     return CheckInSchedule(
       enabled: json['enabled'] as bool? ?? false,
-      times: (json['times'] as List<dynamic>? ?? const <dynamic>[])
-          .whereType<String>()
-          .toList(growable: false),
+      times: (json['times'] as List<dynamic>? ?? const <dynamic>[]).whereType<String>().toList(
+        growable: false,
+      ),
       graceMinutes: (json['graceMinutes'] as num?)?.toInt() ?? 30,
       waitingForElder: json['waitingForElder'] as bool? ?? false,
       setByName: setBy is Map<String, dynamic> ? setBy['name'] as String? : null,
@@ -1257,8 +1257,10 @@ enum VolunteerStatus {
   const VolunteerStatus(this.wire);
   final String wire;
 
-  static VolunteerStatus parse(Object? value) => VolunteerStatus.values
-      .firstWhere((VolunteerStatus status) => status.wire == value, orElse: () => notApplied);
+  static VolunteerStatus parse(Object? value) => VolunteerStatus.values.firstWhere(
+    (VolunteerStatus status) => status.wire == value,
+    orElse: () => notApplied,
+  );
 }
 
 /// What a volunteer says they can do.
@@ -1273,9 +1275,8 @@ enum VolunteerTraining {
   final String wire;
   final String label;
 
-  static VolunteerTraining? parse(Object? value) => VolunteerTraining.values
-      .where((VolunteerTraining kind) => kind.wire == value)
-      .firstOrNull;
+  static VolunteerTraining? parse(Object? value) =>
+      VolunteerTraining.values.where((VolunteerTraining kind) => kind.wire == value).firstOrNull;
 }
 
 /// A volunteer's own application and standing.
@@ -1454,11 +1455,7 @@ class CirclePlace {
 
 /// What the signed-in person has done when asked. Their own record, never a ranking.
 class ResponseRecord {
-  const ResponseRecord({
-    required this.answered,
-    this.medianResponseSeconds,
-    this.lastAnsweredAt,
-  });
+  const ResponseRecord({required this.answered, this.medianResponseSeconds, this.lastAnsweredAt});
 
   final int answered;
   final int? medianResponseSeconds;

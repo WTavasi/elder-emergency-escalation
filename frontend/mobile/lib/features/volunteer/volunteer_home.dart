@@ -62,7 +62,7 @@ class _VolunteerHomeState extends State<VolunteerHome> {
                 child: const Icon(Icons.near_me),
               ),
               label: 'Nearby',
-              tooltip: waiting > 0 ? 'Nearby, $waiting asking' : 'Nearby',
+              tooltip: waiting > 0 ? 'Nearby, $waiting need help' : 'Nearby',
             ),
             const NavigationDestination(
               icon: Icon(Icons.volunteer_activism_outlined),

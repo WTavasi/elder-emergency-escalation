@@ -61,11 +61,11 @@ class NearbyScreen extends StatelessWidget {
                     child: Notice(message: failure, isError: true),
                   ),
                 if (going != null) ...<Widget>[
-                  const _Heading('You are going'),
+                  const _Heading("You're going"),
                   _CallRow(call: going),
                 ],
                 if (volunteer.waiting.isNotEmpty) ...<Widget>[
-                  const _Heading('Asking for help'),
+                  const _Heading('Needs help now'),
                   for (final VolunteerCall call in volunteer.waiting) _CallRow(call: call),
                 ],
                 if (volunteer.earlier.isNotEmpty) ...<Widget>[
@@ -108,8 +108,8 @@ class _Standing extends StatelessWidget {
             title: Text('Available to help', style: theme.textTheme.titleMedium),
             subtitle: Text(
               profile.available
-                  ? 'You can be asked when someone near ${profile.area?.label ?? 'you'} needs help.'
-                  : 'Nobody will ask you until you turn this on.',
+                  ? 'We may ask you when someone near ${profile.area?.label ?? 'you'} needs help.'
+                  : 'Turn this on to get requests.',
             ),
             value: profile.available,
             onChanged: busy ? null : onAvailable,
@@ -120,16 +120,12 @@ class _Standing extends StatelessWidget {
 
     final String text = switch (profile.status) {
       VolunteerStatus.notApplied =>
-        'Tell us what you can do and where, and an administrator will look at it. Nobody '
-            'asks you anything until you are approved.',
-      VolunteerStatus.pending =>
-        'Thank you for applying. An administrator will look at it and you will get a text '
-            'when it is decided.',
+        'Tell us what you can do and where. An administrator checks it. '
+            "We only ask you once you're approved.",
+      VolunteerStatus.pending => "Thanks for applying. We'll text you when it's decided.",
       VolunteerStatus.rejected =>
-        'Your application was not approved${_because(profile.reviewNote)}. You can change '
-            'it and send it again.',
-      VolunteerStatus.suspended =>
-        'You will not be asked to help for now${_because(profile.reviewNote)}.',
+        'Not approved${_because(profile.reviewNote)}. Edit it and send it again.',
+      VolunteerStatus.suspended => 'Paused for now${_because(profile.reviewNote)}.',
       VolunteerStatus.approved => '',
     };
 
@@ -147,7 +143,7 @@ class _Standing extends StatelessWidget {
               child: Text(
                 profile.status == VolunteerStatus.notApplied
                     ? 'Apply to volunteer'
-                    : 'Change my application',
+                    : 'Edit application',
               ),
             ),
           ),
@@ -191,7 +187,10 @@ class _CallRow extends StatelessWidget {
       title: Text(headline, style: theme.textTheme.titleMedium),
       subtitle: Text(callStanding(call)),
       trailing: call.severity == Severity.critical && call.open
-          ? Text('Urgent', style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error))
+          ? Text(
+              'Urgent',
+              style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
+            )
           : null,
       onTap: () => unawaited(
         Navigator.of(context).push(
@@ -209,12 +208,12 @@ class _CallRow extends StatelessWidget {
 
 /// Where one call stands, in a few words.
 String callStanding(VolunteerCall call) {
-  if (!call.open) return 'Over';
-  if (call.going) return call.arrivedAt != null ? 'You are there' : 'You said you would go';
+  if (!call.open) return 'Ended';
+  if (call.going) return call.arrivedAt != null ? "You're there" : "You're going";
   if (call.takenByAnother) return 'Another volunteer is going';
   return switch (call.status) {
-    VolunteerCallStatus.declined => 'You said you cannot go',
-    VolunteerCallStatus.withdrawn => 'You could not go after all',
+    VolunteerCallStatus.declined => 'You said no',
+    VolunteerCallStatus.withdrawn => 'You cancelled',
     _ => 'Asking now',
   };
 }

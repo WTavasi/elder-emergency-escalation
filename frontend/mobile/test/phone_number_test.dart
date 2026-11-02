@@ -29,7 +29,7 @@ void main() {
     });
 
     test('a number too short for the country says so, naming it', () {
-      expect(readPhone(kenya, '0712').problem, 'That number is too short for Kenya.');
+      expect(readPhone(kenya, '0712').problem, 'Too short for a Kenya number.');
     });
   });
 

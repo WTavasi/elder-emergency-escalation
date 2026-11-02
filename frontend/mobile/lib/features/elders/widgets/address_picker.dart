@@ -19,8 +19,7 @@ class AddressPicker extends StatefulWidget {
     required this.showMissing,
     required this.onChosen,
     this.title = 'Where is their home?',
-    this.explanation =
-        'Alerts from them are sent to this place, and responders get directions to it.',
+    this.explanation = 'Helpers get directions to this address.',
     this.chosenPrefix = 'Home',
     super.key,
   });
@@ -54,7 +53,7 @@ class _AddressPickerState extends State<AddressPicker> {
 
   Future<void> _search() async {
     if (_query.text.trim().length < 3) {
-      setState(() => _error = 'Type at least three letters of the address.');
+      setState(() => _error = 'Type at least 3 letters.');
       return;
     }
     setState(() {
@@ -68,7 +67,7 @@ class _AddressPickerState extends State<AddressPicker> {
         _result = result;
         _searching = false;
         if (result.matches.isEmpty) {
-          _error = 'Nothing found. Try the estate or road, then the town.';
+          _error = 'No matches. Try the estate or road, then the town.';
         }
       });
     } on Exception catch (error) {
@@ -122,7 +121,7 @@ class _AddressPickerState extends State<AddressPicker> {
         if (widget.showMissing && widget.chosen == null && _error == null) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            'Search for the place and choose it from the list.',
+            'Search, then choose a place from the list.',
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
           ),
         ],
