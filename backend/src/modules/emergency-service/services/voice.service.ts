@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -71,7 +72,7 @@ const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
  * to show, and a grant for this one room that allows the microphone and nothing else.
  */
 @Injectable()
-export class VoiceService {
+export class VoiceService implements OnModuleInit {
   private readonly logger = new Logger(VoiceService.name);
   private readonly jwt = new JwtService();
 
@@ -82,6 +83,19 @@ export class VoiceService {
     private readonly config: ConfigService,
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
   ) {}
+
+  /**
+   * Said once at start-up when the settings are missing. Without them the app hides
+   * "Talk to" and the elder's phone never joins, which otherwise looks like a fault.
+   */
+  onModuleInit(): void {
+    if (!this.available) {
+      this.logger.warn(
+        'Talking in the app is off: set LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET ' +
+          'in backend/.env (docs/running.md, step 10).',
+      );
+    }
+  }
 
   get available(): boolean {
     return Boolean(

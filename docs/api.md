@@ -96,7 +96,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome |
-| POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain |
+| POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain. 403 for an emergency responder; 409 once a responder has been asked, by a person or by the chain reaching them |
 | POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 | POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |

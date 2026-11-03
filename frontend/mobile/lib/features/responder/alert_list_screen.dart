@@ -183,6 +183,7 @@ class _AlertListScreenState extends State<AlertListScreen> {
             api: widget.api,
             eventId: alert.eventId,
             myId: _myId(context),
+            myRole: _myRole(context),
             wayThere: WayThere.maybeOf(context),
             live: LiveUpdates.maybeOf(context),
           ),
@@ -199,6 +200,14 @@ class _AlertListScreenState extends State<AlertListScreen> {
   static String? _myId(BuildContext context) {
     try {
       return Provider.of<AuthController>(context, listen: false).account?.id;
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  static Role? _myRole(BuildContext context) {
+    try {
+      return Provider.of<AuthController>(context, listen: false).account?.role;
     } on ProviderNotFoundException {
       return null;
     }

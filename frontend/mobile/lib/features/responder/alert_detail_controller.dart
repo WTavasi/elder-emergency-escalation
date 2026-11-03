@@ -23,6 +23,7 @@ class AlertDetailController extends ChangeNotifier {
     required this.eventId,
     this.pollInterval = const Duration(seconds: 8),
     this.myId,
+    this.myRole,
     this.wayThere,
     this.voiceRoom,
     LiveUpdates? live,
@@ -43,6 +44,10 @@ class AlertDetailController extends ChangeNotifier {
   /// The signed-in person, to tell whether this emergency is theirs. Null means the
   /// screen treats it as somebody else's, which only a test that does not care does.
   final String? myId;
+
+  /// The signed-in person's role. An emergency responder is never offered "Ask for an
+  /// emergency responder": they would be asking for themselves.
+  final Role? myRole;
 
   /// Sharing the way there, when the app has it. Null in a test that does not need it.
   final WayThere? wayThere;
@@ -142,6 +147,22 @@ class AlertDetailController extends ChangeNotifier {
     final AlertDetail? current = _detail;
     return current != null && current.voice.available && current.summary.state.isOpen;
   }
+
+  /// An open emergency on a server with no LiveKit settings, where "Talk to" is hidden.
+  /// Said in a development build only, so the missing settings are not a mystery.
+  bool get talkIsOff {
+    final AlertDetail? current = _detail;
+    return current != null && !current.voice.available && current.summary.state.isOpen;
+  }
+
+  /// Whether "Ask for an emergency responder" is worth offering: not to an emergency
+  /// responder, and not once somebody has asked. The server refuses both.
+  bool get canAskForResponder =>
+      myRole != Role.emergencyResponder && _detail?.summary.responderRequestedAt == null;
+
+  /// Somebody has asked for an emergency responder, so the screen says so instead.
+  bool get responderAsked =>
+      myRole != Role.emergencyResponder && _detail?.summary.responderRequestedAt != null;
 
   /// Whether the person holding this phone is the one who took it on.
   bool get isMine {

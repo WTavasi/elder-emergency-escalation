@@ -741,11 +741,27 @@ export class EscalationService {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
 
+    // An emergency responder asking for one would be asking for themselves, and would
+    // send the alert round their colleagues as though nobody had come.
+    const person = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (person?.role === Role.EMERGENCY_RESPONDER) {
+      throw new ForbiddenException('You are the emergency responder on this alert');
+    }
+
     const rules = await this.rulesFor(event);
     const responderRule = rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER);
 
     if (!responderRule) {
       throw new ConflictException('No emergency responder tier is configured');
+    }
+
+    // Asked once already, by a person or by the chain reaching them: asking again would
+    // only send the same alert to the same responders.
+    if (event.responderRequestedAt || event.currentTier >= responderRule.tierOrder) {
+      throw new ConflictException("We've already asked an emergency responder");
     }
 
     await this.timers.cancelAll(eventId);
