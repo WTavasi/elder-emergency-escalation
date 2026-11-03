@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
@@ -96,6 +97,14 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (controller.canTalk) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
+            ] else if (kDebugMode && controller.talkIsOff) ...<Widget>[
+              // Never in a release build, where a missing feature is simply not offered.
+              const SizedBox(height: MzaziSpace.s24),
+              const Notice(
+                message:
+                    'Talk to is hidden: the server has no LiveKit settings. '
+                    'See step 10 of docs/running.md.',
+              ),
             ],
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
@@ -397,51 +406,63 @@ class _Actions extends StatelessWidget {
     );
   }
 
-  /// Ringing her and calling in a responder, side by side.
+  /// Ringing the elder and asking for a responder, side by side. The responder button is
+  /// left out for an emergency responder, and once somebody has asked, a line says so.
   Widget _callAndResponder(BuildContext context, bool busy, String? phone) {
+    final bool offerResponder = controller.canAskForResponder;
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         // Side by side, as asked. IntrinsicHeight and stretch keep the pair the same
-        // height when one label wraps to two lines, which "Call an emergency responder"
+        // height when one label wraps to two lines, which "Ask for an emergency responder"
         // will in half a phone's width. No fixed 48-point box here: it would clip the
         // wrapped label, and the theme already guarantees the 48-point floor. Each child
         // is Expanded because the theme's buttons are infinitely wide by design, and a
         // row gives an unexpanded child no width limit at all.
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (phone != null) ...<Widget>[
-                Expanded(
-                  child: CallButton(
-                    name: alert.elderName,
-                    phone: phone,
-                    canOpen: canOpen,
-                    open: open,
-                    stacked: true,
+        if (phone != null || offerResponder)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (phone != null)
+                  Expanded(
+                    child: CallButton(
+                      name: alert.elderName,
+                      phone: phone,
+                      canOpen: canOpen,
+                      open: open,
+                      stacked: true,
+                    ),
                   ),
-                ),
-                const SizedBox(width: MzaziSpace.s8),
+                if (phone != null && offerResponder) const SizedBox(width: MzaziSpace.s8),
+                if (offerResponder)
+                  Expanded(
+                    // A different icon from Call Grace on purpose. Both labels start with
+                    // "Call" and they do different things: one rings her, the other sends
+                    // the emergency on through the system and rings nobody. Both amber, the
+                    // colour of an emergency waiting on a person; this one solid, because it
+                    // is the bigger step.
+                    child: FilledButton(
+                      style: CallStyle.strong(context).merge(StackedLabel.padding),
+                      onPressed: busy ? null : controller.requestResponder,
+                      child: const StackedLabel(
+                        icon: Icons.emergency,
+                        label: 'Ask for an emergency responder',
+                      ),
+                    ),
+                  ),
               ],
-              Expanded(
-                // A different icon from Call Grace on purpose. Both labels start with
-                // "Call" and they do different things: one rings her, the other sends
-                // the emergency on through the system and rings nobody. Both amber, the
-                // colour of an emergency waiting on a person; this one solid, because it
-                // is the bigger step.
-                child: FilledButton(
-                  style: CallStyle.strong(context).merge(StackedLabel.padding),
-                  onPressed: busy ? null : controller.requestResponder,
-                  child: const StackedLabel(
-                    icon: Icons.emergency,
-                    label: 'Ask for an emergency responder',
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        if (controller.responderAsked) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s8),
+          Text(
+            "We've asked for an emergency responder.",
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
       ],
     );
   }

@@ -88,6 +88,59 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('an emergency responder is never offered to ask for an emergency responder', (
+    WidgetTester tester,
+  ) async {
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(_owned())],
+    );
+    final AlertDetailController controller = AlertDetailController(
+      api: t.api,
+      eventId: 'event-1',
+      myRole: Role.emergencyResponder,
+    );
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Close emergency'), findsOneWidget);
+    expect(find.text('Call Grace'), findsOneWidget);
+    expect(find.text('Ask for an emergency responder'), findsNothing);
+    expect(find.text("We've asked for an emergency responder."), findsNothing);
+
+    controller.dispose();
+  });
+
+  testWidgets('once a responder has been asked, the screen says so instead of offering it', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> asked = _owned()
+      ..['responderRequestedAt'] = DateTime.now().toUtc().toIso8601String();
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(asked)],
+    );
+    final AlertDetailController controller = AlertDetailController(
+      api: t.api,
+      eventId: 'event-1',
+      myRole: Role.caregiver,
+    );
+
+    await tester.pumpWidget(
+      _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+    );
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ask for an emergency responder'), findsNothing);
+    expect(find.text("We've asked for an emergency responder."), findsOneWidget);
+    expect(find.text('Call Grace'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   testWidgets('a closed emergency offers nothing to do', (WidgetTester tester) async {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody(state: 'RESOLVED'))],
@@ -799,7 +852,9 @@ void main() {
           },
         };
 
-    testWidgets('is not offered when the server has no voice service', (WidgetTester tester) async {
+    testWidgets('is not offered when the server has no voice service, and a test build says why', (
+      WidgetTester tester,
+    ) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[json(withVoice(available: false))],
       );
@@ -811,9 +866,12 @@ void main() {
       await tester.pumpWidget(
         _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
       );
+      await controller.refresh();
       await tester.pumpAndSettle();
 
       expect(find.text('Talk to Grace'), findsNothing);
+      // Tests run as a development build, where the missing settings are named.
+      expect(find.textContaining('LiveKit settings'), findsOneWidget);
       controller.dispose();
     });
 

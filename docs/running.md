@@ -549,8 +549,7 @@ Sandbox?](https://help.africastalking.com/en/articles/1170660-how-do-i-get-start
 ### Step 10 (optional). Talk to the elder through the app
 
 A responder can press **Talk to Grace** on an alert. Grace's phone, if MzaziCare is open
-on it, says "Mary is joining to talk to you", buzzes for three seconds and joins on the
-speaker, so an elder who has fallen does not have to reach the phone and answer it. The
+on it, says "Mary is calling you", buzzes for three seconds and joins on the speaker, so an elder who has fallen does not have to reach the phone and answer it. The
 audio goes through LiveKit. Nothing is recorded.
 
 **1. Get a LiveKit project (free, once).**
@@ -571,6 +570,11 @@ audio goes through LiveKit. Nothing is recorded.
 
 4. Restart the API. Any alert's detail now carries `"voice": { "available": true, ... }`.
 
+Until these are set, **Talk to Grace** does not appear anywhere and Grace's phone never
+joins. The API says so when it starts (`Talking in the app is off`), and a development
+build of the app says so on the alert, where the button would be. A release build shows
+nothing, because a feature the server cannot provide is not offered.
+
 **2. Make a call.** Two devices on this Mac work: Grace on the iOS Simulator and Mary on
 the Android emulator. Use headphones, or two people in two rooms will whistle at each
 other through one Mac's speakers.
@@ -582,10 +586,10 @@ other through one Mac's speakers.
    the countdown to finish.
 3. As Mary, open the alert and press **Talk to Grace**. Allow the microphone when asked.
    The call screen says **Waiting for Grace to join**.
-4. On Grace's phone: **Mary is joining to talk to you**, three seconds, then **Talking
-   with Mary** and a large **End call**. The first time, the phone asks for the
+4. On Grace's phone: **Mary is calling you**, three seconds, then **On a call with
+   Mary** and a large **End call**. The first time, the phone asks for the
    microphone; allow it.
-5. Mary's screen now says **On the call with Grace**, with a timer, mute, speaker and the
+5. Mary's screen now says **On a call with Grace**, with a timer, mute, speaker and the
    red end button.
 6. On the console, the alert's page says Mary started a call, and the timeline shows each
    join.

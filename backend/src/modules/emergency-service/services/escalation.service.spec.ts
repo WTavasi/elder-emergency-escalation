@@ -68,7 +68,7 @@ interface PrismaMock {
   };
   escalationRule: { findMany: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
-  user: { findMany: jest.Mock };
+  user: { findMany: jest.Mock; findUnique: jest.Mock };
   notification: {
     create: jest.Mock;
     updateMany: jest.Mock;
@@ -108,7 +108,10 @@ const buildPrisma = (): PrismaMock => {
       findMany: jest.fn().mockResolvedValue([{ responderId: 'caregiver-1' }]),
       findFirst: jest.fn().mockResolvedValue({ priorityOrder: 1 }),
     },
-    user: { findMany: jest.fn().mockResolvedValue([]) },
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue({ role: Role.CAREGIVER }),
+    },
     notification: {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest
@@ -915,6 +918,45 @@ describe('EscalationService', () => {
 
       await expect(build(prisma).requestResponder('event-1', 'stranger')).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+
+    it('refuses an emergency responder, who would be asking for themselves', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, currentTier: 3 }),
+      );
+      prisma.user.findUnique.mockResolvedValue({ role: Role.EMERGENCY_RESPONDER });
+
+      await expect(build(prisma, timers).requestResponder('event-1', 'unit-near')).rejects.toThrow(
+        'You are the emergency responder on this alert',
+      );
+      expect(timers.cancelAll).not.toHaveBeenCalled();
+      expect(notified(prisma)).toEqual([]);
+    });
+
+    it('does not ask again once a responder has been asked', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ACKNOWLEDGED, responderRequestedAt: new Date() }),
+      );
+
+      await expect(
+        build(prisma, timers).requestResponder('event-1', 'caregiver-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(timers.cancelAll).not.toHaveBeenCalled();
+    });
+
+    it('does not ask again once the chain has reached the responders on its own', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, currentTier: 3 }),
+      );
+
+      await expect(build(prisma).requestResponder('event-1', 'caregiver-1')).rejects.toThrow(
+        ConflictException,
       );
     });
   });

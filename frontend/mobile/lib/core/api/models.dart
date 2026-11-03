@@ -412,6 +412,7 @@ class AlertSummary {
     this.responseSeconds,
     this.outcome,
     this.outcomeNote,
+    this.responderRequestedAt,
     this.trigger = AlertTrigger.panic,
   });
 
@@ -460,6 +461,9 @@ class AlertSummary {
   /// What the person who closed it said happened. Always present for an OTHER outcome.
   final String? outcomeNote;
 
+  /// When somebody in the chain asked for an emergency responder. Null until then.
+  final DateTime? responderRequestedAt;
+
   /// A press of the button, or a check-in the elder did not answer. A missed check-in
   /// is read differently: nobody asked for help, so the first thing to do is call.
   final AlertTrigger trigger;
@@ -493,6 +497,7 @@ class AlertSummary {
       responseSeconds: response is num ? response.toInt() : null,
       outcome: json['outcome'] as String?,
       outcomeNote: json['outcomeNote'] as String?,
+      responderRequestedAt: _date(json['responderRequestedAt']),
       trigger: AlertTrigger.parse(json['trigger']),
     );
   }
