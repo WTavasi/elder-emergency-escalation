@@ -16,6 +16,12 @@ export type Severity = 'STANDARD' | 'ELEVATED' | 'CRITICAL';
 /** A press of the help button, or a daily check-in the elder did not answer. */
 export type AlertTrigger = 'PANIC' | 'MISSED_CHECK_IN';
 
+/** What is happening, as the elder or somebody helping said. */
+export type EmergencyType = 'FALL' | 'BREATHING' | 'UNWELL' | 'FIRE' | 'UNSAFE';
+
+/** Which service an emergency responder is. GENERAL takes any call. */
+export type ResponderService = 'GENERAL' | 'AMBULANCE' | 'FIRE' | 'POLICE';
+
 export type Role =
   | 'ELDER'
   | 'CAREGIVER'
@@ -64,6 +70,11 @@ export interface AlertSummary {
   resolvedAt: string | null;
   deadlineAt: string | null;
   responderRequestedAt: string | null;
+  /** Optional, so a console a release ahead of the API still reads the page. */
+  reportedType?: EmergencyType | null;
+  confirmedType?: EmergencyType | null;
+  serviceRequested?: ResponderService | null;
+  serviceRequestedAt?: string | null;
   responseSeconds: number | null;
 }
 
@@ -79,6 +90,8 @@ export interface SeverityBreakdown {
   score: number;
   band: Severity;
   factors: SeverityFactor[];
+  /** The lowest band the reported type allows, when it lifted the score's own. */
+  floor?: { type: EmergencyType; band: Severity };
 }
 
 export interface AuditEntry {
@@ -257,6 +270,8 @@ export interface UserRow {
   createdAt: string;
   deactivatedAt: string | null;
   coverage: Coverage | null;
+  /** For an emergency responder, which service they are. */
+  responderService?: ResponderService | null;
   /** The elders' chains this account is in. */
   chainPlaces: number;
   /** For an elder, how many people are in their own chain. */
@@ -292,6 +307,7 @@ export interface NewUser {
   role: 'EMERGENCY_RESPONDER' | 'ADMINISTRATOR';
   password: string;
   coverage?: Coverage;
+  responderService?: ResponderService;
 }
 
 /** One match from the address search, used for a responder's area. */

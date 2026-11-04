@@ -17,6 +17,7 @@ import { useDebounced } from '../../shared/hooks/useDebounced';
 import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
+import { SERVICE_LABEL } from '../../shared/utils/format';
 import { UserForm } from './UserForm';
 
 const PAGE_SIZE = 25;
@@ -42,6 +43,10 @@ const COLUMNS: CsvColumn<UserRow>[] = [
   { header: 'Phone', value: (row) => row.phone },
   { header: 'Email', value: (row) => row.email },
   { header: 'Role', value: (row) => ROLE_LABEL[row.role] },
+  {
+    header: 'Service',
+    value: (row) => (row.responderService ? SERVICE_LABEL[row.responderService] : ''),
+  },
   { header: 'Area', value: (row) => row.coverage?.areaName },
   { header: 'Radius km', value: (row) => row.coverage?.radiusKm },
   { header: 'Places in chains', value: (row) => row.chainPlaces },
@@ -373,7 +378,12 @@ export function Users() {
                     <td className="figures" data-label="Phone">
                       {row.phone}
                     </td>
-                    <td data-label="Role">{ROLE_LABEL[row.role]}</td>
+                    <td data-label="Role">
+                      {ROLE_LABEL[row.role]}
+                      {row.responderService ? (
+                        <div className="micro">{SERVICE_LABEL[row.responderService]}</div>
+                      ) : null}
+                    </td>
                     <td data-label="Area">
                       {row.coverage ? (
                         <>

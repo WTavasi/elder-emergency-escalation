@@ -82,6 +82,11 @@ describe('a row in the emergency list', () => {
     expect(screen.getByText('Nobody has answered.')).toBeInTheDocument();
   });
 
+  it('says what is happening when the elder said', () => {
+    renderRow({ ...alert, reportedType: 'FIRE' });
+    expect(screen.getByText('Fire')).toBeInTheDocument();
+  });
+
   it('has no dot once somebody has taken it on', () => {
     renderRow({
       ...alert,

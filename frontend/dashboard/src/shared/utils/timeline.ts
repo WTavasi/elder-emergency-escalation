@@ -1,5 +1,5 @@
 import type { AuditEntry, ChainMember, DeliveryAttempt } from '../api/types';
-import { severityWord } from './format';
+import { SERVICE_LABEL, TYPE_LABEL, severityWord } from './format';
 
 /** The parts of an audit entry's detail that a sentence can use. Every field is optional. */
 interface Detail {
@@ -17,6 +17,9 @@ interface Detail {
   severityAfter?: string;
   channel?: string;
   notificationId?: string;
+  type?: string;
+  service?: string;
+  early?: boolean;
 }
 
 function detailOf(entry: AuditEntry): Detail {
@@ -73,6 +76,10 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
       return byText ? `${who} cannot come, by text` : `${who} cannot come`;
     case 'RESPONDER_REQUESTED':
       return `${who} asked for an emergency responder`;
+    case 'TYPE_REPORTED':
+      return reported(who, detail, byText);
+    case 'SERVICE_DISPATCHED':
+      return dispatchedService(detail);
     case 'RESOLVED':
       return `${who} closed it`;
     case 'CANCELLED':
@@ -139,6 +146,25 @@ function failed(detail: Detail, deliveries: DeliveryAttempt[]): string {
   const to = delivery?.recipient ? ` to ${delivery.recipient.name}` : '';
   const why = detail.reason ? `: ${detail.reason}` : '';
   return `${what}${to} could not be delivered${why}`;
+}
+
+/** "Grace said it is a fire", and what that did to severity. */
+function reported(who: string, detail: Detail, byText: boolean): string {
+  const what = detail.type ? (TYPE_LABEL[detail.type] ?? detail.type).toLowerCase() : 'something';
+  const how = byText ? ', by text' : '';
+  const raised =
+    detail.severityBefore && detail.severityAfter && detail.severityBefore !== detail.severityAfter
+      ? `. Raised to ${severityWord(detail.severityAfter).toLowerCase()}`
+      : '';
+  return `${who} said: ${what}${how}${raised}`;
+}
+
+/** "The fire service was asked at once", or that nobody of it covers the place. */
+function dispatchedService(detail: Detail): string {
+  const service = detail.service ? (SERVICE_LABEL[detail.service] ?? detail.service) : 'A service';
+  return detail.recipients === 0
+    ? `No ${service.toLowerCase()} covers the place, so volunteers nearby were asked`
+    : `${service} asked at once`;
 }
 
 /** "Aisha", "Aisha and Brian", "Aisha, Brian and Kevin". */

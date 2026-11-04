@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { ApiError, api } from '../../shared/api/client';
-import type { AddressMatch, Coverage, NewUser, UserRow } from '../../shared/api/types';
+import type {
+  AddressMatch,
+  Coverage,
+  NewUser,
+  ResponderService,
+  UserRow,
+} from '../../shared/api/types';
+import { SERVICE_LABEL } from '../../shared/utils/format';
 import { Modal } from '../../shared/components/Modal';
 import { PhoneInput } from '../../shared/phone/PhoneInput';
 import { DEFAULT_COUNTRY, readPhone } from '../../shared/phone/read-phone';
@@ -39,6 +46,7 @@ export function UserForm({
   );
   const [password, setPassword] = useState('');
   const [coverage, setCoverage] = useState<Coverage | null>(user?.coverage ?? null);
+  const [service, setService] = useState<ResponderService>(user?.responderService ?? 'GENERAL');
   const [areaQuery, setAreaQuery] = useState('');
   const [matches, setMatches] = useState<AddressMatch[] | null>(null);
   const [attribution, setAttribution] = useState('');
@@ -94,6 +102,7 @@ export function UserForm({
           name: name.trim(),
           email: email.trim() || null,
           ...(isResponder && coverage ? { coverage } : {}),
+          ...(isResponder ? { responderService: service } : {}),
         });
         onSaved(`${name.trim()} was updated.`);
         return;
@@ -114,7 +123,7 @@ export function UserForm({
         ...(email.trim() ? { email: email.trim() } : {}),
         role,
         password,
-        ...(isResponder && coverage ? { coverage } : {}),
+        ...(isResponder && coverage ? { coverage, responderService: service } : {}),
       });
       onSaved(`${name.trim()} was added and sent an SMS saying so. Give them their password.`);
     } catch (caught) {
@@ -263,6 +272,25 @@ export function UserForm({
 
         {isResponder ? (
           <>
+            <label htmlFor="user-service">Service</label>
+            <div>
+              <select
+                id="user-service"
+                value={service}
+                onChange={(changeEvent) => setService(changeEvent.target.value as ResponderService)}
+              >
+                {(['GENERAL', 'AMBULANCE', 'FIRE', 'POLICE'] as const).map((value) => (
+                  <option key={value} value={value}>
+                    {SERVICE_LABEL[value]}
+                  </option>
+                ))}
+              </select>
+              <p className="field__hint">
+                An alert that says what is happening asks the matching service first. General takes
+                any call.
+              </p>
+            </div>
+
             <label htmlFor="user-area" className="form-grid__top">
               Area they cover
             </label>

@@ -1291,6 +1291,10 @@ textarea {
   flex-direction: column;
   gap: var(--space-8);
 }
+.banner__report {
+  margin: 0;
+}
+
 .banner__owner {
   display: flex;
   align-items: center;

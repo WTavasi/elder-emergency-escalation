@@ -91,6 +91,30 @@ describe('the record of an emergency, in sentences', () => {
     ).toBe('A push to Mary Otieno could not be delivered: no registered device');
   });
 
+  it('says what was reported, and whether it raised severity', () => {
+    expect(
+      say(
+        entry(
+          'TYPE_REPORTED',
+          { type: 'FIRE', via: 'app', severityBefore: 'STANDARD', severityAfter: 'CRITICAL' },
+          true,
+        ),
+      ),
+    ).toBe('Grace Wanjiru said: fire. Raised to critical');
+    expect(say(entry('TYPE_REPORTED', { type: 'FALL', via: 'sms' }, true))).toBe(
+      'Grace Wanjiru said: fall, by text',
+    );
+  });
+
+  it('says which service was asked at once, or that none covers the place', () => {
+    expect(say(entry('SERVICE_DISPATCHED', { service: 'FIRE', recipients: 1 }))).toBe(
+      'Fire service asked at once',
+    );
+    expect(say(entry('SERVICE_DISPATCHED', { service: 'POLICE', recipients: 0 }))).toBe(
+      'No police covers the place, so volunteers nearby were asked',
+    );
+  });
+
   it('tidies an action it does not know rather than leaving a blank line', () => {
     expect(say(entry('SOMETHING_NEW'))).toBe('Something new');
   });

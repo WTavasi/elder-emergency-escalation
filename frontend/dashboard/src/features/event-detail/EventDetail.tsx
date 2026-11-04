@@ -22,7 +22,10 @@ import {
   formatClock,
   formatDuration,
   humanise,
+  SERVICE_LABEL,
+  severityWord,
   timeAway,
+  TYPE_LABEL,
 } from '../../shared/utils/format';
 import { afterTheAlert, timelineSentence } from '../../shared/utils/timeline';
 
@@ -77,6 +80,20 @@ function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () 
             </button>
           ) : null}
         </div>
+        {alert.reportedType || alert.serviceRequested ? (
+          <p className="banner__report">
+            {alert.reportedType ? (
+              <>
+                Reported: <strong>{TYPE_LABEL[alert.reportedType]}</strong>
+              </>
+            ) : null}
+            {alert.reportedType && alert.serviceRequested ? '. ' : null}
+            {alert.serviceRequested ? <>Asked: {SERVICE_LABEL[alert.serviceRequested]}</> : null}
+            {alert.confirmedType && alert.confirmedType !== alert.reportedType ? (
+              <>. Confirmed on closing: {TYPE_LABEL[alert.confirmedType]}</>
+            ) : null}
+          </p>
+        ) : null}
         <p className="banner__owner">
           <Icon name="person" />
           {alert.acknowledgedBy
@@ -362,6 +379,15 @@ export function EventDetail() {
                   <strong>{alert.severityScore}</strong>
                 </td>
               </tr>
+              {alert.severityFactors?.floor ? (
+                <tr>
+                  <td colSpan={4}>
+                    {TYPE_LABEL[alert.severityFactors.floor.type]} was reported, so at least{' '}
+                    {severityWord(alert.severityFactors.floor.band).toLowerCase()}, whatever the
+                    score.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </Modal>
