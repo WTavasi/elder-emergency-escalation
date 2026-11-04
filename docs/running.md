@@ -908,10 +908,11 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-**`CocoaPods not installed or not in valid state`.** Only affects the iOS build of the
-mobile app. `brew install cocoapods`. If Homebrew reports that a process has already
-locked the formula, check with `pgrep -fl brew`: if nothing is running the lock is
-stale, and `rm -f /usr/local/var/homebrew/locks/cocoapods.formula.lock` clears it.
+**`your project still has CocoaPods integration`, or `Unable to load contents of file
+list: Pods-Runner...`.** Only affects the iOS build of the mobile app, on a copy made
+before the app moved to Swift packages. From `frontend/mobile`, run
+`rm -rf ios/Pods ios/Podfile ios/Podfile.lock && flutter clean && flutter pub get`, then
+build again. CocoaPods is no longer needed.
 
 **`Missing script: "dev:dashboard"`.** You are in a subfolder. Run `pwd`; it should
 print `/Users/tavasii/Desktop/Mzazicare` with nothing after it.

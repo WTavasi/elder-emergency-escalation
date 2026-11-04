@@ -12,9 +12,9 @@ Administrators use the web console in `frontend/dashboard` instead.
 
 ## Prerequisites
 
-Flutter, plus **CocoaPods for the iOS build only**: `brew install cocoapods`. Several
-plugins ship native iOS code, and Flutter uses CocoaPods to build it. Android needs
-none of this.
+Flutter, and Xcode for the iOS build. The plugins' native iOS code comes in as Swift
+packages, which Flutter adds to the Xcode project itself; there is no Podfile and no
+CocoaPods. Android needs none of this.
 
 ## Running it
 
@@ -75,9 +75,9 @@ Both devices must be on the same Wi-Fi. Before blaming the app, open
 the network path is fine and anything still failing is the app.
 
 Android needs developer options and USB debugging switched on, and nothing else. An
-iPhone additionally needs a signing team in Xcode, Developer Mode enabled on the
-device, and CocoaPods installed on the Mac, and its seven day provisioning expiry means
-the app stops opening after a week until it is installed again.
+iPhone additionally needs a signing team in Xcode and Developer Mode enabled on the
+device, and its seven day provisioning expiry means the app stops opening after a week
+until it is installed again.
 
 ## What is built
 
