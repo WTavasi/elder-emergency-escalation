@@ -991,3 +991,43 @@ Negatives are written out (cannot, do not) while positive contractions are used,
 "can't" read in a hurry is easily taken for "can". Nothing is set in bold inside a
 sentence: Elder mode carries the size and weight. The privacy notice and terms keep their
 full sentences, and still name the old "Share my way there" until they are next revised.
+
+## Saying what is happening, and asking the right service
+
+Until now an alert said that an older person needed help, and nothing about what kind. A
+fire went to the family first, and the emergency responder step reached whichever
+responder covered the place, whether it was a fire, a fall or a break-in. On 4 November
+2026 the elder, or anybody helping, can say what is happening, and the system acts on it.
+
+**After the alert, never before.** The elder's waiting screen offers "Say what's
+happening": one large button opening a sheet of five rows (I fell, chest pain or
+breathing, I feel unwell, fire, I'm not safe). Not five buttons on the screen itself,
+which at the elder's size pushed it past the height of a small phone. A HELP text can say
+it too ("HELP MOTO"). Nothing waits for it: most alerts will never have a type.
+
+**The rule decides, as data.** Each type has a row in `emergency_type_rules`: a severity
+floor, a service, and whether that service is asked at once. Chest pain or breathing, fire
+and not being safe ask theirs at once, beside the family, because minutes matter and the
+family cannot put out a fire. A fall and feeling unwell ask the ambulance at the usual
+responder step, because the family often handles those. A floor can only raise severity;
+a fall reported on a critical alert leaves it critical. The project's owner chose this
+split over asking every service at once or none until the end.
+
+**Services, with fallbacks.** Responder accounts are now a service: ambulance, fire,
+police, or general, which takes any call and is every responder made before. The
+service a type needs is asked if any of its responders covers the place, else a general
+responder, else whoever covers it, because reaching the wrong service beats reaching
+nobody; with nobody at all, volunteers nearby.
+
+**Health details stay off lock screens.** A service's push starts with the type, because
+it decides what to send. A family member's lock screen shows fire and danger, which are not
+health information, and keeps a fall or chest pain inside the app, where only they read it.
+
+**What it really was.** Closing an emergency now asks what it was, starting from what the
+elder said. Compared with the report, this says how often the elder's own account was right,
+which the evaluation needs and which the voice report (phase 5) will need to be judged by.
+
+**What this adds to the data.** The reported and confirmed types are kept with the
+emergency and deleted with it. They can be health information, so the privacy notice
+needs a line saying so; that change is the project owner's to approve. The plan for the
+phases after this one is in `docs/roadmap.md`.

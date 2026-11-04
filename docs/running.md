@@ -735,6 +735,29 @@ press for help**, each carer a call away.
 
 ---
 
+### Step 14 (optional). Say what is happening
+
+The elder can say what kind of emergency it is, and the right service is asked. The seed
+has a fire unit, a police unit and an ambulance unit around Kileleshwa and Lavington, next
+to the two general response units.
+
+1. **As Grace, raise an alert** and let the ten seconds pass. On the waiting screen, press
+   **Say what's happening**, then **Fire**. The screen says **Your family can see: Fire**
+   and **Get out if you can. Call 999.**
+2. **On the console**, the alert shows a **Fire** tag. Its page says **Reported: Fire.
+   Asked: Fire service**, the severity is **Critical** whatever the score, and **Why this
+   severity?** ends with the floor. The timeline reads **Grace Wanjiru said: fire** and
+   **Fire service asked at once**.
+3. **As the fire unit** (`+254700000042`, the same password), the alert is in the list,
+   starting **Fire**. Mary is asked as before, beside it.
+4. **As Mary, close it.** The sheet asks **What was it?** with **Fire** chosen already.
+   Choose another if it was something else; the console then shows both.
+5. **By text**, with replies set up (Step 9): send `HELP MOTO` from Grace's number. The
+   reply says the fire service was asked and to get out if possible.
+
+A fall or feeling unwell raises the severity to high and asks the ambulance only when the
+chain reaches its responder step; **Ask for an ambulance** on Mary's screen asks it now.
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
