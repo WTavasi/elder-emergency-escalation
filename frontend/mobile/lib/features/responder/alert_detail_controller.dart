@@ -122,13 +122,20 @@ class AlertDetailController extends ChangeNotifier {
   Future<void> decline({String? reason}) =>
       _act(() => _api.decline(eventId, reason: reason), "Done. We're asking the next person.");
 
-  Future<void> resolve(Outcome outcome, {String? note}) => _act(
-    () => _api.resolve(eventId, outcome, note: note),
+  Future<void> resolve(Outcome outcome, {String? note, EmergencyType? confirmedType}) => _act(
+    () => _api.resolve(eventId, outcome, note: note, confirmedType: confirmedType),
     'Emergency closed: ${outcome.label.toLowerCase()}.',
   );
 
+  /// The service this emergency needs, by what was reported: an ambulance for a fall,
+  /// the fire service for a fire, a general responder when nobody said.
+  ResponderService get serviceNeeded {
+    final AlertSummary? summary = _detail?.summary;
+    return summary?.serviceRequested ?? summary?.reportedType?.service ?? ResponderService.general;
+  }
+
   Future<void> requestResponder() =>
-      _act(() => _api.requestResponder(eventId), "We've asked for an emergency responder.");
+      _act(() => _api.requestResponder(eventId), serviceNeeded.asked);
 
   /// "I'm here." Stops the sharing first: nobody needs the way there once it is over.
   Future<void> arrived() {
@@ -157,12 +164,16 @@ class AlertDetailController extends ChangeNotifier {
 
   /// Whether "Ask for an emergency responder" is worth offering: not to an emergency
   /// responder, and not once somebody has asked. The server refuses both.
-  bool get canAskForResponder =>
-      myRole != Role.emergencyResponder && _detail?.summary.responderRequestedAt == null;
+  bool get canAskForResponder => myRole != Role.emergencyResponder && !_serviceAsked;
 
-  /// Somebody has asked for an emergency responder, so the screen says so instead.
-  bool get responderAsked =>
-      myRole != Role.emergencyResponder && _detail?.summary.responderRequestedAt != null;
+  /// Somebody has asked for an emergency responder, or a service was asked at once for an
+  /// urgent type, so the screen says so instead.
+  bool get responderAsked => myRole != Role.emergencyResponder && _serviceAsked;
+
+  bool get _serviceAsked {
+    final AlertSummary? summary = _detail?.summary;
+    return summary?.responderRequestedAt != null || summary?.serviceRequestedAt != null;
+  }
 
   /// Whether the person holding this phone is the one who took it on.
   bool get isMine {

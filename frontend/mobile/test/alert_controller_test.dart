@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mzazicare/core/api/api_client.dart';
+import 'package:mzazicare/core/api/models.dart';
 import 'package:mzazicare/features/elder/alert_controller.dart';
 
 import 'support.dart';
@@ -17,6 +18,46 @@ void main() {
         cancelWindow: window,
         pollInterval: const Duration(milliseconds: 100),
       );
+
+  group('saying what is happening', () {
+    test('sends it for the alert already raised, and reads the alert back', () async {
+      final List<String> requests = <String>[];
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        requests.add('${request.method} ${request.url.path}');
+        final Map<String, dynamic> body = emergencyBody(state: 'NOTIFIED');
+        if (request.method == 'GET') body['reportedType'] = 'FALL';
+        return <http.Response>[json(body)];
+      });
+
+      final AlertController alerts = build(t.api, window: const Duration(seconds: 10));
+      await alerts.raise();
+      await alerts.report(EmergencyType.fall);
+
+      expect(requests, contains('POST /api/v1/alerts/event-1/type'));
+      expect(alerts.emergency?.reportedType, EmergencyType.fall);
+      expect(alerts.error, isNull);
+      alerts.dispose();
+    });
+
+    test('a failure is said, and the alert stands', () async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/type')) {
+          return <http.Response>[
+            json(<String, dynamic>{'message': 'This emergency is already closed'}, 409),
+          ];
+        }
+        return <http.Response>[json(emergencyBody(state: 'NOTIFIED'))];
+      });
+
+      final AlertController alerts = build(t.api, window: const Duration(seconds: 10));
+      await alerts.raise();
+      await alerts.report(EmergencyType.fire);
+
+      expect(alerts.error, 'This emergency is already closed');
+      expect(alerts.emergency, isNotNull);
+      alerts.dispose();
+    });
+  });
 
   group('raising', () {
     test('sends one emergency however many times the control is pressed', () async {

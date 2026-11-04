@@ -420,6 +420,12 @@ class ApiClient {
     return Emergency.fromJson(body);
   }
 
+  /// Say what is happening. The alert has already gone; this can raise its severity and,
+  /// for an urgent type, ask the matching service at once.
+  Future<void> reportType(String id, EmergencyType type) async {
+    await _send('POST', '/alerts/$id/type', body: <String, dynamic>{'type': type.wire});
+  }
+
   /// The emergencies this account can see, newest first from the API and re-ordered for
   /// urgency by the caller.
   ///
@@ -488,13 +494,19 @@ class ApiClient {
   ///
   /// [note] is what the person closing it said happened. The server requires one for the
   /// OTHER outcome and accepts one alongside any of the others.
-  Future<void> resolve(String id, Outcome outcome, {String? note}) async {
+  Future<void> resolve(
+    String id,
+    Outcome outcome, {
+    String? note,
+    EmergencyType? confirmedType,
+  }) async {
     await _send(
       'POST',
       '/alerts/$id/resolve',
       body: <String, dynamic>{
         'outcome': outcome.wire,
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        if (confirmedType != null) 'confirmedType': confirmedType.wire,
       },
     );
   }

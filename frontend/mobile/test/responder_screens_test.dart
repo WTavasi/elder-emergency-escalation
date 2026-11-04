@@ -258,6 +258,42 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('the trail says what was reported and which service was asked', (
+    WidgetTester tester,
+  ) async {
+    final Map<String, dynamic> body = detailBody();
+    (body['timeline'] as List<dynamic>).addAll(<Map<String, dynamic>>[
+      <String, dynamic>{
+        'id': 'log-type',
+        'action': 'TYPE_REPORTED',
+        'actor': <String, dynamic>{'id': 'elder-1', 'name': 'Grace Wanjiru', 'role': 'ELDER'},
+        'detail': <String, dynamic>{'type': 'FIRE', 'via': 'sms'},
+        'occurredAt': '2026-10-20T10:00:30.000Z',
+        'secondsFromTrigger': 30,
+      },
+      <String, dynamic>{
+        'id': 'log-service',
+        'action': 'SERVICE_DISPATCHED',
+        'actor': null,
+        'detail': <String, dynamic>{'service': 'FIRE', 'reason': 'type', 'recipients': 1},
+        'occurredAt': '2026-10-20T10:00:31.000Z',
+        'secondsFromTrigger': 31,
+      },
+    ]);
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(body)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Grace Wanjiru said: fire, by text'), findsOneWidget);
+    expect(find.text('Fire service asked at once'), findsOneWidget);
+    controller.dispose();
+  });
+
   testWidgets('declining asks first, because it sends the emergency onward', (
     WidgetTester tester,
   ) async {
@@ -315,6 +351,98 @@ void main() {
     expect(find.text('Something else'), findsOneWidget);
 
     controller.dispose();
+  });
+
+  group('what is happening', () {
+    Map<String, dynamic> reported(String type, {bool serviceAsked = false}) => _owned()
+      ..['reportedType'] = type
+      ..['serviceRequested'] = serviceAsked ? 'FIRE' : null
+      ..['serviceRequestedAt'] = serviceAsked ? DateTime.now().toUtc().toIso8601String() : null;
+
+    testWidgets('says what the elder reported, and names the service the button asks for', (
+      WidgetTester tester,
+    ) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[json(reported('FALL'))],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myRole: Role.caregiver,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Grace says: Fall'), findsOneWidget);
+      expect(find.text('Ask for an ambulance'), findsOneWidget);
+      controller.dispose();
+    });
+
+    testWidgets('says the service was asked at once, for an urgent type', (
+      WidgetTester tester,
+    ) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[
+          json(reported('FIRE', serviceAsked: true)),
+        ],
+      );
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myRole: Role.familyMember,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Grace says: Fire'), findsOneWidget);
+      expect(find.text("We've asked for the fire service."), findsOneWidget);
+      expect(find.text('Ask for the fire service'), findsNothing);
+      controller.dispose();
+    });
+
+    testWidgets('closing starts from what the elder said, and sends what it actually was', (
+      WidgetTester tester,
+    ) async {
+      String? body;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.method == 'POST') body = request.body;
+        return <http.Response>[json(reported('UNWELL'))];
+      });
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myRole: Role.caregiver,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Close emergency'));
+      await tester.pumpAndSettle();
+      expect(find.text('What was it?'), findsOneWidget);
+      expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Unwell')).selected, isTrue);
+
+      // It turned out to be a fall.
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Fall'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Handled at home'));
+      await tester.pumpAndSettle();
+
+      expect(body, contains('"confirmedType":"FALL"'));
+      expect(body, contains('"outcome":"HANDLED_AT_HOME"'));
+      controller.dispose();
+    });
   });
 
   testWidgets('choosing something else asks for words, and refuses to close without them', (

@@ -3,6 +3,8 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../../core/api/models.dart';
 import '../../../core/location/journey_words.dart';
+import '../../../core/widgets/action_sheet.dart';
+import '../../../core/widgets/emergency_type_icon.dart';
 import '../../../core/widgets/progress_stepper.dart';
 
 /// What the elder sees once help has been asked for and can no longer be withdrawn.
@@ -12,7 +14,20 @@ import '../../../core/widgets/progress_stepper.dart';
 /// The elder's copy of the emergency has no position in it, and a map is something to
 /// read, not something to wait with.
 class HelpProgress extends StatelessWidget {
-  const HelpProgress({required this.emergency, this.compact = false, super.key});
+  const HelpProgress({
+    required this.emergency,
+    this.compact = false,
+    this.onReport,
+    this.reporting = false,
+    super.key,
+  });
+
+  /// Says what is happening. Null where the screen is shown without an API, as in a test
+  /// of the steps alone, and then the button is not offered.
+  final Future<void> Function(EmergencyType type)? onReport;
+
+  /// A report is on its way.
+  final bool reporting;
 
   /// The emergency as the elder's copy has it. Null only for the instant between the
   /// countdown ending and the first answer, which reads as "told".
@@ -67,47 +82,151 @@ class HelpProgress extends StatelessWidget {
 
     return Semantics(
       liveRegion: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(headline, style: theme.textTheme.headlineLarge),
-          const SizedBox(height: MzaziSpace.s24),
-          // Moving along as it happens, the way a delivery is tracked, so the elder can
-          // see it moving without reading a sentence closely and without pressing
-          // anything.
-          ProgressStepper(steps: _steps, current: step),
-          const SizedBox(height: MzaziSpace.s32),
-          if (volunteerLine != null) ...<Widget>[
-            Text(volunteerLine, style: theme.textTheme.bodyLarge),
-            const SizedBox(height: MzaziSpace.s12),
-          ],
-          if (when != null) ...<Widget>[
-            // The one number on this screen, set large with figures of equal width so a
-            // changing minute does not shift the words around it.
-            Text(
-              when,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+      // Scrolls only when it must: on the smallest phones at the elder size, with a
+      // volunteer, a time and what was said, it is taller than the room it has.
+      // Otherwise it fills the room, and what is at the bottom stays at the bottom.
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(headline, style: theme.textTheme.headlineLarge),
+                  const SizedBox(height: MzaziSpace.s24),
+                  // Moving along as it happens, the way a delivery is tracked, so the elder can
+                  // see it moving without reading a sentence closely and without pressing
+                  // anything.
+                  ProgressStepper(steps: _steps, current: step),
+                  const SizedBox(height: MzaziSpace.s32),
+                  if (volunteerLine != null) ...<Widget>[
+                    Text(volunteerLine, style: theme.textTheme.bodyLarge),
+                    const SizedBox(height: MzaziSpace.s12),
+                  ],
+                  if (when != null) ...<Widget>[
+                    // The one number on this screen, set large with figures of equal width so a
+                    // changing minute does not shift the words around it.
+                    Text(
+                      when,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(height: MzaziSpace.s12),
+                  ],
+                  if (!compact) ...<Widget>[
+                    if (detail != null) Text(detail, style: theme.textTheme.bodyLarge),
+                    if (onReport != null && !arrived) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s24),
+                      WhatsHappening(
+                        reported: emergency?.reportedType,
+                        busy: reporting,
+                        onReport: onReport!,
+                      ),
+                    ],
+                    const Spacer(),
+                    Text(
+                      arrived
+                          ? "That's all you need to do."
+                          : "Keep your phone near you. That's all you need to do.",
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: MzaziSpace.s12),
-          ],
-          if (!compact) ...<Widget>[
-            if (detail != null) Text(detail, style: theme.textTheme.bodyLarge),
-            const Spacer(),
-            Text(
-              arrived
-                  ? "That's all you need to do."
-                  : "Keep your phone near you. That's all you need to do.",
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
 
   static String _capitalised(String text) =>
       text.isEmpty ? text : '${text[0].toUpperCase()}${text.substring(1)}';
+}
+
+/// "Say what's happening", after the alert has gone, never before it.
+///
+/// One large button that opens a sheet of five rows, each a picture and a few words,
+/// rather than five buttons on this screen, which at the elder's size would push the
+/// rest of it off a small phone. Once said, it shows what the family can see, and for a
+/// fire or danger, the one thing to do while help comes.
+class WhatsHappening extends StatelessWidget {
+  const WhatsHappening({
+    required this.reported,
+    required this.busy,
+    required this.onReport,
+    super.key,
+  });
+
+  final EmergencyType? reported;
+  final bool busy;
+  final Future<void> Function(EmergencyType type) onReport;
+
+  Future<void> _ask(BuildContext context) async {
+    final EmergencyType? chosen = await showActionSheet<EmergencyType?>(
+      context,
+      title: "What's happening?",
+      message: 'Your family will see it.',
+      actions: <SheetAction<EmergencyType?>>[
+        for (final EmergencyType type in EmergencyType.values)
+          SheetAction<EmergencyType?>(
+            type.said,
+            type,
+            icon: emergencyTypeIcon(type),
+            selected: type == reported,
+          ),
+        const SheetAction<EmergencyType?>('Go back', null, icon: Icons.close),
+      ],
+    );
+    if (chosen != null && chosen != reported) await onReport(chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final EmergencyType? said = reported;
+
+    if (said == null) {
+      return OutlinedButton.icon(
+        onPressed: busy ? null : () => _ask(context),
+        icon: const Icon(Icons.campaign_outlined),
+        label: Text(busy ? 'Sending…' : "Say what's happening"),
+      );
+    }
+
+    final String? advice = switch (said) {
+      EmergencyType.fire => 'Get out if you can. Call 999.',
+      EmergencyType.unsafe => 'Go somewhere safe if you can. Call 999.',
+      EmergencyType.breathing => "We've asked for an ambulance.",
+      _ => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Icon(emergencyTypeIcon(said)),
+            const SizedBox(width: MzaziSpace.s8),
+            Expanded(
+              child: Text('Your family can see: ${said.said}', style: theme.textTheme.bodyLarge),
+            ),
+          ],
+        ),
+        if (advice != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s8),
+          Text(advice, style: theme.textTheme.titleMedium),
+        ],
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(
+            onPressed: busy ? null : () => _ask(context),
+            child: Text(busy ? 'Sending…' : 'Change'),
+          ),
+        ),
+      ],
+    );
+  }
 }

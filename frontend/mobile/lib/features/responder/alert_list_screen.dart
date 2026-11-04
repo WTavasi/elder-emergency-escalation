@@ -10,6 +10,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/theme.dart';
+import '../../core/widgets/emergency_type_icon.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
@@ -514,6 +515,19 @@ class _AlertRow extends StatelessWidget {
                               ),
                               const SizedBox(width: MzaziSpace.s4),
                               Text('Missed check-in', style: quiet),
+                            ],
+                          ),
+                        if (alert.reportedType case final EmergencyType type)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(
+                                emergencyTypeIcon(type),
+                                size: (quiet?.fontSize ?? 14) * 1.2,
+                                color: quiet?.color,
+                              ),
+                              const SizedBox(width: MzaziSpace.s4),
+                              Text(type.label, style: quiet),
                             ],
                           ),
                         if (_who(alert) case final String who) Text(who, style: quiet),
