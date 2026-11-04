@@ -230,11 +230,14 @@ const people = [
     email: 'amina@example.com',
   },
 
-  // Emergency responders, registered with the areas they cover
+  // Emergency responders, registered with the areas they cover and the service they
+  // are. The two response units take any call; the other three are asked first for the
+  // emergencies they are for: a fire, danger, or something medical.
   {
     phone: '+254700000040',
     name: 'Kileleshwa Response Unit',
     role: 'EMERGENCY_RESPONDER',
+    responderService: 'GENERAL',
     coverageAreaName: 'Kileleshwa and Lavington',
     coverageLatitude: -1.286,
     coverageLongitude: 36.78,
@@ -244,10 +247,41 @@ const people = [
     phone: '+254700000041',
     name: 'Westlands Response Unit',
     role: 'EMERGENCY_RESPONDER',
+    responderService: 'GENERAL',
     coverageAreaName: 'Westlands and Parklands',
     coverageLatitude: -1.265,
     coverageLongitude: 36.805,
     coverageRadiusKm: 6.0,
+  },
+  {
+    phone: '+254700000042',
+    name: 'Kileleshwa Fire Unit',
+    role: 'EMERGENCY_RESPONDER',
+    responderService: 'FIRE',
+    coverageAreaName: 'Kileleshwa, Lavington and Kilimani',
+    coverageLatitude: -1.282,
+    coverageLongitude: 36.785,
+    coverageRadiusKm: 7.0,
+  },
+  {
+    phone: '+254700000043',
+    name: 'Kilimani Police Unit',
+    role: 'EMERGENCY_RESPONDER',
+    responderService: 'POLICE',
+    coverageAreaName: 'Kilimani and Kileleshwa',
+    coverageLatitude: -1.29,
+    coverageLongitude: 36.787,
+    coverageRadiusKm: 5.0,
+  },
+  {
+    phone: '+254700000044',
+    name: 'Lavington Ambulance Unit',
+    role: 'EMERGENCY_RESPONDER',
+    responderService: 'AMBULANCE',
+    coverageAreaName: 'Lavington, Kileleshwa and Westlands',
+    coverageLatitude: -1.279,
+    coverageLongitude: 36.776,
+    coverageRadiusKm: 8.0,
   },
 
   // Community volunteers. Their area is their coverage, as for a responder.
@@ -437,6 +471,25 @@ const escalationRules = [
  * name a row that exists.
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * What each type of emergency changes. The same rows the migration writes, so a seeded
+ * database and a migrated one agree. Floors only raise severity; IMMEDIATE asks the
+ * service at once, beside the family.
+ * ------------------------------------------------------------------ */
+
+const emergencyTypeRules = [
+  { type: 'BREATHING', service: 'AMBULANCE', severityFloor: 'CRITICAL', dispatch: 'IMMEDIATE' },
+  { type: 'FIRE', service: 'FIRE', severityFloor: 'CRITICAL', dispatch: 'IMMEDIATE' },
+  { type: 'UNSAFE', service: 'POLICE', severityFloor: 'CRITICAL', dispatch: 'IMMEDIATE' },
+  { type: 'FALL', service: 'AMBULANCE', severityFloor: 'ELEVATED', dispatch: 'AT_RESPONDER_TIER' },
+  {
+    type: 'UNWELL',
+    service: 'AMBULANCE',
+    severityFloor: 'ELEVATED',
+    dispatch: 'AT_RESPONDER_TIER',
+  },
+];
+
 const severityFactors = [
   {
     key: 'care_level',
@@ -607,6 +660,15 @@ async function main() {
     });
   }
   console.log(`  rules     ${escalationRules.length} escalation rules across 3 severity bands`);
+
+  for (const rule of emergencyTypeRules) {
+    await prisma.emergencyTypeRule.upsert({
+      where: { type: rule.type },
+      update: rule,
+      create: rule,
+    });
+  }
+  console.log(`  types     ${emergencyTypeRules.length} emergency types, each with its service`);
 
   for (const factor of severityFactors) {
     await prisma.severityFactor.upsert({

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, ResponderService, Role } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { PasswordService } from '../../auth-service/services/password.service';
 import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
@@ -139,6 +139,21 @@ describe('UserAdminService', () => {
       expect(message.length).toBeLessThanOrEqual(160);
     });
 
+    it('makes a responder a service, a general one unless told otherwise', async () => {
+      const { service, prisma } = build();
+
+      await service.create({ ...responder }, ADMIN);
+      await service.create(
+        { ...responder, phone: '+254711000112', responderService: ResponderService.FIRE },
+        ADMIN,
+      );
+
+      expect(prisma.user.create.mock.calls[0][0].data.responderService).toBe(
+        ResponderService.GENERAL,
+      );
+      expect(prisma.user.create.mock.calls[1][0].data.responderService).toBe(ResponderService.FIRE);
+    });
+
     it('refuses a responder with no area', async () => {
       const { service } = build();
       await expect(service.create({ ...responder, coverage: undefined }, ADMIN)).rejects.toThrow(
@@ -221,6 +236,13 @@ describe('UserAdminService', () => {
   });
 
   describe('editing', () => {
+    it('refuses a service for anybody but a responder', async () => {
+      const { service } = build();
+      await expect(
+        service.update(CAREGIVER, { responderService: ResponderService.POLICE }),
+      ).rejects.toThrow('Only an emergency responder has a service');
+    });
+
     it('refuses an area for anybody but a responder', async () => {
       const { service } = build();
       await expect(service.update(CAREGIVER, { coverage: responder.coverage })).rejects.toThrow(

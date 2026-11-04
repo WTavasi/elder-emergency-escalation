@@ -5,9 +5,12 @@ import {
   EventOutcome,
   EventState,
   NotificationStatus,
+  EmergencyType,
   Prisma,
+  ResponderService,
   Role,
   Severity,
+  TypeDispatch,
 } from '@prisma/client';
 import { EscalationService } from './escalation.service';
 import type { EscalationTimerService } from './escalation-timer.service';
@@ -67,6 +70,7 @@ interface PrismaMock {
     count: jest.Mock;
   };
   escalationRule: { findMany: jest.Mock };
+  emergencyTypeRule: { findUnique: jest.Mock };
   careAssignment: { findMany: jest.Mock; findFirst: jest.Mock };
   user: { findMany: jest.Mock; findUnique: jest.Mock };
   notification: {
@@ -104,6 +108,7 @@ const buildPrisma = (): PrismaMock => {
       count: jest.fn().mockResolvedValue(0),
     },
     escalationRule: { findMany: jest.fn().mockResolvedValue(STANDARD_RULES) },
+    emergencyTypeRule: { findUnique: jest.fn().mockResolvedValue(null) },
     careAssignment: {
       findMany: jest.fn().mockResolvedValue([{ responderId: 'caregiver-1' }]),
       findFirst: jest.fn().mockResolvedValue({ priorityOrder: 1 }),
@@ -887,6 +892,221 @@ describe('EscalationService', () => {
     });
   });
 
+  describe('reportType', () => {
+    const covering = (id: string, responderService: ResponderService) => ({
+      id,
+      coverageLatitude: home.latitude,
+      coverageLongitude: home.longitude,
+      coverageRadiusKm: 5,
+      responderService,
+    });
+    const typeRule = (
+      type: EmergencyType,
+      service: ResponderService,
+      severityFloor: Severity,
+      dispatch: TypeDispatch,
+    ) => ({ type, service, severityFloor, dispatch });
+
+    it("raises severity to the type's floor and asks its service at once, beside the family", async () => {
+      const prisma = buildPrisma();
+      const volunteers = buildVolunteers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue(
+        typeRule(
+          EmergencyType.FIRE,
+          ResponderService.FIRE,
+          Severity.CRITICAL,
+          TypeDispatch.IMMEDIATE,
+        ),
+      );
+      prisma.user.findMany.mockResolvedValue([
+        covering('fire-station', ResponderService.FIRE),
+        covering('response-unit', ResponderService.GENERAL),
+      ]);
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).reportType('event-1', 'elder-1', EmergencyType.FIRE);
+
+      const report = prisma.emergencyEvent.updateMany.mock.calls[0][0].data;
+      expect(report).toMatchObject({
+        reportedType: EmergencyType.FIRE,
+        reportedTypeVia: 'app',
+        severity: Severity.CRITICAL,
+      });
+      expect(notified(prisma)).toEqual([
+        expect.objectContaining({ recipientId: 'fire-station', tier: 3, channel: 'PUSH' }),
+        expect.objectContaining({ recipientId: 'fire-station', tier: 3, channel: 'SMS' }),
+      ]);
+      expect(auditActions(prisma)).toEqual(
+        expect.arrayContaining([AuditAction.TYPE_REPORTED, AuditAction.SERVICE_DISPATCHED]),
+      );
+      expect(volunteers.askNearby).toHaveBeenCalledWith('event-1', 'critical');
+    });
+
+    it('never lowers severity: a fall on a critical alert stays critical, and waits for the responder step', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.NOTIFIED, severity: Severity.CRITICAL }),
+      );
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue(
+        typeRule(
+          EmergencyType.FALL,
+          ResponderService.AMBULANCE,
+          Severity.ELEVATED,
+          TypeDispatch.AT_RESPONDER_TIER,
+        ),
+      );
+
+      await build(prisma).reportType('event-1', 'elder-1', EmergencyType.FALL);
+
+      expect(prisma.emergencyEvent.updateMany.mock.calls[0][0].data.severity).toBe(
+        Severity.CRITICAL,
+      );
+      expect(notified(prisma)).toEqual([]);
+      expect(auditActions(prisma)).not.toContain(AuditAction.SERVICE_DISPATCHED);
+    });
+
+    it('asks a service once, however many reports come in', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue(
+        typeRule(
+          EmergencyType.BREATHING,
+          ResponderService.AMBULANCE,
+          Severity.CRITICAL,
+          TypeDispatch.IMMEDIATE,
+        ),
+      );
+      prisma.user.findMany.mockResolvedValue([covering('ambulance', ResponderService.AMBULANCE)]);
+      // The report itself is recorded; the claim on asking a service finds it already taken.
+      prisma.emergencyEvent.updateMany
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
+
+      await build(prisma).reportType('event-1', 'elder-1', EmergencyType.BREATHING);
+
+      expect(notified(prisma)).toEqual([]);
+      expect(auditActions(prisma)).not.toContain(AuditAction.SERVICE_DISPATCHED);
+    });
+
+    it('falls back to a responder who takes any call when that service does not cover the place', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue(
+        typeRule(
+          EmergencyType.UNSAFE,
+          ResponderService.POLICE,
+          Severity.CRITICAL,
+          TypeDispatch.IMMEDIATE,
+        ),
+      );
+      prisma.user.findMany.mockResolvedValue([
+        covering('ambulance', ResponderService.AMBULANCE),
+        covering('response-unit', ResponderService.GENERAL),
+      ]);
+
+      await build(prisma).reportType('event-1', 'elder-1', EmergencyType.UNSAFE);
+
+      expect(new Set(notified(prisma).map((row) => row.recipientId))).toEqual(
+        new Set(['response-unit']),
+      );
+    });
+
+    it('asks volunteers nearby when no responder of any service covers the place', async () => {
+      const prisma = buildPrisma();
+      const volunteers = buildVolunteers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.NOTIFIED, severity: Severity.CRITICAL }),
+      );
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue(
+        typeRule(
+          EmergencyType.FIRE,
+          ResponderService.FIRE,
+          Severity.CRITICAL,
+          TypeDispatch.IMMEDIATE,
+        ),
+      );
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        volunteers,
+      ).reportType('event-1', 'elder-1', EmergencyType.FIRE);
+
+      expect(notified(prisma)).toEqual([]);
+      expect(volunteers.askNearby).toHaveBeenCalledWith('event-1', 'uncovered');
+    });
+
+    it('refuses someone outside the emergency', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+      prisma.careAssignment.findFirst.mockResolvedValue(null);
+      prisma.notification.findFirst.mockResolvedValue(null);
+
+      await expect(
+        build(prisma).reportType('event-1', 'stranger', EmergencyType.FIRE),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.emergencyEvent.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('choosing responders by service', () => {
+    it('asks the service the reported type needs when the chain reaches its responders', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, currentTier: 2, reportedType: EmergencyType.FALL }),
+      );
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue({
+        type: EmergencyType.FALL,
+        service: ResponderService.AMBULANCE,
+        severityFloor: Severity.ELEVATED,
+        dispatch: TypeDispatch.AT_RESPONDER_TIER,
+      });
+      prisma.user.findMany.mockResolvedValue(
+        [
+          ['police-post', ResponderService.POLICE],
+          ['ambulance', ResponderService.AMBULANCE],
+        ].map(([id, responderService]) => ({
+          id,
+          coverageLatitude: home.latitude,
+          coverageLongitude: home.longitude,
+          coverageRadiusKm: 5,
+          responderService,
+        })),
+      );
+
+      await build(prisma).dispatchTier('event-1', 3, 'escalation');
+
+      expect(new Set(notified(prisma).map((row) => row.recipientId))).toEqual(
+        new Set(['ambulance']),
+      );
+    });
+  });
+
+  describe('declining when asked ahead of the chain', () => {
+    it('records a service saying it cannot come, and leaves the chain where it was', async () => {
+      const prisma = buildPrisma();
+      const timers = buildTimers();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+      prisma.notification.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ tier: 3 }]);
+
+      await build(prisma, timers).decline('event-1', 'fire-station', 'Engine out on a call');
+
+      expect(timers.cancelAll).not.toHaveBeenCalled();
+      expect(notified(prisma)).toEqual([]);
+      const declined = prisma.auditLog.create.mock.calls[0][0].data;
+      expect(declined).toMatchObject({ action: AuditAction.DECLINED });
+      expect(declined.detail).toMatchObject({ early: true, tier: 3 });
+    });
+  });
+
   describe('requestResponder', () => {
     it('jumps to the responder tier and stops the automatic chain', async () => {
       const prisma = buildPrisma();
@@ -918,6 +1138,36 @@ describe('EscalationService', () => {
 
       await expect(build(prisma).requestResponder('event-1', 'stranger')).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+
+    it('records which service was asked, so it is not asked twice', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ACKNOWLEDGED, reportedType: EmergencyType.FALL }),
+      );
+      prisma.emergencyTypeRule.findUnique.mockResolvedValue({
+        type: EmergencyType.FALL,
+        service: ResponderService.AMBULANCE,
+        severityFloor: Severity.ELEVATED,
+        dispatch: TypeDispatch.AT_RESPONDER_TIER,
+      });
+
+      await build(prisma).requestResponder('event-1', 'caregiver-1');
+
+      expect(prisma.emergencyEvent.update.mock.calls[0][0].data).toMatchObject({
+        serviceRequested: ResponderService.AMBULANCE,
+      });
+    });
+
+    it('does not ask again once a service was asked at once for an urgent type', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ACKNOWLEDGED, serviceRequestedAt: new Date() }),
+      );
+
+      await expect(build(prisma).requestResponder('event-1', 'caregiver-1')).rejects.toThrow(
+        ConflictException,
       );
     });
 

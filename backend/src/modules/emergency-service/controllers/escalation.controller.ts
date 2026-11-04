@@ -6,6 +6,7 @@ import {
 } from '../../../shared/decorators/current-user.decorator';
 import { AcknowledgeDto } from '../validation/acknowledge.dto';
 import { DeclineDto } from '../validation/decline.dto';
+import { ReportTypeDto } from '../validation/report-type.dto';
 import { ResolveDto } from '../validation/resolve.dto';
 import { EscalationService } from '../services/escalation.service';
 
@@ -47,7 +48,22 @@ export class EscalationController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ResolveDto,
   ): Promise<EmergencyEvent> {
-    return this.escalation.resolve(id, user.userId, dto.outcome, dto.note);
+    return this.escalation.resolve(id, user.userId, dto.outcome, dto.note, dto.confirmedType);
+  }
+
+  /**
+   * Say what is happening: a fall, chest pain or breathing, feeling unwell, a fire, or not
+   * being safe. The elder or anybody helping. Never holds the alert up; it can raise
+   * severity and, for an urgent type, ask the matching service at once.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/type')
+  reportType(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ReportTypeDto,
+  ): Promise<EmergencyEvent> {
+    return this.escalation.reportType(id, user.userId, dto.type);
   }
 
   /** Call in the emergency responder now, superseding the automatic chain. */

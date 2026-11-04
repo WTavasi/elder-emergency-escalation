@@ -1,5 +1,5 @@
-import { EventOutcome } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { EmergencyType, EventOutcome } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 
 export class ResolveDto {
   @IsEnum(EventOutcome, {
@@ -21,4 +21,15 @@ export class ResolveDto {
   @ValidateIf((dto: ResolveDto) => dto.note !== undefined)
   @MaxLength(300)
   note?: string;
+
+  /**
+   * What actually happened, confirmed by the person closing it. Optional, and usually the
+   * elder's own report pre-filled. Compared with that report, it says how often the
+   * elder's account was right.
+   */
+  @IsOptional()
+  @IsEnum(EmergencyType, {
+    message: `confirmedType must be one of: ${Object.values(EmergencyType).join(', ')}`,
+  })
+  confirmedType?: EmergencyType;
 }

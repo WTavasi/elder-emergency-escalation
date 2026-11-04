@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { EmergencyType } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { RedisService } from '../../../shared/redis/redis.service';
 import type { DirectSmsService } from '../../notification-service/services/direct-sms.service';
@@ -9,6 +10,7 @@ import type { AlertsService } from './alerts.service';
 import type { EscalationService } from './escalation.service';
 import {
   asksForHelp,
+  typeFromText,
   normalisePhone,
   readReply,
   REPLY_LIMIT,
@@ -65,6 +67,7 @@ function build(
   const escalation = {
     acknowledge: jest.fn().mockResolvedValue({}),
     decline: jest.fn().mockResolvedValue({}),
+    reportType: jest.fn().mockResolvedValue({}),
   };
   const sms = { send: jest.fn().mockResolvedValue(true) };
   const checkIns = { answer: jest.fn().mockResolvedValue('answered') };
@@ -118,11 +121,42 @@ describe('asksForHelp', () => {
     expect(asksForHelp('saidia tafadhali')).toBe(true);
   });
 
+  it('takes an urgent word on its own as asking for help', () => {
+    expect(asksForHelp('MOTO')).toBe(true);
+    expect(asksForHelp('Fire!')).toBe(true);
+    expect(asksForHelp('nimeanguka')).toBe(true);
+    expect(asksForHelp('wezi wameingia')).toBe(true);
+  });
+
   it('does not read help into anything else', () => {
+    expect(asksForHelp('ill be fine')).toBe(false);
+    expect(asksForHelp('sick of the rain')).toBe(false);
     expect(asksForHelp('')).toBe(false);
     expect(asksForHelp('1')).toBe(false);
     expect(asksForHelp('I do not need help')).toBe(false);
     expect(asksForHelp('helpful')).toBe(false);
+  });
+});
+
+describe('typeFromText', () => {
+  it('reads what is happening in English and Swahili, anywhere in the text', () => {
+    expect(typeFromText('HELP FIRE')).toBe(EmergencyType.FIRE);
+    expect(typeFromText('msaada moto')).toBe(EmergencyType.FIRE);
+    expect(typeFromText('help, I fell in the kitchen')).toBe(EmergencyType.FALL);
+    expect(typeFromText('HELP nimeanguka')).toBe(EmergencyType.FALL);
+    expect(typeFromText('help wezi')).toBe(EmergencyType.UNSAFE);
+    expect(typeFromText('HELP chest pain')).toBe(EmergencyType.BREATHING);
+    expect(typeFromText('saidia naumwa')).toBe(EmergencyType.UNWELL);
+  });
+
+  it('takes the most urgent when a text says more than one', () => {
+    expect(typeFromText('help I fell and there is a fire')).toBe(EmergencyType.FIRE);
+  });
+
+  it('says nothing when the text does not say', () => {
+    expect(typeFromText('HELP')).toBeNull();
+    expect(typeFromText('helpful')).toBeNull();
+    expect(typeFromText('firewood')).toBeNull();
   });
 });
 
@@ -298,6 +332,38 @@ describe('SmsRepliesService', () => {
       expect(t.checkIns.answer).not.toHaveBeenCalled();
       expect(t.sent()[0]).toContain("we've told your family");
       expect(t.sent()[0].length).toBeLessThanOrEqual(SMS_LIMIT);
+    });
+
+    it('passes on what the text says is happening, and says what to do while help comes', async () => {
+      const t = build({ person: ELDER });
+
+      await expect(t.service.handle('+254700000010', 'HELP MOTO')).resolves.toBe('raised');
+
+      expect(t.escalation.reportType).toHaveBeenCalledWith(
+        'event-2',
+        'elder-1',
+        EmergencyType.FIRE,
+        'sms',
+      );
+      expect(t.sent()[0]).toContain('fire service');
+      expect(t.sent()[0]).toContain('Get out if you can');
+      expect(t.sent()[0].length).toBeLessThanOrEqual(SMS_LIMIT);
+    });
+
+    it('passes on a type texted while the alert is already open', async () => {
+      const t = build({ person: ELDER, open: { id: 'event-1', owner: null } });
+
+      await expect(t.service.handle('+254700000010', 'help nimeanguka')).resolves.toBe(
+        'already-raised',
+      );
+
+      expect(t.alerts.create).not.toHaveBeenCalled();
+      expect(t.escalation.reportType).toHaveBeenCalledWith(
+        'event-1',
+        'elder-1',
+        EmergencyType.FALL,
+        'sms',
+      );
     });
 
     it('in Swahili too', async () => {

@@ -124,6 +124,10 @@ function toSummary(row: SummaryRow, viewerId: string): AlertSummary {
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     deadlineAt: row.currentTierDeadlineAt?.toISOString() ?? null,
     responderRequestedAt: row.responderRequestedAt?.toISOString() ?? null,
+    reportedType: row.reportedType,
+    confirmedType: row.confirmedType,
+    serviceRequested: row.serviceRequested,
+    serviceRequestedAt: row.serviceRequestedAt?.toISOString() ?? null,
     responseSeconds: row.acknowledgedAt
       ? Math.round((row.acknowledgedAt.getTime() - row.triggeredAt.getTime()) / 1000)
       : null,
