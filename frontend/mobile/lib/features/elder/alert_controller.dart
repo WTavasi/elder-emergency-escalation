@@ -243,6 +243,32 @@ class AlertController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _reporting = false;
+
+  /// Whether a report of what is happening is on its way.
+  bool get reporting => _reporting;
+
+  /// Says what is happening. Never touches the alert itself, which has already gone; a
+  /// failure is said on the screen and the alert stands.
+  Future<void> report(EmergencyType type) async {
+    final Emergency? raised = _emergency;
+    if (raised == null || _reporting) return;
+    _reporting = true;
+    notifyListeners();
+    try {
+      await _api.reportType(raised.id, type);
+      _emergency = await _api.alert(raised.id);
+      _error = null;
+    } on ApiException catch (failure) {
+      _error = failure.message;
+    } on NetworkException catch (failure) {
+      _error = failure.message;
+    } finally {
+      _reporting = false;
+      notifyListeners();
+    }
+  }
+
   /// Back to the panic control after a cancellation or a resolved emergency.
   void reset() {
     _stopTimers();

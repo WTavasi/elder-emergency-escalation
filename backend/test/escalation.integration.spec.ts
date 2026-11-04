@@ -2,9 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   AuditAction,
+  EmergencyType,
   EventState,
   NotificationChannel,
   NotificationStatus,
+  ResponderService,
   Role,
   Severity,
 } from '@prisma/client';
@@ -36,7 +38,13 @@ describe('escalation, end to end', () => {
   // passing it here would test the fallback rung instead of the real path.
   const home = { latitude: -1.2833, longitude: 36.7833 };
   const suffix = Date.now().toString().slice(-7);
-  const ids: { elder?: string; caregiver?: string; family?: string; secondFamily?: string } = {};
+  const ids: {
+    elder?: string;
+    caregiver?: string;
+    family?: string;
+    secondFamily?: string;
+    station?: string;
+  } = {};
   let originalTimeout: number | null = null;
 
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -150,7 +158,7 @@ describe('escalation, end to end', () => {
       await prisma.user.deleteMany({
         where: {
           id: {
-            in: [ids.elder, ids.caregiver, ids.family, ids.secondFamily].filter(
+            in: [ids.elder, ids.caregiver, ids.family, ids.secondFamily, ids.station].filter(
               Boolean,
             ) as string[],
           },
@@ -190,6 +198,53 @@ describe('escalation, end to end', () => {
     });
     expect(notifications).toHaveLength(1);
     expect(notifications[0].recipientId).toBe(ids.caregiver);
+  });
+
+  it('asks the fire service at once when the elder reports a fire, beside the family', async () => {
+    const station = await prisma.user.create({
+      data: {
+        name: 'Test Fire Unit',
+        phone: `+2547888${suffix}`,
+        role: Role.EMERGENCY_RESPONDER,
+        responderService: ResponderService.FIRE,
+        passwordHash: 'not-for-signing-in',
+        coverageAreaName: 'Around the test elder',
+        coverageLatitude: home.latitude,
+        coverageLongitude: home.longitude,
+        coverageRadiusKm: 3,
+      },
+    });
+    ids.station = station.id;
+
+    const event = await alerts.create(ids.elder as string, {});
+    await escalation.reportType(event.id, ids.elder as string, EmergencyType.FIRE);
+
+    const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(stored.reportedType).toBe(EmergencyType.FIRE);
+    expect(stored.severity).toBe(Severity.CRITICAL);
+    expect(stored.serviceRequested).toBe(ResponderService.FIRE);
+
+    // Pushed and texted at once, ahead of the chain.
+    const asked = await prisma.notification.findMany({
+      where: { eventId: event.id, recipientId: station.id },
+    });
+    expect(asked.map((row) => row.channel).sort()).toEqual([
+      NotificationChannel.PUSH,
+      NotificationChannel.SMS,
+    ]);
+    // And the family is still asked, as before.
+    expect(
+      await prisma.notification.count({
+        where: { eventId: event.id, recipientId: ids.caregiver },
+      }),
+    ).toBeGreaterThan(0);
+
+    const actions = (await prisma.auditLog.findMany({ where: { eventId: event.id } })).map(
+      (entry) => entry.action,
+    );
+    expect(actions).toEqual(
+      expect.arrayContaining([AuditAction.TYPE_REPORTED, AuditAction.SERVICE_DISPATCHED]),
+    );
   });
 
   it('escalates to tier two on its own when nobody acknowledges', async () => {

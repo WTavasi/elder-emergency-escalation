@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { EmergencyType, Role } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { RedisService } from '../../../shared/redis/redis.service';
 import { AWAITING_STATES, OPEN_STATES } from '../../../shared/utils/event-lifecycle';
@@ -68,13 +68,68 @@ const HELP = new Set([HELP_WORD.toLowerCase(), 'sos', 'msaada', 'saidia']);
  * not.
  */
 export function asksForHelp(text: string): boolean {
-  const first = text
+  const first = wordsOf(text)[0];
+  return !!first && (HELP.has(first) || TYPE_WORDS.has(first));
+}
+
+/**
+ * The words that say what is happening, in English and Swahili, most urgent first: a text
+ * that says both "fell" and "fire" is about the fire. Read anywhere in the text, so
+ * "HELP FIRE", "msaada moto" and "help, I fell" all count.
+ */
+const TYPE_KEYWORDS: Array<[EmergencyType, string[]]> = [
+  [EmergencyType.FIRE, ['fire', 'moto']],
+  [
+    EmergencyType.UNSAFE,
+    ['police', 'polisi', 'thief', 'thieves', 'robbery', 'robbers', 'mwizi', 'wezi', 'wizi'],
+  ],
+  [
+    EmergencyType.BREATHING,
+    ['chest', 'breathing', 'breathe', 'breath', 'kifua', 'kupumua', 'pumua'],
+  ],
+  [EmergencyType.FALL, ['fall', 'fell', 'fallen', 'slipped', 'anguka', 'nimeanguka', 'nimeteleza']],
+  [EmergencyType.UNWELL, ['unwell', 'sick', 'ill', 'mgonjwa', 'naumwa']],
+];
+
+/**
+ * The words that ask for help on their own, as the first word: "MOTO", "Fell". Not the
+ * words for feeling unwell, which start ordinary sentences ("ill be fine") too often to
+ * raise an emergency by themselves; after HELP they still say what is happening.
+ */
+const TYPE_WORDS = new Set(
+  TYPE_KEYWORDS.filter(([type]) => type !== EmergencyType.UNWELL).flatMap(([, words]) => words),
+);
+
+/** What a text says is happening, or null when it does not say. */
+export function typeFromText(text: string): EmergencyType | null {
+  const words = new Set(wordsOf(text));
+  for (const [type, keywords] of TYPE_KEYWORDS) {
+    if (keywords.some((keyword) => words.has(keyword))) return type;
+  }
+  return null;
+}
+
+function wordsOf(text: string): string[] {
+  return text
     .trim()
     .toLowerCase()
-    .split(/\s+/)[0]
-    ?.replace(/[.!,?]+$/, '');
-  return !!first && HELP.has(first);
+    .split(/[\s,]+/)
+    .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9']+$/g, ''))
+    .filter((word) => word.length > 0);
 }
+
+/**
+ * What the elder is told after texting for help. Said plainly for the urgent types,
+ * because the service was asked too and there is something to do while it comes.
+ */
+const RAISED_REPLY: Partial<Record<EmergencyType, string>> = {
+  [EmergencyType.FIRE]:
+    "MzaziCare: we've told your family and asked for the fire service. Get out if you can, and call 999 too.",
+  [EmergencyType.UNSAFE]:
+    "MzaziCare: we've told your family and asked for the police. Go somewhere safe if you can, and call 999 too.",
+  [EmergencyType.BREATHING]:
+    "MzaziCare: we've told your family and asked for an ambulance. Call 999 too if you can.",
+};
 
 /** An international number from whatever the gateway sent: spaces gone, a + in front. */
 export function normalisePhone(raw: string): string | null {
@@ -135,7 +190,7 @@ export class SmsRepliesService {
     const outcome =
       person.role === Role.ELDER
         ? asksForHelp(text)
-          ? await this.raiseByText(person.id, phone)
+          ? await this.raiseByText(person.id, phone, typeFromText(text))
           : await this.answerCheckIn(person.id, phone, intent)
         : person.role === Role.COMMUNITY_RESPONDER
           ? await this.answerAsVolunteer(person.id, phone, intent)
@@ -222,28 +277,49 @@ export class SmsRepliesService {
    * is still open is answered with where that one has got to rather than raising another
    * and asking everybody twice.
    */
-  private async raiseByText(elderId: string, phone: string): Promise<ReplyOutcome> {
+  private async raiseByText(
+    elderId: string,
+    phone: string,
+    type: EmergencyType | null,
+  ): Promise<ReplyOutcome> {
     const open = await this.prisma.emergencyEvent.findFirst({
       where: { elderlyId: elderId, state: { in: OPEN_STATES } },
       orderBy: { triggeredAt: 'desc' },
-      select: { owner: { select: { name: true } } },
+      select: { id: true, owner: { select: { name: true } } },
     });
     if (open) {
+      // A second text that says what is happening is not wasted: it is passed on.
+      if (type) await this.reportType(open.id, elderId, type);
       await this.sms.send(
         phone,
         open.owner
           ? `MzaziCare: ${firstName(open.owner.name)} is coming to you. Stay where you are if it's safe.`
-          : "MzaziCare: we've already told your family. Keep your phone near you.",
+          : type
+            ? (RAISED_REPLY[type] ?? "MzaziCare: thanks, we've told the people helping you.")
+            : "MzaziCare: we've already told your family. Keep your phone near you.",
       );
       return 'already-raised';
     }
 
-    await this.alerts.create(elderId, {}, { via: 'sms' });
+    const raised = await this.alerts.create(elderId, {}, { via: 'sms' });
+    if (type) await this.reportType(raised.id, elderId, type);
     await this.sms.send(
       phone,
-      "MzaziCare: we've told your family. If you can, call 999 too. Keep your phone near you.",
+      (type && RAISED_REPLY[type]) ??
+        "MzaziCare: we've told your family. If you can, call 999 too. Keep your phone near you.",
     );
     return 'raised';
+  }
+
+  /** Passes on what the text said is happening. The alert stands whatever happens here. */
+  private async reportType(eventId: string, elderId: string, type: EmergencyType): Promise<void> {
+    try {
+      await this.escalation.reportType(eventId, elderId, type, 'sms');
+    } catch (error) {
+      this.logger.error(
+        `Could not record ${type} for ${eventId}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
   }
 
   /**

@@ -102,6 +102,23 @@ export function severityWord(band: string): string {
   return SEVERITY_LABEL[band] ?? band.charAt(0) + band.slice(1).toLowerCase();
 }
 
+/** What is happening, in the words the app's buttons use for somebody helping. */
+export const TYPE_LABEL: Record<string, string> = {
+  FALL: 'Fall',
+  BREATHING: 'Chest or breathing',
+  UNWELL: 'Unwell',
+  FIRE: 'Fire',
+  UNSAFE: 'Not safe',
+};
+
+/** A responder's service, as a person says it. */
+export const SERVICE_LABEL: Record<string, string> = {
+  GENERAL: 'General',
+  AMBULANCE: 'Ambulance',
+  FIRE: 'Fire service',
+  POLICE: 'Police',
+};
+
 /** Turns SEVERITY_EVALUATED into "severity evaluated", for the timeline. */
 export function humanise(value: string): string {
   return value.replace(/_/g, ' ').toLowerCase();

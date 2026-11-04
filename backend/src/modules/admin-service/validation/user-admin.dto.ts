@@ -19,7 +19,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { Role } from '@prisma/client';
+import { ResponderService, Role } from '@prisma/client';
 import { E164, E164_MESSAGE } from '../../auth-service/validation/phone';
 
 /**
@@ -118,6 +118,16 @@ export class CreateUserDto {
   @ValidateNested()
   @Type(() => CoverageDto)
   coverage?: CoverageDto;
+
+  /**
+   * Which service a responder is: an ambulance, the fire service, the police, or GENERAL,
+   * who takes any call. GENERAL when left out.
+   */
+  @IsOptional()
+  @IsEnum(ResponderService, {
+    message: `responderService must be one of: ${Object.values(ResponderService).join(', ')}`,
+  })
+  responderService?: ResponderService;
 }
 
 export class UpdateUserDto {
@@ -139,6 +149,12 @@ export class UpdateUserDto {
   @ValidateNested()
   @Type(() => CoverageDto)
   coverage?: CoverageDto;
+
+  @IsOptional()
+  @IsEnum(ResponderService, {
+    message: `responderService must be one of: ${Object.values(ResponderService).join(', ')}`,
+  })
+  responderService?: ResponderService;
 }
 
 /** Several accounts at once, from the table's selection. */

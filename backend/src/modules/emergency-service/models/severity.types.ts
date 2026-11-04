@@ -1,4 +1,4 @@
-import type { CareLevel, Severity } from '@prisma/client';
+import type { CareLevel, EmergencyType, Severity } from '@prisma/client';
 import type { Coordinates } from '../../../shared/utils/geo';
 
 /** Everything the policy needs, gathered before scoring so the scoring itself is pure. */
@@ -35,4 +35,15 @@ export interface SeverityAssessment {
   score: number;
   band: Severity;
   factors: FactorOutcome[];
+  /**
+   * The lowest band the reported type allows, when one was reported and it is above the
+   * score's own band. Kept beside the factors so "why this severity" can say it.
+   */
+  floor?: SeverityFloor;
+}
+
+/** "Fire was reported, so at least critical." */
+export interface SeverityFloor {
+  type: EmergencyType;
+  band: Severity;
 }

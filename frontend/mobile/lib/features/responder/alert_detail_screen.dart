@@ -13,6 +13,7 @@ import '../../core/location/way_there.dart';
 import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
 import '../../core/widgets/action_sheet.dart';
+import '../../core/widgets/emergency_type_icon.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
@@ -253,6 +254,21 @@ class _Header extends StatelessWidget {
             style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
           ),
         ],
+        if (alert.reportedType case final EmergencyType type) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s12),
+          Row(
+            children: <Widget>[
+              Icon(emergencyTypeIcon(type)),
+              const SizedBox(width: MzaziSpace.s8),
+              Expanded(
+                child: Text(
+                  '${alert.elderName.split(' ').first} says: ${type.label}',
+                  style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: MzaziSpace.s12),
         Text(
           'Raised ${elapsedSince(alert.triggeredAt)}. Asking group ${alert.currentTier}.',
@@ -446,9 +462,9 @@ class _Actions extends StatelessWidget {
                     child: FilledButton(
                       style: CallStyle.strong(context).merge(StackedLabel.padding),
                       onPressed: busy ? null : controller.requestResponder,
-                      child: const StackedLabel(
+                      child: StackedLabel(
                         icon: Icons.emergency,
-                        label: 'Ask for an emergency responder',
+                        label: controller.serviceNeeded.ask,
                       ),
                     ),
                   ),
@@ -458,7 +474,7 @@ class _Actions extends StatelessWidget {
         if (controller.responderAsked) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            "We've asked for an emergency responder.",
+            controller.serviceNeeded.asked,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -509,21 +525,27 @@ class _Actions extends StatelessWidget {
     final _Closure? closure = await showModalBottomSheet<_Closure>(
       context: context,
       isScrollControlled: true,
-      builder: (BuildContext _) => const _OutcomeSheet(),
+      builder: (BuildContext _) => _OutcomeSheet(reported: alert.reportedType),
     );
 
     if (closure != null) {
-      await controller.resolve(closure.outcome, note: closure.note);
+      await controller.resolve(
+        closure.outcome,
+        note: closure.note,
+        confirmedType: closure.confirmedType,
+      );
     }
   }
 }
 
-/// What came back from the sheet: the outcome, and the words if any were written.
+/// What came back from the sheet: the outcome, the words if any were written, and what
+/// it actually was.
 class _Closure {
-  const _Closure(this.outcome, this.note);
+  const _Closure(this.outcome, this.note, this.confirmedType);
 
   final Outcome outcome;
   final String? note;
+  final EmergencyType? confirmedType;
 }
 
 /// How it ended.
@@ -533,7 +555,10 @@ class _Closure {
 /// rather than chosen. Putting a text field on the first step would have made every closure
 /// look like it needed typing, and most do not.
 class _OutcomeSheet extends StatefulWidget {
-  const _OutcomeSheet();
+  const _OutcomeSheet({this.reported});
+
+  /// What the elder said it was, chosen to start with so confirming it is no extra tap.
+  final EmergencyType? reported;
 
   @override
   State<_OutcomeSheet> createState() => _OutcomeSheetState();
@@ -543,6 +568,7 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
   final TextEditingController _note = TextEditingController();
   bool _writing = false;
   bool _tooShort = false;
+  late EmergencyType? _type = widget.reported;
 
   @override
   void dispose() {
@@ -601,7 +627,38 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
 
   Widget _choosingStep(ThemeData theme) => Column(
     mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
+      // What it was, before how it ended: confirmed here, it says how often the elder's
+      // own report was right.
+      Padding(
+        padding: EdgeInsets.fromLTRB(
+          MzaziLayout.margin(context),
+          MzaziSpace.s4,
+          MzaziLayout.margin(context),
+          MzaziSpace.s8,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('What was it?', style: theme.textTheme.titleSmall),
+            const SizedBox(height: MzaziSpace.s8),
+            Wrap(
+              spacing: MzaziSpace.s8,
+              runSpacing: MzaziSpace.s8,
+              children: <Widget>[
+                for (final EmergencyType type in EmergencyType.values)
+                  ChoiceChip(
+                    label: Text(type.label),
+                    avatar: Icon(emergencyTypeIcon(type), size: 18),
+                    selected: _type == type,
+                    onSelected: (bool on) => setState(() => _type = on ? type : null),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
       for (final Outcome outcome in Outcome.values)
         ListTile(
           title: Text(outcome.label, style: theme.textTheme.bodyLarge),
@@ -614,7 +671,7 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
             if (outcome.needsNote) {
               setState(() => _writing = true);
             } else {
-              Navigator.of(context).pop(_Closure(outcome, null));
+              Navigator.of(context).pop(_Closure(outcome, null, _type));
             }
           },
         ),
@@ -673,7 +730,7 @@ class _OutcomeSheetState extends State<_OutcomeSheet> {
                     setState(() => _tooShort = true);
                     return;
                   }
-                  Navigator.of(context).pop(_Closure(Outcome.other, text));
+                  Navigator.of(context).pop(_Closure(Outcome.other, text, _type));
                 },
                 // Not 'Close this emergency', which is the label on the button that opened
                 // this sheet. Two controls with one name is confusing to read and
@@ -755,6 +812,8 @@ class _WhatHappened extends StatelessWidget {
       'VOICE_JOINED' => '$who joined the call',
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
       'RESPONDER_REQUESTED' => '$who asked for an emergency responder',
+      'TYPE_REPORTED' => _reported(who, entry),
+      'SERVICE_DISPATCHED' => _serviceAsked(entry),
       'RESOLVED' => '$who closed it',
       'CANCELLED' when entry.reason == 'checked-in-late' => 'Cancelled: $who answered the check-in',
       'CANCELLED' => '$who cancelled it',
@@ -767,6 +826,20 @@ class _WhatHappened extends StatelessWidget {
 
   /// Names the people if the chain says who sits at that tier, because "Sent to Mary
   /// Otieno" is worth more to a reader than "Sent to tier 1".
+  /// "Grace said: fire", by text when it came by text.
+  static String _reported(String who, TimelineEntry entry) {
+    final String what = entry.type?.label.toLowerCase() ?? 'something';
+    return entry.byText ? '$who said: $what, by text' : '$who said: $what';
+  }
+
+  /// "Fire service asked at once", or that none covers the place.
+  static String _serviceAsked(TimelineEntry entry) {
+    final ResponderService service = entry.service ?? ResponderService.general;
+    return entry.recipients == 0
+        ? 'No ${service.title.toLowerCase()} covers the place, so volunteers nearby were asked'
+        : '${service.title} asked at once';
+  }
+
   String _dispatched(TimelineEntry entry) {
     final int? tier = entry.tier;
     if (tier == null) return 'Sent to group 1';

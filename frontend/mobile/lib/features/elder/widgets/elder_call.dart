@@ -27,11 +27,17 @@ class ElderCall extends StatefulWidget {
     required this.api,
     this.room,
     this.countdown = const Duration(seconds: 3),
+    this.onReport,
+    this.reporting = false,
     super.key,
   });
 
   final Emergency? emergency;
   final ApiClient api;
+
+  /// Passed to the steps underneath: saying what is happening.
+  final Future<void> Function(EmergencyType type)? onReport;
+  final bool reporting;
 
   /// How a voice room is made. Null means the real one; tests pass their own.
   final VoiceRoom Function()? room;
@@ -146,7 +152,12 @@ class _ElderCallState extends State<ElderCall> {
           const SizedBox(height: MzaziSpace.s24),
         ],
         Expanded(
-          child: HelpProgress(emergency: widget.emergency, compact: shown),
+          child: HelpProgress(
+            emergency: widget.emergency,
+            compact: shown,
+            onReport: widget.onReport,
+            reporting: widget.reporting,
+          ),
         ),
       ],
     );

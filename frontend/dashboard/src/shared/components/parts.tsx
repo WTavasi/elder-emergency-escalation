@@ -2,11 +2,18 @@ import { useId } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { OPEN_STATES } from '../api/types';
-import type { AlertSummary, AlertTrigger, EventState, Severity } from '../api/types';
+import type { AlertSummary, AlertTrigger, EmergencyType, EventState, Severity } from '../api/types';
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
 import { useNow } from '../hooks/useNow';
-import { formatAgo, formatClock, formatDuration, formatExact, severityWord } from '../utils/format';
+import {
+  formatAgo,
+  formatClock,
+  formatDuration,
+  formatExact,
+  severityWord,
+  TYPE_LABEL,
+} from '../utils/format';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -73,6 +80,11 @@ export function SeverityLabel({ severity, score }: { severity: Severity; score?:
  * for a press of the button, which is what every other row is, so the tag only appears
  * where it changes what the reader should do (call first).
  */
+export function TypeTag({ type }: { type?: EmergencyType | null }) {
+  if (!type) return null;
+  return <span className="tag">{TYPE_LABEL[type] ?? type}</span>;
+}
+
 export function TriggerTag({ trigger }: { trigger?: AlertTrigger }) {
   const tipId = useId();
   if (trigger !== 'MISSED_CHECK_IN') return null;
@@ -279,6 +291,7 @@ export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }
             {alert.elder.name}
           </Link>
           <TriggerTag trigger={alert.trigger} />
+          <TypeTag type={alert.reportedType} />
         </span>
         <div className="micro row-indent">
           {alert.addressLabel ??

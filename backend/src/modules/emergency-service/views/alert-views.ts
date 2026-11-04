@@ -1,8 +1,10 @@
 import type {
   AlertTrigger,
   AuditAction,
+  EmergencyType,
   EventOutcome,
   EventState,
+  ResponderService,
   Role,
   Severity,
 } from '@prisma/client';
@@ -60,6 +62,13 @@ export interface AlertSummary {
   resolvedAt: string | null;
   deadlineAt: string | null;
   responderRequestedAt: string | null;
+  /** What is happening, as the elder or somebody helping said. Null when nobody said. */
+  reportedType: EmergencyType | null;
+  /** What the person who closed it says happened. Null until then, or if they skipped it. */
+  confirmedType: EmergencyType | null;
+  /** The service asked for this emergency, at once or by a person, and when. */
+  serviceRequested: ResponderService | null;
+  serviceRequestedAt: string | null;
   /** Seconds between the alert and its acknowledgement. Null while unacknowledged. */
   responseSeconds: number | null;
 }

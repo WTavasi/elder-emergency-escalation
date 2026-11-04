@@ -142,8 +142,46 @@ enum AuditAction {
   REOPENED
   RESOLVED
   CANCELLED
+  /// EXTENSION. The elder, or somebody helping, said what is happening.
+  TYPE_REPORTED
+  /// EXTENSION. A service (ambulance, fire, police) was asked at once for an urgent type.
+  SERVICE_DISPATCHED
 
   @@map("audit_action")
+}
+
+/// EXTENSION. What is happening, as the elder or somebody helping says. Optional: an
+/// alert never waits for it, and none at all is the common case.
+enum EmergencyType {
+  FALL
+  /// Chest pain or trouble breathing.
+  BREATHING
+  UNWELL
+  FIRE
+  /// Robbery, an intruder or violence.
+  UNSAFE
+
+  @@map("emergency_type")
+}
+
+/// EXTENSION. Which service an emergency responder account is. GENERAL takes any call,
+/// as a private response unit does, and is every responder made before services existed.
+enum ResponderService {
+  GENERAL
+  AMBULANCE
+  FIRE
+  POLICE
+
+  @@map("responder_service")
+}
+
+/// EXTENSION. When a type's service is asked: at once, beside the family, or when the
+/// chain reaches its own responder step, as an alert with no type does.
+enum TypeDispatch {
+  IMMEDIATE
+  AT_RESPONDER_TIER
+
+  @@map("type_dispatch")
 }
 
 enum ConsentType {
@@ -224,25 +262,29 @@ model User {
   coverageLongitude Decimal? @map("coverage_longitude") @db.Decimal(9, 6)
   coverageRadiusKm  Decimal? @map("coverage_radius_km") @db.Decimal(6, 2)
 
+  /// EXTENSION. The service this responder is. An alert's type decides which service is
+  /// asked first; GENERAL is the fallback for every type.
+  responderService ResponderService? @map("responder_service")
+
   // --- relations ---
-  triggeredEvents    EmergencyEvent[]  @relation("triggeredBy")
-  acknowledgedEvents EmergencyEvent[]  @relation("acknowledgedBy")
-  assignmentsAsElder CareAssignment[]  @relation("assignmentElder")
-  assignmentsAsCarer CareAssignment[]  @relation("assignmentResponder")
-  notifications      Notification[]
-  auditLogs          AuditLog[]
-  consentsAboutMe    ConsentRecord[]   @relation("consentSubject")
-  consentsIGranted   ConsentRecord[]   @relation("consentGrantor")
-  invitationsAsElder ChainInvitation[] @relation("invitationElder")
-  invitationsSent    ChainInvitation[] @relation("invitationSender")
-  preferences        UserPreference?
-  checkInSchedule    CheckInSchedule?  @relation("checkInScheduleElder")
-  checkInSchedulesSet CheckInSchedule[] @relation("checkInScheduleSetBy")
-  checkIns           CheckIn[]
-  volunteerProfile   VolunteerProfile? @relation("volunteerProfile")
-  volunteersReviewed VolunteerProfile[] @relation("volunteerReviewer")
-  volunteerCalls     VolunteerCall[]
-  volunteeredEvents  EmergencyEvent[]  @relation("eventVolunteer")
+  triggeredEvents     EmergencyEvent[]   @relation("triggeredBy")
+  acknowledgedEvents  EmergencyEvent[]   @relation("acknowledgedBy")
+  assignmentsAsElder  CareAssignment[]   @relation("assignmentElder")
+  assignmentsAsCarer  CareAssignment[]   @relation("assignmentResponder")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  consentsAboutMe     ConsentRecord[]    @relation("consentSubject")
+  consentsIGranted    ConsentRecord[]    @relation("consentGrantor")
+  invitationsAsElder  ChainInvitation[]  @relation("invitationElder")
+  invitationsSent     ChainInvitation[]  @relation("invitationSender")
+  preferences         UserPreference?
+  checkInSchedule     CheckInSchedule?   @relation("checkInScheduleElder")
+  checkInSchedulesSet CheckInSchedule[]  @relation("checkInScheduleSetBy")
+  checkIns            CheckIn[]
+  volunteerProfile    VolunteerProfile?  @relation("volunteerProfile")
+  volunteersReviewed  VolunteerProfile[] @relation("volunteerReviewer")
+  volunteerCalls      VolunteerCall[]
+  volunteeredEvents   EmergencyEvent[]   @relation("eventVolunteer")
 
   @@index([role])
   @@map("users")
@@ -333,6 +375,21 @@ model EmergencyEvent {
   /// responder, which supersedes the automatic chain and stops pending timers.
   responderRequestedAt DateTime? @map("responder_requested_at") @db.Timestamptz(3)
 
+  /// EXTENSION. What is happening, as last said by the elder or somebody helping, how and
+  /// when. The latest report wins; severity only ever rises with it.
+  reportedType    EmergencyType? @map("reported_type")
+  reportedTypeAt  DateTime?      @map("reported_type_at") @db.Timestamptz(3)
+  reportedTypeVia String?        @map("reported_type_via") @db.VarChar(16)
+
+  /// EXTENSION. What the person who closed it says actually happened. Compared with the
+  /// reported type, this is how often the elder's report was right.
+  confirmedType EmergencyType? @map("confirmed_type")
+
+  /// EXTENSION. The service asked, at once for an urgent type or when somebody pressed for
+  /// it, and when. Asked once per emergency.
+  serviceRequested   ResponderService? @map("service_requested")
+  serviceRequestedAt DateTime?         @map("service_requested_at") @db.Timestamptz(3)
+
   triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
   /// EXTENSION. When the owner reached the elder. Kept when the emergency moves on (an
@@ -398,6 +455,22 @@ model EscalationRule {
 
   @@unique([severity, tierOrder], name: "one_rule_per_tier_per_severity")
   @@map("escalation_rules")
+}
+
+// ---------------------------------------------------------------------------
+// emergency_type_rules. EXTENSION. What each type of emergency changes: the lowest
+// severity it can have, which service it needs, and whether that service is asked at
+// once. Data rather than code, like the escalation rules beside it.
+// ---------------------------------------------------------------------------
+
+model EmergencyTypeRule {
+  type          EmergencyType    @id
+  service       ResponderService
+  severityFloor Severity         @map("severity_floor")
+  dispatch      TypeDispatch     @default(AT_RESPONDER_TIER)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("emergency_type_rules")
 }
 
 // ---------------------------------------------------------------------------
@@ -624,12 +697,12 @@ model CheckIn {
   remindAt   DateTime @map("remind_at") @db.Timestamptz(3)
   deadlineAt DateTime @map("deadline_at") @db.Timestamptz(3)
 
-  status     CheckInStatus @default(PENDING)
-  remindedAt DateTime?     @map("reminded_at") @db.Timestamptz(3)
-  answeredAt DateTime?     @map("answered_at") @db.Timestamptz(3)
+  status      CheckInStatus @default(PENDING)
+  remindedAt  DateTime?     @map("reminded_at") @db.Timestamptz(3)
+  answeredAt  DateTime?     @map("answered_at") @db.Timestamptz(3)
   /// "app" or "sms".
-  answeredVia String?   @map("answered_via") @db.VarChar(8)
-  missedAt    DateTime? @map("missed_at") @db.Timestamptz(3)
+  answeredVia String?       @map("answered_via") @db.VarChar(8)
+  missedAt    DateTime?     @map("missed_at") @db.Timestamptz(3)
 
   /// The alert raised when it was missed.
   eventId String? @map("event_id") @db.Uuid

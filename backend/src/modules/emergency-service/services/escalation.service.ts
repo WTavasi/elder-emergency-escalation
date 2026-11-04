@@ -15,13 +15,17 @@ import {
   NotificationChannel,
   NotificationStatus,
   Prisma,
+  ResponderService,
   Role,
   Severity,
+  TypeDispatch,
   type EmergencyEvent,
+  type EmergencyType,
   type EscalationRule,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { isWithinMetres } from '../../../shared/utils/geo';
+import type { SeverityAssessment } from '../models/severity.types';
 import {
   AWAITING_STATES,
   OPEN_STATES,
@@ -63,6 +67,18 @@ export interface ResponderLocation {
 
 /** How a person answered an alert: in the app, or by replying to its SMS. */
 export type AnswerChannel = 'app' | 'sms';
+
+/**
+ * Who to ask, in order, when an emergency needs a service: the service itself, then a
+ * responder who takes any call. With no type, a general responder first, then an
+ * ambulance, because most emergencies for an older person at home are medical.
+ */
+const SERVICE_PREFERENCE: Record<ResponderService, ResponderService[]> = {
+  [ResponderService.AMBULANCE]: [ResponderService.AMBULANCE, ResponderService.GENERAL],
+  [ResponderService.FIRE]: [ResponderService.FIRE, ResponderService.GENERAL],
+  [ResponderService.POLICE]: [ResponderService.POLICE, ResponderService.GENERAL],
+  [ResponderService.GENERAL]: [ResponderService.GENERAL, ResponderService.AMBULANCE],
+};
 
 @Injectable()
 export class EscalationService {
@@ -326,7 +342,10 @@ export class EscalationService {
           ...(rescored
             ? {
                 severityScore: assessment.score,
-                severityFactors: assessment as unknown as Prisma.InputJsonValue,
+                severityFactors: withFloorOf(
+                  assessment,
+                  event.severityFactors,
+                ) as unknown as Prisma.InputJsonValue,
               }
             : {}),
         },
@@ -620,7 +639,17 @@ export class EscalationService {
     });
 
     if (asked.length === 0) {
-      throw new ForbiddenException('You were not asked to respond to this emergency');
+      // A service asked at once, ahead of the chain, may say it cannot come too. That
+      // is recorded, and the chain carries on as it was: nobody at the current tier
+      // has answered either way.
+      const early = await this.prisma.notification.findMany({
+        where: { eventId, recipientId: userId, declinedAt: null },
+        select: { tier: true },
+      });
+      if (early.length === 0) {
+        throw new ForbiddenException('You were not asked to respond to this emergency');
+      }
+      return this.declineEarly(event, userId, early[0].tier, reason, via);
     }
 
     // Idempotent rather than an error. A retry from a phone with one bar of signal is
@@ -688,6 +717,7 @@ export class EscalationService {
     userId: string,
     outcome: EventOutcome,
     note?: string,
+    confirmedType?: EmergencyType,
   ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
@@ -702,6 +732,7 @@ export class EscalationService {
         // column that is sometimes '' and sometimes null is two ways to say the same
         // thing, and every later query has to know about both.
         outcomeNote: note?.trim() ? note.trim() : null,
+        ...(confirmedType ? { confirmedType } : {}),
         resolvedAt: now,
         currentTierDeadlineAt: null,
       });
@@ -716,6 +747,8 @@ export class EscalationService {
           detail: {
             outcome,
             note: note?.trim() || null,
+            confirmedType: confirmedType ?? null,
+            reportedType: event.reportedType,
             secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
@@ -728,6 +761,185 @@ export class EscalationService {
     this.realtime.emergencyUpdated(resolved);
     void this.volunteers.eventClosed(eventId);
     return resolved;
+  }
+
+  /**
+   * The elder, or somebody helping, says what is happening.
+   *
+   * Never holds up the alert: it has already gone. The latest report wins. The type's
+   * floor can raise severity, never lower it, and a rise changes the rest of the chain
+   * at once exactly as the cancel-window review does. An urgent type asks its service
+   * now, beside the family, once per emergency.
+   */
+  async reportType(
+    eventId: string,
+    userId: string,
+    type: EmergencyType,
+    via: AnswerChannel = 'app',
+  ): Promise<EmergencyEvent> {
+    const event = await this.requireOpenEvent(eventId);
+    await this.requireParticipant(event, userId);
+
+    const rule = await this.prisma.emergencyTypeRule.findUnique({ where: { type } });
+    const band = rule
+      ? this.severity.highestOf(event.severity, rule.severityFloor)
+      : event.severity;
+    const raised = band !== event.severity;
+    const now = new Date();
+
+    const stored = event.severityFactors as SeverityAssessment | null;
+    const factors = stored && raised ? { ...stored, floor: { type, band } } : stored;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const claim = await tx.emergencyEvent.updateMany({
+        where: { id: eventId, state: { in: OPEN_STATES } },
+        data: {
+          reportedType: type,
+          reportedTypeAt: now,
+          reportedTypeVia: via,
+          severity: band,
+          ...(factors ? { severityFactors: factors as unknown as Prisma.InputJsonValue } : {}),
+        },
+      });
+      if (claim.count === 0) {
+        throw new ConflictException('This emergency is already closed');
+      }
+
+      await tx.auditLog.create({
+        data: {
+          eventId,
+          actorId: userId,
+          action: AuditAction.TYPE_REPORTED,
+          detail: {
+            type,
+            via,
+            severityBefore: event.severity,
+            severityAfter: band,
+            floor: rule?.severityFloor ?? null,
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: now,
+        },
+      });
+      return tx.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
+    });
+
+    this.realtime.emergencyUpdated(updated);
+    this.logger.log(`Event ${eventId}: ${type} reported by ${via}; ${event.severity} to ${band}`);
+
+    if (raised) {
+      await this.promote(updated, event.severity);
+      if (band === Severity.CRITICAL) this.askVolunteers(eventId, 'critical');
+    }
+    if (rule?.dispatch === TypeDispatch.IMMEDIATE) {
+      await this.dispatchService(updated, rule.service);
+    }
+    return this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
+  }
+
+  /**
+   * Asks a service now, ahead of the chain, for an urgent type: an ambulance for chest
+   * pain, the fire service for a fire. The chain carries on beside it as it was. Once
+   * per emergency, whoever reports first; the rows are at the responder tier, so the
+   * service can take the emergency on, and the family's own tier is left alone.
+   */
+  private async dispatchService(event: EmergencyEvent, service: ResponderService): Promise<void> {
+    const claimed = await this.prisma.emergencyEvent.updateMany({
+      where: { id: event.id, serviceRequestedAt: null, state: { in: OPEN_STATES } },
+      data: { serviceRequested: service, serviceRequestedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+
+    const rules = await this.rulesFor(event);
+    const responderRule = rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER);
+    const tier = responderRule?.tierOrder ?? event.currentTier;
+    const recipients = await this.respondersFor(event, service);
+    const channels = [NotificationChannel.PUSH, NotificationChannel.SMS];
+    const now = new Date();
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const rows = await Promise.all(
+        recipients.flatMap((recipientId) =>
+          channels.map((channel) =>
+            tx.notification.create({
+              data: {
+                eventId: event.id,
+                recipientId,
+                channel,
+                status: NotificationStatus.QUEUED,
+                tier,
+                createdAt: now,
+              },
+              select: { id: true },
+            }),
+          ),
+        ),
+      );
+      await tx.auditLog.create({
+        data: {
+          eventId: event.id,
+          actorId: null,
+          action: AuditAction.SERVICE_DISPATCHED,
+          detail: {
+            service,
+            reason: 'type',
+            type: event.reportedType,
+            tier,
+            recipients: recipients.length,
+            channels,
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: now,
+        },
+      });
+      return rows;
+    });
+
+    if (recipients.length === 0) {
+      // Nobody of any service covers the place. Volunteers nearby are the next best.
+      this.logger.warn(`No ${service} responder covers event ${event.id}; asking volunteers`);
+      this.askVolunteers(event.id, 'uncovered');
+      return;
+    }
+    await this.notifications.enqueue(created.map((row) => row.id));
+    const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    this.realtime.emergencyUpdated(latest);
+    this.logger.log(
+      `Event ${event.id}: ${service} asked at once, ${recipients.length} responder(s)`,
+    );
+  }
+
+  /** A decline from somebody asked ahead of the chain: recorded, and nothing moves on. */
+  private async declineEarly(
+    event: EmergencyEvent,
+    userId: string,
+    tier: number,
+    reason: string | undefined,
+    via: AnswerChannel,
+  ): Promise<EmergencyEvent> {
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.notification.updateMany({
+        where: { eventId: event.id, recipientId: userId, declinedAt: null },
+        data: { declinedAt: now },
+      });
+      await tx.auditLog.create({
+        data: {
+          eventId: event.id,
+          actorId: userId,
+          action: AuditAction.DECLINED,
+          detail: {
+            tier,
+            early: true,
+            reason: reason ?? null,
+            secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
+            via,
+          } as unknown as Prisma.InputJsonValue,
+          occurredAt: now,
+        },
+      });
+    });
+    const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    this.realtime.emergencyUpdated(latest);
+    return latest;
   }
 
   /**
@@ -758,19 +970,29 @@ export class EscalationService {
       throw new ConflictException('No emergency responder tier is configured');
     }
 
-    // Asked once already, by a person or by the chain reaching them: asking again would
-    // only send the same alert to the same responders.
-    if (event.responderRequestedAt || event.currentTier >= responderRule.tierOrder) {
+    // Asked once already, by a person, by the chain reaching them, or at once for an
+    // urgent type: asking again would only send the same alert to the same responders.
+    if (
+      event.responderRequestedAt ||
+      event.serviceRequestedAt ||
+      event.currentTier >= responderRule.tierOrder
+    ) {
       throw new ConflictException("We've already asked an emergency responder");
     }
 
     await this.timers.cancelAll(eventId);
 
+    const service = await this.serviceFor(event);
     const now = new Date();
     await this.prisma.$transaction(async (tx) => {
       await tx.emergencyEvent.update({
         where: { id: eventId },
-        data: { responderRequestedAt: now, currentTierDeadlineAt: null },
+        data: {
+          responderRequestedAt: now,
+          currentTierDeadlineAt: null,
+          serviceRequested: service,
+          serviceRequestedAt: now,
+        },
       });
 
       await tx.auditLog.create({
@@ -849,7 +1071,7 @@ export class EscalationService {
   ): Promise<{ recipients: string[]; uncovered: boolean }> {
     let uncovered = false;
     if (rule.responderRole === Role.EMERGENCY_RESPONDER) {
-      const matched = await this.respondersCovering(event);
+      const matched = await this.respondersFor(event, await this.serviceFor(event));
       if (matched.length > 0) return { recipients: matched, uncovered };
 
       uncovered = true;
@@ -872,7 +1094,33 @@ export class EscalationService {
     return { recipients: assignments.map((assignment) => assignment.responderId), uncovered };
   }
 
-  private async respondersCovering(event: EmergencyEvent): Promise<string[]> {
+  /**
+   * Responders covering the alert, of the service it needs if any of them covers it,
+   * else one who takes any call, else whoever covers it at all: reaching the wrong
+   * service beats reaching nobody. Empty only when nobody covers the place.
+   */
+  private async respondersFor(event: EmergencyEvent, service: ResponderService): Promise<string[]> {
+    const covering = await this.respondersCovering(event);
+    for (const wanted of SERVICE_PREFERENCE[service]) {
+      const matched = covering.filter((responder) => responder.service === wanted);
+      if (matched.length > 0) return matched.map((responder) => responder.id);
+    }
+    return covering.map((responder) => responder.id);
+  }
+
+  /** The service an emergency needs: the one already asked, its type's, or a general one. */
+  private async serviceFor(event: EmergencyEvent): Promise<ResponderService> {
+    if (event.serviceRequested) return event.serviceRequested;
+    if (!event.reportedType) return ResponderService.GENERAL;
+    const rule = await this.prisma.emergencyTypeRule.findUnique({
+      where: { type: event.reportedType },
+    });
+    return rule?.service ?? ResponderService.GENERAL;
+  }
+
+  private async respondersCovering(
+    event: EmergencyEvent,
+  ): Promise<Array<{ id: string; service: ResponderService }>> {
     const responders = await this.prisma.user.findMany({
       where: {
         role: Role.EMERGENCY_RESPONDER,
@@ -886,6 +1134,7 @@ export class EscalationService {
         coverageLatitude: true,
         coverageLongitude: true,
         coverageRadiusKm: true,
+        responderService: true,
       },
     });
 
@@ -905,7 +1154,10 @@ export class EscalationService {
           Number(responder.coverageRadiusKm) * 1000,
         ),
       )
-      .map((responder) => responder.id);
+      .map((responder) => ({
+        id: responder.id,
+        service: responder.responderService ?? ResponderService.GENERAL,
+      }));
   }
 
   private async requireOpenEvent(eventId: string): Promise<EmergencyEvent> {
@@ -941,4 +1193,13 @@ export class EscalationService {
 
     throw new ForbiddenException('You are not part of this emergency');
   }
+}
+
+/**
+ * A fresh assessment, keeping a floor an earlier report set. The score can be replaced;
+ * what the elder said is still true.
+ */
+function withFloorOf(assessment: SeverityAssessment, previous: unknown): SeverityAssessment {
+  const floor = (previous as SeverityAssessment | null)?.floor;
+  return floor ? { ...assessment, floor } : assessment;
 }

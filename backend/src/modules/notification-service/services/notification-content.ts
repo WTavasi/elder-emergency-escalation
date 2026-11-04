@@ -1,4 +1,4 @@
-import { AlertTrigger, EventState, Severity } from '@prisma/client';
+import { AlertTrigger, EmergencyType, EventState, Severity } from '@prisma/client';
 
 export interface NotificationContext {
   state: EventState;
@@ -15,7 +15,31 @@ export interface NotificationContext {
   replyByText?: boolean;
   /** A daily check-in the elder did not answer, rather than the elder pressing for help. */
   trigger?: AlertTrigger;
+  /** What is happening, when the elder or somebody helping said. */
+  reportedType?: EmergencyType | null;
+  /** Whether the person told is an emergency service, who always needs to know what for. */
+  forService?: boolean;
 }
+
+/** The type as a word or two at the start of a title: "Fire: Grace needs help now". */
+const TYPE_HEADLINE: Record<EmergencyType, string> = {
+  [EmergencyType.FIRE]: 'Fire',
+  [EmergencyType.UNSAFE]: 'Not safe',
+  [EmergencyType.BREATHING]: 'Chest or breathing',
+  [EmergencyType.FALL]: 'Fall',
+  [EmergencyType.UNWELL]: 'Unwell',
+};
+
+/**
+ * Types that are health information. Kept off a family member's lock screen, where
+ * anybody nearby can read it, and shown inside the app instead. A service is told
+ * always, because it decides what to send.
+ */
+const HEALTH_TYPES: ReadonlySet<EmergencyType> = new Set([
+  EmergencyType.BREATHING,
+  EmergencyType.FALL,
+  EmergencyType.UNWELL,
+]);
 
 export interface ComposedNotification {
   title: string;
@@ -48,6 +72,23 @@ const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
  * what happened and what the reader can do about it.
  */
 export function composeNotification(context: NotificationContext): ComposedNotification {
+  const composed = composeForState(context);
+  const type = context.reportedType;
+  // Only on a call to act: an update that needs nothing from the reader stays as it is.
+  if (!type || composed.data.action !== 'respond') return composed;
+  if (!context.forService && HEALTH_TYPES.has(type)) return composed;
+
+  const headline = TYPE_HEADLINE[type];
+  const plain = composed.sms.replace(/^MzaziCare: /, '');
+  return {
+    ...composed,
+    title: `${headline}: ${composed.title}`,
+    sms: capSms(`MzaziCare: ${headline}. ${plain}`, composed.sms),
+    data: { ...composed.data, type },
+  };
+}
+
+function composeForState(context: NotificationContext): ComposedNotification {
   const name = context.elderName;
   const place = context.addressLabel;
   const at = place ? ` at ${place}` : '';

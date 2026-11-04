@@ -8,15 +8,22 @@ import 'support.dart';
 
 /// The elder's screen once help has been asked for: told, coming, here.
 void main() {
-  Future<void> show(WidgetTester tester, Emergency? emergency) => tester.pumpWidget(
+  Future<void> show(
+    WidgetTester tester,
+    Emergency? emergency, {
+    Future<void> Function(EmergencyType type)? onReport,
+  }) => tester.pumpWidget(
     MaterialApp(
       theme: MzaziTheme.light(AppAudience.elder),
-      home: Scaffold(body: HelpProgress(emergency: emergency)),
+      home: Scaffold(
+        body: HelpProgress(emergency: emergency, onReport: onReport),
+      ),
     ),
   );
 
-  Emergency emergency({bool owned = false, bool arrived = false, int? eta}) =>
+  Emergency emergency({bool owned = false, bool arrived = false, int? eta, String? type}) =>
       Emergency.fromJson(<String, dynamic>{
+        'reportedType': type,
         ...emergencyBody(
           state: arrived ? 'ON_SCENE' : (owned ? 'ACKNOWLEDGED' : 'NOTIFIED'),
           acknowledgedBy: owned || arrived
@@ -106,5 +113,56 @@ void main() {
     expect(centres, hasLength(3));
     expect(centres.toSet(), hasLength(1));
     expect(tester.takeException(), isNull);
+  });
+
+  group('saying what is happening', () {
+    testWidgets('is offered once the alert has gone, and passes on what was chosen', (
+      WidgetTester tester,
+    ) async {
+      final List<EmergencyType> reported = <EmergencyType>[];
+      await show(tester, emergency(), onReport: (EmergencyType type) async => reported.add(type));
+
+      await tester.tap(find.text("Say what's happening"));
+      await tester.pumpAndSettle();
+      expect(find.text("What's happening?"), findsOneWidget);
+      for (final EmergencyType type in EmergencyType.values) {
+        expect(find.text(type.said), findsOneWidget);
+      }
+
+      await tester.tap(find.text('Fire'));
+      await tester.pumpAndSettle();
+      expect(reported, <EmergencyType>[EmergencyType.fire]);
+    });
+
+    testWidgets('once said, shows what the family can see, and what to do for a fire', (
+      WidgetTester tester,
+    ) async {
+      await show(tester, emergency(type: 'FIRE'), onReport: (EmergencyType _) async {});
+
+      expect(find.text('Your family can see: Fire'), findsOneWidget);
+      expect(find.text('Get out if you can. Call 999.'), findsOneWidget);
+      expect(find.text('Change'), findsOneWidget);
+      expect(find.text("Say what's happening"), findsNothing);
+    });
+
+    testWidgets('is not offered once somebody is with them', (WidgetTester tester) async {
+      await show(tester, emergency(arrived: true), onReport: (EmergencyType _) async {});
+      expect(find.text("Say what's happening"), findsNothing);
+    });
+
+    for (final String? type in <String?>[null, 'UNSAFE']) {
+      testWidgets('fits a small phone at the elder size (${type ?? 'nothing said'})', (
+        WidgetTester tester,
+      ) async {
+        await tester.binding.setSurfaceSize(const Size(320, 560));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await show(
+          tester,
+          emergency(owned: true, eta: 540, type: type),
+          onReport: (EmergencyType _) async {},
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

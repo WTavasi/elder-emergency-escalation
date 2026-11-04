@@ -102,6 +102,71 @@ enum AlertTrigger {
       value == 'MISSED_CHECK_IN' ? AlertTrigger.missedCheckIn : AlertTrigger.panic;
 }
 
+/// What is happening, as the elder or somebody helping says. [said] is the elder's own
+/// words on their button; [label] is how everybody else reads it. [service] is who the
+/// server asks for it by default, mirrored here only to name the button that asks.
+enum EmergencyType {
+  fall('FALL', 'I fell', 'Fall', ResponderService.ambulance),
+  breathing(
+    'BREATHING',
+    'Chest pain or breathing',
+    'Chest or breathing',
+    ResponderService.ambulance,
+  ),
+  unwell('UNWELL', 'I feel unwell', 'Unwell', ResponderService.ambulance),
+  fire('FIRE', 'Fire', 'Fire', ResponderService.fire),
+  unsafe('UNSAFE', "I'm not safe", 'Not safe', ResponderService.police);
+
+  const EmergencyType(this.wire, this.said, this.label, this.service);
+
+  final String wire;
+  final String said;
+  final String label;
+  final ResponderService service;
+
+  /// Null for nothing reported, and for a type a newer server added that this app does
+  /// not know: better unsaid than wrong.
+  static EmergencyType? parse(Object? value) {
+    for (final EmergencyType type in EmergencyType.values) {
+      if (type.wire == value) return type;
+    }
+    return null;
+  }
+}
+
+/// Which service an emergency responder is. General takes any call.
+enum ResponderService {
+  general(
+    'GENERAL',
+    'Emergency responder',
+    'Ask for an emergency responder',
+    "We've asked for an emergency responder.",
+  ),
+  ambulance('AMBULANCE', 'Ambulance', 'Ask for an ambulance', "We've asked for an ambulance."),
+  fire('FIRE', 'Fire service', 'Ask for the fire service', "We've asked for the fire service."),
+  police('POLICE', 'Police', 'Ask for the police', "We've asked for the police.");
+
+  const ResponderService(this.wire, this.title, this.ask, this.asked);
+
+  final String wire;
+
+  /// The service by name, at the start of a sentence.
+  final String title;
+
+  /// The button that asks for this service.
+  final String ask;
+
+  /// What the screen says once it has been asked.
+  final String asked;
+
+  static ResponderService? parse(Object? value) {
+    for (final ResponderService service in ResponderService.values) {
+      if (service.wire == value) return service;
+    }
+    return null;
+  }
+}
+
 /// Where an emergency is raised from.
 class GeoPoint {
   const GeoPoint({required this.latitude, required this.longitude, this.addressLabel});
@@ -213,6 +278,7 @@ class Emergency {
     this.voice = Voice.off,
     this.trigger = AlertTrigger.panic,
     this.volunteer,
+    this.reportedType,
   });
 
   final String id;
@@ -242,6 +308,9 @@ class Emergency {
   /// A community volunteer, when any were asked. The elder's copy has the first name only.
   final VolunteerOnAlert? volunteer;
 
+  /// What the elder said is happening, once they said.
+  final EmergencyType? reportedType;
+
   bool get hasArrived => arrivedAt != null;
 
   bool get fromMissedCheckIn => trigger == AlertTrigger.missedCheckIn;
@@ -267,6 +336,7 @@ class Emergency {
       voice: Voice.fromJson(json['voice']),
       trigger: AlertTrigger.parse(json['trigger']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
+      reportedType: EmergencyType.parse(json['reportedType']),
     );
   }
 }
@@ -413,6 +483,10 @@ class AlertSummary {
     this.outcome,
     this.outcomeNote,
     this.responderRequestedAt,
+    this.reportedType,
+    this.confirmedType,
+    this.serviceRequested,
+    this.serviceRequestedAt,
     this.trigger = AlertTrigger.panic,
   });
 
@@ -464,6 +538,16 @@ class AlertSummary {
   /// When somebody in the chain asked for an emergency responder. Null until then.
   final DateTime? responderRequestedAt;
 
+  /// What is happening, as the elder or somebody helping said. Null when nobody said.
+  final EmergencyType? reportedType;
+
+  /// What the person who closed it says happened.
+  final EmergencyType? confirmedType;
+
+  /// The service asked, at once for an urgent type or by a person, and when.
+  final ResponderService? serviceRequested;
+  final DateTime? serviceRequestedAt;
+
   /// A press of the button, or a check-in the elder did not answer. A missed check-in
   /// is read differently: nobody asked for help, so the first thing to do is call.
   final AlertTrigger trigger;
@@ -498,6 +582,10 @@ class AlertSummary {
       outcome: json['outcome'] as String?,
       outcomeNote: json['outcomeNote'] as String?,
       responderRequestedAt: _date(json['responderRequestedAt']),
+      reportedType: EmergencyType.parse(json['reportedType']),
+      confirmedType: EmergencyType.parse(json['confirmedType']),
+      serviceRequested: ResponderService.parse(json['serviceRequested']),
+      serviceRequestedAt: _date(json['serviceRequestedAt']),
       trigger: AlertTrigger.parse(json['trigger']),
     );
   }
@@ -552,6 +640,8 @@ class TimelineEntry {
     this.byText = false,
     this.trigger,
     this.reason,
+    this.type,
+    this.service,
   });
 
   final String id;
@@ -579,6 +669,12 @@ class TimelineEntry {
   /// Why, where the server says: "checked-in-late" on a withdrawal by a late answer.
   final String? reason;
 
+  /// What was reported, on the entry that records a report.
+  final EmergencyType? type;
+
+  /// Which service was asked, on the entry that records asking one at once.
+  final ResponderService? service;
+
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final Object? actor = json['actor'];
     final Object? detail = json['detail'];
@@ -600,6 +696,8 @@ class TimelineEntry {
       byText: d['via'] == 'sms',
       trigger: d.containsKey('trigger') ? AlertTrigger.parse(d['trigger']) : null,
       reason: d['reason'] as String?,
+      type: EmergencyType.parse(d['type']),
+      service: ResponderService.parse(d['service']),
     );
   }
 }

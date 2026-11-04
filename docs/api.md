@@ -94,8 +94,9 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name and the name of whoever took it on, and "check-in" or "missed" also finds alerts raised by a missed check-in; `from` and `to` bound the date; `offset` pages; the total is in `X-Total-Count` |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
-| POST | `/api/v1/alerts/:id/decline` | asked at this tier | Say you cannot come, so the chain moves on at once |
-| POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome |
+| POST | `/api/v1/alerts/:id/decline` | asked at this tier, or a service asked at once | Say you cannot come, so the chain moves on at once. A service asked ahead of the chain may decline too; the chain stays where it was |
+| POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome, and optionally `confirmedType`, what it actually was |
+| POST | `/api/v1/alerts/:id/type` | participants | `{ type }`: say what is happening (`FALL`, `BREATHING`, `UNWELL`, `FIRE`, `UNSAFE`). Can raise severity and ask a service at once; see below |
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain. 403 for an emergency responder; 409 once a responder has been asked, by a person or by the chain reaching them |
 | POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
@@ -160,6 +161,11 @@ sent from that shortcode so the reply reaches the number that reads it.
 
 A text from an **elder** either asks for help or answers their daily check-in:
 
+- **HELP** with a word for what is happening says it too: `HELP FIRE`, `MSAADA MOTO`,
+  `help I fell`, `help wezi`. The urgent words also ask for help on their own as the first
+  word (`MOTO`, `Fire`, `nimeanguka`); the words for feeling unwell do not, because they
+  start ordinary sentences. The reply says what to do while help comes, such as "Get out
+  if you can".
 - **HELP** (also `sos`, `msaada`, `saidia`, read by the first word) raises the same alert
   the panic button does. It is the elder's way to ask for help from a phone with no data,
   and the app offers it, already written, when it cannot reach the server. There is no
@@ -174,6 +180,32 @@ A text from an **elder** either asks for help or answers their daily check-in:
 - Anything else is not taken as a call for help, because a mistyped reply must not
   become an emergency; the elder is told to reply HELP, press the help button or call
   999.
+
+**What is happening.** The elder, or anybody helping, can say what kind of emergency it
+is, after the alert has gone: `POST /alerts/:id/type { type }`. The latest report wins.
+Each type has a rule in `emergency_type_rules`, data rather than code like the escalation
+rules: a severity floor, a service, and when the service is asked.
+
+| Type | Floor | Service | Asked |
+| --- | --- | --- | --- |
+| `BREATHING` (chest pain or breathing) | critical | ambulance | at once |
+| `FIRE` | critical | fire service | at once |
+| `UNSAFE` (robbery, intruder, violence) | critical | police | at once |
+| `FALL` | high | ambulance | at the responder step |
+| `UNWELL` | high | ambulance | at the responder step |
+
+A floor only ever raises severity, and a rise changes the rest of the chain at once, as
+the cancel-window review does. "At once" means the service's responders covering the
+alert are pushed and texted now, ahead of the chain, once per emergency, while the family
+is asked as before. Responder accounts have a `responderService`: `GENERAL`, `AMBULANCE`,
+`FIRE` or `POLICE`. The service asked is the type's if any of its responders covers the
+place, else a general responder, else whoever covers it; with nobody at all, volunteers
+nearby. The summary carries `reportedType`, `confirmedType`, `serviceRequested` and
+`serviceRequestedAt`, and the stored severity factors carry `floor: { type, band }` when a
+floor lifted the band. The audit trail has `TYPE_REPORTED` (`type`, `via`, `severityBefore`,
+`severityAfter`) and `SERVICE_DISPATCHED` (`service`, `recipients`). Pushes to a service
+start with the type ("Fire: Grace needs help"); a family member's lock screen shows Fire
+and Not safe, never the health types, which they see in the app.
 
 Every alert carries `trigger`: `PANIC` for a press of the button, `MISSED_CHECK_IN` for a
 daily check-in nobody answered. The second kind is held at the standard band whatever the
@@ -382,8 +414,8 @@ same length) and `daily` (one point per day, with the days nothing happened incl
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/v1/admin/users` | administrator | `{ items, total, page, pageSize }`. Filters: `q` (name, phone or email), `role`, `status` (`active` or `deactivated`). Each row has `chainPlaces`, the elders' chains it is in, and `chainSize`, for an elder the people in their own chain |
-| POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }` |
-| PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage? }` |
+| POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage?, responderService? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }`; `responderService` is `GENERAL` unless given |
+| PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage?, responderService? }` |
 | POST | `/api/v1/admin/users/deactivate` | administrator | `{ ids }` |
 | POST | `/api/v1/admin/users/reactivate` | administrator | `{ ids }` |
 

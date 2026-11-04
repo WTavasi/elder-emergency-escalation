@@ -891,8 +891,17 @@ class _Live extends StatelessWidget {
     final ApiClient? client = api;
     // Without an API, which only a test of the alert alone builds, there is no calling.
     final Widget progress = client == null
-        ? HelpProgress(emergency: alerts.emergency)
-        : ElderCall(emergency: alerts.emergency, api: client);
+        ? HelpProgress(
+            emergency: alerts.emergency,
+            onReport: alerts.report,
+            reporting: alerts.reporting,
+          )
+        : ElderCall(
+            emergency: alerts.emergency,
+            api: client,
+            onReport: alerts.report,
+            reporting: alerts.reporting,
+          );
 
     final CheckInController? checking = checkIns;
     final Emergency? emergency = alerts.emergency;

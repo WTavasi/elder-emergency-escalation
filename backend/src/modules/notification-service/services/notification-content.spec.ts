@@ -1,4 +1,4 @@
-import { AlertTrigger, EventState, Severity } from '@prisma/client';
+import { AlertTrigger, EmergencyType, EventState, Severity } from '@prisma/client';
 import {
   accountMessages,
   capSms,
@@ -17,6 +17,38 @@ const base = {
 
 const forState = (state: EventState, overrides = {}) =>
   composeNotification({ ...base, state, ...overrides });
+
+describe('composeNotification, with what is happening', () => {
+  it('tells a service what it is being called to, on the lock screen and in the text', () => {
+    const message = forState(EventState.NOTIFIED, {
+      reportedType: EmergencyType.BREATHING,
+      forService: true,
+    });
+    expect(message.title).toBe('Chest or breathing: Grace needs help');
+    expect(message.sms).toMatch(/^MzaziCare: Chest or breathing\. /);
+    expect(message.sms.length).toBeLessThanOrEqual(SMS_LIMIT);
+    expect(message.data.type).toBe(EmergencyType.BREATHING);
+  });
+
+  it("keeps health details off a family member's lock screen", () => {
+    const message = forState(EventState.NOTIFIED, { reportedType: EmergencyType.FALL });
+    expect(message.title).toBe('Grace needs help');
+    expect(message.sms).not.toContain('Fall');
+  });
+
+  it('tells the family about a fire or danger at once, which is not health information', () => {
+    const message = forState(EventState.NOTIFIED, { reportedType: EmergencyType.FIRE });
+    expect(message.title).toBe('Fire: Grace needs help');
+  });
+
+  it('leaves an update that needs nothing from the reader as it was', () => {
+    const message = forState(EventState.ACKNOWLEDGED, {
+      reportedType: EmergencyType.FIRE,
+      forService: true,
+    });
+    expect(message.title).toBe('Someone is on the way to Grace');
+  });
+});
 
 describe('composeNotification', () => {
   it('names the person and the place on a first alert', () => {

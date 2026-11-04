@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role, type User } from '@prisma/client';
+import { Prisma, ResponderService, Role, type User } from '@prisma/client';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { redactPhone } from '../../../shared/utils/redaction';
@@ -36,6 +36,8 @@ export interface UserRow {
   deactivatedAt: string | null;
   /** For a responder, where they are dispatched. Null for everybody else. */
   coverage: { areaName: string; latitude: number; longitude: number; radiusKm: number } | null;
+  /** For a responder, which service they are. Null for everybody else. */
+  responderService: ResponderService | null;
   /** Places this account holds in elders' chains. */
   chainPlaces: number;
   /** For an elder, how many people are in their own chain. Zero for everybody else. */
@@ -61,6 +63,7 @@ const ROW_SELECT = {
   coverageLatitude: true,
   coverageLongitude: true,
   coverageRadiusKm: true,
+  responderService: true,
   _count: { select: { assignmentsAsCarer: true, assignmentsAsElder: true } },
 } satisfies Prisma.UserSelect;
 
@@ -87,6 +90,10 @@ function toRow(user: RowSource): UserRow {
           radiusKm: Number(user.coverageRadiusKm),
         }
       : null,
+    responderService:
+      user.role === Role.EMERGENCY_RESPONDER
+        ? (user.responderService ?? ResponderService.GENERAL)
+        : null,
     chainPlaces: user._count.assignmentsAsCarer,
     chainSize: user._count.assignmentsAsElder,
   };
@@ -175,7 +182,10 @@ export class UserAdminService {
           role: dto.role,
           passwordHash: this.passwords.hash(dto.password),
           ...(dto.role === Role.EMERGENCY_RESPONDER && dto.coverage
-            ? coverageColumns(dto.coverage)
+            ? {
+                ...coverageColumns(dto.coverage),
+                responderService: dto.responderService ?? ResponderService.GENERAL,
+              }
             : {}),
         },
         select: ROW_SELECT,
@@ -194,6 +204,9 @@ export class UserAdminService {
     if (dto.coverage && existing.role !== Role.EMERGENCY_RESPONDER) {
       throw new BadRequestException('Only an emergency responder has an area');
     }
+    if (dto.responderService && existing.role !== Role.EMERGENCY_RESPONDER) {
+      throw new BadRequestException('Only an emergency responder has a service');
+    }
 
     try {
       const user = await this.prisma.user.update({
@@ -204,6 +217,7 @@ export class UserAdminService {
             ? { email: dto.email === null ? null : dto.email.trim().toLowerCase() }
             : {}),
           ...(dto.coverage ? coverageColumns(dto.coverage) : {}),
+          ...(dto.responderService ? { responderService: dto.responderService } : {}),
         },
         select: ROW_SELECT,
       });
