@@ -98,7 +98,8 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier, or a service asked at once | Say you cannot come, so the chain moves on at once. A service asked ahead of the chain may decline too; the chain stays where it was |
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome, and optionally `confirmedType`, what it actually was |
 | POST | `/api/v1/alerts/:id/type` | participants | `{ type }`: say what is happening (`FALL`, `BREATHING`, `UNWELL`, `FIRE`, `UNSAFE`). Can raise severity and ask a service at once; see below |
-| POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain. 403 for an emergency responder; 409 once a responder has been asked, by a person or by the chain reaching them |
+| POST | `/api/v1/alerts/:id/request-responder` | participants | `{ service? }`: ask for a service now, the one the emergency needs or the one chosen (`GENERAL`, `AMBULANCE`, `POLICE`, `FIRE`). Before the responder step it supersedes the chain; after it, the nearest station of that service is asked beside those already asked. 403 for an emergency responder; 409 for a service already asked, or when nobody else covers the place |
+| GET | `/api/v1/elders/:id/services` | the elder, their circle, administrator | `{ hasHome, services }`: the nearest emergency responder, ambulance, police and fire service to the elder's home, by road, the default responder first |
 | POST | `/api/v1/alerts/:id/position` | the owner or the volunteer going, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 | POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |
@@ -209,9 +210,12 @@ rules: a severity floor, a service, and when the service is asked.
 | `UNWELL` | high | ambulance | at the responder step |
 
 A floor only ever raises severity, and a rise changes the rest of the chain at once, as
-the cancel-window review does. "At once" means the service's responders covering the
-alert are pushed and texted now, ahead of the chain, once per emergency, while the family
-is asked as before. Responder accounts have a `responderService`: `GENERAL`, `AMBULANCE`,
+the cancel-window review does. "At once" means the nearest station of the service is
+pushed and texted ahead of the chain, while the family is asked as before, though not at
+the tap: `TYPE_DISPATCH_DELAY_SECONDS` (25) later, so a mistaken tap can be changed first.
+What is reported when the wait ends is what counts; changed to a fall, nothing is asked
+early. The wait is a Redis key (`escalation:service:`) with a durable copy in
+`service_due_at`, recovered on boot. No service is asked twice. Responder accounts have a `responderService`: `GENERAL`, `AMBULANCE`,
 `FIRE` or `POLICE`. The service asked is the type's if any of its responders covers the
 place, else a general responder, else whoever covers it; with nobody at all, volunteers
 nearby. The summary carries `reportedType`, `confirmedType`, `serviceRequested` and

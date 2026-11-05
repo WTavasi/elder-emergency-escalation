@@ -1131,3 +1131,25 @@ outside the tokens. Pins now say what they are in the state colours: red only fo
 nobody has taken on, the "on the way" blue for anybody going, ink otherwise, each with its
 name. The full-screen map's top bar has the back arrow and nothing else, and "show everyone"
 is a round button on the map, where Maps keeps its controls.
+
+**Revised the same day: the default responder, a short wait, and a choice.** Making every
+responder a station replaced the two general response units in the seed, so every elder's
+chain ended at a police station. They are back as the default emergency responder, asked
+when the family has not answered and nobody has said what is happening; the stations are
+asked when what is happening needs them. The project owner also asked for:
+
+- **A short wait before a service is asked for a report.** About 25 seconds after the elder
+  says chest pain, fire or not safe, not at the tap, so a mistaken tap can be changed first.
+  What is reported when the wait ends decides.
+- **A choice for the family.** "Ask for…" now asks which service: the one the emergency
+  needs first, then the others. The nearest station of the one chosen is asked at once, and
+  another can be asked later; none twice.
+- **Everybody can see who can come.** The elder's page and their circle's page about them
+  list the nearest responder, ambulance, police and fire service, and roughly how far each
+  is by road.
+
+**The Me pages, as Settings.** Both are now grouped rows: a personal header with the
+person's initials, then sections of rows that open a page, switch something, choose from a
+pull-down, or open in place. What is used now and then folds away (care circles, history,
+the services nearby, the daily check-in); what matters most is out in the open: on the
+elder's page, a row to call each person in their circle, first.

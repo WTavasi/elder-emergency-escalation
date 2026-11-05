@@ -232,7 +232,7 @@ Any seeded account, password `Dev!2026`. Which screen you get is decided by the 
 | `+254700000010` | Grace Wanjiru, elder | The panic control, at the larger type scale |
 | `+254700000020` | Mary Otieno, caregiver, tier one for Grace | The alert list and the four actions |
 | `+254700000030` | Aisha Wanjiru, family, tier two for Grace | The same list |
-| `+254700000040` | Kilimani Police Station, an emergency responder | The same list |
+| `+254700000040` | Kileleshwa Response Unit, the default emergency responder | The same list |
 | `+254700000001` | administrator | A note sending you to the web console |
 | `+254700000050` | Daniel Ochieng, community volunteer, approved, near Grace | Nearby: who near him needs help |
 | `+254700000051` | Faith Akinyi, community volunteer, waiting for approval | Nearby: "Thank you for applying" |
@@ -790,15 +790,26 @@ chain reaches its responder step; **Ask for an ambulance** on Mary's screen asks
 
 ### Step 15 (optional). Stations, nearest first, and who to go to first
 
+**Asking a service by hand.** On an open emergency, Mary's **Ask for…** button opens
+**Who should we ask?**: the service the emergency needs first, then the others (an
+ambulance, the police, the fire service, an emergency responder). The nearest station of
+the one chosen is asked at once. Any already asked is left out, so the button turns into
+**Ask for another service**.
+
 Responder accounts are stations: each has the address it is based at. When an emergency
 needs a service, only the nearest station of that service is asked, by road. If it says
 it cannot come, the next nearest is asked at once; if it has not answered in three
 minutes (`STATION_WAIT_SECONDS`), the next nearest is asked too.
 
+Every elder's chain ends with a default emergency responder, a response unit that takes
+any call: Kileleshwa Response Unit (`+254700000040`) or Westlands Response Unit
+(`+254700000041`). It is asked when the family has not answered and nobody has said what is
+happening. The stations below are asked when what is happening needs them.
+
 | Phone | Station | Service |
 | --- | --- | --- |
-| `+254700000040` | Kilimani Police Station, Lenana Road | Police |
-| `+254700000041` | Parklands Police Station, Parklands Road | Police |
+| `+254700000047` | Kilimani Police Station, Lenana Road | Police |
+| `+254700000048` | Parklands Police Station, Parklands Road | Police |
 | `+254700000042` | Central Fire Station, Tom Mboya Street | Fire |
 | `+254700000043` | Kileleshwa Police Station, off Laikipia Road | Police |
 | `+254700000044` | St John Ambulance, St John's Lane | Ambulance |
@@ -809,8 +820,9 @@ The names and roads are real; the phone numbers are made up, and the coordinates
 approximate. To correct one, open the station on the console's **Users** page, press
 **Edit**, and search for its address under **Station**.
 
-1. **As Grace, raise an alert, then Say what's happening, I'm not safe.** Only the nearest
-   police station is asked. Mary's screen shows **Emergency services** with that station,
+1. **As Grace, raise an alert, then Say what's happening, I'm not safe.** About 25 seconds
+   later (`TYPE_DISPATCH_DELAY_SECONDS`), so a mistaken tap can be changed with **Change**
+   first, only the nearest police station is asked. Mary's screen shows **Emergency services** with that station,
    **Asked, no answer yet**, and roughly how far it is by road from the station.
 2. **As that station** (Kileleshwa Police Station for Grace's home, `+254700000043`),
    open the alert and press **I cannot come**. The next nearest station is asked at once,
