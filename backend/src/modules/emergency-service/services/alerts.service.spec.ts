@@ -10,6 +10,7 @@ import {
   Severity,
 } from '@prisma/client';
 import type { ConfigService } from '@nestjs/config';
+import type { StationDispatchService } from './station-dispatch.service';
 import type { JourneyService } from './journey.service';
 import type { VoiceService } from './voice.service';
 import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
@@ -179,6 +180,7 @@ const build = (
       current: jest.fn().mockResolvedValue({ available: false, startedBy: null, startedAt: null }),
     } as unknown as VoiceService,
     volunteers,
+    { onAlert: jest.fn().mockResolvedValue([]) } as unknown as StationDispatchService,
   );
 
 describe('AlertsService', () => {

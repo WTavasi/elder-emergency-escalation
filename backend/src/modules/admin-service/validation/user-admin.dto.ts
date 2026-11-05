@@ -55,6 +55,26 @@ export class CoverageDto {
   radiusKm: number;
 }
 
+/** Where a responder unit is based: its station's address and the point it is at. */
+export class StationDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  label: string;
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(-90)
+  @Max(90)
+  latitude: number;
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(-180)
+  @Max(180)
+  longitude: number;
+}
+
 export class ListUsersDto {
   /** Part of a name, phone number or email address. */
   @IsOptional()
@@ -128,6 +148,15 @@ export class CreateUserDto {
     message: `responderService must be one of: ${Object.values(ResponderService).join(', ')}`,
   })
   responderService?: ResponderService;
+
+  /**
+   * Where a responder unit is based. The nearest station by road is asked first. Left
+   * out, the unit is measured from the middle of its area.
+   */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StationDto)
+  station?: StationDto;
 }
 
 export class UpdateUserDto {
@@ -155,6 +184,13 @@ export class UpdateUserDto {
     message: `responderService must be one of: ${Object.values(ResponderService).join(', ')}`,
   })
   responderService?: ResponderService;
+
+  /** Null removes it, and the unit is measured from the middle of its area again. */
+  @IsOptional()
+  @ValidateIf((dto: UpdateUserDto) => dto.station !== null)
+  @ValidateNested()
+  @Type(() => StationDto)
+  station?: StationDto | null;
 }
 
 /** Several accounts at once, from the table's selection. */

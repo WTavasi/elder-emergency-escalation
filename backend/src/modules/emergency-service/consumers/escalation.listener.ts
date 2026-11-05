@@ -4,7 +4,7 @@ import { RedisService } from '../../../shared/redis/redis.service';
 import { AWAITING_STATES } from '../../../shared/utils/event-lifecycle';
 import { EscalationService } from '../services/escalation.service';
 import { EscalationTimerService } from '../services/escalation-timer.service';
-import { parseReviewKey, parseTimerKey } from '../services/escalation.keys';
+import { parseReviewKey, parseStationKey, parseTimerKey } from '../services/escalation.keys';
 
 /**
  * Turns Redis key expiry into escalation.
@@ -55,6 +55,19 @@ export class EscalationListener implements OnModuleInit {
       } catch (error) {
         this.logger.error(
           `Failed to review the severity of event ${reviewOf}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+      return;
+    }
+
+    const stationOf = parseStationKey(key);
+    if (stationOf) {
+      try {
+        await this.escalation.onStationTimeout(stationOf);
+      } catch (error) {
+        this.logger.error(
+          `Failed to ask the next station for event ${stationOf}`,
           error instanceof Error ? error.stack : undefined,
         );
       }
@@ -134,6 +147,18 @@ export class EscalationListener implements OnModuleInit {
     if (pending.length > 0) {
       this.logger.log(
         `Timer recovery: ${fired} overdue escalation(s) fired, ${rearmed} timer(s) restored`,
+      );
+    }
+
+    // A station's wait is a timer too.
+    try {
+      const stations = await this.escalation.recoverStationWaits();
+      fired += stations.fired;
+      rearmed += stations.rearmed;
+    } catch (error) {
+      this.logger.error(
+        'Station wait recovery failed',
+        error instanceof Error ? error.stack : undefined,
       );
     }
 

@@ -24,7 +24,6 @@ import {
   type EscalationRule,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
-import { isWithinMetres } from '../../../shared/utils/geo';
 import type { SeverityAssessment } from '../models/severity.types';
 import {
   AWAITING_STATES,
@@ -35,6 +34,7 @@ import {
   transitionEvent,
 } from '../../../shared/utils/event-lifecycle';
 import { EscalationTimerService } from './escalation-timer.service';
+import { StationDispatchService, type RankedStation } from './station-dispatch.service';
 import { SeverityService } from './severity.service';
 import {
   recentEventsWhere,
@@ -68,18 +68,6 @@ export interface ResponderLocation {
 /** How a person answered an alert: in the app, or by replying to its SMS. */
 export type AnswerChannel = 'app' | 'sms';
 
-/**
- * Who to ask, in order, when an emergency needs a service: the service itself, then a
- * responder who takes any call. With no type, a general responder first, then an
- * ambulance, because most emergencies for an older person at home are medical.
- */
-const SERVICE_PREFERENCE: Record<ResponderService, ResponderService[]> = {
-  [ResponderService.AMBULANCE]: [ResponderService.AMBULANCE, ResponderService.GENERAL],
-  [ResponderService.FIRE]: [ResponderService.FIRE, ResponderService.GENERAL],
-  [ResponderService.POLICE]: [ResponderService.POLICE, ResponderService.GENERAL],
-  [ResponderService.GENERAL]: [ResponderService.GENERAL, ResponderService.AMBULANCE],
-};
-
 @Injectable()
 export class EscalationService {
   private readonly logger = new Logger(EscalationService.name);
@@ -92,6 +80,7 @@ export class EscalationService {
     private readonly severity: SeverityService,
     private readonly config: ConfigService,
     private readonly volunteers: VolunteerCallsService,
+    private readonly stations: StationDispatchService,
   ) {}
 
   /**
@@ -126,14 +115,14 @@ export class EscalationService {
       return;
     }
 
-    const { recipients, uncovered } = await this.recipientsFor(event, rule);
+    const { recipients, uncovered, station, waiting } = await this.recipientsFor(event, rule);
 
     // Volunteers go out with a critical alert from its first tier, and with any alert
     // that reaches the responder tier where no professional covers the place.
     if (event.severity === Severity.CRITICAL) this.askVolunteers(eventId, 'critical');
     else if (uncovered) this.askVolunteers(eventId, 'uncovered');
 
-    if (recipients.length === 0) {
+    if (recipients.length === 0 && !waiting) {
       // An empty tier must not stall the chain: an elder whose family member never
       // registered would otherwise wait out the whole timeout for nobody.
       this.logger.warn(
@@ -179,6 +168,9 @@ export class EscalationService {
       this.logger.log(`Event ${eventId} moved on before tier ${tier} went out; standing down`);
       return;
     }
+
+    // The station asked starts its wait, after which the next nearest is asked too.
+    if (station) await this.stations.recordAsked(dispatched.updated, station, 'nearest');
 
     // Screens update the moment the chain moves, rather than on their next poll.
     this.realtime.emergencyUpdated(dispatched.updated);
@@ -600,6 +592,8 @@ export class EscalationService {
       return updated;
     });
 
+    // Somebody is coming, so no further station is asked.
+    await this.stations.stop(eventId);
     this.realtime.emergencyUpdated(acknowledged);
     return acknowledged;
   }
@@ -681,6 +675,9 @@ export class EscalationService {
         },
       });
     });
+
+    // A station that cannot come is passed over at once for the next nearest.
+    await this.nextStationAfterDecline(event, userId);
 
     // Whether anybody this tier asked could still say yes. The critical band dispatches
     // two tiers at once, so one person declining is not the same as the tier being
@@ -852,7 +849,8 @@ export class EscalationService {
     const rules = await this.rulesFor(event);
     const responderRule = rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER);
     const tier = responderRule?.tierOrder ?? event.currentTier;
-    const recipients = await this.respondersFor(event, service);
+    const { next } = await this.stations.pick(event, service);
+    const recipients = next ? [next.id] : [];
     const channels = [NotificationChannel.PUSH, NotificationChannel.SMS];
     const now = new Date();
 
@@ -900,11 +898,10 @@ export class EscalationService {
       return;
     }
     await this.notifications.enqueue(created.map((row) => row.id));
+    if (next) await this.stations.recordAsked(event, next, 'nearest');
     const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     this.realtime.emergencyUpdated(latest);
-    this.logger.log(
-      `Event ${event.id}: ${service} asked at once, ${recipients.length} responder(s)`,
-    );
+    this.logger.log(`Event ${event.id}: ${service} asked at once, ${next?.name ?? 'nobody'}`);
   }
 
   /** A decline from somebody asked ahead of the chain: recorded, and nothing moves on. */
@@ -937,9 +934,64 @@ export class EscalationService {
         },
       });
     });
+    await this.nextStationAfterDecline(event, userId);
     const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     this.realtime.emergencyUpdated(latest);
     return latest;
+  }
+
+  /**
+   * After a station says it cannot come, the next nearest is asked, if nobody has taken
+   * the emergency on. Anybody else declining changes nothing here.
+   */
+  private async nextStationAfterDecline(event: EmergencyEvent, userId: string): Promise<void> {
+    const who = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (who?.role !== Role.EMERGENCY_RESPONDER) return;
+    const latest = await this.prisma.emergencyEvent.findUnique({ where: { id: event.id } });
+    if (!latest || latest.acknowledgedBy || !OPEN_STATES.includes(latest.state)) return;
+    await this.stations.askNext(
+      latest,
+      await this.serviceFor(latest),
+      await this.responderTier(latest),
+      'declined',
+    );
+  }
+
+  /**
+   * A station's wait ran out. If nobody has taken the emergency on, the next nearest
+   * station is asked too; the silent one can still answer. Called by the key's expiry
+   * and by recovery on boot.
+   */
+  async onStationTimeout(eventId: string): Promise<void> {
+    const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
+    if (!event?.stationDeadlineAt) return;
+    if (!AWAITING_STATES.includes(event.state) || event.acknowledgedBy) {
+      await this.stations.stop(eventId);
+      return;
+    }
+    await this.stations.askNext(
+      event,
+      await this.serviceFor(event),
+      await this.responderTier(event),
+      'no-answer',
+    );
+  }
+
+  /** Station waits that were running when the API stopped. */
+  recoverStationWaits(): Promise<{ fired: number; rearmed: number }> {
+    return this.stations.recover((eventId) => this.onStationTimeout(eventId));
+  }
+
+  /** The tier a station's notification belongs to: the responder step's. */
+  private async responderTier(event: EmergencyEvent): Promise<number> {
+    const rules = await this.rulesFor(event);
+    return (
+      rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER)?.tierOrder ??
+      event.currentTier
+    );
   }
 
   /**
@@ -1059,20 +1111,33 @@ export class EscalationService {
    * Who to tell for one tier.
    *
    * Caregiver and family tiers come from the elder's own ranked chain. The emergency
-   * responder tier does not: responders are matched to the alert location against
-   * their declared coverage areas, which is what makes a responder registry useful
-   * rather than a fixed assignment per elder. If no coverage area contains the alert,
-   * the chain's own assigned responder is the fallback, because reaching the wrong
+   * responder tier does not: it is one station, the nearest by road of those whose
+   * area covers the alert (see StationDispatchService), and the next nearest is asked
+   * after a decline or a wait with no answer. If no area contains the alert, the
+   * chain's own assigned responder is the fallback, because reaching the wrong
    * responder beats reaching nobody.
    */
   private async recipientsFor(
     event: EmergencyEvent,
     rule: EscalationRule,
-  ): Promise<{ recipients: string[]; uncovered: boolean }> {
+  ): Promise<{
+    recipients: string[];
+    uncovered: boolean;
+    /** The station asked, at the responder step. */
+    station?: RankedStation;
+    /** A station is already asked and waiting: the step is reached, and nobody new is told. */
+    waiting?: boolean;
+  }> {
     let uncovered = false;
     if (rule.responderRole === Role.EMERGENCY_RESPONDER) {
-      const matched = await this.respondersFor(event, await this.serviceFor(event));
-      if (matched.length > 0) return { recipients: matched, uncovered };
+      // Asked already, at once for an urgent type: its wait carries on.
+      if (event.stationDeadlineAt && !event.acknowledgedBy) {
+        return { recipients: [], uncovered, waiting: true };
+      }
+      const { next, covered } = await this.stations.pick(event, await this.serviceFor(event));
+      if (next) return { recipients: [next.id], uncovered, station: next };
+      // Every station covering the place has been asked already.
+      if (covered) return { recipients: [], uncovered };
 
       uncovered = true;
       this.logger.warn(
@@ -1094,20 +1159,6 @@ export class EscalationService {
     return { recipients: assignments.map((assignment) => assignment.responderId), uncovered };
   }
 
-  /**
-   * Responders covering the alert, of the service it needs if any of them covers it,
-   * else one who takes any call, else whoever covers it at all: reaching the wrong
-   * service beats reaching nobody. Empty only when nobody covers the place.
-   */
-  private async respondersFor(event: EmergencyEvent, service: ResponderService): Promise<string[]> {
-    const covering = await this.respondersCovering(event);
-    for (const wanted of SERVICE_PREFERENCE[service]) {
-      const matched = covering.filter((responder) => responder.service === wanted);
-      if (matched.length > 0) return matched.map((responder) => responder.id);
-    }
-    return covering.map((responder) => responder.id);
-  }
-
   /** The service an emergency needs: the one already asked, its type's, or a general one. */
   private async serviceFor(event: EmergencyEvent): Promise<ResponderService> {
     if (event.serviceRequested) return event.serviceRequested;
@@ -1116,48 +1167,6 @@ export class EscalationService {
       where: { type: event.reportedType },
     });
     return rule?.service ?? ResponderService.GENERAL;
-  }
-
-  private async respondersCovering(
-    event: EmergencyEvent,
-  ): Promise<Array<{ id: string; service: ResponderService }>> {
-    const responders = await this.prisma.user.findMany({
-      where: {
-        role: Role.EMERGENCY_RESPONDER,
-        deactivatedAt: null,
-        coverageLatitude: { not: null },
-        coverageLongitude: { not: null },
-        coverageRadiusKm: { not: null },
-      },
-      select: {
-        id: true,
-        coverageLatitude: true,
-        coverageLongitude: true,
-        coverageRadiusKm: true,
-        responderService: true,
-      },
-    });
-
-    const alert = {
-      latitude: Number(event.alertLatitude),
-      longitude: Number(event.alertLongitude),
-    };
-
-    return responders
-      .filter((responder) =>
-        isWithinMetres(
-          {
-            latitude: Number(responder.coverageLatitude),
-            longitude: Number(responder.coverageLongitude),
-          },
-          alert,
-          Number(responder.coverageRadiusKm) * 1000,
-        ),
-      )
-      .map((responder) => ({
-        id: responder.id,
-        service: responder.responderService ?? ResponderService.GENERAL,
-      }));
   }
 
   private async requireOpenEvent(eventId: string): Promise<EmergencyEvent> {

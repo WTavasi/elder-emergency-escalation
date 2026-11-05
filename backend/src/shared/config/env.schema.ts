@@ -386,6 +386,17 @@ export class EnvSchema {
   ARRIVAL_RADIUS_METRES: number = 100;
 
   /**
+   * How long the station asked has to answer before the next nearest is asked too. The
+   * silent one can still answer. Three minutes: long enough to pick up and decide, short
+   * enough that a missed call does not cost the elder much.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(30)
+  @Max(1800)
+  STATION_WAIT_SECONDS: number = 180;
+
+  /**
    * Talking in the app during an emergency, through LiveKit. All three or none: with
    * any missing the feature is off, the alert says so, and the app shows no button.
    * LIVEKIT_URL is what the app connects to, wss://<project>.livekit.cloud for LiveKit

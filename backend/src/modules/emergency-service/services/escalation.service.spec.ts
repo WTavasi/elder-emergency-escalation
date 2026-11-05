@@ -13,6 +13,9 @@ import {
   TypeDispatch,
 } from '@prisma/client';
 import { EscalationService } from './escalation.service';
+import { StationDispatchService } from './station-dispatch.service';
+import { RoutingService } from '../../../shared/routing/routing.service';
+import type { RedisService } from '../../../shared/redis/redis.service';
 import type { EscalationTimerService } from './escalation-timer.service';
 import type { SeverityService } from './severity.service';
 import type { ConfigService } from '@nestjs/config';
@@ -164,14 +167,33 @@ const buildVolunteers = () =>
     eventClosed: jest.fn().mockResolvedValue(undefined),
   }) as unknown as VolunteerCallsService & { askNearby: jest.Mock; eventClosed: jest.Mock };
 
+/** Redis for the station waits: what is set, and what is cleared. */
+const buildRedis = () => ({
+  client: {
+    set: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+  },
+});
+
 const build = (
   prisma: PrismaMock,
   timers = buildTimers(),
   notifications = buildNotifications(),
   severity = buildSeverity(),
   volunteers = buildVolunteers(),
-): EscalationService =>
-  new EscalationService(
+  redis = buildRedis(),
+): EscalationService => {
+  // The real station service, over the same tables, with the straight-line estimate.
+  const routing = new RoutingService(redis as unknown as RedisService, config);
+  const stations = new StationDispatchService(
+    prisma as unknown as PrismaService,
+    redis as unknown as RedisService,
+    routing,
+    notifications,
+    config,
+    new NoopRealtimePublisher(),
+  );
+  return new EscalationService(
     prisma as unknown as PrismaService,
     timers,
     notifications,
@@ -179,7 +201,9 @@ const build = (
     severity,
     config,
     volunteers,
+    stations,
   );
+};
 
 /** Every (recipient, tier, channel) the service decided to notify. */
 const notified = (
@@ -600,7 +624,11 @@ describe('EscalationService', () => {
       expect(won).toHaveLength(1);
       expect(lost).toHaveLength(1);
       expect((lost[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictException);
-      expect(prisma.emergencyEvent.updateMany).toHaveBeenCalledTimes(2);
+      // Two claims; the winner then also clears any station wait.
+      const claims = prisma.emergencyEvent.updateMany.mock.calls.filter(
+        (call) => (call[0] as { where: Record<string, unknown> }).where.acknowledgedBy === null,
+      );
+      expect(claims).toHaveLength(2);
     });
 
     it('accepts a responder who was notified but is not in the chain', async () => {
@@ -1208,6 +1236,102 @@ describe('EscalationService', () => {
       await expect(build(prisma).requestResponder('event-1', 'caregiver-1')).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('stations, nearest first', () => {
+    /** A police station [km] east of Grace's home, covering it. */
+    const station = (id: string, km: number) => ({
+      id,
+      name: id,
+      responderService: ResponderService.POLICE,
+      coverageLatitude: -1.2833,
+      coverageLongitude: 36.7833,
+      coverageRadiusKm: 6,
+      stationLabel: `${id}, Nairobi`,
+      stationLatitude: -1.2833,
+      stationLongitude: 36.7833 + km / 111.3,
+    });
+
+    it('the responder step asks only the nearest station by road, and starts its wait', async () => {
+      const prisma = buildPrisma();
+      prisma.user.findMany.mockResolvedValue([
+        station('Kileleshwa Police Station', 3),
+        station('Kilimani Police Station', 1),
+      ]);
+      const redis = buildRedis();
+
+      await build(
+        prisma,
+        buildTimers(),
+        buildNotifications(),
+        buildSeverity(),
+        buildVolunteers(),
+        redis,
+      ).dispatchTier('event-1', 3, 'escalation');
+
+      expect(notified(prisma).map((row) => row.recipientId)).toEqual(['Kilimani Police Station']);
+      expect(auditActions(prisma)).toContain(AuditAction.STATION_ASKED);
+      expect(redis.client.set).toHaveBeenCalledWith('escalation:station:event-1', '1', 'EX', 180);
+    });
+
+    it('a station that cannot come is passed over at once for the next nearest', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, currentTier: 3 }),
+      );
+      prisma.user.findUnique.mockResolvedValue({ role: Role.EMERGENCY_RESPONDER });
+      prisma.user.findMany.mockResolvedValue([
+        station('Kilimani Police Station', 1),
+        station('Kileleshwa Police Station', 3),
+      ]);
+      prisma.notification.findMany
+        .mockResolvedValueOnce([{ id: 'n1', declinedAt: null }]) // what the station was asked
+        .mockResolvedValueOnce([{ recipientId: 'Kilimani Police Station' }]) // asked already
+        .mockResolvedValueOnce([{ recipientId: 'Kileleshwa Police Station' }]); // still able to answer
+
+      await build(prisma).decline('event-1', 'Kilimani Police Station', 'Car out on a call');
+
+      expect(notified(prisma).map((row) => row.recipientId)).toEqual([
+        'Kileleshwa Police Station',
+        'Kileleshwa Police Station',
+      ]);
+      const asked = prisma.auditLog.create.mock.calls
+        .map((call) => (call[0] as { data: { action: string; detail: unknown } }).data)
+        .find((entry) => entry.action === AuditAction.STATION_ASKED);
+      expect(asked?.detail).toMatchObject({ reason: 'declined' });
+    });
+
+    it('a station silent for its whole wait has the next nearest asked too', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({ state: EventState.ESCALATED, currentTier: 3, stationDeadlineAt: new Date() }),
+      );
+      prisma.user.findMany.mockResolvedValue([
+        station('Kilimani Police Station', 1),
+        station('Kileleshwa Police Station', 3),
+      ]);
+      prisma.notification.findMany.mockResolvedValue([{ recipientId: 'Kilimani Police Station' }]);
+
+      await build(prisma).onStationTimeout('event-1');
+
+      expect(notified(prisma)[0]).toMatchObject({ recipientId: 'Kileleshwa Police Station' });
+    });
+
+    it('asks no further station once somebody has taken it on', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(
+        event({
+          state: EventState.ACKNOWLEDGED,
+          acknowledgedBy: 'Kilimani Police Station',
+          stationDeadlineAt: new Date(),
+        }),
+      );
+      prisma.user.findMany.mockResolvedValue([station('Kileleshwa Police Station', 3)]);
+
+      await build(prisma).onStationTimeout('event-1');
+
+      expect(notified(prisma)).toEqual([]);
     });
   });
 

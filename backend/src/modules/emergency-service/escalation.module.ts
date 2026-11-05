@@ -7,6 +7,7 @@ import { EscalationService } from './services/escalation.service';
 import { EscalationSweepService } from './workers/escalation-sweep.service';
 import { EscalationTimerService } from './services/escalation-timer.service';
 import { JourneyService } from './services/journey.service';
+import { StationDispatchService } from './services/station-dispatch.service';
 import { VoiceService } from './services/voice.service';
 import { NotificationsModule } from '../notification-service/notifications.module';
 import { SeverityModule } from './severity.module';
@@ -21,8 +22,15 @@ import { CommunityModule } from '../community-service/community.module';
     EscalationListener,
     EscalationSweepService,
     JourneyService,
+    StationDispatchService,
     VoiceService,
   ],
-  exports: [EscalationService, EscalationTimerService, JourneyService, VoiceService],
+  exports: [
+    EscalationService,
+    EscalationTimerService,
+    JourneyService,
+    StationDispatchService,
+    VoiceService,
+  ],
 })
 export class EscalationModule {}

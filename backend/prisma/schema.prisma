@@ -146,6 +146,9 @@ enum AuditAction {
   TYPE_REPORTED
   /// EXTENSION. A service (ambulance, fire, police) was asked at once for an urgent type.
   SERVICE_DISPATCHED
+  /// EXTENSION. One station was asked: the nearest, or the next after a decline or no
+  /// answer. Its detail carries the estimated time by road.
+  STATION_ASKED
 
   @@map("audit_action")
 }
@@ -265,6 +268,13 @@ model User {
   /// EXTENSION. The service this responder is. An alert's type decides which service is
   /// asked first; GENERAL is the fallback for every type.
   responderService ResponderService? @map("responder_service")
+
+  /// EXTENSION. Where the unit is based: its station, such as "Kilimani Police Station,
+  /// Lenana Road". The nearest station by road is asked first. Null for a unit made
+  /// before stations, which is measured from the centre of its area instead.
+  stationLabel     String?  @map("station_label") @db.VarChar(200)
+  stationLatitude  Decimal? @map("station_latitude") @db.Decimal(9, 6)
+  stationLongitude Decimal? @map("station_longitude") @db.Decimal(9, 6)
 
   // --- relations ---
   triggeredEvents     EmergencyEvent[]   @relation("triggeredBy")
@@ -389,6 +399,12 @@ model EmergencyEvent {
   /// it, and when. Asked once per emergency.
   serviceRequested   ResponderService? @map("service_requested")
   serviceRequestedAt DateTime?         @map("service_requested_at") @db.Timestamptz(3)
+
+  /// EXTENSION. When the station asked last will be passed over for the next nearest, if
+  /// nobody has taken the emergency on. The durable copy of a Redis timer, as
+  /// current_tier_deadline_at is, so a restart cannot swallow it. Null once nobody is
+  /// waiting on a station.
+  stationDeadlineAt DateTime? @map("station_deadline_at") @db.Timestamptz(3)
 
   triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)

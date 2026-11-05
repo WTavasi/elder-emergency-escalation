@@ -44,6 +44,8 @@ describe('escalation, end to end', () => {
     family?: string;
     secondFamily?: string;
     station?: string;
+    nearPolice?: string;
+    farPolice?: string;
   } = {};
   let originalTimeout: number | null = null;
 
@@ -158,9 +160,15 @@ describe('escalation, end to end', () => {
       await prisma.user.deleteMany({
         where: {
           id: {
-            in: [ids.elder, ids.caregiver, ids.family, ids.secondFamily, ids.station].filter(
-              Boolean,
-            ) as string[],
+            in: [
+              ids.elder,
+              ids.caregiver,
+              ids.family,
+              ids.secondFamily,
+              ids.station,
+              ids.nearPolice,
+              ids.farPolice,
+            ].filter(Boolean) as string[],
           },
         },
       });
@@ -247,6 +255,67 @@ describe('escalation, end to end', () => {
     );
   });
 
+  it('asks the nearest police station first, and the next at once when it cannot come', async () => {
+    const policeAt = (name: string, phone: string, kmEast: number) =>
+      prisma.user.create({
+        data: {
+          name,
+          phone,
+          role: Role.EMERGENCY_RESPONDER,
+          responderService: ResponderService.POLICE,
+          passwordHash: 'not-for-signing-in',
+          coverageAreaName: 'Around the test elder',
+          coverageLatitude: home.latitude,
+          coverageLongitude: home.longitude,
+          coverageRadiusKm: 3,
+          stationLabel: `${name}, test road`,
+          stationLatitude: home.latitude,
+          stationLongitude: home.longitude + kmEast / 111.3,
+        },
+      });
+    const near = await policeAt('Test Near Police', `+2547889${suffix}`, 0);
+    const far = await policeAt('Test Far Police', `+2547887${suffix}`, 2);
+    ids.nearPolice = near.id;
+    ids.farPolice = far.id;
+
+    const event = await alerts.create(ids.elder as string, {});
+    await escalation.reportType(event.id, ids.elder as string, EmergencyType.UNSAFE);
+
+    const askedStations = async () =>
+      (
+        await prisma.auditLog.findMany({
+          where: { eventId: event.id, action: AuditAction.STATION_ASKED },
+          orderBy: { occurredAt: 'asc' },
+        })
+      ).map((entry) => entry.detail as { responderId: string; reason: string });
+
+    // One station only, the nearest by road, waiting for its answer.
+    const first = await askedStations();
+    expect(first).toHaveLength(1);
+    expect(first[0]).toMatchObject({ responderId: near.id, reason: 'nearest' });
+    expect(
+      (await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } }))
+        .stationDeadlineAt,
+    ).not.toBeNull();
+    expect(
+      await prisma.notification.count({ where: { eventId: event.id, recipientId: far.id } }),
+    ).toBe(0);
+
+    await escalation.decline(event.id, near.id, 'Car out on another call');
+
+    const then = await askedStations();
+    expect(then).toHaveLength(2);
+    expect(then[1].reason).toBe('declined');
+    expect(then[1].responderId).not.toBe(near.id);
+
+    // Whoever takes it on stops any further station being asked.
+    await escalation.acknowledge(event.id, then[1].responderId);
+    expect(
+      (await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } }))
+        .stationDeadlineAt,
+    ).toBeNull();
+  });
+
   it('escalates to tier two on its own when nobody acknowledges', async () => {
     const event = await alerts.create(ids.elder as string, {});
 
@@ -268,9 +337,14 @@ describe('escalation, end to end', () => {
     // Delivery outcomes are interleaved with the lifecycle and depend on whether the
     // recipients have registered devices, so this asserts the lifecycle sequence rather
     // than the whole log. What was delivered is asserted in its own test below.
+    // The alert and its first scoring are written in the same millisecond, so the order
+    // between those two is not stored; the alert goes first, as every screen puts it.
     const lifecycle = logs
       .map((log) => log.action)
-      .filter((action) => action !== AuditAction.NOTIFICATION_FAILED);
+      .filter((action) => action !== AuditAction.NOTIFICATION_FAILED)
+      .sort((a, b) =>
+        a === AuditAction.EVENT_CREATED ? -1 : b === AuditAction.EVENT_CREATED ? 1 : 0,
+      );
 
     expect(lifecycle).toEqual([
       AuditAction.EVENT_CREATED,
