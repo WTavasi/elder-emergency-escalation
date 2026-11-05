@@ -91,6 +91,27 @@ describe('the record of an emergency, in sentences', () => {
     ).toBe('A push to Mary Otieno could not be delivered: no registered device');
   });
 
+  it('says when help was asked for, or said, through Siri, the widget or out loud', () => {
+    expect(say(entry('EVENT_CREATED', { trigger: 'PANIC', from: 'siri' }, true))).toBe(
+      'Grace Wanjiru asked for help, to Siri',
+    );
+    expect(say(entry('EVENT_CREATED', { trigger: 'PANIC', from: 'tile' }, true))).toBe(
+      'Grace Wanjiru asked for help, from quick settings',
+    );
+    expect(say(entry('TYPE_REPORTED', { type: 'FIRE', via: 'voice' }, true))).toBe(
+      'Grace Wanjiru said: fire, out loud',
+    );
+  });
+
+  it('says the elder spoke, in which language and what was heard, never the words', () => {
+    expect(
+      say(entry('SPEECH_HEARD', { language: 'sw', heardType: 'FIRE', applied: true }, true)),
+    ).toBe('Grace Wanjiru spoke, in Swahili: heard fire, reported');
+    expect(say(entry('SPEECH_HEARD', { language: 'en', heardType: null }, true))).toBe(
+      'Grace Wanjiru spoke, in English',
+    );
+  });
+
   it('says what was reported, and whether it raised severity', () => {
     expect(
       say(

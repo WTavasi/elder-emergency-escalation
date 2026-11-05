@@ -715,11 +715,20 @@ class TimelineEntry {
     this.stationName,
     this.seconds,
     this.byRoad = false,
+    this.via,
+    this.heardType,
   });
 
   final String id;
   final String action;
   final int secondsFromTrigger;
+
+  /// How it was said or raised, beyond the app's own buttons: `sms`, `voice` (spoken
+  /// after the press), `siri`, `assistant`, `widget` or `tile`.
+  final String? via;
+
+  /// On the entry that records the elder speaking: what the words were heard to mean.
+  final EmergencyType? heardType;
 
   /// On the entry that records a station asked: which, how far, and whether by road.
   final String? stationName;
@@ -779,6 +788,8 @@ class TimelineEntry {
       stationName: d['name'] as String?,
       seconds: asInt(d['seconds']),
       byRoad: d['byRoad'] == true,
+      via: (d['via'] ?? d['from']) as String?,
+      heardType: EmergencyType.parse(d['heardType']),
     );
   }
 }
@@ -820,6 +831,7 @@ class AlertDetail {
     this.voice = Voice.off,
     this.volunteer,
     this.stations = const <StationOnAlert>[],
+    this.speech = const <SpeechHeard>[],
   });
 
   final AlertSummary summary;
@@ -841,6 +853,9 @@ class AlertDetail {
 
   /// The stations asked, nearest first, then any asked after a decline or no answer.
   final List<StationOnAlert> stations;
+
+  /// What the elder said after pressing help, oldest first.
+  final List<SpeechHeard> speech;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -864,6 +879,7 @@ class AlertDetail {
       voice: Voice.fromJson(json['voice']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
       stations: StationOnAlert.listFromJson(json['stations']),
+      speech: SpeechHeard.listFromJson(json['speech']),
     );
   }
 }
@@ -1134,7 +1150,11 @@ enum ConsentKind {
 
   /// Medical details are kept and shown to those asked about an open emergency.
   /// Withdrawing it deletes them.
-  medicalProfile('MEDICAL_PROFILE');
+  medicalProfile('MEDICAL_PROFILE'),
+
+  /// After pressing help, the elder may say what is happening, written down by our own
+  /// speech server. The words are kept 30 days; the recording is not kept.
+  voiceReports('VOICE_REPORTS');
 
   const ConsentKind(this.wire);
 
@@ -1980,4 +2000,66 @@ class NearbyService {
     }
     return services;
   }
+}
+
+/// Whether to offer the microphone after the press.
+class SpeechStatus {
+  const SpeechStatus({required this.available, required this.consented});
+
+  /// The server has a speech-to-text server to send to.
+  final bool available;
+
+  /// The elder agreed to speaking to report.
+  final bool consented;
+
+  static const SpeechStatus off = SpeechStatus(available: false, consented: false);
+
+  bool get offered => available && consented;
+
+  factory SpeechStatus.fromJson(Map<String, dynamic> json) => SpeechStatus(
+    available: json['available'] as bool? ?? false,
+    consented: json['consented'] as bool? ?? false,
+  );
+}
+
+/// What the elder said after pressing help, as written down, and what it was heard to
+/// mean.
+class SpeechHeard {
+  const SpeechHeard({
+    required this.at,
+    required this.transcript,
+    this.english,
+    this.language,
+    this.heardType,
+    this.applied = false,
+  });
+
+  final DateTime at;
+
+  /// In their own words.
+  final String transcript;
+
+  /// In English, when it was said in another language.
+  final String? english;
+
+  /// "sw", "en".
+  final String? language;
+  final EmergencyType? heardType;
+
+  /// Reported on the emergency, so the service for it follows.
+  final bool applied;
+
+  factory SpeechHeard.fromJson(Map<String, dynamic> json) => SpeechHeard(
+    at: DateTime.tryParse(json['at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+    transcript: json['transcript'] as String? ?? '',
+    english: json['english'] as String?,
+    language: json['language'] as String?,
+    heardType: EmergencyType.parse(json['heardType']),
+    applied: json['applied'] as bool? ?? false,
+  );
+
+  static List<SpeechHeard> listFromJson(Object? json) => <SpeechHeard>[
+    for (final Object? item in _list(json))
+      if (item is Map<String, dynamic>) SpeechHeard.fromJson(item),
+  ];
 }

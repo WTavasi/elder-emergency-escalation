@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The emergency red and the white on it, from the design tokens (emergency and
+         onEmergency). A widget is drawn by the launcher, outside Flutter, so it cannot
+         read the tokens package; keep these the same as the tokens. -->
+    <color name="help_emergency">#FF9B0F1C</color>
+    <color name="help_on_emergency">#FFFFFFFF</color>
+
+    <string name="help_widget_label">Help</string>
+    <string name="help_widget_description">Ask for help. Opens MzaziCare and tells your family.</string>
+    <string name="help_widget_name">MzaziCare help</string>
+    <string name="help_tile_label">Ask for help</string>
+
+    <string name="help_shortcut_help">Help</string>
+    <string name="help_shortcut_fire">Help: fire</string>
+    <string name="help_shortcut_fall">Help: I fell</string>
+    <string name="help_shortcut_breathing">Help: chest or breathing</string>
+    <string name="help_shortcut_unsafe">Help: I\'m not safe</string>
+</resources>

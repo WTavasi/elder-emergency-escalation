@@ -213,6 +213,7 @@ export function EventDetail() {
 
       <OnTheWay alert={alert} />
       <Volunteers alert={alert} />
+      <Said alert={alert} />
       <Stations alert={alert} />
       <MedicalLooks id={id} version={alert.timeline.length} />
 
@@ -519,6 +520,36 @@ function Stations({ alert }: { alert: AlertDetail }) {
               ? `. ${capitalised(timeAway(station.etaSeconds))} away${station.byRoad ? ' by road' : ''}, from the station`
               : ''}
             {station.station ? `. ${station.station}` : ''}.
+          </span>
+        </p>
+      ))}
+    </section>
+  );
+}
+
+/** What the elder said after pressing help, in their words and in English. */
+function Said({ alert }: { alert: AlertDetail }) {
+  const said = (alert.speech ?? []).filter((item) => item.transcript.length > 0);
+  if (said.length === 0) return null;
+  const first = alert.elder.name.split(' ')[0];
+
+  return (
+    <section className="card stack" aria-labelledby="said-heading">
+      <h2 id="said-heading">What {first} said</h2>
+      {said.map((item) => (
+        <p key={item.at}>
+          &ldquo;{item.transcript}&rdquo;
+          {item.english ? (
+            <span className="muted" style={{ display: 'block' }}>
+              In English: {item.english}
+            </span>
+          ) : null}
+          <span className="micro muted" style={{ display: 'block' }}>
+            {formatClock(item.at)}
+            {item.heardType
+              ? `. Heard: ${(TYPE_LABEL[item.heardType] ?? item.heardType).toLowerCase()}`
+              : ''}
+            {item.applied ? ', and reported' : ''}.
           </span>
         </p>
       ))}

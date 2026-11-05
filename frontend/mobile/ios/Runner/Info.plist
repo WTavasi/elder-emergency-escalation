@@ -8,6 +8,16 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>MzaziCare</string>
+	<!-- How Siri hears the name, for "Hey Siri, MzaziCare help". -->
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Mzazi Care</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>mm-zah-zee care</string>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -80,7 +90,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>MzaziCare only asks for your location while the app is in use. Sharing your way there carries on behind a maps app until you arrive, and never starts on its own.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>During an emergency, MzaziCare uses the microphone so you can talk with the person coming to help. Nothing you say is recorded.</string>
+	<string>During an emergency, MzaziCare uses the microphone so you can talk with the person coming to help, and, if you agreed, so you can say what is happening. Calls are never recorded.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

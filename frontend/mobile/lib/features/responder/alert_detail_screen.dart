@@ -102,6 +102,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
           ),
           children: <Widget>[
             _Header(alert: alert),
+            if (detail != null && detail.speech.isNotEmpty)
+              _Said(speech: detail.speech, elderName: alert.elderName),
             // Right under the name: whether this is one to hand on at once is the first
             // thing a helper decides, and the history can decide it.
             if (controller.medical case final AlertMedical medical)
@@ -860,7 +862,7 @@ class _WhatHappened extends StatelessWidget {
     return switch (entry.action) {
       'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
         'Missed the daily check-in',
-      'EVENT_CREATED' => entry.byText ? '$who asked for help, by text' : '$who asked for help',
+      'EVENT_CREATED' => '$who asked for help${_how(entry)}',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
       'VOLUNTEERS_ASKED' => 'Asked volunteers nearby',
       'VOLUNTEER_ACCEPTED' => '$who (volunteer) is going',
@@ -874,6 +876,10 @@ class _WhatHappened extends StatelessWidget {
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
       'RESPONDER_REQUESTED' => '$who asked for an emergency responder',
       'TYPE_REPORTED' => _reported(who, entry),
+      'SPEECH_HEARD' => switch (entry.heardType) {
+        final EmergencyType heard => '$who spoke: ${heard.label.toLowerCase()}',
+        null => '$who spoke',
+      },
       'SERVICE_DISPATCHED' => _serviceAsked(entry),
       'STATION_ASKED' => _stationAsked(entry),
       'RESOLVED' => '$who closed it',
@@ -891,8 +897,19 @@ class _WhatHappened extends StatelessWidget {
   /// "Grace said: fire", by text when it came by text.
   static String _reported(String who, TimelineEntry entry) {
     final String what = entry.type?.label.toLowerCase() ?? 'something';
-    return entry.byText ? '$who said: $what, by text' : '$who said: $what';
+    return '$who said: $what${_how(entry)}';
   }
+
+  /// ", by text", ", to Siri": how something was said, when not with the app's buttons.
+  static String _how(TimelineEntry entry) => switch (entry.via) {
+    'sms' => ', by text',
+    'voice' => ', out loud',
+    'siri' => ', to Siri',
+    'assistant' => ', to the Assistant',
+    'widget' => ', from the home screen',
+    'tile' => ', from quick settings',
+    _ => '',
+  };
 
   /// "Fire service asked at once", or that none covers the place.
   /// "Kilimani Police Station asked, about 6 minutes away by road".
@@ -1374,6 +1391,56 @@ class _Step extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What the elder said after pressing help, in their own words and, when they spoke
+/// another language, in English under it. Newest first: the latest is what is true now.
+class _Said extends StatelessWidget {
+  const _Said({required this.speech, required this.elderName});
+
+  final List<SpeechHeard> speech;
+  final String elderName;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<SpeechHeard> said = speech
+        .where((SpeechHeard s) => s.transcript.isNotEmpty)
+        .toList()
+        .reversed
+        .toList();
+    if (said.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: MzaziSpace.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SectionLabel('What ${firstNameOf(elderName)} said'),
+          for (final (int index, SpeechHeard heard) in said.indexed) ...<Widget>[
+            if (index > 0)
+              const Divider(height: MzaziSpace.s24)
+            else
+              const SizedBox(height: MzaziSpace.s8),
+            Text('\u201c${heard.transcript}\u201d', style: theme.textTheme.bodyLarge),
+            if (heard.english case final String english) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text('In English: $english', style: theme.textTheme.bodyMedium),
+            ],
+            const SizedBox(height: MzaziSpace.s4),
+            Text(
+              heard.heardType == null
+                  ? _time(heard.at)
+                  : '${_time(heard.at)} · Heard: ${heard.heardType!.label.toLowerCase()}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _time(DateTime at) => '${at.hour}:${at.minute.toString().padLeft(2, '0')}';
 }
 
 /// The elder's medical details on the alert: anything that makes this emergency more

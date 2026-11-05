@@ -29,6 +29,9 @@ class ElderCall extends StatefulWidget {
     this.countdown = const Duration(seconds: 3),
     this.onReport,
     this.reporting = false,
+    this.onSpeak,
+    this.heard,
+    this.listening = false,
     super.key,
   });
 
@@ -38,6 +41,11 @@ class ElderCall extends StatefulWidget {
   /// Passed to the steps underneath: saying what is happening.
   final Future<void> Function(EmergencyType type)? onReport;
   final bool reporting;
+
+  /// Passed to the steps underneath: saying it out loud.
+  final Future<void> Function()? onSpeak;
+  final SpeechHeard? heard;
+  final bool listening;
 
   /// How a voice room is made. Null means the real one; tests pass their own.
   final VoiceRoom Function()? room;
@@ -157,6 +165,9 @@ class _ElderCallState extends State<ElderCall> {
             compact: shown,
             onReport: widget.onReport,
             reporting: widget.reporting,
+            onSpeak: widget.onSpeak,
+            heard: widget.heard,
+            listening: widget.listening,
           ),
         ),
       ],

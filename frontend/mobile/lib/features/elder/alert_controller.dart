@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -118,8 +119,19 @@ class AlertController extends ChangeNotifier {
   /// check-in that raised this alert withdraws it.
   Future<void> checkNow() => _refresh();
 
-  Future<void> raise() async {
+  /// What the last request for help said is happening, kept so a retry after no
+  /// connection still says it.
+  EmergencyType? _raiseType;
+  String? _raiseFrom;
+
+  /// Asks for help. [type] when it was said with the request ("Hey Siri, MzaziCare help
+  /// fire"), and [from] for where it came from: Siri, the Assistant, the widget or the
+  /// tile. The button passes neither.
+  Future<void> raise({EmergencyType? type, String? from}) async {
     if (!canRaise) return;
+    _raiseType = type;
+    _raiseFrom = from;
+    _heard = null;
 
     // Nothing is checked before the request goes out. There used to be a location
     // precondition here, and it could disable the panic control for an account whose
@@ -131,7 +143,7 @@ class AlertController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _emergency = await _api.raiseAlert();
+      _emergency = await _api.raiseAlert(type: type, from: from);
       _startCancelWindow();
     } on ApiException catch (failure) {
       _phase = AlertPhase.idle;
@@ -179,7 +191,7 @@ class AlertController extends ChangeNotifier {
         }
       }
 
-      final Emergency raised = await _api.raiseAlert();
+      final Emergency raised = await _api.raiseAlert(type: _raiseType, from: _raiseFrom);
       if (_disposed) return;
       // Raised, even if "stop trying" was pressed while the request was travelling: an
       // emergency now exists, and the elder is shown it with the usual chance to stop it
@@ -269,12 +281,52 @@ class AlertController extends ChangeNotifier {
     }
   }
 
+  SpeechHeard? _heard;
+  bool _listening = false;
+
+  /// What the elder last said, as the speech server wrote it down.
+  SpeechHeard? get heard => _heard;
+
+  /// What was said is being written down.
+  bool get listening => _listening;
+
+  /// Sends what the elder said, recorded to [path], and deletes the recording once sent,
+  /// whatever the answer. Like [report], never touches the alert itself.
+  Future<void> speak(String path) async {
+    final Emergency? raised = _emergency;
+    if (raised == null || _listening) return;
+    _listening = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _heard = await _api.sendSpeech(raised.id, path);
+      _emergency = await _api.alert(raised.id);
+    } on ApiException catch (failure) {
+      _error = failure.message;
+    } on NetworkException catch (failure) {
+      _error = failure.message;
+    } finally {
+      _listening = false;
+      await _forget(path);
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  static Future<void> _forget(String path) async {
+    try {
+      await File(path).delete();
+    } on FileSystemException {
+      // Already gone.
+    }
+  }
+
   /// Back to the panic control after a cancellation or a resolved emergency.
   void reset() {
     _stopTimers();
     _phase = AlertPhase.idle;
     _emergency = null;
     _error = null;
+    _heard = null;
     notifyListeners();
   }
 

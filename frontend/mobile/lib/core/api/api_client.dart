@@ -399,13 +399,57 @@ class ApiClient {
   /// registered home, or a stay away from home that a caregiver recorded. So there is no
   /// location permission to ask for, no trail to protect, and nothing for this client to
   /// get wrong at the worst possible moment.
-  Future<Emergency> raiseAlert() async {
+  /// Raises an alert. [type] when it was said with the request, as "Hey Siri,
+  /// MzaziCare help fire" says it; [from] names where it came from: `siri`,
+  /// `assistant`, `widget` or `tile`.
+  Future<Emergency> raiseAlert({EmergencyType? type, String? from}) async {
     final Map<String, dynamic> body = await _send(
       'POST',
       '/alerts',
-      body: const <String, dynamic>{},
+      body: <String, dynamic>{'type': ?type?.wire, 'from': ?from},
     );
     return Emergency.fromJson(body);
+  }
+
+  /// Whether to offer the microphone after the press: a speech server and the elder's
+  /// consent.
+  Future<SpeechStatus> speechStatus(String elderId) async =>
+      SpeechStatus.fromJson(await _send('GET', '/elders/$elderId/speech'));
+
+  /// Sends what the elder said, recorded to [path], to be written down by our own speech
+  /// server. Answers with what was heard and whether it was reported. Longer than an
+  /// ordinary request: writing a minute of speech down takes a while.
+  Future<SpeechHeard> sendSpeech(String eventId, String path, {String mime = 'audio/mp4'}) async {
+    Future<http.StreamedResponse> send() async {
+      final http.MultipartRequest request =
+          http.MultipartRequest('POST', Uri.parse('$baseUrl/alerts/$eventId/speech'))
+            ..headers['Accept'] = 'application/json'
+            ..files.add(
+              await http.MultipartFile.fromPath(
+                'audio',
+                path,
+                contentType: http.MediaType.parse(mime),
+              ),
+            );
+      final Session? current = session;
+      if (current != null) request.headers['Authorization'] = 'Bearer ${current.accessToken}';
+      return _http.send(request).timeout(const Duration(seconds: 90));
+    }
+
+    http.Response response;
+    try {
+      response = await http.Response.fromStream(await send());
+      if (response.statusCode == 401 && session != null && await _refresh()) {
+        response = await http.Response.fromStream(await send());
+      }
+    } on Exception catch (error) {
+      throw NetworkException(_unreachable(error));
+    }
+    final Object? decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode >= 400) {
+      throw ApiException(response.statusCode, _messageFrom(decoded, response.statusCode));
+    }
+    return SpeechHeard.fromJson(decoded is Map<String, dynamic> ? decoded : <String, dynamic>{});
   }
 
   Future<Emergency> cancelAlert(String id) async {

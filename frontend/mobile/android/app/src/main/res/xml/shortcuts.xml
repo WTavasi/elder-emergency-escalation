@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the MzaziCare icon for these, and the Assistant offers them too.
+
+     The capability lets the Assistant start help with what is happening: "Hey Google,
+     open fire in MzaziCare". The feature it heard goes to the app as the "type" extra,
+     and QuickHelp.kt reads it as the app's types. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <parameter
+                android:name="feature"
+                android:key="type" />
+            <extra
+                android:key="from"
+                android:value="assistant" />
+        </intent>
+    </capability>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="help"
+        android:shortcutShortLabel="@string/help_shortcut_help">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <extra android:name="from" android:value="assistant" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="help_fire"
+        android:shortcutShortLabel="@string/help_shortcut_fire">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <extra android:name="from" android:value="assistant" />
+            <extra android:name="type" android:value="FIRE" />
+        </intent>
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="fire" />
+        </capability-binding>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="help_fall"
+        android:shortcutShortLabel="@string/help_shortcut_fall">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <extra android:name="from" android:value="assistant" />
+            <extra android:name="type" android:value="FALL" />
+        </intent>
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="fall" />
+        </capability-binding>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="help_breathing"
+        android:shortcutShortLabel="@string/help_shortcut_breathing">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <extra android:name="from" android:value="assistant" />
+            <extra android:name="type" android:value="BREATHING" />
+        </intent>
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="breathing" />
+        </capability-binding>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="help_unsafe"
+        android:shortcutShortLabel="@string/help_shortcut_unsafe">
+        <intent
+            android:action="ke.ac.strathmore.mzazicare.HELP"
+            android:targetClass="ke.ac.strathmore.mzazicare.MainActivity"
+            android:targetPackage="ke.ac.strathmore.mzazicare">
+            <extra android:name="from" android:value="assistant" />
+            <extra android:name="type" android:value="UNSAFE" />
+        </intent>
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="police" />
+        </capability-binding>
+    </shortcut>
+</shortcuts>
