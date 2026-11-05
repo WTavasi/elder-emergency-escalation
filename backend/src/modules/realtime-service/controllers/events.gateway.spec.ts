@@ -120,7 +120,7 @@ describe('EventsGateway', () => {
     });
 
     it('disconnects on a bad token without saying why', async () => {
-      const verify = jest.fn().mockRejectedValue(new Error('Invalid or expired token'));
+      const verify = jest.fn().mockRejectedValue(new Error('Please sign in again.'));
       const client = buildSocket({ auth: { token: 'tampered' } });
 
       await buildGateway(verify).handleConnection(client);

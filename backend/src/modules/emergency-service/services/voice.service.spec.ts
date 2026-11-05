@@ -66,7 +66,7 @@ function build(
   const escalation = {
     requireParticipant: jest.fn(() =>
       options.participant === false
-        ? Promise.reject(new ForbiddenException('You are not part of this emergency'))
+        ? Promise.reject(new ForbiddenException("You're not part of this emergency."))
         : Promise.resolve(),
     ),
   };

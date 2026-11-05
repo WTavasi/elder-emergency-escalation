@@ -172,7 +172,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
       expect(alerts.phase, AlertPhase.idle);
-      expect(alerts.error, 'Too many requests.');
+      expect(alerts.error, 'Too many tries. Wait a minute, then try again.');
       alerts.dispose();
     });
   });
@@ -394,10 +394,7 @@ void main() {
           expect(ring.width, closeTo(button.width, 0.5));
           expect(ring.height, closeTo(button.height, 0.5));
           // And the way out below it, on screen.
-          expect(
-            tester.getRect(find.text('Stop alert')).bottom,
-            lessThanOrEqualTo(size.height),
-          );
+          expect(tester.getRect(find.text('Stop alert')).bottom, lessThanOrEqualTo(size.height));
           await done(tester, alerts);
         },
       );

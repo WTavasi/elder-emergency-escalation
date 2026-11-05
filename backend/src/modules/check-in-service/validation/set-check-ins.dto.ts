@@ -23,7 +23,7 @@ export class SetCheckInsDto {
   @IsArray()
   @ArrayMaxSize(3)
   @ArrayUnique()
-  @Matches(/^([01]?\d|2[0-3]):[0-5]\d$/, { each: true, message: 'each time must look like 09:00' })
+  @Matches(/^([01]?\d|2[0-3]):[0-5]\d$/, { each: true, message: 'Enter times like 09:00.' })
   times: string[];
 
   /** How long the elder has to answer before their circle is told. Ten minutes to two hours. */

@@ -6,7 +6,7 @@ import { createPublicKey, type JsonWebKey } from 'node:crypto';
 /** Where Google publishes the keys its ID tokens are signed with. */
 export const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 const GOOGLE_ISSUERS: [string, string] = ['accounts.google.com', 'https://accounts.google.com'];
-const REFUSED = 'Google could not confirm that account. Try again.';
+const REFUSED = "Google couldn't confirm that account. Try again.";
 /** Used when Google's answer carries no lifetime, which it always has so far. */
 const DEFAULT_KEY_LIFETIME_MS = 60 * 60 * 1000;
 
@@ -51,7 +51,7 @@ export class GoogleIdentityService {
   /** The verified, lower-cased email address the token proves. */
   async verify(idToken: string): Promise<string> {
     const clientId = this.clientId;
-    if (!clientId) throw new NotFoundException('Google sign-in is not set up on this server');
+    if (!clientId) throw new NotFoundException("Google sign-in isn't available right now.");
 
     const kid = GoogleIdentityService.keyId(idToken);
     const pem = kid ? await this.keyFor(kid) : null;

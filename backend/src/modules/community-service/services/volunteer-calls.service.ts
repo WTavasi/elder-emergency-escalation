@@ -175,10 +175,10 @@ export class VolunteerCallsService {
   /** "I can go." The first to say it is the one who goes. */
   async accept(eventId: string, volunteerId: string): Promise<VolunteerCallView> {
     const { call, event } = await this.callFor(eventId, volunteerId);
-    if (!OPEN_STATES.includes(event.state)) throw new ConflictException('This emergency is over');
+    if (!OPEN_STATES.includes(event.state)) throw new ConflictException('This emergency is over.');
     if (event.volunteerId === volunteerId) return this.view(eventId, volunteerId);
     if (call.status === VolunteerCallStatus.WITHDRAWN) {
-      throw new ConflictException('You said you could not go after all');
+      throw new ConflictException("You already said you can't go.");
     }
 
     const now = new Date();
@@ -229,7 +229,7 @@ export class VolunteerCallsService {
   async decline(eventId: string, volunteerId: string): Promise<VolunteerCallView> {
     const { call } = await this.callFor(eventId, volunteerId);
     if (call.status === VolunteerCallStatus.ACCEPTED) {
-      throw new ConflictException('You said you would go. Say you can no longer go instead.');
+      throw new ConflictException("You said you'd go. Tap I can no longer go instead.");
     }
     if (
       call.status === VolunteerCallStatus.ASKED ||
@@ -250,7 +250,7 @@ export class VolunteerCallsService {
   async withdraw(eventId: string, volunteerId: string): Promise<VolunteerCallView> {
     const { call, event } = await this.callFor(eventId, volunteerId);
     if (event.volunteerId !== volunteerId) {
-      throw new ConflictException('You are not the volunteer going to this emergency');
+      throw new ConflictException("You're not the volunteer going to this emergency.");
     }
 
     const now = new Date();
@@ -305,9 +305,9 @@ export class VolunteerCallsService {
   ): Promise<VolunteerCallView> {
     const { call, event } = await this.callFor(eventId, volunteerId);
     if (event.volunteerId !== volunteerId) {
-      throw new ConflictException('You are not the volunteer going to this emergency');
+      throw new ConflictException("You're not the volunteer going to this emergency.");
     }
-    if (!OPEN_STATES.includes(event.state)) throw new ConflictException('This emergency is over');
+    if (!OPEN_STATES.includes(event.state)) throw new ConflictException('This emergency is over.');
     if (event.volunteerArrivedAt) return this.view(eventId, volunteerId);
 
     const now = new Date();
@@ -565,7 +565,7 @@ export class VolunteerCallsService {
       where: { eventId_volunteerId: { eventId, volunteerId } },
     });
     // Not "forbidden": whether an emergency exists is itself not a volunteer's to know.
-    if (!call) throw new NotFoundException('You were not asked about this emergency');
+    if (!call) throw new NotFoundException("You weren't asked about this emergency.");
     const event = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
     return { call, event };
   }

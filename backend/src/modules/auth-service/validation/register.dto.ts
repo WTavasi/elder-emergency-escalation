@@ -37,16 +37,16 @@ export class RegisterDto {
   phone: string;
 
   /** The six-digit code sent to that phone by POST /auth/verify-phone. */
-  @Matches(/^\d{6}$/, { message: 'code must be the six digits sent by SMS' })
+  @Matches(/^\d{6}$/, { message: 'Enter the 6-digit code from the text.' })
   code: string;
 
   @IsOptional()
-  @IsEmail({}, { message: 'email must be a valid address' })
+  @IsEmail({}, { message: 'Enter a valid email address.' })
   @MaxLength(160)
   email?: string;
 
   @IsString()
-  @MinLength(8, { message: 'password must be at least 8 characters' })
+  @MinLength(8, { message: 'Use at least 8 characters for the password.' })
   @MaxLength(200)
   password: string;
 
@@ -60,6 +60,6 @@ export class RegisterDto {
    * Agreement to the privacy notice, recorded as a consent row rather than trusted as a
    * checkbox. Must be true: there is no account without it.
    */
-  @Equals(true, { message: 'the privacy notice must be accepted to create an account' })
+  @Equals(true, { message: 'Accept the privacy notice to make an account.' })
   acceptedPrivacyNotice: boolean;
 }

@@ -601,9 +601,9 @@ audio goes through LiveKit. Nothing is recorded.
 4. Restart the API. Any alert's detail now carries `"voice": { "available": true, ... }`.
 
 Until these are set, **Talk to Grace** does not appear anywhere and Grace's phone never
-joins. The API says so when it starts (`Talking in the app is off`), and a development
-build of the app says so on the alert, where the button would be. A release build shows
-nothing, because a feature the server cannot provide is not offered.
+joins. The API says so when it starts (`Talking in the app is off`), and the app says
+"Calls through the app aren't available right now." on the alert, where the button
+would be.
 
 **2. Make a call.** Two devices on this Mac work: Grace on the iOS Simulator and Mary on
 the Android emulator. Use headphones, or two people in two rooms will whistle at each

@@ -115,18 +115,18 @@ export class JourneyService {
     const event = await this.requireEvent(eventId);
     const traveller = JourneyService.travellerOf(event, userId);
     if (!traveller) {
-      throw new ForbiddenException('Only somebody on their way shares where they are');
+      throw new ForbiddenException('Only someone on their way can share their location.');
     }
     // Already there. Said plainly rather than refused, so a report that crossed the
     // arrival in flight stops the phone sharing instead of showing an error.
     if (JourneyService.hasArrived(event, traveller)) return { arrived: true, journey: null };
     if (!OPEN_STATES.includes(event.state)) {
-      throw new ConflictException('This emergency is already closed');
+      throw new ConflictException('This emergency is already closed.');
     }
 
     const preferences = await this.prisma.userPreference.findUnique({ where: { userId } });
     if (!preferences?.shareWayThere) {
-      throw new ForbiddenException('Turn on "Share live location" to share where you are');
+      throw new ForbiddenException('Turn on Share live location in Me first.');
     }
 
     const here = { latitude: round6(position.latitude), longitude: round6(position.longitude) };
@@ -180,11 +180,11 @@ export class JourneyService {
   async arrive(eventId: string, userId: string, method: ArrivalMethod): Promise<EmergencyEvent> {
     const event = await this.requireEvent(eventId);
     if (event.acknowledgedBy !== userId) {
-      throw new ForbiddenException('Only the person who took this on can say they have arrived');
+      throw new ForbiddenException("Only the person who's going can say they've arrived.");
     }
     if (event.arrivedAt) return event;
     if (!OPEN_STATES.includes(event.state)) {
-      throw new ConflictException('This emergency is already closed');
+      throw new ConflictException('This emergency is already closed.');
     }
 
     const now = new Date();
@@ -307,7 +307,7 @@ export class JourneyService {
 
   private async requireEvent(eventId: string): Promise<EmergencyEvent> {
     const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
-    if (!event) throw new NotFoundException('Emergency not found');
+    if (!event) throw new NotFoundException("We couldn't find this emergency.");
     return event;
   }
 

@@ -104,7 +104,7 @@ export class VolunteersService {
    */
   async apply(userId: string, dto: ApplyDto): Promise<VolunteerView> {
     if (dto.training.includes(VolunteerTraining.OTHER) && !dto.note?.trim()) {
-      throw new BadRequestException('Say what your other training is in the note');
+      throw new BadRequestException('Describe your other training in the note.');
     }
 
     const existing = await this.prisma.volunteerProfile.findUnique({ where: { userId } });
@@ -154,7 +154,7 @@ export class VolunteersService {
     const profile = await this.prisma.volunteerProfile.findUnique({ where: { userId } });
     if (available && profile?.status !== VolunteerStatus.APPROVED) {
       throw new ConflictException(
-        profile ? 'Your application has not been approved yet' : 'Send your application first',
+        profile ? "Your application hasn't been approved yet." : 'Send your application first.',
       );
     }
     if (profile && profile.available !== available) {
@@ -223,14 +223,14 @@ export class VolunteersService {
       where: { userId: volunteerId },
       include: { user: { select: { name: true, phone: true } } },
     });
-    if (!profile) throw new NotFoundException('No such application');
+    if (!profile) throw new NotFoundException("We couldn't find this application.");
 
     const note = dto.note?.trim() || null;
     if (dto.decision !== 'approve' && !note) {
-      throw new BadRequestException('Say why, so the volunteer knows');
+      throw new BadRequestException('Say why, so the volunteer knows.');
     }
     if (dto.decision === 'suspend' && profile.status !== VolunteerStatus.APPROVED) {
-      throw new ConflictException('Only an approved volunteer can be suspended');
+      throw new ConflictException('Only an approved volunteer can be suspended.');
     }
 
     const status = {

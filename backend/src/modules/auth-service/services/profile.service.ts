@@ -70,7 +70,7 @@ export class ProfileService {
       where: { id: userId },
       select: { id: true, role: true, createdAt: true },
     });
-    if (!user) throw new UnauthorizedException('Account no longer exists');
+    if (!user) throw new UnauthorizedException('This account no longer exists.');
 
     if (user.role === Role.ELDER) {
       return {

@@ -15,7 +15,7 @@ export class UpdateProfileDto {
   /** An address to set, or null to remove the one on the account. */
   @IsOptional()
   @ValidateIf((dto: UpdateProfileDto) => dto.email !== null)
-  @IsEmail({}, { message: 'email must be a valid address' })
+  @IsEmail({}, { message: 'Enter a valid email address.' })
   @MaxLength(160)
   email?: string | null;
 }

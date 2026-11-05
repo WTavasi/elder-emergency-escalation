@@ -114,7 +114,10 @@ class VoiceCall extends ChangeNotifier {
       // The room itself refused or could not be reached, or the microphone was not
       // allowed. Said plainly, with the way out: ringing is always there.
       await _teardown();
-      _set(CallStatus.failed, error: 'Could not connect. Allow the microphone, or call by phone.');
+      _set(
+        CallStatus.failed,
+        error: "Couldn't connect. Check the microphone is allowed, or phone instead.",
+      );
     }
   }
 

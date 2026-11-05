@@ -325,10 +325,10 @@ describe('AuthService', () => {
         buildService(prisma).login({ phone: '+254700000020', password });
 
       await expect(attempt(unknownPrisma, 'Dev!2026')).rejects.toThrow(
-        'Phone number or password is incorrect',
+        'Wrong phone number or password.',
       );
       await expect(attempt(wrongPrisma, 'wrong-password')).rejects.toThrow(
-        'Phone number or password is incorrect',
+        'Wrong phone number or password.',
       );
     });
 
@@ -347,7 +347,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(null);
       await expect(
         buildService(prisma).login({ email: 'nobody@example.com', password: 'x' }),
-      ).rejects.toThrow('Email or password is incorrect');
+      ).rejects.toThrow('Wrong email or password.');
     });
 
     it('uses the phone when given both, so two handles cannot widen a guess', async () => {
@@ -367,10 +367,10 @@ describe('AuthService', () => {
 
       await expect(
         buildService(prisma).login({ phone: '+254700000020', password: 'wrong-password' }),
-      ).rejects.toThrow('Phone number or password is incorrect');
+      ).rejects.toThrow('Wrong phone number or password.');
       await expect(
         buildService(prisma).login({ phone: '+254700000020', password: 'Dev!2026' }),
-      ).rejects.toThrow('This account has been deactivated');
+      ).rejects.toThrow('This account is turned off');
     });
 
     it('upgrades a hash that used weaker parameters', async () => {
@@ -506,10 +506,10 @@ describe('AuthService', () => {
           phone: '+254700000099',
           password: 'wrong',
         }),
-      ).rejects.toThrow('Your current password is not right');
+      ).rejects.toThrow('Your current password is wrong.');
       await expect(
         buildService(prisma, verification).startPhoneChange('user-1', { phone: '+254700000099' }),
-      ).rejects.toThrow('Your current password is not right');
+      ).rejects.toThrow('Your current password is wrong.');
       expect(verification.start).not.toHaveBeenCalled();
     });
 
@@ -535,7 +535,7 @@ describe('AuthService', () => {
           phone: '+254700000020',
           password: 'Dev!2026',
         }),
-      ).rejects.toThrow('already the number on your account');
+      ).rejects.toThrow('already your number');
 
       prisma.user.findUnique
         .mockReset()
@@ -622,7 +622,7 @@ describe('AuthService', () => {
         buildUser({ role: Role.ADMINISTRATOR, deactivatedAt: new Date() }),
       );
       await expect(buildService(prisma).signInWithGoogle('token')).rejects.toThrow(
-        'This account has been deactivated',
+        'This account is turned off',
       );
     });
 
@@ -678,7 +678,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(buildUser({ refreshTokenHash: null }));
 
       await expect(buildService(prisma).refresh(token)).rejects.toThrow(
-        'Session has ended. Please sign in again.',
+        'Your session ended. Please sign in again.',
       );
     });
 

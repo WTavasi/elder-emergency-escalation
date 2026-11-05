@@ -33,7 +33,8 @@ export class ElderSignInService {
       where: { id: elderId },
       select: { id: true, phone: true, role: true, deactivatedAt: true },
     });
-    if (!elder || elder.role !== Role.ELDER) throw new NotFoundException('No such elder');
+    if (!elder || elder.role !== Role.ELDER)
+      throw new NotFoundException("We couldn't find this person.");
 
     const assignment =
       actorRole === Role.CAREGIVER
@@ -43,10 +44,10 @@ export class ElderSignInService {
           })
         : null;
     if (!assignment) {
-      throw new ForbiddenException("Only the elder's caregiver can sign their phone in");
+      throw new ForbiddenException('Only their caregiver can sign their phone in.');
     }
     if (elder.deactivatedAt) {
-      throw new ForbiddenException('This account is closed, so its phone cannot be signed in');
+      throw new ForbiddenException('This account is closed.');
     }
 
     return this.verification.issuePairing(elder.phone);

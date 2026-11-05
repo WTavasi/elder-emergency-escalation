@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
@@ -120,14 +119,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (controller.canTalk) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
-            ] else if (kDebugMode && controller.talkIsOff) ...<Widget>[
-              // Never in a release build, where a missing feature is simply not offered.
+            ] else if (controller.talkIsOff) ...<Widget>[
+              // Said plainly, so nobody looks for a button that is not there. Phoning
+              // is right above.
               const SizedBox(height: MzaziSpace.s24),
-              const Notice(
-                message:
-                    'Talk to is hidden: the server has no LiveKit settings. '
-                    'See step 10 of docs/running.md.',
-              ),
+              const Notice(message: "Calls through the app aren't available right now."),
             ],
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
@@ -182,7 +178,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (controller.loadError != null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
               Text(
-                'Could not update this screen. ${controller.loadError}',
+                "Couldn't refresh this. Pull down to try again.",
                 style: theme.textTheme.bodySmall,
               ),
             ],

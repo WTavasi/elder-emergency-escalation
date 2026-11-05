@@ -102,7 +102,7 @@ void main() {
       await alerts.raise();
 
       expect(alerts.phase, AlertPhase.idle);
-      expect(alerts.error, 'Too many requests.');
+      expect(alerts.error, 'Too many tries. Wait a minute, then try again.');
       // The control must come back. A failed attempt to call for help is the worst
       // possible moment to leave somebody with nothing to press.
       expect(alerts.canRaise, isTrue);

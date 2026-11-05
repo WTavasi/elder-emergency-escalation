@@ -72,7 +72,7 @@ export class EldersService {
   ): Promise<ElderDetail> {
     await this.requireVisibleElder(elderId, actorId, actorRole);
     if (actorRole !== Role.CAREGIVER) {
-      throw new ForbiddenException('Only a caregiver can change these details');
+      throw new ForbiddenException('Only a caregiver can change these details.');
     }
 
     const updated = await this.prisma.user.update({
@@ -170,7 +170,8 @@ export class EldersService {
   private async requireVisibleElder(elderId: string, actorId: string, actorRole: Role) {
     const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
-    if (!elder || elder.role !== Role.ELDER) throw new NotFoundException('No such elder');
+    if (!elder || elder.role !== Role.ELDER)
+      throw new NotFoundException("We couldn't find this person.");
     if (actorRole === Role.ADMINISTRATOR) return elder;
 
     const assignment = await this.prisma.careAssignment.findFirst({
@@ -179,7 +180,7 @@ export class EldersService {
     });
 
     if (!assignment) {
-      throw new ForbiddenException('You do not look after this person');
+      throw new ForbiddenException("You're not in this person's care circle.");
     }
 
     return elder;

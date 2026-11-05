@@ -215,7 +215,7 @@ class _ElderCallState extends State<ElderCall> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (call?.status == CallStatus.failed) ...<Widget>[
-          Notice(message: call?.error ?? 'Could not connect the call.', isError: true),
+          Notice(message: call?.error ?? "Couldn't connect the call.", isError: true),
           const SizedBox(height: MzaziSpace.s12),
         ],
         ConstrainedBox(

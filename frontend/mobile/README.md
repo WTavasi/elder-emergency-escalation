@@ -40,9 +40,9 @@ Mac's network, so it uses `localhost`. Passing an address overrides that:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 ```
 
-A real phone always needs one; see below. If sign in says it could not reach
-MzaziCare, a debug build names the address it tried, which is nearly always the
-problem.
+A real phone always needs one; see below. If sign in says it can't reach MzaziCare,
+the debug console (the terminal running `flutter run`) prints the address it tried,
+which is nearly always the problem.
 
 VS Code has both as run configurations: **Mobile: Android emulator** and
 **Mobile: iOS Simulator** in the Run and Debug panel.

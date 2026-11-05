@@ -486,7 +486,7 @@ class _StandingState extends State<_Standing> {
     if (profile == null) {
       return _failed
           ? Text(
-              'Could not load your care circles. Try again later.',
+              "Couldn't load your care circles. Try again later.",
               style: theme.textTheme.bodySmall,
             )
           : const SizedBox(height: MzaziSpace.s24);

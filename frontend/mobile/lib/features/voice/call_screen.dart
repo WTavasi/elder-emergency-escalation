@@ -123,7 +123,7 @@ class _CallScreenState extends State<CallScreen> {
                       style: theme.textTheme.bodyMedium,
                     ),
                   if (call.status == CallStatus.failed) ...<Widget>[
-                    Notice(message: call.error ?? 'Could not connect the call.', isError: true),
+                    Notice(message: call.error ?? "Couldn't connect the call.", isError: true),
                     const SizedBox(height: MzaziSpace.s16),
                     FilledButton(
                       onPressed: () => unawaited(call.join()),

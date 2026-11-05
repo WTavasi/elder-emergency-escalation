@@ -535,7 +535,7 @@ export class EscalationService {
     const event = await this.requireOpenEvent(eventId);
 
     if (event.acknowledgedBy) {
-      throw new ConflictException('Someone is already responding to this emergency');
+      throw new ConflictException('Someone else is already on the way.');
     }
     assertTransition(event.state, EventState.ACKNOWLEDGED);
     await this.requireParticipant(event, userId);
@@ -569,7 +569,7 @@ export class EscalationService {
       });
 
       if (claim.count === 0) {
-        throw new ConflictException('Someone is already responding to this emergency');
+        throw new ConflictException('Someone else is already on the way.');
       }
 
       const updated = await tx.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
@@ -629,7 +629,7 @@ export class EscalationService {
     const event = await this.requireOpenEvent(eventId);
 
     if (event.acknowledgedBy) {
-      throw new ConflictException('Someone is already responding to this emergency');
+      throw new ConflictException('Someone else is already on the way.');
     }
 
     // Scoped to the current tier. Being asked is what confers the right to decline.
@@ -647,7 +647,7 @@ export class EscalationService {
         select: { tier: true },
       });
       if (early.length === 0) {
-        throw new ForbiddenException('You were not asked to respond to this emergency');
+        throw new ForbiddenException("You weren't asked to help with this emergency.");
       }
       return this.declineEarly(event, userId, early[0].tier, reason, via);
     }
@@ -802,7 +802,7 @@ export class EscalationService {
         },
       });
       if (claim.count === 0) {
-        throw new ConflictException('This emergency is already closed');
+        throw new ConflictException('This emergency is already closed.');
       }
 
       await tx.auditLog.create({
@@ -960,14 +960,14 @@ export class EscalationService {
       select: { role: true },
     });
     if (person?.role === Role.EMERGENCY_RESPONDER) {
-      throw new ForbiddenException('You are the emergency responder on this alert');
+      throw new ForbiddenException("You're the emergency responder on this alert.");
     }
 
     const rules = await this.rulesFor(event);
     const responderRule = rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER);
 
     if (!responderRule) {
-      throw new ConflictException('No emergency responder tier is configured');
+      throw new ConflictException("Emergency responders aren't available right now.");
     }
 
     // Asked once already, by a person, by the chain reaching them, or at once for an
@@ -977,7 +977,7 @@ export class EscalationService {
       event.serviceRequestedAt ||
       event.currentTier >= responderRule.tierOrder
     ) {
-      throw new ConflictException("We've already asked an emergency responder");
+      throw new ConflictException("We've already asked for an emergency responder.");
     }
 
     await this.timers.cancelAll(eventId);
@@ -1162,13 +1162,13 @@ export class EscalationService {
 
   private async requireOpenEvent(eventId: string): Promise<EmergencyEvent> {
     const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
-    if (!event) throw new NotFoundException('Emergency not found');
+    if (!event) throw new NotFoundException("We couldn't find this emergency.");
 
     if (!OPEN_STATES.includes(event.state)) {
       throw new ConflictException(
         event.state === EventState.CANCELLED
-          ? 'This alert was cancelled'
-          : 'This emergency is already closed',
+          ? 'This alert was cancelled.'
+          : 'This emergency is already closed.',
       );
     }
     return event;
@@ -1191,7 +1191,7 @@ export class EscalationService {
     });
     if (notified) return;
 
-    throw new ForbiddenException('You are not part of this emergency');
+    throw new ForbiddenException("You're not part of this emergency.");
   }
 }
 

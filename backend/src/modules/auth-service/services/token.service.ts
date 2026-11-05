@@ -54,13 +54,13 @@ export class TokenService {
     const payload = await this.verify<AccessPayload>(token, 'JWT_ACCESS_SECRET');
     // Without this check a refresh token would be accepted as an access token, since
     // both are signed JWTs carrying a subject.
-    if (payload.typ !== 'access') throw new UnauthorizedException('Wrong token type');
+    if (payload.typ !== 'access') throw new UnauthorizedException('Please sign in again.');
     return payload;
   }
 
   async verifyRefresh(token: string): Promise<RefreshPayload> {
     const payload = await this.verify<RefreshPayload>(token, 'JWT_REFRESH_SECRET');
-    if (payload.typ !== 'refresh') throw new UnauthorizedException('Wrong token type');
+    if (payload.typ !== 'refresh') throw new UnauthorizedException('Please sign in again.');
     return payload;
   }
 
@@ -71,7 +71,7 @@ export class TokenService {
       });
     } catch {
       // Never report why: expired, malformed and wrong-signature are all one answer.
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException('Please sign in again.');
     }
   }
 }

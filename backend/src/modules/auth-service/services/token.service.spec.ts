@@ -63,14 +63,14 @@ describe('TokenService', () => {
 
   it('refuses a tampered or foreign token without saying why', async () => {
     const token = await service.signAccess('user-1', Role.ELDER);
-    await expect(service.verifyAccess(`${token}x`)).rejects.toThrow('Invalid or expired token');
-    await expect(service.verifyAccess('nonsense')).rejects.toThrow('Invalid or expired token');
+    await expect(service.verifyAccess(`${token}x`)).rejects.toThrow('Please sign in again.');
+    await expect(service.verifyAccess('nonsense')).rejects.toThrow('Please sign in again.');
 
     const foreign = await new JwtService({}).signAsync(
       { sub: 'user-1', typ: 'access' },
       { secret: 'a-completely-different-signing-secret' },
     );
-    await expect(service.verifyAccess(foreign)).rejects.toThrow('Invalid or expired token');
+    await expect(service.verifyAccess(foreign)).rejects.toThrow('Please sign in again.');
   });
 
   it('rejects an expired token', async () => {

@@ -52,7 +52,7 @@ export interface AuthResult {
 }
 
 /** Said only to somebody who got the password right, so it reveals nothing to a guesser. */
-export const DEACTIVATED = 'This account has been deactivated. Ask an administrator.';
+export const DEACTIVATED = 'This account is turned off. Ask an administrator.';
 
 @Injectable()
 export class AuthService {
@@ -112,7 +112,7 @@ export class AuthService {
       // and the person needs to know what to change.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const target = (error.meta?.target as string[] | undefined)?.join(', ') ?? 'phone';
-        throw new ConflictException(`An account already exists with that ${target}`);
+        throw new ConflictException(`An account already uses this ${target}.`);
       }
       throw error;
     }
@@ -128,7 +128,7 @@ export class AuthService {
     // API cannot be used to discover who is registered.
     if (!user || !this.passwords.verify(dto.password, user.passwordHash)) {
       throw new UnauthorizedException(
-        byPhone ? 'Phone number or password is incorrect' : 'Email or password is incorrect',
+        byPhone ? 'Wrong phone number or password.' : 'Wrong email or password.',
       );
     }
 
@@ -163,7 +163,7 @@ export class AuthService {
     if (user?.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
 
     if (!user?.refreshTokenHash) {
-      throw new UnauthorizedException('Session has ended. Please sign in again.');
+      throw new UnauthorizedException('Your session ended. Please sign in again.');
     }
 
     if (user.refreshTokenHash !== AuthService.fingerprint(refreshToken)) {
@@ -172,7 +172,7 @@ export class AuthService {
         data: { refreshTokenHash: null, refreshTokenUpdatedAt: new Date() },
       });
       this.logger.warn(`Refresh token replay for ${redactPhone(user.phone)}; all sessions revoked`);
-      throw new UnauthorizedException('Session has ended. Please sign in again.');
+      throw new UnauthorizedException('Your session ended. Please sign in again.');
     }
 
     return this.issue(user);
@@ -239,7 +239,7 @@ export class AuthService {
       return AuthService.summarise(user);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Another account already uses that email address');
+        throw new ConflictException('Another account already uses this email address.');
       }
       throw error;
     }
@@ -258,13 +258,13 @@ export class AuthService {
    */
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<AuthResult> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('Account no longer exists');
+    if (!user) throw new UnauthorizedException('This account no longer exists.');
 
     if (!this.passwords.verify(dto.currentPassword, user.passwordHash)) {
-      throw new BadRequestException('Your current password is not right');
+      throw new BadRequestException('Your current password is wrong.');
     }
     if (dto.newPassword === dto.currentPassword) {
-      throw new BadRequestException('Choose a password different from the current one');
+      throw new BadRequestException('Choose a password different from your current one.');
     }
 
     const updated = await this.prisma.user.update({
@@ -341,21 +341,21 @@ export class AuthService {
    */
   async startPhoneChange(userId: string, dto: StartPhoneChangeDto): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('Account no longer exists');
+    if (!user) throw new UnauthorizedException('This account no longer exists.');
 
     if (user.role !== Role.ELDER) {
       if (!dto.password || !this.passwords.verify(dto.password, user.passwordHash)) {
-        throw new BadRequestException('Your current password is not right');
+        throw new BadRequestException('Your current password is wrong.');
       }
     }
     if (dto.phone === user.phone) {
-      throw new BadRequestException('That is already the number on your account');
+      throw new BadRequestException("That's already your number.");
     }
     const taken = await this.prisma.user.findUnique({
       where: { phone: dto.phone },
       select: { id: true },
     });
-    if (taken) throw new ConflictException('Another account already uses that number');
+    if (taken) throw new ConflictException('Another account already uses this number.');
 
     await this.verification.start(dto.phone, 'change');
   }
@@ -371,7 +371,7 @@ export class AuthService {
     await this.verification.consume(dto.phone, dto.code, 'change');
 
     const before = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!before) throw new UnauthorizedException('Account no longer exists');
+    if (!before) throw new UnauthorizedException('This account no longer exists.');
 
     let updated: User;
     try {
@@ -387,7 +387,7 @@ export class AuthService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Another account already uses that number');
+        throw new ConflictException('Another account already uses this number.');
       }
       throw error;
     }
@@ -412,7 +412,7 @@ export class AuthService {
     if (user?.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
     if (!user || user.role !== Role.ADMINISTRATOR) {
       throw new UnauthorizedException(
-        'No administrator account uses this Google address. Sign in with your phone number or email.',
+        'No administrator account uses this Google address. Sign in with your number or email.',
       );
     }
     this.logger.log(`Administrator ${redactPhone(user.phone)} signed in with Google`);
@@ -427,7 +427,7 @@ export class AuthService {
 
   async me(userId: string): Promise<UserSummary> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('Account no longer exists');
+    if (!user) throw new UnauthorizedException('This account no longer exists.');
     return AuthService.summarise(user);
   }
 

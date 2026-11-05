@@ -1002,7 +1002,7 @@ void main() {
           },
         };
 
-    testWidgets('is not offered when the server has no voice service, and a test build says why', (
+    testWidgets('is not offered when the server has no voice service, and says so plainly', (
       WidgetTester tester,
     ) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
@@ -1020,8 +1020,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Talk to Grace'), findsNothing);
-      // Tests run as a development build, where the missing settings are named.
-      expect(find.textContaining('LiveKit settings'), findsOneWidget);
+      // Said plainly, with no setup details.
+      expect(find.text("Calls through the app aren't available right now."), findsOneWidget);
+      expect(find.textContaining('LiveKit'), findsNothing);
       controller.dispose();
     });
 

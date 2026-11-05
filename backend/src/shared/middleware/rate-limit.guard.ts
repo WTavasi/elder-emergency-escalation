@@ -108,7 +108,7 @@ export class RateLimitGuard implements CanActivate {
       // No detail about which limit was hit or how much is left, so the response
       // cannot be used to map the policy.
       throw new HttpException(
-        'Too many requests. Please wait a moment and try again.',
+        'Too many tries. Wait a minute, then try again.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }

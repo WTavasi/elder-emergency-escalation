@@ -58,7 +58,7 @@ describe('JwtAuthGuard', () => {
     const request: FakeRequest = { headers: { authorization: `Bearer ${token}` } };
 
     await expect(buildGuard(false, true).canActivate(contextFor(request))).rejects.toThrow(
-      'This account has been deactivated',
+      'This account is turned off',
     );
     expect(request.user).toBeUndefined();
   });
