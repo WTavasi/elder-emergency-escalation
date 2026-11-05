@@ -870,7 +870,10 @@ class _WhatHappened extends StatelessWidget {
       'VOLUNTEER_ARRIVED' => '$who (volunteer) arrived',
       'TIER_DISPATCHED' => _dispatched(entry),
       'ESCALATED' => _escalated(entry),
-      'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
+      'ACKNOWLEDGED' => switch (entry.etaMinutes) {
+        final int minutes => '$who is on the way, by text, in about $minutes minutes',
+        null => entry.byText ? '$who is on the way, by text' : '$who is on the way',
+      },
       'ARRIVED' => '$who arrived',
       'VOICE_JOINED' => '$who joined the call',
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',

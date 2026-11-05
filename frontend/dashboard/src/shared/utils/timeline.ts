@@ -14,6 +14,8 @@ interface Detail {
   heardType?: string | null;
   applied?: boolean;
   language?: string | null;
+  /** On taking it on by text: how soon they said they would be there. */
+  etaMinutes?: number;
   trigger?: string;
   reason?: string;
   score?: number;
@@ -77,6 +79,9 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
     case 'VOLUNTEER_ARRIVED':
       return `${who} (volunteer) arrived`;
     case 'ACKNOWLEDGED':
+      if (detail.etaMinutes) {
+        return `${who} is on the way, by text, in about ${detail.etaMinutes} minutes`;
+      }
       return byText ? `${who} is on the way, by text` : `${who} is on the way`;
     case 'ARRIVED':
       return `${who} arrived`;

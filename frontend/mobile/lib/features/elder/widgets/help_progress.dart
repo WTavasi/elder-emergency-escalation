@@ -86,10 +86,19 @@ class HelpProgress extends StatelessWidget {
         : owner == null
         ? "$helperVolunteer is a volunteer who lives near you. We've told your family too."
         : '$helperVolunteer, a volunteer near you, is ${(volunteer?.hasArrived ?? false) ? 'also with you' : 'also coming'}.';
-    // The time only, while they are on their way.
-    final String? when = step == 1 && journey != null
+    // The time only, while they are on their way: from their way there when they share
+    // it, or from what they said by text ("nakuja dakika kumi").
+    final DateTime? expected = owner != null ? emergency?.ownerExpectedAt : null;
+    final int? saidSeconds = expected?.difference(DateTime.now()).inSeconds;
+    final String? when = step != 1
+        ? null
+        : journey != null
         ? '${_capitalised(timeAway(journey.etaSeconds))} away.'
-        : null;
+        : saidSeconds == null
+        ? null
+        : saidSeconds > 60
+        ? '${_capitalised(timeAway(saidSeconds))} away.'
+        : 'Should be with you any minute.';
     // Nothing under the headline once somebody is with them: it would only repeat it.
     final String? detail = switch (step) {
       2 => null,

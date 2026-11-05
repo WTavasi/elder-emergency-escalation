@@ -77,6 +77,24 @@ void main() {
     expect(find.textContaining('away.'), findsNothing);
   });
 
+  testWidgets('a time said by text ("nakuja dakika kumi") is shown when nobody shares one', (
+    WidgetTester tester,
+  ) async {
+    final Emergency said = Emergency.fromJson(<String, dynamic>{
+      ...emergencyBody(
+        state: 'ACKNOWLEDGED',
+        acknowledgedBy: <String, dynamic>{'id': 'c1', 'name': 'Mary Otieno', 'role': 'CAREGIVER'},
+      ),
+      'ownerExpectedAt': DateTime.now()
+          .add(const Duration(minutes: 10, seconds: 20))
+          .toUtc()
+          .toIso8601String(),
+    });
+    await show(tester, said);
+
+    expect(find.text('About 10 minutes away.'), findsOneWidget);
+  });
+
   testWidgets('once they arrive, it says so', (WidgetTester tester) async {
     final SemanticsHandle semantics = tester.ensureSemantics();
     await show(tester, emergency(arrived: true));

@@ -284,7 +284,12 @@ class Emergency {
     this.trigger = AlertTrigger.panic,
     this.volunteer,
     this.reportedType,
+    this.ownerExpectedAt,
   });
+
+  /// When the person who took it on said, by text, they would be there: "nakuja dakika
+  /// kumi". Used for the time when they are not sharing their way there.
+  final DateTime? ownerExpectedAt;
 
   final String id;
   final EventState state;
@@ -354,6 +359,7 @@ class Emergency {
       trigger: AlertTrigger.parse(json['trigger']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
       reportedType: EmergencyType.parse(json['reportedType']),
+      ownerExpectedAt: _date(json['ownerExpectedAt']),
     );
   }
 }
@@ -717,7 +723,11 @@ class TimelineEntry {
     this.byRoad = false,
     this.via,
     this.heardType,
+    this.etaMinutes,
   });
+
+  /// On taking it on by text: how soon they said they would be there.
+  final int? etaMinutes;
 
   final String id;
   final String action;
@@ -790,6 +800,7 @@ class TimelineEntry {
       byRoad: d['byRoad'] == true,
       via: (d['via'] ?? d['from']) as String?,
       heardType: EmergencyType.parse(d['heardType']),
+      etaMinutes: asInt(d['etaMinutes']),
     );
   }
 }

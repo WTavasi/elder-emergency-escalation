@@ -103,6 +103,12 @@ describe('the record of an emergency, in sentences', () => {
     );
   });
 
+  it('says how soon somebody said, by text, they would be there', () => {
+    expect(say(entry('ACKNOWLEDGED', { via: 'sms', etaMinutes: 10 }, true))).toBe(
+      'Grace Wanjiru is on the way, by text, in about 10 minutes',
+    );
+  });
+
   it('says the elder spoke, in which language and what was heard, never the words', () => {
     expect(
       say(entry('SPEECH_HEARD', { language: 'sw', heardType: 'FIRE', applied: true }, true)),
