@@ -788,8 +788,11 @@ model VolunteerCall {
   eventId        String              @map("event_id") @db.Uuid
   volunteerId    String              @map("volunteer_id") @db.Uuid
   /// From the centre of the volunteer's area to the alert, rounded to 10 m. What the
-  /// volunteer is told before accepting, in place of where.
+  /// volunteer is told before accepting, in place of where. By road when [byRoad].
   distanceMetres Int                 @map("distance_metres")
+  /// Whether a router measured the distance along roads. False for the straight line,
+  /// when no router answered, and for every call made before roads were measured.
+  byRoad         Boolean             @default(false) @map("by_road")
   status         VolunteerCallStatus @default(ASKED)
   askedAt        DateTime            @default(now()) @map("asked_at") @db.Timestamptz(3)
   /// "push", "sms" or "none".

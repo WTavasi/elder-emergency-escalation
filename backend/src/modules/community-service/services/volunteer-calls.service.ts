@@ -12,12 +12,13 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
+import { RoutingService } from '../../../shared/routing/routing.service';
 import { distanceInMetres } from '../../../shared/utils/geo';
 import {
   REALTIME_PUBLISHER,
   type RealtimePublisher,
 } from '../../realtime-service/services/realtime.publisher';
-import { volunteerMessages } from './volunteer-content';
+import { volunteerMessages, type Away } from './volunteer-content';
 import { VolunteerMessenger, type Reachable } from './volunteer-messenger.service';
 
 /** Why volunteers were asked: a critical alert, or nobody professional covers the place. */
@@ -28,8 +29,9 @@ export interface VolunteerCallView {
   eventId: string;
   status: VolunteerCallStatus;
   askedAt: string;
-  /** From the centre of their area, rounded to 10 m. */
+  /** From the centre of their area, rounded to 10 m: by road when [byRoad], else straight. */
   distanceMetres: number;
+  byRoad: boolean;
   severity: Severity;
   raisedAt: string;
   /** Still open. Once it closes nothing more about it is shown. */
@@ -61,6 +63,8 @@ export interface VolunteerOnAlert {
   name: string | null;
   phone: string | null;
   distanceMetres: number | null;
+  /** Whether that distance is by road, rather than the straight line. */
+  byRoad: boolean;
   acceptedAt: string | null;
   arrivedAt: string | null;
 }
@@ -68,6 +72,12 @@ export interface VolunteerOnAlert {
 export type TextAnswer = 'accepted' | 'declined' | 'taken' | 'nothing';
 
 const OPEN = { in: OPEN_STATES };
+
+/** How many times the number asked are measured by road before choosing. */
+const ROAD_SHORTLIST = 3;
+
+/** The most volunteers measured by road for one emergency. */
+const MAX_MEASURED = 50;
 
 /**
  * Asking vetted community volunteers near an emergency, and what they say.
@@ -91,6 +101,7 @@ export class VolunteerCallsService {
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly messenger: VolunteerMessenger,
     private readonly config: ConfigService,
+    private readonly routing: RoutingService,
   ) {}
 
   /**
@@ -126,6 +137,7 @@ export class VolunteerCallsService {
             eventId,
             volunteerId: volunteer.id,
             distanceMetres: volunteer.distanceMetres,
+            byRoad: volunteer.byRoad,
             askedAt: now,
             askedVia: 'none',
           })),
@@ -150,7 +162,7 @@ export class VolunteerCallsService {
     for (const volunteer of nearby) {
       const via = await this.messenger.send(
         volunteer,
-        volunteerMessages.ask(eventId, volunteer.distanceMetres, event.severity, replies),
+        volunteerMessages.ask(eventId, volunteer, event.severity, replies),
       );
       await this.prisma.volunteerCall.updateMany({
         where: { eventId, volunteerId: volunteer.id },
@@ -193,6 +205,7 @@ export class VolunteerCallsService {
           action: AuditAction.VOLUNTEER_ACCEPTED,
           detail: {
             distanceMetres: call.distanceMetres,
+            byRoad: call.byRoad,
             secondsAfterTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
@@ -204,7 +217,7 @@ export class VolunteerCallsService {
 
     this.logger.log(`Event ${eventId}: volunteer ${volunteerId} accepted`);
     this.realtime.emergencyUpdated({ ...event, volunteerId, volunteerAcceptedAt: now });
-    void this.afterAccept(eventId, volunteerId, call.distanceMetres).catch((error: unknown) =>
+    void this.afterAccept(eventId, volunteerId, call).catch((error: unknown) =>
       this.logger.warn(
         `Telling people about the volunteer failed: ${error instanceof Error ? error.message : 'unknown'}`,
       ),
@@ -281,8 +294,15 @@ export class VolunteerCallsService {
     return this.view(eventId, volunteerId);
   }
 
-  /** "I'm here." Recorded and shown; the emergency's own state is the circle's to move. */
-  async arrived(eventId: string, volunteerId: string): Promise<VolunteerCallView> {
+  /**
+   * "I'm here", or their shared position reaching the door. Recorded and shown; the
+   * emergency's own state is the circle's to move.
+   */
+  async arrived(
+    eventId: string,
+    volunteerId: string,
+    method: 'manual' | 'geofence' = 'manual',
+  ): Promise<VolunteerCallView> {
     const { call, event } = await this.callFor(eventId, volunteerId);
     if (event.volunteerId !== volunteerId) {
       throw new ConflictException('You are not the volunteer going to this emergency');
@@ -304,6 +324,7 @@ export class VolunteerCallsService {
           actorId: volunteerId,
           action: AuditAction.VOLUNTEER_ARRIVED,
           detail: {
+            method,
             secondsAfterAccepting: event.volunteerAcceptedAt
               ? Math.round((now.getTime() - event.volunteerAcceptedAt.getTime()) / 1000)
               : null,
@@ -434,7 +455,7 @@ export class VolunteerCallsService {
       event.volunteer
         ? this.prisma.volunteerCall.findFirst({
             where: { eventId, volunteerId: event.volunteer.id },
-            select: { distanceMetres: true },
+            select: { distanceMetres: true, byRoad: true },
           })
         : Promise.resolve(null),
     ]);
@@ -445,6 +466,7 @@ export class VolunteerCallsService {
       name: volunteer ? (forElder ? volunteer.name.split(/\s+/)[0] : volunteer.name) : null,
       phone: volunteer && !forElder ? volunteer.phone : null,
       distanceMetres: accepted?.distanceMetres ?? null,
+      byRoad: accepted?.byRoad ?? false,
       acceptedAt: event.volunteerAcceptedAt?.toISOString() ?? null,
       arrivedAt: event.volunteerArrivedAt?.toISOString() ?? null,
     };
@@ -452,10 +474,16 @@ export class VolunteerCallsService {
 
   // ------------------------------------------------------------------ internals --
 
-  /** Approved, available volunteers whose area contains the alert, nearest first. */
-  private async nearby(
-    event: EmergencyEvent,
-  ): Promise<Array<Reachable & { id: string; distanceMetres: number }>> {
+  /**
+   * Approved, available volunteers whose area contains the alert, nearest by road first.
+   *
+   * Whose area contains it is the straight line, because an area is a circle the
+   * volunteer drew. Who is nearest is the road: across a river or a highway with one
+   * bridge, the closest on the map can be the furthest to reach. The road distance, not
+   * time, because a volunteer may walk, ride or drive. One request measures them all;
+   * without a router the straight line ranks them as before, and says so.
+   */
+  private async nearby(event: EmergencyEvent): Promise<Array<Reachable & { id: string } & Away>> {
     const most = this.config.get<number>('VOLUNTEER_MAX_ASKED', 10);
     const chain = await this.prisma.careAssignment.findMany({
       where: { elderlyId: event.elderlyId },
@@ -486,28 +514,50 @@ export class VolunteerCallsService {
       latitude: Number(event.alertLatitude),
       longitude: Number(event.alertLongitude),
     };
-    return candidates
+    const inside = candidates
       .filter((person) => !excluded.has(person.id))
-      .map((person) => ({
-        id: person.id,
-        phone: person.phone,
-        pushToken: person.pushToken,
-        radius: Number(person.coverageRadiusKm) * 1000,
-        distanceMetres:
-          Math.round(
-            distanceInMetres(
-              {
-                latitude: Number(person.coverageLatitude),
-                longitude: Number(person.coverageLongitude),
-              },
-              alert,
-            ) / 10,
-          ) * 10,
-      }))
-      .filter((person) => person.distanceMetres <= person.radius)
-      .sort((a, b) => a.distanceMetres - b.distanceMetres)
+      .map((person) => {
+        const centre = {
+          latitude: Number(person.coverageLatitude),
+          longitude: Number(person.coverageLongitude),
+        };
+        return {
+          id: person.id,
+          phone: person.phone,
+          pushToken: person.pushToken,
+          centre,
+          straight: distanceInMetres(centre, alert),
+          radius: Number(person.coverageRadiusKm) * 1000,
+        };
+      })
+      .filter((person) => person.straight <= person.radius)
+      .sort((a, b) => a.straight - b.straight)
+      // The road can reorder neighbours, not strangers: the nearest few times the
+      // number asked are measured, which keeps the request small.
+      .slice(0, Math.min(most * ROAD_SHORTLIST, MAX_MEASURED));
+
+    const roads = await this.routing.travelTimes(
+      inside.map((person) => person.centre),
+      alert,
+    );
+    const round10 = (metres: number): number => Math.round(metres / 10) * 10;
+    return inside
+      .map((person, index) => {
+        const road = roads[index];
+        const byRoad = road?.source === 'osrm';
+        return {
+          id: person.id,
+          phone: person.phone,
+          pushToken: person.pushToken,
+          distanceMetres: round10(byRoad ? road.distanceMetres : person.straight),
+          byRoad,
+          // Ranked on comparable numbers: a road, or the straight line made one.
+          rank: road?.distanceMetres ?? person.straight,
+        };
+      })
+      .sort((a, b) => a.rank - b.rank)
       .slice(0, most)
-      .map(({ radius: _radius, ...person }) => person);
+      .map(({ rank: _rank, ...person }) => person);
   }
 
   private async callFor(eventId: string, volunteerId: string) {
@@ -551,6 +601,7 @@ export class VolunteerCallsService {
       status: call.status,
       askedAt: call.askedAt.toISOString(),
       distanceMetres: call.distanceMetres,
+      byRoad: call.byRoad,
       severity: event.severity,
       raisedAt: event.triggeredAt.toISOString(),
       open,
@@ -571,11 +622,7 @@ export class VolunteerCallsService {
   }
 
   /** Tells the circle who is coming, and the volunteer who and where by text. */
-  private async afterAccept(
-    eventId: string,
-    volunteerId: string,
-    distanceMetres: number,
-  ): Promise<void> {
+  private async afterAccept(eventId: string, volunteerId: string, away: Away): Promise<void> {
     const [stoodDown, volunteer, event, told] = await Promise.all([
       this.prisma.volunteerCall.findMany({
         where: { eventId, status: VolunteerCallStatus.STOOD_DOWN },
@@ -597,7 +644,7 @@ export class VolunteerCallsService {
     for (const call of stoodDown) {
       await this.messenger.send(call.volunteer, volunteerMessages.covered(eventId));
     }
-    const message = volunteerMessages.toTheCircle(volunteer.name, event.elder.name, distanceMetres);
+    const message = volunteerMessages.toTheCircle(volunteer.name, event.elder.name, away);
     for (const { recipient } of told) await this.messenger.send(recipient, message);
   }
 
@@ -608,10 +655,7 @@ export class VolunteerCallsService {
       include: { volunteer: { select: { phone: true, pushToken: true } } },
     });
     for (const call of waiting) {
-      await this.messenger.send(
-        call.volunteer,
-        volunteerMessages.stillNeeded(eventId, call.distanceMetres),
-      );
+      await this.messenger.send(call.volunteer, volunteerMessages.stillNeeded(eventId, call));
     }
   }
 }

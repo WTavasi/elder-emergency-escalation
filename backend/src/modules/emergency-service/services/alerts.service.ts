@@ -530,7 +530,7 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries, journey, voice, volunteer] = await Promise.all([
+    const [row, chain, logs, deliveries, journeys, voice, volunteer] = await Promise.all([
       this.prisma.emergencyEvent.findUniqueOrThrow({
         where: { id: eventId },
         include: SUMMARY_INCLUDE,
@@ -553,7 +553,7 @@ export class AlertsService {
         orderBy: { createdAt: 'asc' },
         include: { recipient: { select: { id: true, name: true, role: true } } },
       }),
-      this.journeys.current(eventId, event.elderlyId === userId),
+      this.journeys.current(event, event.elderlyId === userId),
       this.voice.current(eventId, OPEN_STATES.includes(event.state)),
       this.volunteers.onAlert(eventId, event.elderlyId === userId),
     ]);
@@ -590,7 +590,8 @@ export class AlertsService {
         deliveredAt: delivery.deliveredAt?.toISOString() ?? null,
         acknowledgedAt: delivery.acknowledgedAt?.toISOString() ?? null,
       })),
-      journey,
+      journey: journeys.owner,
+      journeys: journeys.all,
       voice,
       volunteer,
     };

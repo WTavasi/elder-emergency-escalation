@@ -17,6 +17,7 @@ import { NotificationsModule } from './modules/notification-service/notification
 import { PrismaModule } from './db/prisma.module';
 import { RealtimeModule } from './modules/realtime-service/realtime.module';
 import { RedisModule } from './shared/redis/redis.module';
+import { RoutingModule } from './shared/routing/routing.module';
 import { RetentionModule } from './modules/retention-service/retention.module';
 import { SeverityModule } from './modules/emergency-service/severity.module';
 import { RateLimitGuard } from './shared/middleware/rate-limit.guard';
@@ -31,6 +32,7 @@ import { validateEnv } from './shared/config/env.schema';
     }),
     PrismaModule,
     RedisModule,
+    RoutingModule,
     RealtimeModule,
     AuthModule,
     SeverityModule,

@@ -174,7 +174,7 @@ const build = (
     notifications,
     new NoopRealtimePublisher(),
     config,
-    { current: jest.fn().mockResolvedValue(null) } as unknown as JourneyService,
+    { current: jest.fn().mockResolvedValue({ owner: null, all: [] }) } as unknown as JourneyService,
     {
       current: jest.fn().mockResolvedValue({ available: false, startedBy: null, startedAt: null }),
     } as unknown as VoiceService,

@@ -5,7 +5,8 @@ import type { PrismaService } from '../../../db/prisma.service';
 import type { RedisService } from '../../../shared/redis/redis.service';
 import { NoopRealtimePublisher } from '../../realtime-service/services/realtime.publisher';
 import { JOURNEY_TTL_SECONDS, JourneyService, journeyKey } from './journey.service';
-import type { RoutingService } from './routing.service';
+import type { RoutingService } from '../../../shared/routing/routing.service';
+import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 
 // Grace's home in Kileleshwa, and Mary about 2 km away.
 const HOME = { latitude: -1.2805, longitude: 36.7701 };
@@ -20,6 +21,8 @@ const event = (overrides: Record<string, unknown> = {}) => ({
   acknowledgedBy: 'carer-1',
   acknowledgedAt: new Date('2026-10-20T10:01:00.000Z'),
   arrivedAt: null,
+  volunteerId: null,
+  volunteerArrivedAt: null,
   triggeredAt: new Date('2026-10-20T10:00:00.000Z'),
   alertLatitude: new Prisma.Decimal(HOME.latitude),
   alertLongitude: new Prisma.Decimal(HOME.longitude),
@@ -57,10 +60,17 @@ function build(options: { row?: Record<string, unknown>; sharing?: boolean } = {
     $transaction: jest.fn((work: (client: typeof tx) => Promise<unknown>) => work(tx)),
   };
   const routing = {
-    route: jest
-      .fn()
-      .mockResolvedValue({ durationSeconds: 600, distanceMetres: 3000, source: 'osrm' }),
+    route: jest.fn().mockResolvedValue({
+      durationSeconds: 600,
+      distanceMetres: 3000,
+      source: 'osrm',
+      path: [
+        [FAR.latitude, FAR.longitude],
+        [HOME.latitude, HOME.longitude],
+      ],
+    }),
   };
+  const volunteers = { arrived: jest.fn().mockResolvedValue({}) };
   const config = {
     get: (_key: string, fallback?: unknown) => fallback,
   } as unknown as ConfigService;
@@ -72,22 +82,32 @@ function build(options: { row?: Record<string, unknown>; sharing?: boolean } = {
     redis as unknown as RedisService,
     routing as unknown as RoutingService,
     config,
+    volunteers as unknown as VolunteerCallsService,
     realtime,
   );
-  return { service, prisma, tx, redis, store, routing, realtime };
+  return { service, prisma, tx, redis, store, routing, realtime, volunteers, row };
 }
 
 describe('JourneyService', () => {
   describe('report', () => {
     it('keeps the position for three minutes and gives back the time to the elder', async () => {
-      const { service, redis, realtime } = build();
+      const { service, redis, realtime, routing } = build();
 
       const result = await service.report('event-1', 'carer-1', FAR);
 
       expect(result.arrived).toBe(false);
-      expect(result.journey).toMatchObject({ etaSeconds: 600, distanceMetres: 3000 });
+      expect(result.journey).toMatchObject({
+        etaSeconds: 600,
+        distanceMetres: 3000,
+        traveller: 'owner',
+      });
+      // The road comes back for the map, and the router was asked for it.
+      expect(result.journey?.path).toHaveLength(2);
+      expect(routing.route).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+        path: true,
+      });
       expect(redis.client.set).toHaveBeenCalledWith(
-        journeyKey('event-1'),
+        journeyKey('event-1', 'carer-1'),
         expect.any(String),
         'EX',
         JOURNEY_TTL_SECONDS,
@@ -124,7 +144,7 @@ describe('JourneyService', () => {
           data: expect.objectContaining({ state: EventState.ON_SCENE }),
         }),
       );
-      expect(store.has(journeyKey('event-1'))).toBe(false);
+      expect(store.has(journeyKey('event-1', 'carer-1'))).toBe(false);
     });
 
     it('does not count a loose fix near the door as arriving', async () => {
@@ -139,7 +159,38 @@ describe('JourneyService', () => {
       expect(tx.emergencyEvent.update).not.toHaveBeenCalled();
     });
 
-    it('takes positions only from the person who took it on', async () => {
+    it('takes positions from the volunteer going, under their own key', async () => {
+      const { service, store } = build({ row: { volunteerId: 'volunteer-1' } });
+
+      const result = await service.report('event-1', 'volunteer-1', FAR);
+
+      expect(result.journey?.traveller).toBe('volunteer');
+      expect(store.has(journeyKey('event-1', 'volunteer-1'))).toBe(true);
+      expect(store.has(journeyKey('event-1', 'carer-1'))).toBe(false);
+    });
+
+    it('records the volunteer as arrived at the door, leaving the emergency alone', async () => {
+      const { service, volunteers, tx } = build({ row: { volunteerId: 'volunteer-1' } });
+
+      const result = await service.report('event-1', 'volunteer-1', AT_THE_GATE);
+
+      expect(result.arrived).toBe(true);
+      expect(volunteers.arrived).toHaveBeenCalledWith('event-1', 'volunteer-1', 'geofence');
+      expect(tx.emergencyEvent.update).not.toHaveBeenCalled();
+    });
+
+    it('tells a volunteer who already arrived to stop', async () => {
+      const { service } = build({
+        row: { volunteerId: 'volunteer-1', volunteerArrivedAt: new Date() },
+      });
+
+      await expect(service.report('event-1', 'volunteer-1', FAR)).resolves.toEqual({
+        arrived: true,
+        journey: null,
+      });
+    });
+
+    it('takes positions only from somebody on their way', async () => {
       const { service } = build();
 
       await expect(service.report('event-1', 'someone-else', FAR)).rejects.toThrow(
@@ -213,21 +264,52 @@ describe('JourneyService', () => {
   });
 
   describe('current', () => {
-    it('shows the care circle where, and the elder only how long', async () => {
-      const { service } = build();
+    it('shows the care circle where and the road, and the elder only how long', async () => {
+      const { service, row } = build();
       await service.report('event-1', 'carer-1', FAR);
 
-      const circle = await service.current('event-1', false);
-      const elder = await service.current('event-1', true);
+      const circle = await service.current(row as never, false);
+      const elder = await service.current(row as never, true);
 
-      expect(circle?.latitude).toBe(FAR.latitude);
-      expect(elder?.latitude).toBeNull();
-      expect(elder?.etaSeconds).toBe(600);
+      expect(circle.owner?.latitude).toBe(FAR.latitude);
+      expect(circle.owner?.path).toHaveLength(2);
+      expect(elder.owner?.latitude).toBeNull();
+      expect(elder.owner?.path).toBeNull();
+      expect(elder.owner?.etaSeconds).toBe(600);
     });
 
-    it('is null when nobody is on their way', async () => {
-      const { service } = build();
-      await expect(service.current('event-1', false)).resolves.toBeNull();
+    it('lists everybody on their way, soonest first', async () => {
+      const { service, row, routing } = build({ row: { volunteerId: 'volunteer-1' } });
+      await service.report('event-1', 'carer-1', FAR);
+      routing.route.mockResolvedValueOnce({
+        durationSeconds: 240,
+        distanceMetres: 1200,
+        source: 'osrm',
+      });
+      await service.report('event-1', 'volunteer-1', FAR);
+
+      const { owner, all } = await service.current(row as never, false);
+
+      expect(all.map((journey) => journey.traveller)).toEqual(['volunteer', 'owner']);
+      expect(owner?.userId).toBe('carer-1');
+    });
+
+    it('drops somebody no longer on their way at once, not after three minutes', async () => {
+      const { service, row } = build({ row: { volunteerId: 'volunteer-1' } });
+      await service.report('event-1', 'volunteer-1', FAR);
+
+      // The volunteer withdrew: their position is still stored, but not shown.
+      const { all } = await service.current({ ...row, volunteerId: null } as never, false);
+
+      expect(all).toEqual([]);
+    });
+
+    it('is empty when nobody is on their way', async () => {
+      const { service, row } = build();
+      await expect(service.current(row as never, false)).resolves.toEqual({
+        owner: null,
+        all: [],
+      });
     });
   });
 });
