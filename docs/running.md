@@ -232,7 +232,7 @@ Any seeded account, password `Dev!2026`. Which screen you get is decided by the 
 | `+254700000010` | Grace Wanjiru, elder | The panic control, at the larger type scale |
 | `+254700000020` | Mary Otieno, caregiver, tier one for Grace | The alert list and the four actions |
 | `+254700000030` | Aisha Wanjiru, family, tier two for Grace | The same list |
-| `+254700000040` | emergency responder, tier three | The same list |
+| `+254700000040` | Kilimani Police Station, an emergency responder | The same list |
 | `+254700000001` | administrator | A note sending you to the web console |
 | `+254700000050` | Daniel Ochieng, community volunteer, approved, near Grace | Nearby: who near him needs help |
 | `+254700000051` | Faith Akinyi, community volunteer, waiting for approval | Nearby: "Thank you for applying" |
@@ -768,8 +768,8 @@ press for help**, each carer a call away.
 ### Step 14 (optional). Say what is happening
 
 The elder can say what kind of emergency it is, and the right service is asked. The seed
-has a fire unit, a police unit and an ambulance unit around Kileleshwa and Lavington, next
-to the two general response units.
+has real Nairobi stations, with made-up phone numbers: four police stations, the Central
+Fire Station and two ambulance services (Step 15 lists them).
 
 1. **As Grace, raise an alert** and let the ten seconds pass. On the waiting screen, press
    **Say what's happening**, then **Fire**. The screen says **Your family can see: Fire**
@@ -778,8 +778,8 @@ to the two general response units.
    Asked: Fire service**, the severity is **Critical** whatever the score, and **Why this
    severity?** ends with the floor. The timeline reads **Grace Wanjiru said: fire** and
    **Fire service asked at once**.
-3. **As the fire unit** (`+254700000042`, the same password), the alert is in the list,
-   starting **Fire**. Mary is asked as before, beside it.
+3. **As the Central Fire Station** (`+254700000042`, the same password), the alert is in
+   the list, starting **Fire**. Mary is asked as before, beside it.
 4. **As Mary, close it.** The sheet asks **What was it?** with **Fire** chosen already.
    Choose another if it was something else; the console then shows both.
 5. **By text**, with replies set up (Step 9): send `HELP MOTO` from Grace's number. The
@@ -787,6 +787,47 @@ to the two general response units.
 
 A fall or feeling unwell raises the severity to high and asks the ambulance only when the
 chain reaches its responder step; **Ask for an ambulance** on Mary's screen asks it now.
+
+### Step 15 (optional). Stations, nearest first, and who to go to first
+
+Responder accounts are stations: each has the address it is based at. When an emergency
+needs a service, only the nearest station of that service is asked, by road. If it says
+it cannot come, the next nearest is asked at once; if it has not answered in three
+minutes (`STATION_WAIT_SECONDS`), the next nearest is asked too.
+
+| Phone | Station | Service |
+| --- | --- | --- |
+| `+254700000040` | Kilimani Police Station, Lenana Road | Police |
+| `+254700000041` | Parklands Police Station, Parklands Road | Police |
+| `+254700000042` | Central Fire Station, Tom Mboya Street | Fire |
+| `+254700000043` | Kileleshwa Police Station, off Laikipia Road | Police |
+| `+254700000044` | St John Ambulance, St John's Lane | Ambulance |
+| `+254700000045` | Muthangari Police Station, Gitanga Road | Police |
+| `+254700000046` | Kenya Red Cross Ambulance, Red Cross Road | Ambulance |
+
+The names and roads are real; the phone numbers are made up, and the coordinates are
+approximate. To correct one, open the station on the console's **Users** page, press
+**Edit**, and search for its address under **Station**.
+
+1. **As Grace, raise an alert, then Say what's happening, I'm not safe.** Only the nearest
+   police station is asked. Mary's screen shows **Emergency services** with that station,
+   **Asked, no answer yet**, and roughly how far it is by road from the station.
+2. **As that station** (Kileleshwa Police Station for Grace's home, `+254700000043`),
+   open the alert and press **I cannot come**. The next nearest station is asked at once,
+   and both appear on Mary's screen and in the console's trail.
+3. **Wait three minutes** without answering: the next one is asked too. To try it sooner,
+   start the API with `STATION_WAIT_SECONDS=30 npm run dev`.
+
+**Who to go to first.** With two or more open alerts, Mary's **Alerts** list is in the
+order to go to them: first what nobody has taken on, then her own, then what somebody
+else is handling; within each, the most severe, the urgent kind (fire, chest pain or
+breathing, not safe), then the nearest. Each row adds the one reason it cannot show by
+itself, such as **About 9 minutes from you by road**, and a small map shows them all.
+
+The times are measured from where Mary's phone is, only if she turned on **Share live
+location** in **Me** and the phone already allows location; the position is sent with the
+request and never kept. A station is measured from its address instead. With neither, the
+list says how to turn it on.
 
 ## The first run on a new machine, or after pulling changes
 
