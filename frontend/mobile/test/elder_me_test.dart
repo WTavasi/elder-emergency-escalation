@@ -33,6 +33,26 @@ void main() {
               },
             ],
           })
+        else if (request.url.path.endsWith('/services'))
+          json(<String, dynamic>{
+            'hasHome': true,
+            'services': <Map<String, dynamic>>[
+              <String, dynamic>{
+                'name': 'Kileleshwa Response Unit',
+                'service': 'GENERAL',
+                'station': null,
+                'etaSeconds': 300,
+                'byRoad': false,
+              },
+              <String, dynamic>{
+                'name': 'Kileleshwa Police Station',
+                'service': 'POLICE',
+                'station': 'Off Laikipia Road',
+                'etaSeconds': 240,
+                'byRoad': true,
+              },
+            ],
+          })
         else
           http.Response('', 204),
       ],
@@ -68,12 +88,35 @@ void main() {
     await pump(tester);
     await tester.pumpAndSettle();
 
-    // Section labels are set in capitals.
-    expect(find.text('WHO WE ASK WHEN YOU PRESS FOR HELP'), findsOneWidget);
-    expect(find.text('Mary Otieno'), findsOneWidget);
-    expect(find.text('Caregiver · asked first'), findsOneWidget);
+    // Out in the open, first on the page, one press from a call. Labels are capitals.
+    expect(find.text('CALL YOUR PEOPLE'), findsOneWidget);
     expect(find.text('Call Mary'), findsOneWidget);
+    expect(find.text('Mary Otieno, caregiver, asked first'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Call Mary')).dy,
+      lessThan(tester.getCenter(find.text('HELP NEARBY')).dy),
+    );
     expect(find.text('Privacy notice'), findsOneWidget);
+  });
+
+  testWidgets('shows who else can come, folded away until opened', (WidgetTester tester) async {
+    await pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Emergency services near you'), findsOneWidget);
+    expect(find.text('Emergency responder, Police'), findsOneWidget);
+
+    await tester.tap(find.text('Emergency services near you'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kileleshwa Response Unit'), findsOneWidget);
+    expect(
+      find.text("Asked if your family can't come. About 5 minutes away"),
+      findsOneWidget,
+    );
+    expect(
+      find.text("Asked if you're not safe. About 4 minutes away by road"),
+      findsOneWidget,
+    );
   });
 
   testWidgets('asks before signing out, and staying changes nothing', (WidgetTester tester) async {
@@ -108,13 +151,13 @@ void main() {
   ) async {
     await pump(tester);
 
-    expect(find.text('PRIVACY AND TERMS'), findsOneWidget);
+    expect(find.text('PRIVACY'), findsOneWidget);
     expect(find.text('Privacy and consent'), findsOneWidget);
     expect(find.text('Privacy notice'), findsOneWidget);
-    expect(find.text('THIS PHONE'), findsOneWidget);
+    expect(find.text('Terms of use'), findsOneWidget);
     // The privacy part comes before signing out, which is last.
     expect(
-      tester.getCenter(find.text('PRIVACY AND TERMS')).dy,
+      tester.getCenter(find.text('PRIVACY')).dy,
       lessThan(tester.getCenter(find.text('Sign out')).dy),
     );
   });

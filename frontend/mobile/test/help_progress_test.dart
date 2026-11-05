@@ -140,7 +140,7 @@ void main() {
       await show(tester, emergency(type: 'FIRE'), onReport: (EmergencyType _) async {});
 
       expect(find.text('Your family can see: Fire'), findsOneWidget);
-      expect(find.text('Get out if you can. Call 999.'), findsOneWidget);
+      expect(find.text("Get out if you can. We're asking the fire service."), findsOneWidget);
       expect(find.text('Change'), findsOneWidget);
       expect(find.text("Say what's happening"), findsNothing);
     });

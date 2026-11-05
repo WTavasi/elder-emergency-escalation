@@ -491,10 +491,12 @@ class _Actions extends StatelessWidget {
                     // is the bigger step.
                     child: FilledButton(
                       style: CallStyle.strong(context).merge(StackedLabel.padding),
-                      onPressed: busy ? null : controller.requestResponder,
+                      onPressed: busy ? null : () => unawaited(_chooseService(context)),
                       child: StackedLabel(
                         icon: Icons.emergency,
-                        label: controller.serviceNeeded.ask,
+                        label: controller.servicesAsked.isEmpty
+                            ? controller.serviceNeeded.ask
+                            : 'Ask for another service',
                       ),
                     ),
                   ),
@@ -504,13 +506,36 @@ class _Actions extends StatelessWidget {
         if (controller.responderAsked) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Text(
-            controller.serviceNeeded.asked,
+            controller.askedLine,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ],
     );
+  }
+
+  /// Which service to ask now. The one the emergency needs comes first and is the
+  /// button; the others are rows under it, and any already asked is left out. The
+  /// nearest station of the one chosen is asked at once.
+  Future<void> _chooseService(BuildContext context) async {
+    final List<ResponderService> offer = controller.servicesToOffer;
+    if (offer.isEmpty) return;
+    final ResponderService? chosen = await showActionSheet<ResponderService>(
+      context,
+      title: 'Who should we ask?',
+      message: "We'll ask the nearest one now.",
+      actions: <SheetAction<ResponderService>>[
+        for (final (int index, ResponderService service) in offer.indexed)
+          SheetAction<ResponderService>(
+            service.title,
+            service,
+            icon: serviceIcon(service),
+            primary: index == 0,
+          ),
+      ],
+    );
+    if (chosen != null) await controller.requestResponder(chosen);
   }
 
   /// Declining sends the emergency onward immediately, so it is confirmed rather than
@@ -1344,3 +1369,11 @@ class _Step extends StatelessWidget {
     );
   }
 }
+
+/// The mark for each service, the same wherever a service is named.
+IconData serviceIcon(ResponderService service) => switch (service) {
+  ResponderService.general => Icons.emergency,
+  ResponderService.ambulance => Icons.medical_services_outlined,
+  ResponderService.police => Icons.local_police_outlined,
+  ResponderService.fire => Icons.local_fire_department_outlined,
+};

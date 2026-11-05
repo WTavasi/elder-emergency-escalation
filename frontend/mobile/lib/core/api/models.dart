@@ -1937,3 +1937,43 @@ class StationOnAlert {
     return stations;
   }
 }
+
+/// The nearest station of one service to an elder's home.
+class NearbyService {
+  const NearbyService({
+    required this.name,
+    required this.service,
+    this.station,
+    this.etaSeconds,
+    this.byRoad = false,
+  });
+
+  final String name;
+  final ResponderService service;
+  final String? station;
+  final int? etaSeconds;
+  final bool byRoad;
+
+  /// Who can come to an elder besides their circle, the default responder first. Empty
+  /// when the elder has no home recorded.
+  static List<NearbyService> listFromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return const <NearbyService>[];
+    final List<NearbyService> services = <NearbyService>[];
+    for (final Object? item in _list(json['services'])) {
+      if (item is! Map<String, dynamic>) continue;
+      final ResponderService? service = ResponderService.parse(item['service']);
+      final Object? name = item['name'];
+      if (service == null || name is! String) continue;
+      services.add(
+        NearbyService(
+          name: name,
+          service: service,
+          station: item['station'] as String?,
+          etaSeconds: (item['etaSeconds'] as num?)?.toInt(),
+          byRoad: item['byRoad'] as bool? ?? false,
+        ),
+      );
+    }
+    return services;
+  }
+}

@@ -15,23 +15,25 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/password_field.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import '../legal/legal_screens.dart';
 import 'change_phone_screen.dart';
 
-/// The signed-in person's care profile: where they stand in each circle, what they have
-/// done when asked, how they help, and their account.
+/// The signed-in person's own page, laid out as an iPhone's Settings: who they are at the
+/// top, opening their details; their care circles and what they have done, each a row
+/// that opens in place; then sharing their location, how the app looks, their account,
+/// privacy, and signing out last.
 ///
-/// The phone number changes on its own screen, because it is how they sign in and the
-/// number every chain calls, so it needs a code sent to the new number.
+/// What a person checks now and then (their circles, their history) folds away; what
+/// changes how the app behaves sits out as a switch or a pull-down.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final Account? account = context.watch<AuthController>().account;
-    final ThemeData theme = Theme.of(context);
     final AppearanceController? appearance = AppearanceController.maybeOf(context);
+    final WayThere? way = WayThere.maybeOf(context);
 
     return Scaffold(
       body: SafeArea(
@@ -42,46 +44,48 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
                   const PageTitle('Me'),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        // Name and role as type, with no avatar circle: the app stores no
-                        // photo, and initials in a circle are a placeholder for one.
-                        Text(account.name, style: theme.textTheme.titleLarge),
-                        Text(_roleLabel(account.role), style: theme.textTheme.bodySmall),
-                        const SizedBox(height: MzaziSpace.s24),
-                        const _Standing(),
-                        const SizedBox(height: MzaziSpace.s32),
-                        _DetailsForm(account: account),
-                        if (account.role.travels && WayThere.maybeOf(context) != null) ...<Widget>[
-                          const SizedBox(height: MzaziSpace.s32),
-                          _WayThereSetting(way: WayThere.maybeOf(context)!),
-                        ],
-                        const SizedBox(height: MzaziSpace.s32),
-                        const _PasswordForm(),
-                        if (appearance != null) ...<Widget>[
-                          const SizedBox(height: MzaziSpace.s32),
-                          const SectionLabel('Screen'),
-                          AppearancePicker(controller: appearance),
-                          ElderModeSwitch(controller: appearance, role: account.role),
-                        ],
-                        const SizedBox(height: MzaziSpace.s32),
-                        const SectionLabel('Privacy and terms'),
-                        const LegalLinks(),
-                        const SizedBox(height: MzaziSpace.s24),
-                        const SectionLabel('This phone'),
-                        const SizedBox(height: MzaziSpace.s16),
-                        // Here rather than in a top bar, at the bottom of the account page,
-                        // where nobody presses it by accident on the way to something else.
-                        OutlinedButton.icon(
-                          onPressed: () => unawaited(_signOut(context, account)),
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Sign out'),
-                        ),
-                      ],
-                    ),
+                  ProfileHeader(
+                    name: account.name,
+                    subtitle: '${_roleLabel(account.role)} · ${account.phone}',
+                    onTap: () => openScreen(context, const AccountDetailsScreen()),
+                  ),
+                  const _Standing(),
+                  if (account.role.travels && way != null) _WayThereSetting(way: way),
+                  if (appearance != null)
+                    DisplaySection(controller: appearance, role: account.role),
+                  SettingsSection(
+                    title: 'Account',
+                    children: <Widget>[
+                      SettingsRow(
+                        icon: Icons.badge_outlined,
+                        title: 'Name and email',
+                        onTap: () => openScreen(context, const AccountDetailsScreen()),
+                      ),
+                      SettingsRow(
+                        icon: Icons.phone_iphone,
+                        title: 'Phone number',
+                        value: account.phone,
+                        onTap: () => openScreen(context, const ChangePhoneScreen()),
+                      ),
+                      SettingsRow(
+                        icon: Icons.lock_outline,
+                        title: 'Password',
+                        onTap: () => openScreen(context, const ChangePasswordScreen()),
+                      ),
+                    ],
+                  ),
+                  const PrivacySection(),
+                  SettingsSection(
+                    children: <Widget>[
+                      // Last on the page, where nobody presses it on the way to something
+                      // else, and behind a question.
+                      SettingsRow(
+                        icon: Icons.logout,
+                        title: 'Sign out',
+                        destructive: true,
+                        onTap: () => unawaited(_signOut(context, account)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -108,6 +112,130 @@ class ProfileScreen extends StatelessWidget {
     Role.elder => 'Elder',
     Role.communityResponder => 'Community volunteer',
   };
+}
+
+/// How the app looks, for everybody's own page: light or dark from a pull-down, and the
+/// larger size as a switch.
+class DisplaySection extends StatelessWidget {
+  const DisplaySection({required this.controller, required this.role, super.key});
+
+  final AppearanceController controller;
+  final Role? role;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (BuildContext context, Widget? _) => SettingsSection(
+        title: 'Display',
+        children: <Widget>[
+          SettingsMenuRow<ThemeMode>(
+            icon: Icons.contrast,
+            title: 'Appearance',
+            value: controller.mode,
+            choices: const <SettingsChoice<ThemeMode>>[
+              SettingsChoice<ThemeMode>(
+                ThemeMode.system,
+                'Automatic',
+                icon: Icons.smartphone_outlined,
+              ),
+              SettingsChoice<ThemeMode>(ThemeMode.light, 'Light', icon: Icons.light_mode_outlined),
+              SettingsChoice<ThemeMode>(ThemeMode.dark, 'Dark', icon: Icons.dark_mode_outlined),
+            ],
+            onChanged: (ThemeMode mode) => unawaited(controller.choose(mode)),
+          ),
+          SettingsSwitchRow(
+            icon: Icons.text_increase,
+            title: 'Elder mode',
+            subtitle: 'Larger text and bigger buttons',
+            value: controller.elderModeFor(role),
+            onChanged: (bool on) => unawaited(controller.setElderMode(on)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The privacy notice and the terms, each a row to its own page.
+class PrivacySection extends StatelessWidget {
+  const PrivacySection({this.leading = const <Widget>[], super.key});
+
+  /// Rows that belong before the notice, such as the elder's own consent.
+  final List<Widget> leading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsSection(
+      title: 'Privacy',
+      children: <Widget>[
+        ...leading,
+        SettingsRow(
+          icon: Icons.policy_outlined,
+          title: 'Privacy notice',
+          onTap: () => openScreen(context, const PrivacyNoticeScreen()),
+        ),
+        SettingsRow(
+          icon: Icons.description_outlined,
+          title: 'Terms of use',
+          onTap: () => openScreen(context, const TermsScreen()),
+        ),
+      ],
+    );
+  }
+}
+
+/// Name and email, and the phone number, on a page of their own.
+class AccountDetailsScreen extends StatelessWidget {
+  const AccountDetailsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Account? account = context.watch<AuthController>().account;
+    return Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        top: false,
+        child: account == null
+            ? const SizedBox.shrink()
+            : ListView(
+                padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
+                children: <Widget>[
+                  const PageTitle('Your details'),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
+                    child: _DetailsForm(account: account),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// Changing the password, on a page of its own.
+class ChangePasswordScreen extends StatelessWidget {
+  const ChangePasswordScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
+          children: <Widget>[
+            const PageTitle('Password'),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
+              child: const _PasswordForm(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DetailsForm extends StatefulWidget {
@@ -180,8 +308,7 @@ class _DetailsFormState extends State<_DetailsForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SectionLabel('Your details'),
-          const SizedBox(height: MzaziSpace.s16),
+          const SizedBox(height: MzaziSpace.s8),
           if (_error != null) ...<Widget>[
             Notice(message: _error!, isError: true),
             const SizedBox(height: MzaziSpace.s12),
@@ -314,8 +441,7 @@ class _PasswordFormState extends State<_PasswordForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SectionLabel('Change password'),
-          const SizedBox(height: MzaziSpace.s16),
+          const SizedBox(height: MzaziSpace.s8),
           if (_error != null) ...<Widget>[
             Notice(message: _error!, isError: true),
             const SizedBox(height: MzaziSpace.s12),
@@ -354,7 +480,7 @@ class _PasswordFormState extends State<_PasswordForm> {
   }
 }
 
-/// "Share my way there", with what it means said beside the switch.
+/// "Share live location", as a switch row with what it means said under it.
 ///
 /// Turning it on asks for location access there and then, while the person is calm
 /// and reading, rather than at the moment they take an emergency on.
@@ -379,35 +505,41 @@ class _WayThereSetting extends StatelessWidget {
       builder: (BuildContext context, Widget? _) {
         final bool settings =
             way.access == LocationAccess.deniedForever || way.access == LocationAccess.serviceOff;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        return SettingsSection(
+          title: 'On the way',
+          footer:
+              "When you're on your way to an emergency, they see how far away you are, and "
+              'your alerts are sorted by distance. It stops when you arrive. We do not keep it.',
           children: <Widget>[
-            const SectionLabel('On the way'),
-            const SizedBox(height: MzaziSpace.s8),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Share live location'),
-              subtitle: const Text(
-                "When you're on your way to an emergency, they see how far away you are. "
-                'It stops when you arrive. We do not keep it.',
-              ),
+            SettingsSwitchRow(
+              icon: Icons.near_me_outlined,
+              title: 'Share live location',
               value: way.enabled,
               onChanged: !way.isLoaded || way.isSaving
                   ? null
                   : (bool on) => unawaited(_turn(context, on)),
             ),
-            if (way.problem != null && way.eventId == null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s8),
-              Notice(message: way.problem!, isError: true),
-              if (settings)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton(
-                    onPressed: () => unawaited(way.openSettings()),
-                    child: const Text('Open settings'),
-                  ),
+            if (way.problem != null && way.eventId == null)
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: MzaziLayout.margin(context),
+                  vertical: MzaziSpace.s12,
                 ),
-            ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Notice(message: way.problem!, isError: true),
+                    if (settings)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton(
+                          onPressed: () => unawaited(way.openSettings()),
+                          child: const Text('Open settings'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
           ],
         );
       },
@@ -480,52 +612,64 @@ class _StandingState extends State<_Standing> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final Profile? profile = _profile;
 
     if (profile == null) {
       return _failed
-          ? Text(
-              "Couldn't load your care circles. Try again later.",
-              style: theme.textTheme.bodySmall,
+          ? const SettingsSection(
+              title: 'Your care',
+              children: <Widget>[
+                SettingsRow(
+                  icon: Icons.error_outline,
+                  title: "Couldn't load your care circles",
+                  subtitle: 'Try again later.',
+                ),
+              ],
             )
-          : const SizedBox(height: MzaziSpace.s24);
+          : const SizedBox.shrink();
     }
 
     final ResponseRecord? record = profile.record;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (profile.circles.isEmpty && record == null) return const SizedBox.shrink();
+    final int people = profile.circles.length;
+
+    return SettingsSection(
+      title: 'Your care',
       children: <Widget>[
-        if (profile.circles.isNotEmpty) ...<Widget>[
-          const SectionLabel('Your care circles'),
-          const SizedBox(height: MzaziSpace.s8),
-          for (final CirclePlace circle in profile.circles)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s4),
-              child: Text(
-                '${_place(circle.place)} for ${circle.elderName}',
-                style: theme.textTheme.bodyLarge,
-              ),
-            ),
-          const SizedBox(height: MzaziSpace.s24),
-        ],
-        if (record != null) ...<Widget>[
-          const SectionLabel('Your history'),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            record.answered == 0
-                ? 'No emergencies yet.'
-                : record.answered == 1
-                ? "You've helped with 1 emergency."
-                : "You've helped with ${record.answered} emergencies.",
-            style: theme.textTheme.bodyLarge,
+        if (profile.circles.isNotEmpty)
+          SettingsExpandable(
+            icon: Icons.diversity_1_outlined,
+            title: 'Your care circles',
+            summary: people == 1 ? '1 person' : '$people people',
+            children: <Widget>[
+              for (final CirclePlace circle in profile.circles)
+                SettingsDetail(title: circle.elderName, note: _place(circle.place)),
+            ],
           ),
-          if (record.medianResponseSeconds case final int seconds)
-            Text('You usually answer in ${_duration(seconds)}.', style: theme.textTheme.bodyLarge),
-          if (record.lastAnsweredAt case final DateTime last)
-            Text('Last answered on ${_day(last)}.', style: theme.textTheme.bodySmall),
-        ],
+        if (record != null)
+          SettingsExpandable(
+            icon: Icons.history,
+            title: 'Your history',
+            summary: _helped(record.answered),
+            children: <Widget>[
+              SettingsDetail(
+                title: _helped(record.answered),
+                note: <String>[
+                  if (record.medianResponseSeconds case final int seconds)
+                    'You usually answer in ${_duration(seconds)}.',
+                  if (record.lastAnsweredAt case final DateTime last)
+                    'Last answered on ${_day(last)}.',
+                ].join(' '),
+              ),
+            ],
+          ),
       ],
     );
   }
+
+  static String _helped(int answered) => answered == 0
+      ? 'No emergencies yet'
+      : answered == 1
+      ? "You've helped with 1 emergency."
+      : "You've helped with $answered emergencies.";
 }

@@ -156,6 +156,12 @@ every other phone the account is signed in on.
 The elder's own page, behind the round button at the top of their screen, has the same
 idea at their size: who comes, the daily check-in, privacy, and signing out.
 
+**Me.** Everybody's own page is laid out as an iPhone's Settings: their initials and name
+at the top, opening their details, then sections of rows. Care circles, history, the
+emergency services near an elder and the daily check-in fold away until tapped; light or
+dark is a pull-down and Elder mode a switch; signing out is last. On the elder's page,
+calling each person in their circle comes first, out in the open.
+
 **Light or dark.** The app follows the phone's setting. Anybody can override it under
 **Screen** on their account page: Same as this phone, Light or Dark. The choice is kept
 on the phone. The emergency colours do not change with it: the help button keeps its

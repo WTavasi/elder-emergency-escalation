@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -33,6 +35,18 @@ void _tall(WidgetTester tester) {
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
 }
+
+/// A station asked about the emergency, as the detail view lists it.
+Map<String, dynamic> _station(String name, String service) => <String, dynamic>{
+  'name': name,
+  'service': service,
+  'station': null,
+  'askedAt': DateTime.now().toUtc().toIso8601String(),
+  'etaSeconds': 360,
+  'byRoad': false,
+  'reason': 'nearest',
+  'status': 'asked',
+};
 
 Map<String, dynamic> _owned({String? elderPhone = '+254700000010'}) {
   final Map<String, dynamic> body = detailBody(
@@ -122,11 +136,12 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('once a responder has been asked, the screen says so instead of offering it', (
+  testWidgets('once a responder has been asked, the screen says so and offers another service', (
     WidgetTester tester,
   ) async {
     final Map<String, dynamic> asked = _owned()
-      ..['responderRequestedAt'] = DateTime.now().toUtc().toIso8601String();
+      ..['responderRequestedAt'] = DateTime.now().toUtc().toIso8601String()
+      ..['stations'] = <Map<String, dynamic>>[_station('Kileleshwa Response Unit', 'GENERAL')];
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(asked)],
     );
@@ -143,6 +158,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ask for an emergency responder'), findsNothing);
+    expect(find.text('Ask for another service'), findsOneWidget);
     expect(find.text("We've asked for an emergency responder."), findsOneWidget);
     expect(find.text('Call Grace'), findsOneWidget);
 
@@ -429,7 +445,10 @@ void main() {
     Map<String, dynamic> reported(String type, {bool serviceAsked = false}) => _owned()
       ..['reportedType'] = type
       ..['serviceRequested'] = serviceAsked ? 'FIRE' : null
-      ..['serviceRequestedAt'] = serviceAsked ? DateTime.now().toUtc().toIso8601String() : null;
+      ..['serviceRequestedAt'] = serviceAsked ? DateTime.now().toUtc().toIso8601String() : null
+      ..['stations'] = serviceAsked
+          ? <Map<String, dynamic>>[_station('Central Fire Station', 'FIRE')]
+          : <Map<String, dynamic>>[];
 
     testWidgets('says what the elder reported, and names the service the button asks for', (
       WidgetTester tester,
@@ -477,6 +496,48 @@ void main() {
       expect(find.text('Grace says: Fire'), findsOneWidget);
       expect(find.text("We've asked for the fire service."), findsOneWidget);
       expect(find.text('Ask for the fire service'), findsNothing);
+      controller.dispose();
+    });
+
+    testWidgets('the family chooses which service to ask, the one needed first', (
+      WidgetTester tester,
+    ) async {
+      Map<String, dynamic>? sent;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/request-responder')) {
+          sent = jsonDecode(request.body) as Map<String, dynamic>;
+          return <http.Response>[json(<String, dynamic>{}, 202)];
+        }
+        return <http.Response>[json(reported('UNSAFE'))];
+      });
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myRole: Role.familyMember,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ask for the police'));
+      await tester.pumpAndSettle();
+      expect(find.text('Who should we ask?'), findsOneWidget);
+      // Every service is offered; the one this emergency needs is first.
+      for (final String name in <String>[
+        'Police',
+        'Ambulance',
+        'Fire service',
+        'Emergency responder',
+      ]) {
+        expect(find.text(name), findsOneWidget);
+      }
+      await tester.tap(find.text('Ambulance'));
+      await tester.pumpAndSettle();
+
+      expect(sent, <String, dynamic>{'service': 'AMBULANCE'});
       controller.dispose();
     });
 

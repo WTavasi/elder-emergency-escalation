@@ -541,9 +541,18 @@ class ApiClient {
     );
   }
 
-  /// Escalate past the care circle to an emergency responder, by hand.
-  Future<void> requestResponder(String id) async {
-    await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
+  /// The nearest emergency responder, ambulance, police and fire service to an elder's
+  /// home, by road. Empty when the elder has no home recorded.
+  Future<List<NearbyService>> elderServices(String elderId) async =>
+      NearbyService.listFromJson(await _send('GET', '/elders/$elderId/services'));
+
+  /// Ask for a service now, by hand: [service], or the one the emergency needs.
+  Future<void> requestResponder(String id, {ResponderService? service}) async {
+    await _send(
+      'POST',
+      '/alerts/$id/request-responder',
+      body: <String, dynamic>{if (service != null) 'service': service.wire},
+    );
   }
 
   /// A token to join this emergency's voice room. The server allows it for the elder and

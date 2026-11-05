@@ -134,8 +134,27 @@ class AlertDetailController extends ChangeNotifier {
     return summary?.serviceRequested ?? summary?.reportedType?.service ?? ResponderService.general;
   }
 
-  Future<void> requestResponder() =>
-      _act(() => _api.requestResponder(eventId), serviceNeeded.asked);
+  /// Asks for [service] now, or the one the emergency needs.
+  Future<void> requestResponder([ResponderService? service]) => _act(
+    () => _api.requestResponder(eventId, service: service),
+    (service ?? serviceNeeded).asked,
+  );
+
+  /// The services already asked for this emergency, by the stations asked.
+  Set<ResponderService> get servicesAsked => <ResponderService>{
+    for (final StationOnAlert station in _detail?.stations ?? const <StationOnAlert>[])
+      if (station.service case final ResponderService service) service,
+  };
+
+  /// The services that could still be asked, the one the emergency needs first.
+  List<ResponderService> get servicesToOffer {
+    final Set<ResponderService> asked = servicesAsked;
+    final ResponderService needed = serviceNeeded;
+    return <ResponderService>[
+      needed,
+      ...ResponderService.values.where((ResponderService s) => s != needed),
+    ].where((ResponderService s) => !asked.contains(s)).toList(growable: false);
+  }
 
   /// "I'm here." Stops the sharing first: nobody needs the way there once it is over.
   Future<void> arrived() {
@@ -162,18 +181,44 @@ class AlertDetailController extends ChangeNotifier {
     return current != null && !current.voice.available && current.summary.state.isOpen;
   }
 
-  /// Whether "Ask for an emergency responder" is worth offering: not to an emergency
-  /// responder, and not once somebody has asked. The server refuses both.
-  bool get canAskForResponder => myRole != Role.emergencyResponder && !_serviceAsked;
+  /// Whether asking for a service is worth offering: not to an emergency responder, not
+  /// on a closed emergency, and not once every service has been asked.
+  bool get canAskForResponder =>
+      myRole != Role.emergencyResponder &&
+      (_detail?.summary.state.isOpen ?? false) &&
+      servicesToOffer.isNotEmpty;
 
-  /// Somebody has asked for an emergency responder, or a service was asked at once for an
-  /// urgent type, so the screen says so instead.
-  bool get responderAsked => myRole != Role.emergencyResponder && _serviceAsked;
+  /// A service has been asked, by a person, for an urgent type, or by the chain, so the
+  /// screen says which.
+  bool get responderAsked =>
+      myRole != Role.emergencyResponder && (servicesAsked.isNotEmpty || _serviceAsked);
 
   bool get _serviceAsked {
     final AlertSummary? summary = _detail?.summary;
     return summary?.responderRequestedAt != null || summary?.serviceRequestedAt != null;
   }
+
+  /// "We've asked for the police and an ambulance." From the stations asked; from the
+  /// emergency itself on a server that does not list them.
+  String get askedLine {
+    final List<ResponderService> asked = <ResponderService>[
+      for (final ResponderService service in ResponderService.values)
+        if (servicesAsked.contains(service)) service,
+    ];
+    if (asked.isEmpty) return serviceNeeded.asked;
+    final List<String> names = asked.map(_named).toList();
+    final String list = names.length == 1
+        ? names.single
+        : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+    return "We've asked for $list.";
+  }
+
+  static String _named(ResponderService service) => switch (service) {
+    ResponderService.general => 'an emergency responder',
+    ResponderService.ambulance => 'an ambulance',
+    ResponderService.fire => 'the fire service',
+    ResponderService.police => 'the police',
+  };
 
   /// Whether the person holding this phone is the one who took it on.
   bool get isMine {
