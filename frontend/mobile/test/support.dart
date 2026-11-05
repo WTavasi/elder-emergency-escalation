@@ -229,6 +229,12 @@ class FakePositionSource implements PositionSource {
   @override
   Stream<Fix> watch() => readings.stream;
 
+  /// What a one-off reading returns. Null for a phone that could not get one.
+  Fix? here;
+
+  @override
+  Future<Fix?> current() async => here;
+
   @override
   Future<void> openSettings(LocationAccess access) async {}
 

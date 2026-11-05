@@ -63,7 +63,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
         MaterialPageRoute<void>(
           builder: (BuildContext _) => EmergencyMapScreen(
             listenable: Listenable.merge(<Listenable?>[controller, way]),
-            read: () => _mapOf(controller, alert),
+            read: () => _mapOf(controller, alert)?.contents,
             actions: <Widget>[
               DirectionsButton(
                 latitude: alert.latitude!,
@@ -116,6 +116,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                 openLink: widget.open,
               ),
             ],
+            if (detail != null && detail.stations.isNotEmpty) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s24),
+              _Stations(stations: detail.stations),
+            ],
             if (controller.canTalk) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
@@ -137,6 +141,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                   destination: map.destination,
                   destinationLabel: map.destinationLabel,
                   travellers: map.travellers,
+                  needsSomebody: map.needsSomebody,
                   onOpen: () => _openMap(context, controller, alert),
                 ),
                 const SizedBox(height: MzaziSpace.s12),
@@ -839,6 +844,7 @@ class _WhatHappened extends StatelessWidget {
       'RESPONDER_REQUESTED' => '$who asked for an emergency responder',
       'TYPE_REPORTED' => _reported(who, entry),
       'SERVICE_DISPATCHED' => _serviceAsked(entry),
+      'STATION_ASKED' => _stationAsked(entry),
       'RESOLVED' => '$who closed it',
       'CANCELLED' when entry.reason == 'checked-in-late' => 'Cancelled: $who answered the check-in',
       'CANCELLED' => '$who cancelled it',
@@ -858,6 +864,20 @@ class _WhatHappened extends StatelessWidget {
   }
 
   /// "Fire service asked at once", or that none covers the place.
+  /// "Kilimani Police Station asked, about 6 minutes away by road".
+  static String _stationAsked(TimelineEntry entry) {
+    final int? seconds = entry.seconds;
+    final String away = seconds == null
+        ? ''
+        : ', ${timeAway(seconds)} away${entry.byRoad ? ' by road' : ''}';
+    final String why = switch (entry.reason) {
+      'declined' => ' after the one before could not come',
+      'no-answer' => ' after no answer from the one before',
+      _ => '',
+    };
+    return '${entry.stationName ?? 'A station'} asked$away$why';
+  }
+
   static String _serviceAsked(TimelineEntry entry) {
     final ResponderService service = entry.service ?? ResponderService.general;
     return entry.recipients == 0
@@ -1024,6 +1044,57 @@ class _Volunteer extends StatelessWidget {
   }
 }
 
+/// The emergency services asked, as a list: each station, whether it is asked, cannot
+/// come or is coming, and roughly how far it is.
+///
+/// The time is the station's own distance by road. The unit may be out on a call
+/// somewhere else, so it is said as an estimate and as "from the station".
+class _Stations extends StatelessWidget {
+  const _Stations({required this.stations});
+
+  final List<StationOnAlert> stations;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SectionLabel('Emergency services'),
+        const SizedBox(height: MzaziSpace.s4),
+        for (final (int index, StationOnAlert station) in stations.indexed) ...<Widget>[
+          if (index > 0) const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(station.name, style: theme.textTheme.titleMedium),
+                const SizedBox(height: MzaziSpace.s4),
+                Text(stationLine(station), style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "Asked. About 6 minutes away by road, from the station." in plain words.
+String stationLine(StationOnAlert station) {
+  final String status = station.declined
+      ? "Can't come."
+      : station.coming
+      ? 'On the way.'
+      : 'Asked, no answer yet.';
+  final int? eta = station.etaSeconds;
+  if (station.declined || eta == null) return status;
+  final String away = timeAway(eta);
+  final String how = station.byRoad ? ' by road' : '';
+  return '$status ${away[0].toUpperCase()}${away.substring(1)} away$how, from the station.';
+}
+
 /// Who is on their way, and how long until they arrive.
 ///
 /// For the person who took it on: sharing their own way there. For everybody else in
@@ -1154,6 +1225,7 @@ EmergencyMapData? _mapOf(AlertDetailController controller, AlertSummary fallback
     destination: MapPoint(alert.latitude!, alert.longitude!),
     destinationLabel: alert.elderName.split(' ').first,
     travellers: travellers,
+    needsSomebody: !alert.isAnswered,
   );
 }
 

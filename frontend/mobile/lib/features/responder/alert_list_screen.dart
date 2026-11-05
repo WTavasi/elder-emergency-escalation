@@ -8,7 +8,9 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
+import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
+import '../../core/map/emergency_map.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/emergency_type_icon.dart';
 import '../../core/widgets/notice.dart';
@@ -22,9 +24,12 @@ import 'widgets/state_pill.dart';
 
 /// What a caregiver or responder opens the app to see.
 ///
-/// One list, ordered by urgency, with the unanswered ones first. No dashboard, no
-/// counters across the top: the question this screen answers is which emergency needs a
-/// person right now, and anything else on it is in the way of that.
+/// One list, in the order to go: what nobody has taken on first, then their own, then
+/// what somebody else is handling; within each, the most severe, the urgent kind, and
+/// the nearest, as the server ranks them. Each row adds the one reason it cannot show by
+/// itself, such as how far it is. With two or more open, a small map shows them all. No
+/// dashboard, no counters across the top: the question this screen answers is which
+/// emergency needs a person right now, and anything else on it is in the way of that.
 ///
 /// Edge to edge, one row per emergency, divided by hairlines. An emergency nobody has
 /// answered carries a red rule down its left edge, so the ones that need somebody can be
@@ -149,12 +154,106 @@ class _AlertListScreenState extends State<AlertListScreen> {
             ),
             child: SectionLabel(group.heading!),
           ),
+        if (alerts.openOnly && group.heading == null) ..._overview(context, alerts),
         for (final AlertSummary alert in group.alerts) ...<Widget>[
-          _AlertRow(alert: alert, onOpen: () => _open(context, alert, alerts)),
+          _AlertRow(
+            alert: alert,
+            why: alerts.openOnly ? alerts.whyFor(alert.eventId) : null,
+            onOpen: () => _open(context, alert, alerts),
+          ),
           const Divider(indent: MzaziSpace.s16),
         ],
       ],
     ];
+  }
+
+  /// With two or more open, where they all are, and what the times are measured from.
+  List<Widget> _overview(BuildContext context, AlertsController alerts) {
+    final List<AlertSummary> placed = alerts.alerts
+        .where((AlertSummary alert) => alert.hasPlace)
+        .toList(growable: false);
+    if (alerts.alerts.length < 2) return const <Widget>[];
+    final ThemeData theme = Theme.of(context);
+    final String measured = switch (alerts.measuredFrom) {
+      MeasuredFrom.here => 'Nearest first, from where you are now.',
+      MeasuredFrom.station => 'Nearest first, from your station.',
+      MeasuredFrom.nowhere => 'Turn on Share live location in Me to sort by distance too.',
+    };
+    return <Widget>[
+      Padding(
+        padding: EdgeInsets.fromLTRB(
+          MzaziLayout.margin(context),
+          MzaziSpace.s16,
+          MzaziLayout.margin(context),
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (placed.length >= 2) ...<Widget>[
+              SmallMap(
+                contents: _mapOf(context, alerts, placed, open: false),
+                height: 180,
+                onOpen: () => _openMap(context, alerts),
+              ),
+              const SizedBox(height: MzaziSpace.s8),
+            ],
+            Text(measured, style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  /// Every open alert as a pin: red while nobody has it, ink once somebody does, and
+  /// this phone as "You" when it said where it is. On the full map a pin opens its alert.
+  MapContents _mapOf(
+    BuildContext context,
+    AlertsController alerts,
+    List<AlertSummary> placed, {
+    required bool open,
+  }) {
+    final Fix? here = alerts.here;
+    final int waiting = placed.where((AlertSummary alert) => !alert.isAnswered).length;
+    return MapContents(
+      pins: <MapPin>[
+        for (final AlertSummary alert in placed)
+          MapPin(
+            at: MapPoint(alert.latitude!, alert.longitude!),
+            label: alert.elderName.split(' ').first,
+            kind: alert.isAnswered ? PinKind.elder : PinKind.needsSomebody,
+            onTap: open
+                ? () {
+                    Navigator.of(context).pop();
+                    unawaited(_open(context, alert, alerts));
+                  }
+                : null,
+          ),
+        if (here != null)
+          MapPin(at: MapPoint(here.latitude, here.longitude), label: 'You', kind: PinKind.you),
+      ],
+      description:
+          'Map of ${placed.length} open alerts, $waiting waiting for someone'
+          '${here == null ? '' : ', and where you are'}.',
+    );
+  }
+
+  void _openMap(BuildContext context, AlertsController alerts) {
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext _) => EmergencyMapScreen(
+            listenable: alerts,
+            read: () {
+              final List<AlertSummary> placed = alerts.alerts
+                  .where((AlertSummary alert) => alert.state.isOpen && alert.hasPlace)
+                  .toList(growable: false);
+              return placed.isEmpty ? null : _mapOf(context, alerts, placed, open: true);
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   /// The open list stays in urgency order with no headings. History is grouped by the
@@ -433,10 +532,13 @@ class _Tab extends StatelessWidget {
 /// One alert: who and how long ago on the first line, its state and band on the second,
 /// where on the third. A red dot leads the row while nobody has answered.
 class _AlertRow extends StatelessWidget {
-  const _AlertRow({required this.alert, required this.onOpen});
+  const _AlertRow({required this.alert, required this.onOpen, this.why});
 
   final AlertSummary alert;
   final VoidCallback onOpen;
+
+  /// The one reason the row cannot show by itself: "About 6 minutes from you by road."
+  final String? why;
 
   @override
   Widget build(BuildContext context) {
@@ -540,6 +642,21 @@ class _AlertRow extends StatelessWidget {
                         style: quiet,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (why case final String reason) ...<Widget>[
+                      const SizedBox(height: MzaziSpace.s4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Icon(
+                            Icons.near_me_outlined,
+                            size: (quiet?.fontSize ?? 14) * 1.2,
+                            color: quiet?.color,
+                          ),
+                          const SizedBox(width: MzaziSpace.s4),
+                          Expanded(child: Text(reason, style: quiet)),
+                        ],
                       ),
                     ],
                   ],

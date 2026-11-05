@@ -238,6 +238,52 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('lists the emergency services asked, nearest first, with an estimate', (
+    WidgetTester tester,
+  ) async {
+    _tall(tester);
+    final Map<String, dynamic> body = detailBody()
+      ..['stations'] = <Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'Kilimani Police Station',
+          'service': 'POLICE',
+          'station': 'Lenana Road, Kilimani, Nairobi',
+          'askedAt': '2026-10-20T10:00:30.000Z',
+          'etaSeconds': 360,
+          'byRoad': true,
+          'reason': 'nearest',
+          'status': 'declined',
+        },
+        <String, dynamic>{
+          'name': 'Kileleshwa Police Station',
+          'service': 'POLICE',
+          'station': 'Off Laikipia Road, Kileleshwa, Nairobi',
+          'askedAt': '2026-10-20T10:01:00.000Z',
+          'etaSeconds': 540,
+          'byRoad': true,
+          'reason': 'declined',
+          'status': 'asked',
+        },
+      ];
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(body)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('EMERGENCY SERVICES'), findsOneWidget);
+    expect(find.text('Kilimani Police Station'), findsOneWidget);
+    expect(find.text("Can't come."), findsOneWidget);
+    expect(
+      find.text('Asked, no answer yet. About 9 minutes away by road, from the station.'),
+      findsOneWidget,
+    );
+    controller.dispose();
+  });
+
   testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
     _tall(tester);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
@@ -291,6 +337,19 @@ void main() {
         'occurredAt': '2026-10-20T10:00:31.000Z',
         'secondsFromTrigger': 31,
       },
+      <String, dynamic>{
+        'id': 'log-station',
+        'action': 'STATION_ASKED',
+        'actor': null,
+        'detail': <String, dynamic>{
+          'name': 'Central Fire Station',
+          'seconds': 720,
+          'byRoad': true,
+          'reason': 'nearest',
+        },
+        'occurredAt': '2026-10-20T10:00:31.000Z',
+        'secondsFromTrigger': 31,
+      },
     ]);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(body)],
@@ -303,6 +362,7 @@ void main() {
 
     expect(find.text('Grace Wanjiru said: fire, by text'), findsOneWidget);
     expect(find.text('Fire service asked at once'), findsOneWidget);
+    expect(find.text('Central Fire Station asked, about 12 minutes away by road'), findsOneWidget);
     controller.dispose();
   });
 
@@ -863,8 +923,9 @@ void main() {
       );
       await tester.tap(map);
       await tester.pumpAndSettle();
-      expect(find.text('Map'), findsOneWidget);
+      // Full screen: the back arrow alone in the bar, and everyone back in view on the map.
       expect(find.byType(MapCanvas), findsOneWidget);
+      expect(find.byTooltip('Show everyone'), findsOneWidget);
       // Directions are still handed to a maps app, from under the map.
       await tester.tap(find.text('Get directions'));
       await tester.pumpAndSettle();

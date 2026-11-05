@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show DateTimeRange, DateUtils;
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/live/live_updates.dart';
+import '../../core/location/position_source.dart';
 
 /// The list of emergencies a caregiver or responder can act on.
 ///
@@ -20,6 +21,7 @@ class AlertsController extends ChangeNotifier {
     this.pollInterval = const Duration(seconds: 10),
     this.typingPause = const Duration(milliseconds: 350),
     LiveUpdates? live,
+    this.whereAmI,
   }) : _api = api {
     _live = LiveFollower(live: live, wants: (LiveChange _) => true, refresh: refresh);
   }
@@ -46,6 +48,30 @@ class AlertsController extends ChangeNotifier {
   /// Counts requests, so an answer that arrives after a newer request went out is
   /// dropped instead of replacing the newer one. Typing quickly makes that likely.
   int _asked = 0;
+
+  /// Where this phone is, for measuring the time to each open alert. Null, or a null
+  /// answer, when the person has not allowed it; the list is then ordered without it.
+  final Future<Fix?> Function()? whereAmI;
+
+  Fix? _here;
+  DateTime? _hereAt;
+
+  /// Why each open alert sits where it does, by event id.
+  Map<String, List<String>> _reasons = const <String, List<String>>{};
+  Map<String, String> _why = const <String, String>{};
+
+  /// The one line a list row adds about this alert: how far, or how much sooner.
+  String? whyFor(String eventId) => _why[eventId];
+
+  /// Where this phone was at the last ranking, when the person allowed it.
+  Fix? get here => _measuredFrom == MeasuredFrom.here ? _here : null;
+  MeasuredFrom _measuredFrom = MeasuredFrom.nowhere;
+
+  /// Short sentences saying why this open alert is where it is in the list.
+  List<String> reasonsFor(String eventId) => _reasons[eventId] ?? const <String>[];
+
+  /// Where the times in the reasons were measured from.
+  MeasuredFrom get measuredFrom => _measuredFrom;
 
   List<AlertSummary> get alerts => _alerts;
 
@@ -115,6 +141,16 @@ class AlertsController extends ChangeNotifier {
     final bool history = !_openOnly;
     final DateTimeRange? days = history ? _days : null;
     try {
+      if (!history) {
+        final List<AlertSummary>? ranked = await _ranked();
+        if (ranked != null) {
+          if (_disposed || asking != _asked) return;
+          _alerts = ranked;
+          _error = null;
+          _updatedAt = DateTime.now();
+          return;
+        }
+      }
       final List<AlertSummary> fetched = await _api.alerts(
         open: _openOnly,
         search: history ? _search : null,
@@ -148,6 +184,41 @@ class AlertsController extends ChangeNotifier {
   /// Urgency order, matching the console so the two surfaces never disagree about
   /// which emergency is the most pressing: nobody has answered it, it scores highest,
   /// it has been waiting longest.
+  /// The open list in the server's order, with its reasons. Null from a server that
+  /// does not rank yet, which then gets the order this phone works out.
+  Future<List<AlertSummary>?> _ranked() async {
+    final ({List<RankedAlert> alerts, MeasuredFrom from})? ranked = await _api.rankedAlerts(
+      here: await _position(),
+    );
+    if (ranked == null) {
+      _reasons = const <String, List<String>>{};
+      _why = const <String, String>{};
+      _measuredFrom = MeasuredFrom.nowhere;
+      return null;
+    }
+    _reasons = <String, List<String>>{
+      for (final RankedAlert item in ranked.alerts) item.alert.eventId: item.reasons,
+    };
+    _why = <String, String>{
+      for (final RankedAlert item in ranked.alerts)
+        if (item.why != null) item.alert.eventId: item.why!,
+    };
+    _measuredFrom = ranked.from;
+    return ranked.alerts.map((RankedAlert item) => item.alert).toList(growable: false);
+  }
+
+  /// One reading a minute at most, held in memory only, never sent anywhere but the
+  /// ranking request.
+  Future<Fix?> _position() async {
+    final Future<Fix?> Function()? read = whereAmI;
+    if (read == null) return null;
+    final DateTime? at = _hereAt;
+    if (at != null && DateTime.now().difference(at) < const Duration(minutes: 1)) return _here;
+    _here = await read();
+    _hereAt = DateTime.now();
+    return _here;
+  }
+
   static List<AlertSummary> order(List<AlertSummary> alerts) {
     final List<AlertSummary> sorted = List<AlertSummary>.of(alerts);
     sorted.sort((AlertSummary a, AlertSummary b) {

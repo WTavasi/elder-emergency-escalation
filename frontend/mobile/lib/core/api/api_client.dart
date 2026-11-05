@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../location/position_source.dart';
 import 'models.dart';
 
 /// A request the API refused, carrying what it said.
@@ -457,6 +458,35 @@ class ApiClient {
         .whereType<Map<String, dynamic>>()
         .map(AlertSummary.fromJson)
         .toList(growable: false);
+  }
+
+  /// Every open emergency this person is part of, in the order to go to them, each
+  /// with why. [here] is this phone's position, sent only when the person allowed it;
+  /// the server uses it for this answer and keeps nothing. Null from a server that
+  /// does not rank: one that answers 404, or answers without a ranking.
+  Future<({List<RankedAlert> alerts, MeasuredFrom from})?> rankedAlerts({Fix? here}) async {
+    final Object? body;
+    try {
+      body = await _sendRaw(
+        'POST',
+        '/alerts/ranked',
+        body: <String, dynamic>{
+          if (here != null) 'latitude': here.latitude,
+          if (here != null) 'longitude': here.longitude,
+        },
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+    if (body is! Map<String, dynamic> || body['alerts'] is! List<dynamic>) return null;
+    return (
+      alerts: (body['alerts'] as List<dynamic>)
+          .map(RankedAlert.fromJson)
+          .whereType<RankedAlert>()
+          .toList(),
+      from: MeasuredFrom.parse(body['measuredFrom']),
+    );
   }
 
   /// One emergency in full: the chain, the timeline and the severity reasoning.

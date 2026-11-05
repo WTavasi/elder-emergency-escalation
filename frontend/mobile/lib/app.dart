@@ -5,6 +5,7 @@ import 'core/api/api_client.dart';
 import 'core/api/models.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/live/live_updates.dart';
+import 'core/location/way_there.dart';
 import 'core/theme/appearance.dart';
 import 'core/theme/theme.dart';
 import 'core/widgets/sign_out_button.dart';
@@ -85,8 +86,11 @@ class _Home extends StatelessWidget {
       Role.familyMember ||
       Role.emergencyResponder => ChangeNotifierProvider<AlertsController>(
         key: ValueKey<String>(auth.account!.id),
-        create: (BuildContext context) =>
-            AlertsController(api: api, live: LiveUpdates.maybeOf(context)),
+        create: (BuildContext context) => AlertsController(
+          api: api,
+          live: LiveUpdates.maybeOf(context),
+          whereAmI: WayThere.maybeOf(context)?.fixIfAllowed,
+        ),
         child: HomeShell(api: api, role: auth.account!.role),
       ),
       // A volunteer is never in a chain and never takes an emergency on, so their app is

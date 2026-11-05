@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../location/journey_words.dart';
+import '../theme/theme.dart';
 
 /// Where map pictures come from. OpenStreetMap's own by default, which its tile policy
 /// (https://operations.osmfoundation.org/policies/tiles/) allows for an app like this
@@ -27,6 +28,53 @@ const String mapTilesCredit = String.fromEnvironment(
   'MAP_TILES_CREDIT',
   defaultValue: '© OpenStreetMap contributors',
 );
+
+/// What a pin stands for, which decides its colour: red only where a person is still
+/// needed, the "on the way" blue for anybody going, and ink for everything else.
+enum PinKind {
+  /// An elder nobody has taken on yet.
+  needsSomebody,
+
+  /// An elder somebody is already handling.
+  elder,
+
+  /// Somebody on their way.
+  onTheWay,
+
+  /// The person holding this phone.
+  you,
+}
+
+/// One pin: where, what it is called on the map, and what tapping it does.
+class MapPin {
+  const MapPin({required this.at, required this.label, required this.kind, this.icon, this.onTap});
+
+  final MapPoint at;
+  final String label;
+  final PinKind kind;
+  final IconData? icon;
+
+  /// Opens what the pin stands for, on the full-screen map. Null for a pin that opens
+  /// nothing.
+  final VoidCallback? onTap;
+}
+
+/// Everything a map shows at one moment, and the same in words.
+class MapContents {
+  const MapContents({
+    required this.pins,
+    required this.description,
+    this.roads = const <List<MapPoint>>[],
+  });
+
+  final List<MapPin> pins;
+
+  /// The roads people are taking, each a line of points.
+  final List<List<MapPoint>> roads;
+
+  /// What the map shows, for a screen reader and for anybody who cannot read a map.
+  final String description;
+}
 
 /// Somebody on their way, as a pin on the map.
 class MapTraveller {
@@ -67,87 +115,48 @@ class MapTraveller {
   String get label => isYou ? 'You' : name.trim().split(RegExp(r'\s+')).first;
 }
 
-/// The elder's place, everybody on their way, and the road each is taking.
-///
-/// Small and still inside a screen, because a map that pans under a scrolling page
-/// fights the scroll; a tap opens it full screen, where it moves. Drawn without tiles in
-/// widget tests, which have no network.
-class EmergencyMap extends StatelessWidget {
-  const EmergencyMap({
+/// One emergency on a map: the elder's place and everybody on their way to it.
+class EmergencyMapData {
+  const EmergencyMapData({
     required this.destination,
     required this.destinationLabel,
     this.travellers = const <MapTraveller>[],
-    this.height = 220,
-    this.onOpen,
-    super.key,
+    this.needsSomebody = false,
   });
 
   final MapPoint destination;
-
-  /// Who is there: "Grace". The pin says it, so nobody has to guess which pin is the elder.
   final String destinationLabel;
   final List<MapTraveller> travellers;
-  final double height;
 
-  /// Opens the full-screen map. Null leaves the map still and not tappable.
-  final VoidCallback? onOpen;
+  /// Nobody has taken it on yet, so the elder's pin is the red that means it.
+  final bool needsSomebody;
 
-  @override
-  Widget build(BuildContext context) {
-    final BorderRadius radius = BorderRadius.circular(MzaziRadius.group);
-    return Semantics(
-      label: describeMap(destinationLabel, travellers),
-      button: onOpen != null,
-      onTap: onOpen,
-      excludeSemantics: true,
-      child: ClipRRect(
-        borderRadius: radius,
-        child: SizedBox(
-          height: height,
-          child: Stack(
-            children: <Widget>[
-              Positioned.fill(
-                child: MapCanvas(
-                  destination: destination,
-                  destinationLabel: destinationLabel,
-                  travellers: travellers,
-                  interactive: false,
-                ),
-              ),
-              if (onOpen != null)
-                Positioned.fill(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: InkWell(onTap: onOpen),
-                  ),
-                ),
-              if (onOpen != null)
-                PositionedDirectional(
-                  top: MzaziSpace.s8,
-                  end: MzaziSpace.s8,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.all(MzaziSpace.s8),
-                        child: Icon(Icons.open_in_full, size: 20),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+  MapContents get contents => MapContents(
+    pins: <MapPin>[
+      MapPin(
+        at: destination,
+        label: destinationLabel,
+        kind: needsSomebody ? PinKind.needsSomebody : PinKind.elder,
+        icon: Icons.home,
       ),
-    );
-  }
+      for (final MapTraveller who in travellers)
+        MapPin(
+          at: who.at,
+          label: who.label,
+          kind: who.isYou ? PinKind.you : PinKind.onTheWay,
+          icon: who.isVolunteer ? Icons.volunteer_activism : Icons.directions_car,
+        ),
+    ],
+    roads: <List<MapPoint>>[
+      for (final MapTraveller who in travellers)
+        if (who.path.length >= 2) who.path,
+    ],
+    description: describeMap(destinationLabel, travellers),
+  );
 }
 
 /// What the map shows, in words, for a screen reader and for anybody who cannot read
-/// a map: "Map: Grace, and Mary about 6 minutes away by road."
+/// a map: "Map showing where Grace is, and Peter about 6 minutes away."
 String describeMap(String destinationLabel, List<MapTraveller> travellers) {
   if (travellers.isEmpty) return 'Map showing where $destinationLabel is.';
   final List<String> people = travellers.map((MapTraveller who) {
@@ -161,19 +170,92 @@ String describeMap(String destinationLabel, List<MapTraveller> travellers) {
   return 'Map showing where $destinationLabel is, and $list.';
 }
 
-/// The map itself, without a frame, for the small map and the full-screen one.
-class MapCanvas extends StatefulWidget {
-  const MapCanvas({
+/// A small map inside a screen, still, which opens full screen when tapped.
+///
+/// Still, because a map that pans under a scrolling page fights the scroll; the full
+/// screen is where it moves. Drawn without tiles in widget tests, which have no network.
+class EmergencyMap extends StatelessWidget {
+  const EmergencyMap({
     required this.destination,
     required this.destinationLabel,
-    required this.travellers,
-    required this.interactive,
+    this.travellers = const <MapTraveller>[],
+    this.needsSomebody = false,
+    this.height = 220,
+    this.onOpen,
     super.key,
   });
 
   final MapPoint destination;
+
+  /// Who is there: "Grace". The pin says it, so nobody has to guess which pin is the elder.
   final String destinationLabel;
   final List<MapTraveller> travellers;
+  final bool needsSomebody;
+  final double height;
+
+  /// Opens the full-screen map. Null leaves the map still and not tappable.
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final MapContents contents = EmergencyMapData(
+      destination: destination,
+      destinationLabel: destinationLabel,
+      travellers: travellers,
+      needsSomebody: needsSomebody,
+    ).contents;
+    return SmallMap(contents: contents, height: height, onOpen: onOpen);
+  }
+}
+
+/// Any map contents as a small, still map in a page, opening full screen when tapped.
+class SmallMap extends StatelessWidget {
+  const SmallMap({required this.contents, this.height = 220, this.onOpen, super.key});
+
+  final MapContents contents;
+  final double height;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: contents.description,
+      button: onOpen != null,
+      onTap: onOpen,
+      excludeSemantics: true,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(MzaziRadius.group),
+        child: SizedBox(
+          height: height,
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(child: MapCanvas(contents: contents, interactive: false)),
+              if (onOpen != null)
+                Positioned.fill(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(onTap: onOpen),
+                  ),
+                ),
+              if (onOpen != null)
+                const PositionedDirectional(
+                  top: MzaziSpace.s8,
+                  end: MzaziSpace.s8,
+                  child: IgnorePointer(child: _RoundMark(icon: Icons.open_in_full)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The map itself, without a frame, for the small map and the full-screen one.
+class MapCanvas extends StatefulWidget {
+  const MapCanvas({required this.contents, required this.interactive, super.key});
+
+  final MapContents contents;
   final bool interactive;
 
   @override
@@ -187,25 +269,23 @@ class MapCanvasState extends State<MapCanvas> {
   /// Widget tests have no network, so they get the pins and roads without pictures.
   static final bool _drawTiles = kIsWeb || !Platform.environment.containsKey('FLUTTER_TEST');
 
-  List<LatLng> get _everyone => <LatLng>[
-    _point(widget.destination),
-    for (final MapTraveller who in widget.travellers) _point(who.at),
-  ];
-
-  CameraFit get _fit =>
-      CameraFit.coordinates(coordinates: _everyone, padding: const EdgeInsets.all(48), maxZoom: 16);
+  CameraFit get _fit => CameraFit.coordinates(
+    coordinates: widget.contents.pins.map((MapPin pin) => _point(pin.at)).toList(),
+    padding: const EdgeInsets.all(48),
+    maxZoom: 16,
+  );
 
   /// Back to everybody in view, after the person moved the map away.
   void showEveryone() {
-    if (_ready) _controller.fitCamera(_fit);
+    if (_ready && widget.contents.pins.isNotEmpty) _controller.fitCamera(_fit);
   }
 
   @override
   void didUpdateWidget(MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Somebody new on their way: the still map makes room for them. A map the person
-    // is moving is left where they put it.
-    if (!widget.interactive && oldWidget.travellers.length != widget.travellers.length) {
+    // Somebody new on the map: the still map makes room for them. A map the person is
+    // moving is left where they put it.
+    if (!widget.interactive && oldWidget.contents.pins.length != widget.contents.pins.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) => showEveryone());
     }
   }
@@ -220,13 +300,14 @@ class MapCanvasState extends State<MapCanvas> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool dark = theme.brightness == Brightness.dark;
-    final Color owner = theme.colorScheme.primary;
-    final Color volunteer = theme.colorScheme.tertiary;
+    final Color going = dark
+        ? MzaziColorsDark.pillAcknowledgedFg
+        : MzaziColorsLight.pillAcknowledgedFg;
 
     return FlutterMap(
       mapController: _controller,
       options: MapOptions(
-        initialCameraFit: _fit,
+        initialCameraFit: widget.contents.pins.isEmpty ? null : _fit,
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         onMapReady: () => _ready = true,
         interactionOptions: InteractionOptions(
@@ -245,45 +326,25 @@ class MapCanvasState extends State<MapCanvas> {
           ),
         PolylineLayer(
           polylines: <Polyline>[
-            for (final MapTraveller who in widget.travellers)
-              if (who.path.length >= 2)
-                Polyline(
-                  points: who.path.map(_point).toList(),
-                  strokeWidth: 5,
-                  color: who.isVolunteer ? volunteer : owner,
-                  borderStrokeWidth: 2,
-                  borderColor: theme.colorScheme.surface,
-                ),
+            for (final List<MapPoint> road in widget.contents.roads)
+              Polyline(
+                points: road.map(_point).toList(),
+                strokeWidth: 5,
+                color: going,
+                borderStrokeWidth: 2,
+                borderColor: theme.colorScheme.surface,
+              ),
           ],
         ),
         MarkerLayer(
           markers: <Marker>[
-            Marker(
-              point: _point(widget.destination),
-              width: 120,
-              height: 64,
-              alignment: Alignment.topCenter,
-              child: _Pin(
-                label: widget.destinationLabel,
-                icon: Icons.home,
-                colour: theme.colorScheme.error,
-                onColour: theme.colorScheme.onError,
-              ),
-            ),
-            for (final MapTraveller who in widget.travellers)
+            for (final MapPin pin in widget.contents.pins)
               Marker(
-                point: _point(who.at),
+                point: _point(pin.at),
                 width: 120,
                 height: 64,
                 alignment: Alignment.topCenter,
-                child: _Pin(
-                  label: who.label,
-                  icon: who.isVolunteer ? Icons.volunteer_activism : Icons.directions_car,
-                  colour: who.isVolunteer ? volunteer : owner,
-                  onColour: who.isVolunteer
-                      ? theme.colorScheme.onTertiary
-                      : theme.colorScheme.onPrimary,
-                ),
+                child: _Pin(pin: pin, tappable: widget.interactive && pin.onTap != null),
               ),
           ],
         ),
@@ -338,35 +399,49 @@ class _Credit extends StatelessWidget {
   }
 }
 
-/// A round pin with an icon, and a name under it, so nobody has to match colours to a key.
+/// A round pin with an icon and a name under it, so nobody has to match colours to a
+/// key: the word says who it is, the colour only repeats it.
 class _Pin extends StatelessWidget {
-  const _Pin({
-    required this.label,
-    required this.icon,
-    required this.colour,
-    required this.onColour,
-  });
+  const _Pin({required this.pin, required this.tappable});
 
-  final String label;
-  final IconData icon;
-  final Color colour;
-  final Color onColour;
+  final MapPin pin;
+  final bool tappable;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Column(
+    final bool dark = theme.brightness == Brightness.dark;
+    final (Color fill, Color mark) = switch (pin.kind) {
+      PinKind.needsSomebody => (
+        dark ? MzaziColorsDark.danger : MzaziColorsLight.danger,
+        theme.colorScheme.onError,
+      ),
+      PinKind.onTheWay => (
+        dark ? MzaziColorsDark.pillAcknowledgedFg : MzaziColorsLight.pillAcknowledgedFg,
+        theme.colorScheme.surface,
+      ),
+      PinKind.elder || PinKind.you => (theme.colorScheme.onSurface, theme.colorScheme.surface),
+    };
+    final IconData icon =
+        pin.icon ??
+        switch (pin.kind) {
+          PinKind.you => Icons.my_location,
+          PinKind.onTheWay => Icons.directions_car,
+          PinKind.needsSomebody || PinKind.elder => Icons.home,
+        };
+
+    final Widget body = Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         DecoratedBox(
           decoration: BoxDecoration(
-            color: colour,
+            color: fill,
             shape: BoxShape.circle,
             border: Border.all(color: theme.colorScheme.surface, width: 2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Icon(icon, size: 18, color: onColour),
+            child: Icon(icon, size: 18, color: mark),
           ),
         ),
         const SizedBox(height: 2),
@@ -378,7 +453,7 @@ class _Pin extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             child: Text(
-              label,
+              pin.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               // A fixed size: a map label that grew with the text scale would cover
@@ -393,11 +468,40 @@ class _Pin extends StatelessWidget {
         ),
       ],
     );
+
+    if (!tappable) return body;
+    return Semantics(
+      button: true,
+      label: 'Open ${pin.label}',
+      excludeSemantics: true,
+      child: GestureDetector(onTap: pin.onTap, child: body),
+    );
   }
 }
 
-/// The map full screen, where it can be moved and zoomed. Reads its people from
+/// A round surface button mark over the map, as Maps puts its controls.
+class _RoundMark extends StatelessWidget {
+  const _RoundMark({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        shape: BoxShape.circle,
+      ),
+      child: Padding(padding: const EdgeInsets.all(MzaziSpace.s8), child: Icon(icon, size: 20)),
+    );
+  }
+}
+
+/// The map full screen, where it can be moved and zoomed. Reads what to show from
 /// [read] whenever [listenable] changes, so it keeps up while it is open.
+///
+/// The top bar has the back arrow and nothing else. Putting everybody back in view is a
+/// round button on the map itself, where Maps keeps its own controls.
 class EmergencyMapScreen extends StatefulWidget {
   const EmergencyMapScreen({
     required this.listenable,
@@ -408,27 +512,14 @@ class EmergencyMapScreen extends StatefulWidget {
 
   final Listenable listenable;
 
-  /// The map's current contents, or null once there is nothing to show, which closes it.
-  final EmergencyMapData? Function() read;
+  /// The map's contents now, or null once there is nothing to show.
+  final MapContents? Function() read;
 
   /// Buttons under the map, such as directions.
   final List<Widget> actions;
 
   @override
   State<EmergencyMapScreen> createState() => _EmergencyMapScreenState();
-}
-
-/// Everything a map shows at one moment.
-class EmergencyMapData {
-  const EmergencyMapData({
-    required this.destination,
-    required this.destinationLabel,
-    this.travellers = const <MapTraveller>[],
-  });
-
-  final MapPoint destination;
-  final String destinationLabel;
-  final List<MapTraveller> travellers;
 }
 
 class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
@@ -439,41 +530,63 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     return ListenableBuilder(
       listenable: widget.listenable,
       builder: (BuildContext context, Widget? _) {
-        final EmergencyMapData? data = widget.read();
+        final MapContents? contents = widget.read();
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Map'),
-            actions: <Widget>[
-              if (data != null)
-                IconButton(
-                  tooltip: 'Show everyone',
-                  icon: const Icon(Icons.center_focus_strong_outlined),
-                  onPressed: () => _canvas.currentState?.showEveryone(),
-                ),
-            ],
-          ),
-          body: data == null
-              ? const Center(child: Text('Nothing to show on the map now.'))
+          appBar: AppBar(),
+          body: contents == null
+              ? Padding(
+                  padding: EdgeInsets.all(MzaziLayout.margin(context)),
+                  child: Text(
+                    'Nothing to show on the map now.',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Expanded(
-                      child: Semantics(
-                        label: describeMap(data.destinationLabel, data.travellers),
-                        child: MapCanvas(
-                          key: _canvas,
-                          destination: data.destination,
-                          destinationLabel: data.destinationLabel,
-                          travellers: data.travellers,
-                          interactive: true,
-                        ),
+                      child: Stack(
+                        children: <Widget>[
+                          Positioned.fill(
+                            child: Semantics(
+                              label: contents.description,
+                              child: MapCanvas(key: _canvas, contents: contents, interactive: true),
+                            ),
+                          ),
+                          PositionedDirectional(
+                            top: MzaziSpace.s12,
+                            end: MzaziSpace.s12,
+                            child: Tooltip(
+                              message: 'Show everyone',
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: InkResponse(
+                                  onTap: () => _canvas.currentState?.showEveryone(),
+                                  radius: 28,
+                                  child: const SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Center(
+                                      child: _RoundMark(icon: Icons.center_focus_strong_outlined),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (widget.actions.isNotEmpty)
                       SafeArea(
                         top: false,
                         child: Padding(
-                          padding: const EdgeInsets.all(MzaziSpace.s16),
+                          padding: EdgeInsets.fromLTRB(
+                            MzaziLayout.margin(context),
+                            MzaziSpace.s16,
+                            MzaziLayout.margin(context),
+                            MzaziSpace.s16,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: widget.actions,

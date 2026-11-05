@@ -712,11 +712,19 @@ class TimelineEntry {
     this.reason,
     this.type,
     this.service,
+    this.stationName,
+    this.seconds,
+    this.byRoad = false,
   });
 
   final String id;
   final String action;
   final int secondsFromTrigger;
+
+  /// On the entry that records a station asked: which, how far, and whether by road.
+  final String? stationName;
+  final int? seconds;
+  final bool byRoad;
 
   /// Null for everything the system did on its own, which is what makes an automatic
   /// escalation distinguishable from a human decision when the trail is read back.
@@ -768,6 +776,9 @@ class TimelineEntry {
       reason: d['reason'] as String?,
       type: EmergencyType.parse(d['type']),
       service: ResponderService.parse(d['service']),
+      stationName: d['name'] as String?,
+      seconds: asInt(d['seconds']),
+      byRoad: d['byRoad'] == true,
     );
   }
 }
@@ -808,6 +819,7 @@ class AlertDetail {
     this.journeys = const <Journey>[],
     this.voice = Voice.off,
     this.volunteer,
+    this.stations = const <StationOnAlert>[],
   });
 
   final AlertSummary summary;
@@ -826,6 +838,9 @@ class AlertDetail {
 
   /// Community volunteers asked about it, and the one going.
   final VolunteerOnAlert? volunteer;
+
+  /// The stations asked, nearest first, then any asked after a decline or no answer.
+  final List<StationOnAlert> stations;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -848,6 +863,7 @@ class AlertDetail {
       journeys: Journey.listFromJson(json['journeys'], orOnly: json['journey']),
       voice: Voice.fromJson(json['voice']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
+      stations: StationOnAlert.listFromJson(json['stations']),
     );
   }
 }
@@ -1816,4 +1832,108 @@ class PairingCode {
     code: json['code'] as String? ?? '',
     expiresIn: Duration(seconds: (json['expiresInSeconds'] as num?)?.toInt() ?? 600),
   );
+}
+
+/// One open emergency in the order to go to it, with why it sits there.
+class RankedAlert {
+  const RankedAlert({
+    required this.alert,
+    this.reasons = const <String>[],
+    this.why,
+    this.travelSeconds,
+    this.byRoad = false,
+  });
+
+  final AlertSummary alert;
+
+  /// The one reason a list row cannot show by itself: how far, or how much sooner.
+  final String? why;
+
+  /// Short sentences from the server, most important first.
+  final List<String> reasons;
+
+  /// From this person to the alert, when that is known.
+  final int? travelSeconds;
+  final bool byRoad;
+
+  static RankedAlert? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? alert = json['alert'];
+    if (alert is! Map<String, dynamic>) return null;
+    return RankedAlert(
+      alert: AlertSummary.fromJson(alert),
+      reasons: (json['reasons'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<String>()
+          .toList(),
+      why: json['why'] as String?,
+      travelSeconds: (json['travelSeconds'] as num?)?.toInt(),
+      byRoad: json['byRoad'] as bool? ?? false,
+    );
+  }
+}
+
+/// Where the ranking measured times from.
+enum MeasuredFrom {
+  here,
+  station,
+  nowhere;
+
+  static MeasuredFrom parse(Object? value) => switch (value) {
+    'here' => MeasuredFrom.here,
+    'station' => MeasuredFrom.station,
+    _ => MeasuredFrom.nowhere,
+  };
+}
+
+/// One station asked about an emergency, as the care circle sees it.
+class StationOnAlert {
+  const StationOnAlert({
+    required this.name,
+    required this.askedAt,
+    required this.status,
+    this.service,
+    this.station,
+    this.etaSeconds,
+    this.byRoad = false,
+  });
+
+  final String name;
+  final ResponderService? service;
+
+  /// Where it is based: "Lenana Road, Kilimani, Nairobi".
+  final String? station;
+  final DateTime askedAt;
+
+  /// From the station, not from wherever the unit is now: an estimate.
+  final int? etaSeconds;
+  final bool byRoad;
+
+  /// asked, declined or coming.
+  final String status;
+
+  bool get declined => status == 'declined';
+  bool get coming => status == 'coming';
+
+  static List<StationOnAlert> listFromJson(Object? json) {
+    if (json is! List<dynamic>) return const <StationOnAlert>[];
+    final List<StationOnAlert> stations = <StationOnAlert>[];
+    for (final Object? item in json) {
+      if (item is! Map<String, dynamic>) continue;
+      final Object? name = item['name'];
+      final DateTime? asked = _date(item['askedAt']);
+      if (name is! String || asked == null) continue;
+      stations.add(
+        StationOnAlert(
+          name: name,
+          service: ResponderService.parse(item['service']),
+          station: item['station'] as String?,
+          askedAt: asked,
+          etaSeconds: (item['etaSeconds'] as num?)?.toInt(),
+          byRoad: item['byRoad'] as bool? ?? false,
+          status: item['status'] as String? ?? 'asked',
+        ),
+      );
+    }
+    return stations;
+  }
 }
