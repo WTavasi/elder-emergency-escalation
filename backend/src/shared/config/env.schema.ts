@@ -397,6 +397,17 @@ export class EnvSchema {
   STATION_WAIT_SECONDS: number = 180;
 
   /**
+   * How long after the elder says what is happening the matching service is asked, for
+   * the types asked for ahead of the chain: chest pain or breathing, fire, not safe.
+   * Long enough to change a mistaken tap; 0 asks at once.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  TYPE_DISPATCH_DELAY_SECONDS: number = 25;
+
+  /**
    * Talking in the app during an emergency, through LiveKit. All three or none: with
    * any missing the feature is off, the alert says so, and the app shows no button.
    * LIVEKIT_URL is what the app connects to, wss://<project>.livekit.cloud for LiveKit

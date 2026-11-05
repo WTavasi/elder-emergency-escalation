@@ -203,4 +203,21 @@ describe('StationDispatchService', () => {
     expect(fire).toHaveBeenCalledWith('overdue');
     expect(redis.client.set).toHaveBeenCalledWith(stationKey('waiting'), '1', 'EX', 60);
   });
+
+  it('finds the nearest of each service for a place, the default responder first', async () => {
+    const { service } = build([
+      unit('Kileleshwa Police Station', ResponderService.POLICE, 1),
+      unit('Kilimani Police Station', ResponderService.POLICE, 3),
+      unit('St John Ambulance', ResponderService.AMBULANCE, 4),
+      unit('Kileleshwa Response Unit', ResponderService.GENERAL, 2, null),
+    ]);
+
+    const each = await service.nearestEach(ALERT);
+
+    expect(each.map((station) => station.name)).toEqual([
+      'Kileleshwa Response Unit',
+      'St John Ambulance',
+      'Kileleshwa Police Station',
+    ]);
+  });
 });

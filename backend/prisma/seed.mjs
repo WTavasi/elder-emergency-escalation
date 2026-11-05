@@ -230,12 +230,42 @@ const people = [
     email: 'amina@example.com',
   },
 
-  // Emergency responders, as stations: the real name and address of each, with made-up
-  // phone numbers. The nearest station by road is asked first, and the next after a
-  // decline or three minutes without an answer. The coordinates are approximate,
-  // placed from each station's road; correct one from the console's address search.
+  // The services, as stations: the real name and address of each, with made-up phone
+  // numbers. When an emergency needs one, the nearest by road is asked first, and the
+  // next after a decline or three minutes without an answer. The coordinates are
+  // approximate, placed from each station's road; correct one from the console.
+  // The default emergency responders: each elder's chain ends with one, asked when the
+  // family has not answered and nobody has said what is happening. They take any call.
   {
     phone: '+254700000040',
+    name: 'Kileleshwa Response Unit',
+    role: 'EMERGENCY_RESPONDER',
+    responderService: 'GENERAL',
+    coverageAreaName: 'Kileleshwa and Lavington',
+    coverageLatitude: -1.286,
+    coverageLongitude: 36.78,
+    coverageRadiusKm: 5.0, // No station: a response unit is out on the road, measured from its area's middle.
+    // Set to null so a database seeded when these numbers were stations is put right.
+    stationLabel: null,
+    stationLatitude: null,
+    stationLongitude: null,
+  },
+  {
+    phone: '+254700000041',
+    name: 'Westlands Response Unit',
+    role: 'EMERGENCY_RESPONDER',
+    responderService: 'GENERAL',
+    coverageAreaName: 'Westlands and Parklands',
+    coverageLatitude: -1.265,
+    coverageLongitude: 36.805,
+    coverageRadiusKm: 6.0, // No station: a response unit is out on the road, measured from its area's middle.
+    // Set to null so a database seeded when these numbers were stations is put right.
+    stationLabel: null,
+    stationLatitude: null,
+    stationLongitude: null,
+  },
+  {
+    phone: '+254700000047',
     name: 'Kilimani Police Station',
     role: 'EMERGENCY_RESPONDER',
     responderService: 'POLICE',
@@ -248,7 +278,7 @@ const people = [
     stationLongitude: 36.786,
   },
   {
-    phone: '+254700000041',
+    phone: '+254700000048',
     name: 'Parklands Police Station',
     role: 'EMERGENCY_RESPONDER',
     responderService: 'POLICE',

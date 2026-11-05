@@ -208,7 +208,7 @@ describe('escalation, end to end', () => {
     expect(notifications[0].recipientId).toBe(ids.caregiver);
   });
 
-  it('asks the fire service at once when the elder reports a fire, beside the family', async () => {
+  it('asks the fire service shortly after the elder reports a fire, beside the family', async () => {
     const station = await prisma.user.create({
       data: {
         name: 'Test Fire Unit',
@@ -227,10 +227,22 @@ describe('escalation, end to end', () => {
     const event = await alerts.create(ids.elder as string, {});
     await escalation.reportType(event.id, ids.elder as string, EmergencyType.FIRE);
 
+    // Not at the tap: the service is asked a short while later, so a mistaken tap can
+    // be changed first. The wait is kept in the database as well as in Redis.
+    const waiting = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(waiting.serviceDueAt).not.toBeNull();
+    expect(
+      await prisma.notification.count({ where: { eventId: event.id, recipientId: station.id } }),
+    ).toBe(0);
+
+    // The wait ends, as the key's expiry would end it.
+    await escalation.onServiceDue(event.id);
+
     const stored = await prisma.emergencyEvent.findUniqueOrThrow({ where: { id: event.id } });
     expect(stored.reportedType).toBe(EmergencyType.FIRE);
     expect(stored.severity).toBe(Severity.CRITICAL);
     expect(stored.serviceRequested).toBe(ResponderService.FIRE);
+    expect(stored.serviceDueAt).toBeNull();
 
     // Pushed and texted at once, ahead of the chain.
     const asked = await prisma.notification.findMany({
@@ -280,6 +292,7 @@ describe('escalation, end to end', () => {
 
     const event = await alerts.create(ids.elder as string, {});
     await escalation.reportType(event.id, ids.elder as string, EmergencyType.UNSAFE);
+    await escalation.onServiceDue(event.id);
 
     const askedStations = async () =>
       (

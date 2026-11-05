@@ -1,8 +1,10 @@
 import {
   parseReviewKey,
+  parseServiceKey,
   parseStationKey,
   parseTimerKey,
   reviewKey,
+  serviceKey,
   stationKey,
   timerKey,
 } from './escalation.keys';
@@ -49,5 +51,11 @@ describe('severity review keys', () => {
     expect(parseStationKey(reviewKey('event-1'))).toBeNull();
     expect(parseStationKey(timerKey('event-1', 3))).toBeNull();
     expect(parseTimerKey(stationKey('event-1'))).toBeNull();
+  });
+
+  it('reads the wait before a service is asked back to its emergency', () => {
+    expect(parseServiceKey(serviceKey('event-1'))).toBe('event-1');
+    expect(parseServiceKey(stationKey('event-1'))).toBeNull();
+    expect(parseStationKey(serviceKey('event-1'))).toBeNull();
   });
 });

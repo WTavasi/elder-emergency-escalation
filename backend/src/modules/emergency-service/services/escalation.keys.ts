@@ -64,3 +64,19 @@ export function parseStationKey(key: string): string | null {
   if (`${parts[0]}:${parts[1]}` !== STATION_PREFIX) return null;
   return parts[2] || null;
 }
+
+/**
+ * When the service for a reported type is asked: a short while after the report, so a
+ * mistaken tap can be changed first. One per emergency, under its own prefix.
+ */
+export const SERVICE_PREFIX = 'escalation:service';
+
+export const serviceKey = (eventId: string): string => `${SERVICE_PREFIX}:${eventId}`;
+
+/** The emergency a service key belongs to, or null for any other key. */
+export function parseServiceKey(key: string): string | null {
+  const parts = key.split(':');
+  if (parts.length !== 3) return null;
+  if (`${parts[0]}:${parts[1]}` !== SERVICE_PREFIX) return null;
+  return parts[2] || null;
+}

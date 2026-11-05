@@ -406,6 +406,11 @@ model EmergencyEvent {
   /// waiting on a station.
   stationDeadlineAt DateTime? @map("station_deadline_at") @db.Timestamptz(3)
 
+  /// EXTENSION. When the service for the reported type will be asked, a short while after
+  /// it was reported so a mistaken tap can be changed first. The durable copy of a Redis
+  /// timer. Null once asked, or when nothing is waiting.
+  serviceDueAt DateTime? @map("service_due_at") @db.Timestamptz(3)
+
   triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
   /// EXTENSION. When the owner reached the elder. Kept when the emergency moves on (an

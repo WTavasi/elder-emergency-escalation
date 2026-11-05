@@ -99,10 +99,34 @@ export class StationDispatchService {
    * road time from its station.
    */
   async ranked(event: EmergencyEvent, service: ResponderService): Promise<RankedStation[]> {
-    const alert = {
-      latitude: Number(event.alertLatitude),
-      longitude: Number(event.alertLongitude),
-    };
+    return this.rankedAt(
+      { latitude: Number(event.alertLatitude), longitude: Number(event.alertLongitude) },
+      service,
+    );
+  }
+
+  /**
+   * The nearest station of each service covering a place, by road: the responder who
+   * takes any call (asked by default), then an ambulance, the police and the fire
+   * service. A service nobody covers there is left out.
+   */
+  async nearestEach(place: Coordinates): Promise<RankedStation[]> {
+    const all = await this.rankedAt(place, ResponderService.GENERAL);
+    const order = [
+      ResponderService.GENERAL,
+      ResponderService.AMBULANCE,
+      ResponderService.POLICE,
+      ResponderService.FIRE,
+    ];
+    return order.flatMap((service) => {
+      const nearest = all
+        .filter((station) => station.service === service)
+        .sort((a, b) => a.etaSeconds - b.etaSeconds)[0];
+      return nearest ? [nearest] : [];
+    });
+  }
+
+  private async rankedAt(alert: Coordinates, service: ResponderService): Promise<RankedStation[]> {
     const units = await this.prisma.user.findMany({
       where: {
         role: Role.EMERGENCY_RESPONDER,
@@ -243,6 +267,19 @@ export class StationDispatchService {
   ): Promise<void> {
     await this.prisma.$transaction((tx) => this.record(tx, event, station, reason, new Date()));
     await this.arm(event.id);
+  }
+
+  /** The services already asked about this emergency, by the stations asked. */
+  async servicesAsked(eventId: string): Promise<Set<ResponderService>> {
+    const entries = await this.prisma.auditLog.findMany({
+      where: { eventId, action: AuditAction.STATION_ASKED },
+      select: { detail: true },
+    });
+    return new Set(
+      entries
+        .map((entry) => (entry.detail as { service?: ResponderService } | null)?.service)
+        .filter((service): service is ResponderService => service !== undefined),
+    );
   }
 
   /** Nobody is waiting on a station any more: somebody took it on, or it is over. */

@@ -68,6 +68,14 @@ export interface ResponderLocation {
 /** How a person answered an alert: in the app, or by replying to its SMS. */
 export type AnswerChannel = 'app' | 'sms';
 
+/** A service as a sentence says it: "We've already asked for the police." */
+const SERVICE_WORD: Record<ResponderService, string> = {
+  [ResponderService.GENERAL]: 'an emergency responder',
+  [ResponderService.AMBULANCE]: 'an ambulance',
+  [ResponderService.FIRE]: 'the fire service',
+  [ResponderService.POLICE]: 'the police',
+};
+
 @Injectable()
 export class EscalationService {
   private readonly logger = new Logger(EscalationService.name);
@@ -827,21 +835,97 @@ export class EscalationService {
       await this.promote(updated, event.severity);
       if (band === Severity.CRITICAL) this.askVolunteers(eventId, 'critical');
     }
-    if (rule?.dispatch === TypeDispatch.IMMEDIATE) {
-      await this.dispatchService(updated, rule.service);
-    }
+    if (rule?.dispatch === TypeDispatch.IMMEDIATE) await this.scheduleService(updated);
     return this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
   }
 
+  /** Seconds between a report and its service being asked. */
+  private get serviceDelaySeconds(): number {
+    return Number(this.config.get<number>('TYPE_DISPATCH_DELAY_SECONDS', 25));
+  }
+
   /**
-   * Asks a service now, ahead of the chain, for an urgent type: an ambulance for chest
-   * pain, the fire service for a fire. The chain carries on beside it as it was. Once
-   * per emergency, whoever reports first; the rows are at the responder tier, so the
+   * The service for an urgent type is asked a short while after the report, not at the
+   * tap: long enough for a mistaken tap to be changed, short enough to cost the elder
+   * nothing. What is reported when the wait ends is what counts. A wait already running
+   * is not restarted by a second report. With no delay set, it is asked at once.
+   */
+  private async scheduleService(event: EmergencyEvent): Promise<void> {
+    if (event.serviceDueAt) return;
+    const delay = this.serviceDelaySeconds;
+    if (delay <= 0) {
+      await this.onServiceDue(event.id);
+      return;
+    }
+    await this.prisma.emergencyEvent.updateMany({
+      where: { id: event.id, serviceDueAt: null },
+      data: { serviceDueAt: new Date(Date.now() + delay * 1000) },
+    });
+    await this.timers.armService(event.id, delay);
+  }
+
+  /**
+   * The wait after a report is over: the service for what is reported now is asked, if
+   * that type still asks for one and nobody has asked it yet. Called by the key's expiry
+   * and by recovery on boot.
+   */
+  async onServiceDue(eventId: string): Promise<void> {
+    const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
+    if (!event) return;
+    if (event.serviceDueAt) {
+      await this.prisma.emergencyEvent.updateMany({
+        where: { id: eventId },
+        data: { serviceDueAt: null },
+      });
+    }
+    if (!OPEN_STATES.includes(event.state) || !event.reportedType) return;
+    const rule = await this.prisma.emergencyTypeRule.findUnique({
+      where: { type: event.reportedType },
+    });
+    // Changed in the wait to a type that waits for the responder step: nothing now.
+    if (rule?.dispatch !== TypeDispatch.IMMEDIATE) return;
+    await this.dispatchService(event, rule.service);
+  }
+
+  /** Service waits that were running when the API stopped: overdue fire, the rest re-arm. */
+  async recoverServiceWaits(): Promise<{ fired: number; rearmed: number }> {
+    const waiting = await this.prisma.emergencyEvent.findMany({
+      where: { serviceDueAt: { not: null }, state: { in: OPEN_STATES } },
+      select: { id: true, serviceDueAt: true },
+    });
+    let fired = 0;
+    let rearmed = 0;
+    for (const event of waiting) {
+      const left = Math.ceil(((event.serviceDueAt?.getTime() ?? 0) - Date.now()) / 1000);
+      try {
+        if (left <= 0) {
+          await this.onServiceDue(event.id);
+          fired += 1;
+        } else {
+          await this.timers.armService(event.id, left);
+          rearmed += 1;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Service wait recovery failed for event ${event.id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+    return { fired, rearmed };
+  }
+
+  /**
+   * Asks a service ahead of the chain, for an urgent type: an ambulance for chest pain,
+   * the fire service for a fire, the police for somebody not safe. The chain carries on
+   * beside it as it was. Once per emergency; the rows are at the responder tier, so the
    * service can take the emergency on, and the family's own tier is left alone.
    */
   private async dispatchService(event: EmergencyEvent, service: ResponderService): Promise<void> {
+    // Asked already, by a person or by an earlier report: nobody is asked twice.
+    if ((await this.stations.servicesAsked(event.id)).has(service)) return;
     const claimed = await this.prisma.emergencyEvent.updateMany({
-      where: { id: event.id, serviceRequestedAt: null, state: { in: OPEN_STATES } },
+      where: { id: event.id, state: { in: OPEN_STATES } },
       data: { serviceRequested: service, serviceRequestedAt: new Date() },
     });
     if (claimed.count === 0) return;
@@ -995,13 +1079,21 @@ export class EscalationService {
   }
 
   /**
-   * A caregiver or family member calling in the emergency responder directly.
+   * A caregiver or family member asking for a service now, rather than waiting for the
+   * chain: the one the emergency needs by default, or the one they choose (an ambulance,
+   * the police, the fire service, or an emergency responder who takes any call).
    *
-   * This supersedes the automatic chain: pending timers are cleared and the responder
-   * tier is dispatched now, rather than after the tiers between here and there have
-   * each waited out their window.
+   * Before the chain has reached the responder step, this supersedes it: pending timers
+   * are cleared and the responder step goes out now, to the nearest station of that
+   * service. Once stations are already being asked, it asks the nearest station of the
+   * chosen service as well. Asking for a service already asked is refused, so the same
+   * station is never asked twice.
    */
-  async requestResponder(eventId: string, userId: string): Promise<void> {
+  async requestResponder(
+    eventId: string,
+    userId: string,
+    chosen?: ResponderService,
+  ): Promise<void> {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
 
@@ -1017,25 +1109,54 @@ export class EscalationService {
 
     const rules = await this.rulesFor(event);
     const responderRule = rules.find((rule) => rule.responderRole === Role.EMERGENCY_RESPONDER);
-
     if (!responderRule) {
       throw new ConflictException("Emergency responders aren't available right now.");
     }
 
-    // Asked once already, by a person, by the chain reaching them, or at once for an
-    // urgent type: asking again would only send the same alert to the same responders.
-    if (
-      event.responderRequestedAt ||
-      event.serviceRequestedAt ||
-      event.currentTier >= responderRule.tierOrder
-    ) {
-      throw new ConflictException("We've already asked for an emergency responder.");
+    const service = chosen ?? (await this.serviceFor(event));
+    const asked = await this.stations.servicesAsked(eventId);
+    if (asked.has(service)) {
+      throw new ConflictException(`We've already asked for ${SERVICE_WORD[service]}.`);
+    }
+
+    const inPlay =
+      asked.size > 0 ||
+      Boolean(event.responderRequestedAt) ||
+      event.currentTier >= responderRule.tierOrder;
+    const now = new Date();
+
+    if (inPlay) {
+      const { next } = await this.stations.pick(event, service);
+      if (!next) throw new ConflictException('Nobody else covers this area.');
+      await this.prisma.$transaction(async (tx) => {
+        await tx.emergencyEvent.update({
+          where: { id: eventId },
+          data: {
+            responderRequestedAt: event.responderRequestedAt ?? now,
+            serviceRequested: service,
+            serviceRequestedAt: now,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            eventId,
+            actorId: userId,
+            action: AuditAction.RESPONDER_REQUESTED,
+            detail: {
+              fromTier: event.currentTier,
+              toTier: responderRule.tierOrder,
+              service,
+            } as unknown as Prisma.InputJsonValue,
+            occurredAt: now,
+          },
+        });
+      });
+      const latest = await this.prisma.emergencyEvent.findUniqueOrThrow({ where: { id: eventId } });
+      await this.stations.askNext(latest, service, responderRule.tierOrder, 'nearest');
+      return;
     }
 
     await this.timers.cancelAll(eventId);
-
-    const service = await this.serviceFor(event);
-    const now = new Date();
     await this.prisma.$transaction(async (tx) => {
       await tx.emergencyEvent.update({
         where: { id: eventId },
@@ -1055,6 +1176,7 @@ export class EscalationService {
           detail: {
             fromTier: event.currentTier,
             toTier: responderRule.tierOrder,
+            service,
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
         },

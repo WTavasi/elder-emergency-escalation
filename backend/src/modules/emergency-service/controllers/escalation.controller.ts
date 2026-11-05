@@ -6,6 +6,7 @@ import {
 } from '../../../shared/decorators/current-user.decorator';
 import { AcknowledgeDto } from '../validation/acknowledge.dto';
 import { DeclineDto } from '../validation/decline.dto';
+import { RequestResponderDto } from '../validation/request-responder.dto';
 import { ReportTypeDto } from '../validation/report-type.dto';
 import { ResolveDto } from '../validation/resolve.dto';
 import { EscalationService } from '../services/escalation.service';
@@ -66,13 +67,17 @@ export class EscalationController {
     return this.escalation.reportType(id, user.userId, dto.type);
   }
 
-  /** Call in the emergency responder now, superseding the automatic chain. */
+  /**
+   * Ask for a service now: the one the emergency needs, or `{ service }` to choose one.
+   * Before the responder step this supersedes the automatic chain.
+   */
   @HttpCode(HttpStatus.ACCEPTED)
   @Post(':id/request-responder')
   requestResponder(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestResponderDto,
   ): Promise<void> {
-    return this.escalation.requestResponder(id, user.userId);
+    return this.escalation.requestResponder(id, user.userId, dto.service);
   }
 }

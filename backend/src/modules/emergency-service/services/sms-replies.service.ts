@@ -124,11 +124,11 @@ function wordsOf(text: string): string[] {
  */
 const RAISED_REPLY: Partial<Record<EmergencyType, string>> = {
   [EmergencyType.FIRE]:
-    "MzaziCare: we've told your family and asked for the fire service. Get out if you can, and call 999 too.",
+    "MzaziCare: we've told your family and are asking the fire service. Get out if you can, and call 999 too.",
   [EmergencyType.UNSAFE]:
-    "MzaziCare: we've told your family and asked for the police. Go somewhere safe if you can, and call 999 too.",
+    "MzaziCare: we've told your family and are asking the police. Go somewhere safe if you can, and call 999 too.",
   [EmergencyType.BREATHING]:
-    "MzaziCare: we've told your family and asked for an ambulance. Call 999 too if you can.",
+    "MzaziCare: we've told your family and are asking for an ambulance. Call 999 too if you can.",
 };
 
 /** An international number from whatever the gateway sent: spaces gone, a + in front. */

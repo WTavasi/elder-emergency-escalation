@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EscalationController } from './controllers/escalation.controller';
+import { ElderServicesController } from './controllers/elder-services.controller';
 import { JourneyController } from './controllers/journey.controller';
 import { VoiceController } from './controllers/voice.controller';
 import { EscalationListener } from './consumers/escalation.listener';
@@ -15,7 +16,7 @@ import { CommunityModule } from '../community-service/community.module';
 
 @Module({
   imports: [NotificationsModule, SeverityModule, CommunityModule],
-  controllers: [EscalationController, JourneyController, VoiceController],
+  controllers: [EscalationController, JourneyController, VoiceController, ElderServicesController],
   providers: [
     EscalationService,
     EscalationTimerService,
