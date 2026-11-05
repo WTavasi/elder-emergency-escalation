@@ -746,11 +746,21 @@ class ApiClient {
     required bool enabled,
     required List<String> times,
     int? graceMinutes,
+    CheckInEvery? every,
   }) async => CheckInsOverview.fromJson(
     await _send(
       'PUT',
       '/elders/$elderId/check-ins',
-      body: <String, dynamic>{'enabled': enabled, 'times': times, 'graceMinutes': ?graceMinutes},
+      body: <String, dynamic>{
+        'enabled': enabled,
+        'times': every == null ? times : const <String>[],
+        'graceMinutes': ?graceMinutes,
+        if (every != null) ...<String, dynamic>{
+          'every': every.minutes,
+          'from': every.from,
+          'until': every.until,
+        },
+      },
     ),
   );
 

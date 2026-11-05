@@ -1117,6 +1117,13 @@ class _CheckInSetUpQuestion extends StatelessWidget {
   final VoidCallback onYes;
   final VoidCallback onNo;
 
+  /// "each day at 09:00", or "every hour from 08:00 to 20:00".
+  static String _when(CheckInSchedule schedule) {
+    final CheckInEvery? every = schedule.every;
+    if (every == null) return 'each day at ${schedule.timesInWords}';
+    return '${CheckInEvery.stepInWords(every.minutes)} from ${every.from} to ${every.until}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -1126,7 +1133,7 @@ class _CheckInSetUpQuestion extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
-          '$who wants us to check on you each day at ${schedule.timesInWords}. '
+          '$who wants us to check on you ${_when(schedule)}. '
           'No answer in ${schedule.graceMinutes} minutes? We tell your family. Is that OK?',
           style: theme.textTheme.bodyLarge,
         ),

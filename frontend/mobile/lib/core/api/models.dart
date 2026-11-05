@@ -1320,9 +1320,18 @@ class CheckInSchedule {
     this.waitingForElder = false,
     this.setByName,
     this.setById,
+    this.every,
+    this.agreedAt,
   });
 
   final bool enabled;
+
+  /// "Every hour from 08:00 to 20:00", when it was set up that way. Null for times chosen
+  /// one by one; [times] lists them either way.
+  final CheckInEvery? every;
+
+  /// When the elder agreed, for the circle to see.
+  final DateTime? agreedAt;
 
   /// "09:00", in the elder's own time zone, earliest first.
   final List<String> times;
@@ -1334,6 +1343,13 @@ class CheckInSchedule {
   final bool waitingForElder;
   final String? setByName;
   final String? setById;
+
+  /// "Every hour from 08:00 to 20:00", or "Daily at 09:00 and 18:00".
+  String get inWords {
+    final CheckInEvery? interval = every;
+    if (interval != null) return interval.inWords;
+    return 'Daily at $timesInWords';
+  }
 
   /// "09:00", "09:00 and 18:00", "08:00, 13:00 and 20:00".
   String get timesInWords {
@@ -1354,15 +1370,84 @@ class CheckInSchedule {
       waitingForElder: json['waitingForElder'] as bool? ?? false,
       setByName: setBy is Map<String, dynamic> ? setBy['name'] as String? : null,
       setById: setBy is Map<String, dynamic> ? setBy['id'] as String? : null,
+      every: CheckInEvery.fromJson(json['every']),
+      agreedAt: _date(json['agreedAt']),
+    );
+  }
+}
+
+/// Check-ins every so often through part of the day.
+class CheckInEvery {
+  const CheckInEvery({required this.minutes, required this.from, required this.until});
+
+  final int minutes;
+
+  /// "08:00".
+  final String from;
+  final String until;
+
+  /// "every hour", "every 2 hours", "every 90 minutes".
+  static String stepInWords(int minutes) {
+    if (minutes % 60 != 0) return 'every $minutes minutes';
+    final int hours = minutes ~/ 60;
+    return hours == 1 ? 'every hour' : 'every $hours hours';
+  }
+
+  /// "Every hour from 08:00 to 20:00".
+  String get inWords {
+    final String step = stepInWords(minutes);
+    return '${step[0].toUpperCase()}${step.substring(1)} from $from to $until';
+  }
+
+  static CheckInEvery? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? minutes = json['minutes'];
+    final Object? from = json['from'];
+    final Object? until = json['until'];
+    if (minutes is! num || from is! String || until is! String) return null;
+    return CheckInEvery(minutes: minutes.toInt(), from: from, until: until);
+  }
+}
+
+/// How soon an elder usually answers, and when a reminder goes because of it.
+class CheckInRhythm {
+  const CheckInRhythm({
+    required this.answers,
+    required this.usualMinutes,
+    required this.nudgeAfterMinutes,
+  });
+
+  final int answers;
+  final int usualMinutes;
+  final int nudgeAfterMinutes;
+
+  static CheckInRhythm? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? answers = json['answers'];
+    final Object? usual = json['usualMinutes'];
+    final Object? nudge = json['nudgeAfterMinutes'];
+    if (answers is! num || usual is! num || nudge is! num) return null;
+    return CheckInRhythm(
+      answers: answers.toInt(),
+      usualMinutes: usual.toInt(),
+      nudgeAfterMinutes: nudge.round(),
     );
   }
 }
 
 /// An elder's check-ins as their circle sees them: the arrangement and the last week.
 class CheckInsOverview {
-  const CheckInsOverview({required this.schedule, required this.recent, required this.canEdit});
+  const CheckInsOverview({
+    required this.schedule,
+    required this.recent,
+    required this.canEdit,
+    this.rhythm,
+  });
 
   final CheckInSchedule? schedule;
+
+  /// Null until there are enough answers to learn from.
+  final CheckInRhythm? rhythm;
 
   /// Newest first.
   final List<CheckIn> recent;
@@ -1379,6 +1464,7 @@ class CheckInsOverview {
         .whereType<CheckIn>()
         .toList(growable: false),
     canEdit: json['canEdit'] as bool? ?? false,
+    rhythm: CheckInRhythm.fromJson(json['rhythm']),
   );
 }
 

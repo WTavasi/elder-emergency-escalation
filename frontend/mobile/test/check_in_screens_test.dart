@@ -54,13 +54,17 @@ class _Server {
 
     if (path.endsWith('/auth/login')) return <http.Response>[json(sessionBody())];
     if (path.endsWith('/consent')) {
-      return <http.Response>[json(<String, dynamic>{'needsConfirmation': false})];
+      return <http.Response>[
+        json(<String, dynamic>{'needsConfirmation': false}),
+      ];
     }
     if (path.endsWith('/check-ins/mine')) return <http.Response>[json(mine)];
     if (path.endsWith('/check-ins/answer')) {
       mine = const <String, dynamic>{};
       if (outcome == 'withdrawn') alertOpen = false;
-      return <http.Response>[json(<String, dynamic>{'outcome': outcome})];
+      return <http.Response>[
+        json(<String, dynamic>{'outcome': outcome}),
+      ];
     }
     if (path.endsWith('/check-ins/confirm')) {
       mine = const <String, dynamic>{};
@@ -158,6 +162,63 @@ void main() {
       expect(find.text('Change times'), findsOneWidget);
     });
 
+    testWidgets('can ask every hour through the day instead of at chosen times', (
+      WidgetTester tester,
+    ) async {
+      final _Server server = _Server();
+      await show(tester, server);
+
+      await tester.tap(find.text('Set up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ask every day'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('At times I choose'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Every hour').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('From 08:00'), findsOneWidget);
+      expect(find.text('Until 20:00'), findsOneWidget);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(server.sent.last, <String, dynamic>{
+        'enabled': true,
+        'times': <String>[],
+        'graceMinutes': 30,
+        'every': 60,
+        'from': '08:00',
+        'until': '20:00',
+      });
+    });
+
+    testWidgets('tells the circle when the elder agreed, and how soon they usually answer', (
+      WidgetTester tester,
+    ) async {
+      final _Server server = _Server(
+        overview: <String, dynamic>{
+          'schedule': <String, dynamic>{
+            ...checkInScheduleBody(times: <String>['08:00', '09:00']),
+            'every': <String, dynamic>{'minutes': 60, 'from': '08:00', 'until': '20:00'},
+            'agreedAt': '2026-11-05T09:00:00.000Z',
+          },
+          'recent': <dynamic>[],
+          'rhythm': <String, dynamic>{'answers': 12, 'usualMinutes': 2, 'nudgeAfterMinutes': 6},
+          'canEdit': true,
+        },
+      );
+      await show(tester, server);
+
+      expect(find.textContaining('Every hour from 08:00 to 20:00.'), findsOneWidget);
+      expect(find.text('Grace agreed on 5 Nov.'), findsOneWidget);
+      expect(
+        find.text(
+          'Grace usually answers within 2 minutes. No answer after 6 minutes? We remind them.',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('a time can be taken out, and an empty list cannot be saved', (
       WidgetTester tester,
     ) async {
@@ -172,7 +233,9 @@ void main() {
       await tester.tap(find.byTooltip('Remove 09:00'));
       await tester.pumpAndSettle();
 
-      final FilledButton save = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'));
+      final FilledButton save = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Save'),
+      );
       expect(save.onPressed, isNull);
     });
 
@@ -214,10 +277,7 @@ void main() {
       );
       await show(tester, server, forElder: true);
 
-      expect(
-        find.textContaining('Daily at 09:00 and 18:00. No answer in'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Daily at 09:00 and 18:00. No answer in'), findsOneWidget);
       expect(find.text('Change times'), findsOneWidget);
     });
   });
@@ -247,9 +307,7 @@ void main() {
     testWidgets('asks whether they are all right, above the help button, and thanks them', (
       WidgetTester tester,
     ) async {
-      final _Server server = _Server(
-        mine: <String, dynamic>{'checkIn': checkInBody()},
-      );
+      final _Server server = _Server(mine: <String, dynamic>{'checkIn': checkInBody()});
       await show(tester, server);
 
       expect(find.text('Are you OK?'), findsOneWidget);
@@ -288,28 +346,26 @@ void main() {
       expect(find.text('Yes, check on me'), findsNothing);
     });
 
-    testWidgets('after a missed check-in, says the family was told, and a late answer withdraws it', (
-      WidgetTester tester,
-    ) async {
-      final _Server server = _Server(
-        mine: <String, dynamic>{'checkIn': checkInBody(status: 'MISSED', eventId: 'event-1')},
-        outcome: 'withdrawn',
-        alertOpen: true,
-      );
-      await show(tester, server);
+    testWidgets(
+      'after a missed check-in, says the family was told, and a late answer withdraws it',
+      (WidgetTester tester) async {
+        final _Server server = _Server(
+          mine: <String, dynamic>{'checkIn': checkInBody(status: 'MISSED', eventId: 'event-1')},
+          outcome: 'withdrawn',
+          alertOpen: true,
+        );
+        await show(tester, server);
 
-      expect(
-        find.text('You missed the check-in, so we told your family.'),
-        findsOneWidget,
-      );
+        expect(find.text('You missed the check-in, so we told your family.'), findsOneWidget);
 
-      await tester.tap(find.text("I'm OK"));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text("I'm OK"));
+        await tester.pumpAndSettle();
 
-      expect(server.asked('POST', '/check-ins/answer'), 1);
-      expect(find.text('Thank you'), findsOneWidget);
-      expect(find.textContaining("We've told your family you're OK"), findsOneWidget);
-    });
+        expect(server.asked('POST', '/check-ins/answer'), 1);
+        expect(find.text('Thank you'), findsOneWidget);
+        expect(find.textContaining("We've told your family you're OK"), findsOneWidget);
+      },
+    );
   });
 
   group('for the people who respond', () {
@@ -390,7 +446,10 @@ void main() {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[json(body)],
       );
-      final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
 
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
