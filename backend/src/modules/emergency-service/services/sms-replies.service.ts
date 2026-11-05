@@ -12,6 +12,7 @@ import {
   HELP_WORD,
   REPLY_ASK,
 } from '../../notification-service/services/notification-content';
+import { TYPE_WORDS, typeFromText, wordsOf } from '../../../shared/language/emergency-words';
 import { AlertsService } from './alerts.service';
 import { EscalationService } from './escalation.service';
 
@@ -70,52 +71,6 @@ const HELP = new Set([HELP_WORD.toLowerCase(), 'sos', 'msaada', 'saidia']);
 export function asksForHelp(text: string): boolean {
   const first = wordsOf(text)[0];
   return !!first && (HELP.has(first) || TYPE_WORDS.has(first));
-}
-
-/**
- * The words that say what is happening, in English and Swahili, most urgent first: a text
- * that says both "fell" and "fire" is about the fire. Read anywhere in the text, so
- * "HELP FIRE", "msaada moto" and "help, I fell" all count.
- */
-const TYPE_KEYWORDS: Array<[EmergencyType, string[]]> = [
-  [EmergencyType.FIRE, ['fire', 'moto']],
-  [
-    EmergencyType.UNSAFE,
-    ['police', 'polisi', 'thief', 'thieves', 'robbery', 'robbers', 'mwizi', 'wezi', 'wizi'],
-  ],
-  [
-    EmergencyType.BREATHING,
-    ['chest', 'breathing', 'breathe', 'breath', 'kifua', 'kupumua', 'pumua'],
-  ],
-  [EmergencyType.FALL, ['fall', 'fell', 'fallen', 'slipped', 'anguka', 'nimeanguka', 'nimeteleza']],
-  [EmergencyType.UNWELL, ['unwell', 'sick', 'ill', 'mgonjwa', 'naumwa']],
-];
-
-/**
- * The words that ask for help on their own, as the first word: "MOTO", "Fell". Not the
- * words for feeling unwell, which start ordinary sentences ("ill be fine") too often to
- * raise an emergency by themselves; after HELP they still say what is happening.
- */
-const TYPE_WORDS = new Set(
-  TYPE_KEYWORDS.filter(([type]) => type !== EmergencyType.UNWELL).flatMap(([, words]) => words),
-);
-
-/** What a text says is happening, or null when it does not say. */
-export function typeFromText(text: string): EmergencyType | null {
-  const words = new Set(wordsOf(text));
-  for (const [type, keywords] of TYPE_KEYWORDS) {
-    if (keywords.some((keyword) => words.has(keyword))) return type;
-  }
-  return null;
-}
-
-function wordsOf(text: string): string[] {
-  return text
-    .trim()
-    .toLowerCase()
-    .split(/[\s,]+/)
-    .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9']+$/g, ''))
-    .filter((word) => word.length > 0);
 }
 
 /**

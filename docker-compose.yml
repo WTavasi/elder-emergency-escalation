@@ -69,6 +69,30 @@ services:
     ports:
       - '${OSRM_PORT:-5050}:5000'
 
+  # Optional: our own speech-to-text server, for what an elder says after pressing help.
+  # Whisper, run here, so nothing said leaves the machine. Not started by a plain
+  # `docker compose up`: the first start downloads the model (about 500 MB for small).
+  #
+  #   docker compose --profile speech up -d whisper
+  #
+  # then run the API with WHISPER_URL=http://localhost:9000. "small" is quick on a laptop
+  # and fair at Swahili; "medium" is better at Swahili and needs about 5 GB of memory.
+  # Not "turbo": it cannot translate into English.
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:v1.10.0
+    container_name: mzazicare-whisper
+    restart: unless-stopped
+    profiles: ['speech']
+    environment:
+      ASR_ENGINE: faster_whisper
+      ASR_MODEL: ${WHISPER_MODEL:-small}
+      ASR_MODEL_PATH: /data/whisper
+    volumes:
+      - whisper-models:/data/whisper
+    ports:
+      - '${WHISPER_PORT:-9000}:9000'
+
 volumes:
   postgres-data:
   redis-data:
+  whisper-models:

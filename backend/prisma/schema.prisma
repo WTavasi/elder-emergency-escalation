@@ -149,6 +149,9 @@ enum AuditAction {
   /// EXTENSION. One station was asked: the nearest, or the next after a decline or no
   /// answer. Its detail carries the estimated time by road.
   STATION_ASKED
+  /// EXTENSION. The elder spoke after pressing help. The detail says in which language,
+  /// what type was heard, and whether it was reported. Never the words themselves.
+  SPEECH_HEARD
 
   @@map("audit_action")
 }
@@ -198,6 +201,10 @@ enum ConsentType {
   /// open emergency. Health data is sensitive personal data, so this is its own consent,
   /// never part of registration. Withdrawing it deletes the details.
   MEDICAL_PROFILE
+  /// EXTENSION. After pressing help, the elder may say what is happening. The recording
+  /// goes to our own speech-to-text server, is deleted once written down, and the words
+  /// are kept for 30 days.
+  VOICE_REPORTS
 
   @@map("consent_type")
 }
@@ -449,6 +456,7 @@ model EmergencyEvent {
   checkIns       CheckIn[]
   volunteerCalls VolunteerCall[]
   medicalViews   MedicalProfileView[]
+  speech         EventSpeech[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -896,4 +904,33 @@ model MedicalProfileView {
   @@index([elderlyId, viewedAt])
   @@index([eventId])
   @@map("medical_profile_views")
+}
+
+// ---------------------------------------------------------------------------
+// event_speech. EXTENSION. What the elder said after pressing help, written down by
+// our own speech-to-text server, in their words and in English. The recording itself
+// is never kept. Deleted after SPEECH_RETENTION_DAYS (30).
+// ---------------------------------------------------------------------------
+
+model EventSpeech {
+  id         String         @id @default(uuid()) @map("speech_id") @db.Uuid
+  eventId    String         @map("event_id") @db.Uuid
+  /// As said, in the language it was said in.
+  transcript String         @db.VarChar(2000)
+  /// In English, when it was said in another language. Null when it was English.
+  english    String?        @db.VarChar(2000)
+  /// The language the server heard, such as "sw" or "en".
+  language   String?        @db.VarChar(8)
+  /// What the words say is happening. Null when they do not say.
+  heardType  EmergencyType? @map("heard_type")
+  /// Whether heardType was reported on the emergency, or was kept as what was heard
+  /// because something as urgent was already reported.
+  applied    Boolean        @default(false)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  event EmergencyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("event_speech")
 }

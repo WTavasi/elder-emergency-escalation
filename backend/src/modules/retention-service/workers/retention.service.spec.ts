@@ -9,6 +9,7 @@ interface PrismaMock {
   checkIn: { deleteMany: jest.Mock };
   medicalProfileView: { deleteMany: jest.Mock };
   medicalProfile: { deleteMany: jest.Mock };
+  eventSpeech: { deleteMany: jest.Mock };
 }
 
 const buildPrisma = (): PrismaMock => ({
@@ -17,6 +18,7 @@ const buildPrisma = (): PrismaMock => ({
   checkIn: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
   medicalProfileView: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
   medicalProfile: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+  eventSpeech: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
 });
 
 const build = (prisma: PrismaMock, settings: Record<string, unknown> = {}): RetentionService =>
@@ -31,6 +33,15 @@ const NOW = new Date('2026-09-16T12:00:00.000Z');
 
 describe('RetentionService', () => {
   describe('what it deletes', () => {
+    it('keeps what elders said for 30 days', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).sweep(NOW);
+
+      expect(prisma.eventSpeech.deleteMany).toHaveBeenCalledWith({
+        where: { createdAt: { lt: new Date('2026-08-17T12:00:00.000Z') } },
+      });
+    });
+
     it("keeps who opened medical details as long as the audit log, and drops closed accounts' details", async () => {
       const prisma = buildPrisma();
       await build(prisma, { RETENTION_AUDIT_LOG_DAYS: 30 }).sweep(NOW);

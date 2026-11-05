@@ -77,9 +77,9 @@ describe('ConsentService', () => {
 
       expect(view.needsConfirmation).toBe(true);
       expect(view.canWithdraw).toBe(true);
-      // One per kind, including help from volunteers and medical details, which nobody
-      // has given yet.
-      expect(view.items).toHaveLength(5);
+      // One per kind, including help from volunteers, medical details and speaking to
+      // report, which nobody has given yet.
+      expect(view.items).toHaveLength(6);
       expect(view.items.find((item) => item.type === ConsentType.COMMUNITY_HELP)?.active).toBe(
         false,
       );

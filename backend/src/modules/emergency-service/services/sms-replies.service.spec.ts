@@ -7,10 +7,10 @@ import { SMS_LIMIT } from '../../notification-service/services/notification-cont
 import type { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 import type { AlertsService } from './alerts.service';
+import { typeFromText } from '../../../shared/language/emergency-words';
 import type { EscalationService } from './escalation.service';
 import {
   asksForHelp,
-  typeFromText,
   normalisePhone,
   readReply,
   REPLY_LIMIT,

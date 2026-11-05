@@ -50,6 +50,7 @@ const SPOKEN: Record<ConsentType, string> = {
   [ConsentType.CONTACT_SHARING]: 'contact sharing',
   [ConsentType.COMMUNITY_HELP]: 'help from nearby volunteers',
   [ConsentType.MEDICAL_PROFILE]: 'keeping their medical details',
+  [ConsentType.VOICE_REPORTS]: 'saying what is happening after pressing help',
 };
 
 /** The relationship recorded when somebody consents for themselves. */

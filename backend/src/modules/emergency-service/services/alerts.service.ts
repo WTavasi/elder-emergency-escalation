@@ -30,6 +30,7 @@ import { EscalationService } from './escalation.service';
 import { EscalationTimerService } from './escalation-timer.service';
 import { JourneyService } from './journey.service';
 import { StationDispatchService } from './station-dispatch.service';
+import { SpeechService } from './speech.service';
 import { VoiceService } from './voice.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
@@ -151,6 +152,7 @@ export class AlertsService {
     private readonly voice: VoiceService,
     private readonly volunteers: VolunteerCallsService,
     private readonly stations: StationDispatchService,
+    private readonly speech: SpeechService,
   ) {}
 
   /**
@@ -236,6 +238,7 @@ export class AlertsService {
             detail: {
               trigger: options.trigger ?? AlertTrigger.PANIC,
               ...(texted ? { via: 'sms' } : {}),
+              ...(dto.from ? { from: dto.from } : {}),
             },
             occurredAt: at,
           },
@@ -282,6 +285,18 @@ export class AlertsService {
     }
 
     await this.escalation.dispatchTier(event.id, 1, 'initial');
+
+    // Said with the request, as "MzaziCare help fire" says it: reported now, as a tap
+    // would be. The alert stands whatever happens here.
+    if (dto.type && !missed) {
+      try {
+        return await this.escalation.reportType(event.id, elderId, dto.type, dto.from ?? 'app');
+      } catch (error) {
+        this.logger.error(
+          `Could not record ${dto.type} for ${event.id}: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      }
+    }
 
     return event;
   }
@@ -530,35 +545,37 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries, journeys, voice, volunteer, stations] = await Promise.all([
-      this.prisma.emergencyEvent.findUniqueOrThrow({
-        where: { id: eventId },
-        include: SUMMARY_INCLUDE,
-      }),
-      this.prisma.careAssignment.findMany({
-        where: { elderlyId: event.elderlyId },
-        orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
-        select: {
-          priorityOrder: true,
-          responder: { select: { id: true, name: true, role: true } },
-        },
-      }),
-      this.prisma.auditLog.findMany({
-        where: { eventId },
-        orderBy: { occurredAt: 'asc' },
-        include: { actor: { select: { id: true, name: true, role: true } } },
-      }),
-      this.prisma.notification.findMany({
-        where: { eventId },
-        orderBy: { createdAt: 'asc' },
-        include: { recipient: { select: { id: true, name: true, role: true } } },
-      }),
-      this.journeys.current(event, event.elderlyId === userId),
-      this.voice.current(eventId, OPEN_STATES.includes(event.state)),
-      this.volunteers.onAlert(eventId, event.elderlyId === userId),
-      // The circle's to see; the elder's screen says who is coming, not who was asked.
-      event.elderlyId === userId ? Promise.resolve([]) : this.stations.onAlert(event),
-    ]);
+    const [row, chain, logs, deliveries, journeys, voice, volunteer, stations, speech] =
+      await Promise.all([
+        this.prisma.emergencyEvent.findUniqueOrThrow({
+          where: { id: eventId },
+          include: SUMMARY_INCLUDE,
+        }),
+        this.prisma.careAssignment.findMany({
+          where: { elderlyId: event.elderlyId },
+          orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
+          select: {
+            priorityOrder: true,
+            responder: { select: { id: true, name: true, role: true } },
+          },
+        }),
+        this.prisma.auditLog.findMany({
+          where: { eventId },
+          orderBy: { occurredAt: 'asc' },
+          include: { actor: { select: { id: true, name: true, role: true } } },
+        }),
+        this.prisma.notification.findMany({
+          where: { eventId },
+          orderBy: { createdAt: 'asc' },
+          include: { recipient: { select: { id: true, name: true, role: true } } },
+        }),
+        this.journeys.current(event, event.elderlyId === userId),
+        this.voice.current(eventId, OPEN_STATES.includes(event.state)),
+        this.volunteers.onAlert(eventId, event.elderlyId === userId),
+        // The circle's to see; the elder's screen says who is coming, not who was asked.
+        event.elderlyId === userId ? Promise.resolve([]) : this.stations.onAlert(event),
+        this.speech.onAlert(eventId),
+      ]);
 
     const triggeredAt = row.triggeredAt.getTime();
 
@@ -597,6 +614,7 @@ export class AlertsService {
       voice,
       volunteer,
       stations,
+      speech,
     };
   }
 

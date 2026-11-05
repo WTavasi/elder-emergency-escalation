@@ -13,6 +13,7 @@ export interface RetentionOutcome {
   checkInsDeleted: number;
   medicalViewsDeleted: number;
   medicalProfilesDeleted: number;
+  speechDeleted: number;
   eventCutoff: string;
   auditCutoff: string;
 }
@@ -115,6 +116,11 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
     const medicalProfiles = await this.prisma.medicalProfile.deleteMany({
       where: { elder: { deactivatedAt: { not: null } } },
     });
+    // What elders said after pressing help, as words, for a month at most.
+    const speechDays = this.config.get<number>('SPEECH_RETENTION_DAYS', 30);
+    const speech = await this.prisma.eventSpeech.deleteMany({
+      where: { createdAt: { lt: new Date(now.getTime() - speechDays * DAY_MS) } },
+    });
 
     const outcome: RetentionOutcome = {
       ranAt: now.toISOString(),
@@ -123,6 +129,7 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       checkInsDeleted: checkIns.count,
       medicalViewsDeleted: medicalViews.count,
       medicalProfilesDeleted: medicalProfiles.count,
+      speechDeleted: speech.count,
       eventCutoff: eventCutoff.toISOString(),
       auditCutoff: auditCutoff.toISOString(),
     };

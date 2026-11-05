@@ -9,6 +9,7 @@ import type {
   Severity,
 } from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
+import type { SpeechHeard } from '../services/speech.service';
 import type { StationOnAlert } from '../services/station-dispatch.service';
 import type { VoiceView } from '../services/voice.service';
 import type { VolunteerOnAlert } from '../../community-service/services/volunteer-calls.service';
@@ -146,4 +147,9 @@ export interface AlertDetail extends AlertSummary {
    * come or is coming. Empty on the elder's copy.
    */
   stations: StationOnAlert[];
+  /**
+   * What the elder said after pressing help, in their words and in English, oldest
+   * first, with what it was heard to mean. Kept 30 days.
+   */
+  speech: SpeechHeard[];
 }

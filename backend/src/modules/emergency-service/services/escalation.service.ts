@@ -68,6 +68,16 @@ export interface ResponderLocation {
 /** How a person answered an alert: in the app, or by replying to its SMS. */
 export type AnswerChannel = 'app' | 'sms';
 
+/**
+ * Where an emergency was raised from, beyond the help button: Siri on an iPhone, the
+ * Assistant, the home-screen widget or the quick-settings tile on Android.
+ */
+export const RAISED_FROM = ['siri', 'assistant', 'widget', 'tile'] as const;
+export type RaisedFrom = (typeof RAISED_FROM)[number];
+
+/** How what is happening was said: tapped, texted, spoken after the press, or named to Siri. */
+export type ReportChannel = AnswerChannel | 'voice' | RaisedFrom;
+
 /** A service as a sentence says it: "We've already asked for the police." */
 const SERVICE_WORD: Record<ResponderService, string> = {
   [ResponderService.GENERAL]: 'an emergency responder',
@@ -780,7 +790,7 @@ export class EscalationService {
     eventId: string,
     userId: string,
     type: EmergencyType,
-    via: AnswerChannel = 'app',
+    via: ReportChannel = 'app',
   ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
     await this.requireParticipant(event, userId);
