@@ -325,6 +325,33 @@ says the person came back rather than losing that a stay ever happened.
 | POST | `/api/v1/elders/:id/consent/grant` | the elder, caregiver in that chain | `{ type }`: give a consent after registration, such as `COMMUNITY_HELP`, or give back a withdrawn one. Never `DATA_PROCESSING`. A caregiver's is on the elder's behalf, so the elder is asked to confirm it, and is texted |
 | POST | `/api/v1/elders/:id/consent/withdraw` | the elder, caregiver in that chain | `{ type, confirm? }`. `confirm: true` is required for `DATA_PROCESSING` |
 
+### Medical details
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | The details, the consent, the choices the form offers, who changed what and who looked. A caregiver's look is recorded |
+| PUT | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | Replace the details. 409 until `MEDICAL_PROFILE` consent is given. A caregiver's change texts the elder |
+| GET | `/api/v1/alerts/:id/medical` | the elder, care chain, a responder asked | The details on an alert, read against what is happening. Each look is recorded |
+| GET | `/api/v1/alerts/:id/medical/views` | administrator | Who opened them during this alert, and when. Never what they say |
+
+The details are one object, every part optional: `dateOfBirth` (`YYYY-MM-DD`),
+`bloodType` (`A+` to `O-`), `flags` (ticks such as `BLOOD_THINNERS`, `HOME_OXYGEN`,
+`HARD_OF_HEARING`; the page lists them with their words), and short text for
+`conditions`, `medications`, `allergies`, `languages`, `doctorName`, `doctorPhone`,
+`hospital` and `notes`. A PUT replaces the whole object; a missing part is cleared.
+
+On an alert, `status` says whether they are shown: `shown`; `none` (nothing saved);
+`not-shared` (the elder has not agreed for themselves); `not-asked` (this person has not
+been asked to help yet); `closed` (the alert is over); `off` (`MEDICAL_DATA_KEY` is not
+set). Caregivers see them on any of the elder's alerts. Family and responders see them
+only while the alert is open and only once they were sent it. Volunteers and
+administrators get 403. With them come `highlights` (each tick, with `why` it matters for
+the reported type), `serious` (the history makes this emergency more serious) and
+`askFor` (the service to ask because of it).
+
+Withdrawing `MEDICAL_PROFILE` consent, or `DATA_PROCESSING`, deletes the details and the
+record of changes. The record of looks stays until `RETENTION_AUDIT_LOG_DAYS`.
+
 **Withdrawn consent** is honoured everywhere data leaves the server, outside an
 emergency. An elder's `phone`, home, stay and an alert's location come back as `null`,
 with a `withheld` list (`"phone"`, `"location"`) saying why, so a screen can explain

@@ -1153,3 +1153,58 @@ person's initials, then sections of rows that open a page, switch something, cho
 pull-down, or open in place. What is used now and then folds away (care circles, history,
 the services nearby, the daily check-in); what matters most is out in the open: on the
 elder's page, a row to call each person in their circle, first.
+
+## Medical details, under the Data Protection Act
+
+On 7 November 2026 each elder gained a medical ID: what a helper should know in an
+emergency, shown on the alerts they are asked about.
+
+**Why it is shaped this way.** Health data is sensitive personal data under the Kenya Data
+Protection Act 2019 (section 2), and Part V (sections 44 to 46) narrows when it may be
+processed, with section 46 written for data about health. These choices follow from that
+and from the general principles (section 25), consent (sections 30 and 32), protection by
+design (section 41) and retention (section 39). Read the Act itself and the ODPC's
+guidance note on processing health data before a real deployment: this project could
+only read summaries of sections 45 and 46 when it was built.
+
+- **Its own consent.** `MEDICAL_PROFILE` is never part of registration. Nothing is kept
+  until somebody agrees, and a caregiver's agreement is for keeping the details: family
+  and responders see them only once the elder has agreed for themselves. The elder is
+  texted and asked at their next sign-in, as for every consent given for them.
+- **Who sees them.** Caregivers, anytime, since they look after the elder and keep the
+  details current. Family and emergency responders, only while an alert is open and only
+  once they were sent it. Volunteers never; administrators never, though the console shows
+  who opened them during an alert, for oversight.
+- **Only what an emergency needs** (minimisation). Sixteen ticks for what changes what a
+  helper does in the next ten minutes, a few short lines for the rest, and nothing a
+  doctor's record holds beyond that.
+- **Every look recorded, and the elder sees who.** By person, time and alert. Kept after
+  the details are deleted, as the account of who saw them, and removed with the audit
+  log after `RETENTION_AUDIT_LOG_DAYS`. Every change is recorded by part (never by what it
+  said), and the elder is texted when somebody else made it.
+- **Sealed at rest.** AES-256-GCM with `MEDICAL_DATA_KEY`, a key the database never
+  holds, so a copy of the database or a backup carries no readable health data. Without
+  the key the feature is off and says so.
+- **Never in a text or a push.** Both pass through services outside Kenya (section 48 and
+  onward govern transfers abroad). Notifications say only that details changed; the
+  details stay on this server and in the app.
+- **Withdrawal deletes.** Withdrawing the consent, or the service itself, deletes the
+  details and the record of changes in the same transaction. A closed account's details
+  go at the next retention sweep.
+
+**Read against the emergency.** Each tick carries what it means for each type: blood
+thinners in a fall ("a fall can bleed inside"), home oxygen in a fire, insulin when
+unwell. When a tick makes an emergency more serious than it looks, the alert says so in
+plain words and offers the service to ask, an ambulance for a fall, in the amber of
+calling somebody in. It never changes severity or asks a service by itself: a helper
+decides. The wording is a prompt to get a professional sooner, not a diagnosis.
+
+**Open questions for the project owner.** Section 46 limits health data to processing by
+or under the responsibility of a health care provider, or by somebody bound to
+confidentiality. Whether MzaziCare, its staff and the responders it asks meet that, for
+example through confidentiality terms and the ODPC's registration of data controllers
+handling health data, needs advice from a lawyer before a real deployment. A data
+protection impact assessment (section 31) should be written for it, and the privacy
+notice needs a line about it, which is the owner's to write. An elder who cannot agree
+for themselves, such as one with advanced dementia, can have details kept but not
+shared; whether a guardian's consent should count needs the same advice.

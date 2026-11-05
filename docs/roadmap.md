@@ -24,8 +24,9 @@ communicate.
 | 1 | Say what is happening; send the right service | assess, route | built |
 | 2 | Road travel times everywhere; an in-app map | route | built |
 | 3 | Who to go to first, when several alerts are open; stations nearest first | route | built |
-| 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | next |
-| 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | |
+| 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | skipped for now |
+| M | Medical details for those asked to help | assess | built |
+| 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | next |
 | 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | |
 | 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | |
 
@@ -48,7 +49,14 @@ Each row says why. Uses the person's location only when they allow it, and never
 Responder units are stations with an address, asked one at a time, nearest by road first,
 the next after a decline or three minutes. See decisions.md.
 
-**4. Adaptive escalation.** A simulator first, replaying thousands of made-up emergencies
+**M. Medical details.** A medical ID for each elder, kept with its own consent: ticks for
+what changes what a helper does (blood thinners, insulin, home oxygen, hard of hearing),
+medicines, allergies, their doctor. Caregivers see and edit them; family and responders
+see them only on an open alert they were asked about, read against what is happening,
+with the service to ask when the history makes it more serious. Every look is recorded
+and the elder sees who. See decisions.md.
+
+**4. Adaptive escalation.** Skipped for now, to come back to. A simulator first, replaying thousands of made-up emergencies
 against the real rules. Then: each responder's reliability by time of day, waits sized to
 the person within each band's limits, the next group asked in parallel when the first is
 unlikely to answer, text first for people who do not open push at night, and severity

@@ -841,6 +841,33 @@ location** in **Me** and the phone already allows location; the position is sent
 request and never kept. A station is measured from its address instead. With neither, the
 list says how to turn it on.
 
+### Step 16 (optional). Medical details
+
+Medical details are off until the API has a key to seal them with. Add one line to
+`backend/.env` (any 32 random bytes in base64), then restart the API and seed again:
+
+```bash
+echo "MEDICAL_DATA_KEY=$(openssl rand -base64 32)" >> backend/.env
+npm run db:seed -w @mzazicare/api
+```
+
+The seed gives Grace medical details she agreed to herself: blood thinners, a walking
+aid, hard of hearing, a penicillin allergy and her doctor.
+
+1. **As Mary**, open Grace under **People**, then **Medical details**. Press **Edit
+   medical details**, tick **Has a pacemaker** and save. Grace is texted that Mary changed
+   them (the API's log shows the text). Open **Who has looked**: Mary's own look is there.
+2. **As Grace**, open **Me**, then **Medical details**. **Changes** shows Mary's change.
+3. **As Grace, raise an alert, then Say what's happening, I fell.** As Mary, open the
+   alert: **Grace's health makes this more serious**, with why (blood thinners), and
+   **Ask for an ambulance**.
+4. **As Aisha** (`+254700000030`), open the same alert before the family is asked: **You'll
+   see medical details once we ask you to help.** Once it reaches the family, they show.
+5. **On the console**, open the alert: **Medical details** lists who opened them and
+   when, never what they say.
+6. **As Grace, open Me, Medical details, Delete medical details.** They are gone, Mary is
+   texted, and the alert shows **No medical details saved.**
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
