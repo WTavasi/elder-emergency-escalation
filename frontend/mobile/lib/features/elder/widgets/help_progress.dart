@@ -54,7 +54,9 @@ class HelpProgress extends StatelessWidget {
     // Somebody from the family first; a volunteer from nearby when nobody from the family
     // has said yet. Either way the elder is told the one person coming, by name.
     final String? coming = owner ?? helperVolunteer;
-    final Journey? journey = emergency?.journey;
+    // The time of the one person the headline names: the volunteer's own when they are
+    // the one coming, and the family member's otherwise.
+    final Journey? journey = owner != null ? emergency?.journey : emergency?.volunteerJourney;
 
     final int step = arrived ? 2 : (coming != null ? 1 : 0);
     final String headline = switch (step) {

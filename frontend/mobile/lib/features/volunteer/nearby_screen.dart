@@ -179,7 +179,7 @@ class _CallRow extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final String headline = call.going
         ? '${call.elder?.name ?? 'Someone'} is waiting for you'
-        : 'Someone ${roughDistance(call.distanceMetres)} away';
+        : 'Someone ${howFarAway(call.distanceMetres, byRoad: call.byRoad)}';
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),

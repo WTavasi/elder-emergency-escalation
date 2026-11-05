@@ -43,6 +43,10 @@ enum Role {
     Role.caregiver || Role.familyMember || Role.emergencyResponder => true,
     Role.elder || Role.administrator || Role.communityResponder => false,
   };
+
+  /// Whether this role can be on its way to somebody, and so share its location: those
+  /// who take emergencies on, and a community volunteer who said they would go.
+  bool get travels => responds || this == Role.communityResponder;
 }
 
 enum EventState {
@@ -275,6 +279,7 @@ class Emergency {
     this.acknowledgedByName,
     this.arrivedAt,
     this.journey,
+    this.journeys = const <Journey>[],
     this.voice = Voice.off,
     this.trigger = AlertTrigger.panic,
     this.volunteer,
@@ -298,6 +303,17 @@ class Emergency {
   /// How long until they arrive, while they are sharing their way there. The elder's
   /// copy never carries a position: the server leaves the coordinates out for them.
   final Journey? journey;
+
+  /// Everybody sharing their way there, soonest first, times only on the elder's copy.
+  final List<Journey> journeys;
+
+  /// The volunteer's own journey, while they share it.
+  Journey? get volunteerJourney {
+    for (final Journey journey in journeys) {
+      if (journey.traveller == Traveller.volunteer) return journey;
+    }
+    return null;
+  }
 
   /// Whether somebody has started talking to the elder through the app.
   final Voice voice;
@@ -333,6 +349,7 @@ class Emergency {
           : null,
       arrivedAt: _date(json['arrivedAt']),
       journey: Journey.fromJson(json['journey']),
+      journeys: Journey.listFromJson(json['journeys'], orOnly: json['journey']),
       voice: Voice.fromJson(json['voice']),
       trigger: AlertTrigger.parse(json['trigger']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
@@ -382,7 +399,17 @@ class VoiceAccess {
   );
 }
 
-/// The person who took an emergency on, on their way there.
+/// Who is on their way: the person who took the emergency on, or the volunteer going.
+enum Traveller {
+  owner,
+  volunteer;
+
+  static Traveller parse(Object? value) =>
+      value == 'volunteer' ? Traveller.volunteer : Traveller.owner;
+}
+
+/// Somebody on their way to the elder: the person who took the emergency on, or the
+/// community volunteer going.
 ///
 /// Only exists while they share it, and only for three minutes after the last report:
 /// the server keeps it in memory and never writes a position to the database.
@@ -392,9 +419,16 @@ class Journey {
     required this.distanceMetres,
     required this.byRoad,
     required this.updatedAt,
+    this.userId,
+    this.traveller = Traveller.owner,
     this.latitude,
     this.longitude,
+    this.path = const <MapPoint>[],
   });
+
+  /// Whose journey this is. Null from a server older than several people on the way.
+  final String? userId;
+  final Traveller traveller;
 
   final int etaSeconds;
   final int distanceMetres;
@@ -408,6 +442,10 @@ class Journey {
   /// Where they are. Null for the elder, who is shown the time and not a map.
   final double? latitude;
   final double? longitude;
+
+  /// The road they are taking, for the map. Empty for the elder, and when the time is
+  /// a straight-line estimate: then no road is drawn, rather than a made-up one.
+  final List<MapPoint> path;
 
   bool get hasPosition => latitude != null && longitude != null;
 
@@ -424,9 +462,41 @@ class Journey {
       distanceMetres: distance.toInt(),
       byRoad: json['source'] == 'osrm',
       updatedAt: updated,
+      userId: json['userId'] as String?,
+      traveller: Traveller.parse(json['traveller']),
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      path: MapPoint.listFromJson(json['path']),
     );
+  }
+
+  /// Every journey in a list, skipping anything that is not one. A server from before
+  /// several people could share sends only the owner's, as [orOnly].
+  static List<Journey> listFromJson(Object? json, {Object? orOnly}) {
+    if (json is List<dynamic>) return json.map(Journey.fromJson).whereType<Journey>().toList();
+    final Journey? only = Journey.fromJson(orOnly);
+    return only == null ? const <Journey>[] : <Journey>[only];
+  }
+}
+
+/// One point on a map: a latitude and a longitude, nothing else.
+class MapPoint {
+  const MapPoint(this.latitude, this.longitude);
+
+  final double latitude;
+  final double longitude;
+
+  /// A road as the server sends it: [latitude, longitude] pairs. Anything else is
+  /// skipped, so a malformed point loses a corner of the line, not the whole map.
+  static List<MapPoint> listFromJson(Object? json) {
+    if (json is! List<dynamic>) return const <MapPoint>[];
+    final List<MapPoint> points = <MapPoint>[];
+    for (final Object? pair in json) {
+      if (pair is List<dynamic> && pair.length >= 2 && pair[0] is num && pair[1] is num) {
+        points.add(MapPoint((pair[0] as num).toDouble(), (pair[1] as num).toDouble()));
+      }
+    }
+    return points;
   }
 }
 
@@ -735,6 +805,7 @@ class AlertDetail {
     required this.timeline,
     required this.chain,
     this.journey,
+    this.journeys = const <Journey>[],
     this.voice = Voice.off,
     this.volunteer,
   });
@@ -746,6 +817,9 @@ class AlertDetail {
 
   /// The person who took it on, on their way, while they share it.
   final Journey? journey;
+
+  /// Everybody sharing their way there, soonest first: the owner and the volunteer.
+  final List<Journey> journeys;
 
   /// Whether talking through the app is possible here, and who started it.
   final Voice voice;
@@ -771,6 +845,7 @@ class AlertDetail {
           .map((dynamic c) => ChainMember.fromJson(c as Map<String, dynamic>))
           .toList(),
       journey: Journey.fromJson(json['journey']),
+      journeys: Journey.listFromJson(json['journeys'], orOnly: json['journey']),
       voice: Voice.fromJson(json['voice']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
     );
@@ -1317,6 +1392,7 @@ class VolunteerOnAlert {
     this.name,
     this.phone,
     this.distanceMetres,
+    this.byRoad = false,
     this.acceptedAt,
     this.arrivedAt,
   });
@@ -1330,6 +1406,9 @@ class VolunteerOnAlert {
   /// For the circle, to ring them. Never on the elder's copy.
   final String? phone;
   final int? distanceMetres;
+
+  /// Whether that distance is along roads rather than the straight line.
+  final bool byRoad;
   final DateTime? acceptedAt;
   final DateTime? arrivedAt;
 
@@ -1343,6 +1422,7 @@ class VolunteerOnAlert {
       name: json['name'] as String?,
       phone: json['phone'] as String?,
       distanceMetres: (json['distanceMetres'] as num?)?.toInt(),
+      byRoad: json['byRoad'] as bool? ?? false,
       acceptedAt: _date(json['acceptedAt']),
       arrivedAt: _date(json['arrivedAt']),
     );
@@ -1479,6 +1559,7 @@ class VolunteerCall {
     required this.raisedAt,
     required this.open,
     required this.takenByAnother,
+    this.byRoad = false,
     this.elder,
     this.circleOwner,
     this.acceptedAt,
@@ -1488,6 +1569,9 @@ class VolunteerCall {
   final String eventId;
   final VolunteerCallStatus status;
   final int distanceMetres;
+
+  /// Whether that distance is along roads rather than the straight line.
+  final bool byRoad;
   final Severity severity;
   final DateTime raisedAt;
   final bool open;
@@ -1517,6 +1601,7 @@ class VolunteerCall {
       eventId: id,
       status: VolunteerCallStatus.parse(json['status']),
       distanceMetres: (json['distanceMetres'] as num?)?.toInt() ?? 0,
+      byRoad: json['byRoad'] as bool? ?? false,
       severity: Severity.parse(json['severity'] as String? ?? 'STANDARD'),
       raisedAt: raised,
       open: json['open'] as bool? ?? false,
@@ -1546,6 +1631,10 @@ String roughDistance(int metres) {
   final String km = (metres / 1000).toStringAsFixed(1);
   return 'about ${km.endsWith('.0') ? km.substring(0, km.length - 2) : km} km';
 }
+
+/// "about 1.8 km away by road", or "about 1.2 km away" for the straight line.
+String howFarAway(int metres, {required bool byRoad}) =>
+    '${roughDistance(metres)} away${byRoad ? ' by road' : ''}';
 
 /// Where the signed-in person sits in one elder's chain. Place 1 is asked first.
 class CirclePlace {

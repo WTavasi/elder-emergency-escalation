@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/location/share_way_panel.dart';
+import '../../core/location/way_there.dart';
+import '../../core/map/emergency_map.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/fade_swap.dart';
@@ -19,8 +22,9 @@ import 'volunteer_controller.dart';
 /// One emergency a volunteer was asked about.
 ///
 /// Before they answer: how far, how urgent, how long ago, and nothing about who or
-/// where. Once they say they will go: the name, the address, directions and a call
-/// button, and "I'm here" when they arrive. When it is over, all of that goes again.
+/// where. Once they say they will go: the name, the address, a map, directions and a
+/// call button, their own way there shared if they allow it, and "I'm here" when they
+/// arrive. When it is over, all of that goes again.
 class VolunteerCallScreen extends StatefulWidget {
   const VolunteerCallScreen({required this.eventId, super.key});
 
@@ -31,10 +35,90 @@ class VolunteerCallScreen extends StatefulWidget {
 }
 
 class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
+  WayThere? _way;
+  bool _offeredSharing = false;
+  SharingState? _lastState;
+
   @override
   void initState() {
     super.initState();
     unawaited(context.read<VolunteerController>().refreshCall(widget.eventId));
+    _way = WayThere.maybeOf(context);
+    _way?.addListener(_onWay);
+  }
+
+  @override
+  void dispose() {
+    _way?.removeListener(_onWay);
+    super.dispose();
+  }
+
+  /// Arriving by position is the server's to notice; the screen then reads the call
+  /// again, to say "You're with Grace" without the volunteer having to swipe.
+  void _onWay() {
+    final WayThere? way = _way;
+    if (way == null) return;
+    if (way.state != _lastState && way.state == SharingState.arrived && mounted) {
+      unawaited(context.read<VolunteerController>().refreshCall(widget.eventId));
+    }
+    _lastState = way.state;
+  }
+
+  /// Shares the way there once they are going, if they turned sharing on, and stops it
+  /// once they are there, have withdrawn, or it is over.
+  void _followSharing(VolunteerCall call) {
+    final WayThere? way = _way;
+    if (way == null) return;
+    final bool onTheWay = call.going && call.elder != null && call.arrivedAt == null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (onTheWay) {
+        if (!_offeredSharing && way.enabled) {
+          _offeredSharing = true;
+          unawaited(way.shareFor(widget.eventId));
+        }
+      } else {
+        way.stopFor(widget.eventId);
+      }
+    });
+  }
+
+  /// The elder's place and, while it is shared, the volunteer's own way there.
+  EmergencyMapData? _mapData() {
+    final VolunteerCall? call = context.read<VolunteerController>().call(widget.eventId);
+    final VolunteerCallElder? elder = call?.elder;
+    if (call == null || elder == null || !call.going) return null;
+    final WayThere? way = _way;
+    final Journey? mine = way != null && way.isSharingFor(widget.eventId) ? way.journey : null;
+    final MapTraveller? me = mine == null
+        ? null
+        : MapTraveller.fromJourney(mine, 'You', isYou: true);
+    return EmergencyMapData(
+      destination: MapPoint(elder.latitude, elder.longitude),
+      destinationLabel: _first(elder.name),
+      travellers: <MapTraveller>[?me],
+    );
+  }
+
+  void _openMap(VolunteerCallElder elder) {
+    final VolunteerController volunteer = context.read<VolunteerController>();
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext _) => EmergencyMapScreen(
+            listenable: Listenable.merge(<Listenable?>[volunteer, _way]),
+            read: _mapData,
+            actions: <Widget>[
+              DirectionsButton(
+                latitude: elder.latitude,
+                longitude: elder.longitude,
+                addressLabel: elder.addressLabel,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _withdraw(VolunteerController volunteer) async {
@@ -62,6 +146,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
     final ThemeData theme = Theme.of(context);
     final VolunteerController volunteer = context.watch<VolunteerController>();
     final VolunteerCall? call = volunteer.call(widget.eventId);
+    if (call != null) _followSharing(call);
 
     return Scaffold(
       appBar: AppBar(),
@@ -101,7 +186,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
     }
     if (!call.open) return 'This emergency has ended';
     return '${call.severity == Severity.critical ? 'Urgent: someone' : 'Someone'} '
-        '${roughDistance(call.distanceMetres)} away needs help';
+        '${howFarAway(call.distanceMetres, byRoad: call.byRoad)} needs help';
   }
 
   List<Widget> _body(BuildContext context, VolunteerController volunteer, VolunteerCall call) {
@@ -114,10 +199,22 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
 
     if (call.going && elder != null) {
       final String first = _first(elder.name);
+      final WayThere? way = _way;
       return <Widget>[
         if (elder.addressLabel case final String address) ...<Widget>[
           Text(address, style: theme.textTheme.titleMedium),
           const SizedBox(height: MzaziSpace.s16),
+        ],
+        if (call.arrivedAt == null) ...<Widget>[
+          if (way == null)
+            _VolunteerMap(data: _mapData(), onOpen: () => _openMap(elder))
+          else
+            ListenableBuilder(
+              listenable: way,
+              builder: (BuildContext context, Widget? _) =>
+                  _VolunteerMap(data: _mapData(), onOpen: () => _openMap(elder)),
+            ),
+          const SizedBox(height: MzaziSpace.s12),
         ],
         DirectionsButton(
           latitude: elder.latitude,
@@ -133,6 +230,10 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
               : '${call.circleOwner} from $first\'s family is also on the way.',
           style: theme.textTheme.bodyMedium,
         ),
+        if (way != null && call.arrivedAt == null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s24),
+          ShareWayPanel(way: way, eventId: widget.eventId, elderFirst: first),
+        ],
         const SizedBox(height: MzaziSpace.s24),
         // The swipe fades and folds away once it lands, rather than vanishing.
         FadeSwap(
@@ -202,4 +303,24 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
   }
 
   static String _first(String name) => name.trim().split(RegExp(r'\s+')).first;
+}
+
+/// The small map on the volunteer's screen, or nothing when there is nothing to show.
+class _VolunteerMap extends StatelessWidget {
+  const _VolunteerMap({required this.data, required this.onOpen});
+
+  final EmergencyMapData? data;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final EmergencyMapData? map = data;
+    if (map == null) return const SizedBox.shrink();
+    return EmergencyMap(
+      destination: map.destination,
+      destinationLabel: map.destinationLabel,
+      travellers: map.travellers,
+      onOpen: onOpen,
+    );
+  }
 }

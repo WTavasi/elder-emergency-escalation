@@ -68,15 +68,16 @@ void main() {
   );
   final PushRegistration push = PushRegistration(api: api, live: live);
 
-  // Only for people who respond. An elder's account never reads the preference, and
-  // their phone is never asked where it is.
+  // Only for people who can be on their way: those who take emergencies on, and
+  // community volunteers. An elder's account never reads the preference, and their
+  // phone is never asked where it is.
   final WayThere wayThere = WayThere(api: api, source: const DevicePositionSource());
 
   void followSession() {
     realtime.follow(auth.session);
     unawaited(push.follow(auth.session));
     final Account? account = auth.account;
-    unawaited(wayThere.follow(account != null && account.role.responds ? account.id : null));
+    unawaited(wayThere.follow(account != null && account.role.travels ? account.id : null));
   }
 
   auth.addListener(followSession);

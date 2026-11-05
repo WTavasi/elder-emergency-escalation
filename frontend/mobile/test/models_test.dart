@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/map/emergency_map.dart';
 
 void main() {
   group('EventState', () {
@@ -104,6 +105,90 @@ void main() {
 
       expect(restored.role, Role.elder);
       expect(restored.home?.addressLabel, 'Home');
+    });
+  });
+
+  group('several on the way, and the road', () {
+    Map<String, dynamic> journey(String traveller, int eta) => <String, dynamic>{
+      'userId': '$traveller-1',
+      'traveller': traveller,
+      'etaSeconds': eta,
+      'distanceMetres': 2000,
+      'source': 'osrm',
+      'updatedAt': '2026-11-05T10:00:00.000Z',
+      'latitude': -1.29,
+      'longitude': 36.79,
+      'path': <List<Object>>[
+        <num>[-1.29, 36.79],
+        <num>[-1.285, 36.785],
+        <String>['broken'],
+      ],
+    };
+
+    test('reads everybody on the way, and their road, skipping a broken point', () {
+      final List<Journey> all = Journey.listFromJson(<dynamic>[
+        journey('volunteer', 240),
+        journey('owner', 540),
+        'not a journey',
+      ]);
+
+      expect(all.map((Journey j) => j.traveller), <Traveller>[
+        Traveller.volunteer,
+        Traveller.owner,
+      ]);
+      expect(all.first.path, hasLength(2));
+      expect(all.first.path.last.latitude, -1.285);
+    });
+
+    test('an older server with only the owner still shows them', () {
+      final List<Journey> all = Journey.listFromJson(null, orOnly: journey('owner', 540));
+      expect(all.single.traveller, Traveller.owner);
+    });
+
+    test('the elder is told the volunteer\'s time when the volunteer is coming', () {
+      final Emergency emergency = Emergency.fromJson(<String, dynamic>{
+        'id': 'event-1',
+        'state': 'NOTIFIED',
+        'severity': 'ELEVATED',
+        'currentTier': 1,
+        'triggeredAt': '2026-11-05T10:00:00.000Z',
+        'journeys': <dynamic>[journey('volunteer', 240)],
+      });
+      expect(emergency.volunteerJourney?.etaSeconds, 240);
+      expect(emergency.journey, isNull);
+    });
+
+    test('a volunteer distance says when it is by road', () {
+      expect(howFarAway(1840, byRoad: true), 'about 1.8 km away by road');
+      expect(howFarAway(1240, byRoad: false), 'about 1.2 km away');
+    });
+
+    test('the map is said in words for a screen reader', () {
+      const MapTraveller peter = MapTraveller(
+        name: 'Peter Mwangi',
+        at: MapPoint(-1.29, 36.79),
+        etaSeconds: 540,
+      );
+      const MapTraveller you = MapTraveller(
+        name: 'Joseph',
+        at: MapPoint(-1.28, 36.78),
+        etaSeconds: 60,
+        isYou: true,
+      );
+      expect(describeMap('Grace', const <MapTraveller>[]), 'Map showing where Grace is.');
+      expect(
+        describeMap('Grace', const <MapTraveller>[peter, you]),
+        'Map showing where Grace is, and Peter about 9 minutes away and you about 1 minute away.',
+      );
+    });
+
+    test('no position, no pin: the elder\'s copy never reaches the map', () {
+      final Journey? timeOnly = Journey.fromJson(<String, dynamic>{
+        ...journey('owner', 540),
+        'latitude': null,
+        'longitude': null,
+      });
+      expect(MapTraveller.fromJourney(timeOnly!, 'Peter'), isNull);
     });
   });
 

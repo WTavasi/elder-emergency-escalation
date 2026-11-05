@@ -55,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
                         const _Standing(),
                         const SizedBox(height: MzaziSpace.s32),
                         _DetailsForm(account: account),
-                        if (account.role.responds && WayThere.maybeOf(context) != null) ...<Widget>[
+                        if (account.role.travels && WayThere.maybeOf(context) != null) ...<Widget>[
                           const SizedBox(height: MzaziSpace.s32),
                           _WayThereSetting(way: WayThere.maybeOf(context)!),
                         ],
