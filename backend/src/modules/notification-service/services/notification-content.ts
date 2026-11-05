@@ -378,6 +378,32 @@ export const accountMessages = {
     );
   },
 
+  /**
+   * The weekly note to caregivers, when an elder's check-in answers drifted: much later
+   * than the weeks before, or more missed. Says what changed and suggests a call; never
+   * an alarm, because nothing has happened yet.
+   */
+  checkInDrift(
+    elderName: string,
+    drift: {
+      later: boolean;
+      moreMissed: boolean;
+      usualBefore: number;
+      usualNow: number;
+      missedNow: number;
+    },
+  ): string {
+    const elder = firstName(elderName);
+    const later = drift.later
+      ? `${elder} answered check-ins later this week: about ${drift.usualNow} minutes, against ${drift.usualBefore} before.`
+      : '';
+    const missed = drift.moreMissed
+      ? `${elder} missed ${drift.missedNow} check-ins this week, more than usual.`
+      : '';
+    const what = [later, missed].filter(Boolean).join(' ');
+    return capSms(`MzaziCare: ${what} It may be worth a call.`, `MzaziCare: ${what}`);
+  },
+
   /** Consent to keeping medical details was withdrawn, so they were deleted. */
   medicalDeleted(byName: string, elderName: string, byElder: boolean): string {
     const elder = firstName(elderName);

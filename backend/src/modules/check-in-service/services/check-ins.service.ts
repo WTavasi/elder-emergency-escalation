@@ -10,7 +10,8 @@ import { PrismaService } from '../../../db/prisma.service';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { AlertsService } from '../../emergency-service/services/alerts.service';
 import type { SetCheckInsDto } from '../validation/set-check-ins.dto';
-import { formatTime, parseTime } from './check-in-times';
+import { nudgeAfterMinutes, rhythmOf, RHYTHM_WINDOW, type Rhythm } from './check-in-rhythm';
+import { formatTime, intervalTimes, parseTime } from './check-in-times';
 
 /** How an elder answered a check-in. */
 export type CheckInChannel = 'app' | 'sms';
@@ -20,9 +21,24 @@ export interface CheckInScheduleView {
   /** "09:00", in the elder's own time zone. */
   times: string[];
   graceMinutes: number;
+  /**
+   * "Every hour from 08:00 to 20:00": the step in minutes and the window, when it was set
+   * up that way. Null for times chosen one by one. `times` lists them either way.
+   */
+  every: { minutes: number; from: string; until: string } | null;
   /** Set up by somebody else and not yet agreed by the elder, so nothing is being sent. */
   waitingForElder: boolean;
+  /** When the elder agreed to it, for everybody in the circle to see. */
+  agreedAt: string | null;
   setBy: { id: string; name: string } | null;
+}
+
+/** How soon this elder usually answers, and when an answer counts as unusually late. */
+export interface RhythmView {
+  answers: number;
+  usualMinutes: number;
+  /** The reminder goes this many minutes after asking. */
+  nudgeAfterMinutes: number;
 }
 
 export interface CheckInView {
@@ -39,6 +55,8 @@ export interface CheckInView {
 export interface CheckInsOverview {
   schedule: CheckInScheduleView | null;
   recent: CheckInView[];
+  /** Null until there are enough answers to learn from. */
+  rhythm: RhythmView | null;
   /** Whether the person asking may set it up or change it. */
   canEdit: boolean;
 }
@@ -75,7 +93,7 @@ export class CheckInsService {
 
   async overview(elderId: string, actorId: string, role: Role): Promise<CheckInsOverview> {
     const canEdit = await this.access(elderId, actorId, role);
-    const [schedule, recent] = await Promise.all([
+    const [schedule, recent, rhythm] = await Promise.all([
       this.prisma.checkInSchedule.findUnique({
         where: { elderId },
         include: { setBy: { select: { id: true, name: true } } },
@@ -85,12 +103,37 @@ export class CheckInsService {
         orderBy: { dueAt: 'desc' },
         take: 7,
       }),
+      this.rhythm(elderId),
     ]);
     return {
       schedule: schedule ? CheckInsService.scheduleView(schedule, schedule.setBy) : null,
       recent: recent.map(CheckInsService.view),
+      rhythm:
+        rhythm && schedule
+          ? {
+              answers: rhythm.answers,
+              usualMinutes: rhythm.usualMinutes,
+              nudgeAfterMinutes: nudgeAfterMinutes(rhythm, schedule.graceMinutes),
+            }
+          : null,
       canEdit,
     };
+  }
+
+  /**
+   * How soon this elder usually answers, from their latest answers. The clock uses it for
+   * the reminder; the circle sees it with the set-up.
+   */
+  async rhythm(elderId: string): Promise<Rhythm | null> {
+    const answered = await this.prisma.checkIn.findMany({
+      where: { elderId, status: CheckInStatus.ANSWERED, answeredAt: { not: null } },
+      orderBy: { dueAt: 'desc' },
+      take: RHYTHM_WINDOW,
+      select: { dueAt: true, answeredAt: true },
+    });
+    return rhythmOf(
+      answered.map((row) => ((row.answeredAt as Date).getTime() - row.dueAt.getTime()) / 60_000),
+    );
   }
 
   /**
@@ -106,15 +149,31 @@ export class CheckInsService {
     const canEdit = await this.access(elderId, actorId, role);
     if (!canEdit) throw new ForbiddenException('Only they or their care circle can set this up.');
 
-    const times = [...new Set(dto.times.map(parseTime))]
-      .filter((minutes): minutes is number => minutes !== null)
-      .sort((a, b) => a - b);
+    // Every so often within a window, or times chosen one by one.
+    const start = dto.every !== undefined && dto.from ? parseTime(dto.from) : null;
+    const end = dto.every !== undefined && dto.until ? parseTime(dto.until) : null;
+    const interval = dto.every !== undefined && start !== null && end !== null;
+    if (dto.every !== undefined && !interval) {
+      throw new BadRequestException('Choose when to start and stop asking.');
+    }
+    const times = interval
+      ? intervalTimes(start, end, dto.every as number)
+      : [...new Set(dto.times.map(parseTime))]
+          .filter((minutes): minutes is number => minutes !== null)
+          .sort((a, b) => a - b);
     if (dto.enabled && times.length === 0) {
-      throw new BadRequestException('Choose at least one time of day.');
+      throw new BadRequestException(
+        interval ? 'Stop asking later than you start.' : 'Choose at least one time of day.',
+      );
     }
 
     const byElder = actorId === elderId;
     const previous = await this.prisma.checkInSchedule.findUnique({ where: { elderId } });
+    const graceMinutes = dto.graceMinutes ?? previous?.graceMinutes ?? DEFAULT_GRACE_MINUTES;
+    // Each check-in has to be over before the next is asked.
+    if (interval && dto.enabled && graceMinutes >= (dto.every as number)) {
+      throw new BadRequestException('Give less time to answer than the time between check-ins.');
+    }
     // Agreement stands only for what was agreed. Somebody else turning it on or moving
     // the times asks again; turning it off keeps whatever agreement there was, so turning
     // it back on later can still ask.
@@ -131,7 +190,10 @@ export class CheckInsService {
     const data = {
       enabled: dto.enabled,
       times,
-      graceMinutes: dto.graceMinutes ?? previous?.graceMinutes ?? DEFAULT_GRACE_MINUTES,
+      intervalMinutes: interval ? (dto.every as number) : null,
+      windowStart: interval ? start : null,
+      windowEnd: interval ? end : null,
+      graceMinutes,
       setById: actorId,
       confirmedAt,
     };
@@ -263,7 +325,18 @@ export class CheckInsService {
       enabled: schedule.enabled,
       times: schedule.times.map(formatTime),
       graceMinutes: schedule.graceMinutes,
+      every:
+        schedule.intervalMinutes !== null &&
+        schedule.windowStart !== null &&
+        schedule.windowEnd !== null
+          ? {
+              minutes: schedule.intervalMinutes,
+              from: formatTime(schedule.windowStart),
+              until: formatTime(schedule.windowEnd),
+            }
+          : null,
       waitingForElder: schedule.enabled && schedule.confirmedAt === null,
+      agreedAt: schedule.confirmedAt?.toISOString() ?? null,
       setBy,
     };
   }

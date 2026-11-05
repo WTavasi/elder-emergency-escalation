@@ -708,8 +708,20 @@ model CheckInSchedule {
   times Int[]
 
   /// How long the elder has to answer before their circle is alerted. A reminder goes at
-  /// half of it.
+  /// half of it, or sooner when an answer is unusually late for this elder.
   graceMinutes Int @default(30) @map("grace_minutes")
+
+  /// EXTENSION. Every this many minutes from windowStart to windowEnd, "every hour from
+  /// 08:00 to 20:00", instead of times chosen one by one. Null for chosen times. `times`
+  /// holds what it works out to either way, so the clock reads one list.
+  intervalMinutes Int? @map("interval_minutes") @db.SmallInt
+  /// Minutes after local midnight, as for `times`.
+  windowStart     Int? @map("window_start") @db.SmallInt
+  windowEnd       Int? @map("window_end") @db.SmallInt
+
+  /// EXTENSION. When this elder's week of answers was last compared with the weeks
+  /// before, for the weekly note to their caregivers.
+  rhythmCheckedAt DateTime? @map("rhythm_checked_at") @db.Timestamptz(3)
 
   /// Who set it up last: the elder, or somebody in their chain.
   setById String? @map("set_by_id") @db.Uuid

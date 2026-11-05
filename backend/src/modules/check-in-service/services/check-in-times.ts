@@ -102,3 +102,15 @@ export function partOfDay(instant: Date, timeZone: string): 'morning' | 'afterno
   if (hour < 17) return 'afternoon';
   return 'evening';
 }
+
+/**
+ * The times "every [every] minutes from [start] to [end]" works out to, both ends
+ * included when they fall on the step: every hour from 08:00 to 20:00 is thirteen times.
+ * The same day only: a window that runs past midnight is two set-ups.
+ */
+export function intervalTimes(start: number, end: number, every: number): number[] {
+  if (every <= 0 || end <= start) return [];
+  const times: number[] = [];
+  for (let at = start; at <= end; at += every) times.push(at);
+  return times;
+}

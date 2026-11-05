@@ -2,6 +2,9 @@ import type { ConfigService } from '@nestjs/config';
 import { AlertTrigger, CheckInStatus, Prisma } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { AlertsService } from '../../emergency-service/services/alerts.service';
+import type { Rhythm } from './check-in-rhythm';
+import type { CheckInRhythmService } from './check-in-rhythm.service';
+import type { CheckInsService } from './check-ins.service';
 import { CheckInClockService } from './check-in-clock.service';
 import type { CheckInMessenger } from './check-in-messenger.service';
 
@@ -33,6 +36,7 @@ function build(
     overdue?: unknown[];
     open?: { id: string } | null;
     claimed?: number;
+    rhythm?: Rhythm | null;
   } = {},
 ) {
   const prisma = {
@@ -56,13 +60,17 @@ function build(
   const config = {
     get: (key: string, fallback: unknown) => (key in settings ? settings[key] : fallback),
   };
+  const checkIns = { rhythm: jest.fn().mockResolvedValue(options.rhythm ?? null) };
+  const weekly = { weekly: jest.fn().mockResolvedValue(0) };
   const clock = new CheckInClockService(
     config as unknown as ConfigService,
     prisma as unknown as PrismaService,
     alerts as unknown as AlertsService,
     messenger as unknown as CheckInMessenger,
+    checkIns as unknown as CheckInsService,
+    weekly as unknown as CheckInRhythmService,
   );
-  return { clock, prisma, alerts, messenger, settings };
+  return { clock, prisma, alerts, messenger, settings, weekly };
 }
 
 describe('CheckInClockService', () => {
@@ -80,6 +88,37 @@ describe('CheckInClockService', () => {
         deadlineAt: minutesAfterNine(30),
       });
       expect(t.messenger.ask).toHaveBeenCalledWith(GRACE, 'check-in-1', false, now);
+    });
+
+    it('reminds sooner when silence is unusual for this elder, never later than half way', async () => {
+      const quick = build({
+        schedules: [SCHEDULE],
+        rhythm: { answers: 12, usualMinutes: 1, slowMinutes: 3 },
+      });
+      await quick.clock.tick(minutesAfterNine(1));
+      expect(quick.prisma.checkIn.create.mock.calls[0][0].data.remindAt).toEqual(
+        minutesAfterNine(6),
+      );
+
+      const slow = build({
+        schedules: [SCHEDULE],
+        rhythm: { answers: 12, usualMinutes: 10, slowMinutes: 20 },
+      });
+      await slow.clock.tick(minutesAfterNine(1));
+      expect(slow.prisma.checkIn.create.mock.calls[0][0].data.remindAt).toEqual(
+        minutesAfterNine(15),
+      );
+    });
+
+    it('takes the weekly look every minute, and a failure there stops nothing', async () => {
+      const t = build({ schedules: [SCHEDULE] });
+      t.weekly.weekly.mockRejectedValue(new Error('down'));
+      await expect(t.clock.tick(minutesAfterNine(1))).resolves.toEqual({
+        asked: 1,
+        reminded: 0,
+        missed: 0,
+      });
+      expect(t.weekly.weekly).toHaveBeenCalled();
     });
 
     it('still asks after a short restart, but not once the moment has long passed', async () => {
