@@ -541,6 +541,7 @@ export class EscalationService {
     userId: string,
     location?: ResponderLocation,
     via: AnswerChannel = 'app',
+    etaMinutes?: number,
   ): Promise<EmergencyEvent> {
     const event = await this.requireOpenEvent(eventId);
 
@@ -575,6 +576,7 @@ export class EscalationService {
           currentTierDeadlineAt: null,
           responderLatitude: location ? new Prisma.Decimal(location.latitude) : null,
           responderLongitude: location ? new Prisma.Decimal(location.longitude) : null,
+          ownerExpectedAt: etaMinutes ? new Date(now.getTime() + etaMinutes * 60_000) : null,
         },
       });
 
@@ -602,6 +604,7 @@ export class EscalationService {
             secondsFromTrigger: Math.round((now.getTime() - event.triggeredAt.getTime()) / 1000),
             locationCaptured: Boolean(location),
             via,
+            ...(etaMinutes ? { etaMinutes } : {}),
           } as unknown as Prisma.InputJsonValue,
           occurredAt: now,
         },

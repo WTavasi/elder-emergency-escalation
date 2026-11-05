@@ -122,6 +122,7 @@ function toSummary(row: SummaryRow, viewerId: string): AlertSummary {
     triggeredAt: row.triggeredAt.toISOString(),
     trigger: row.trigger,
     acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
+    ownerExpectedAt: row.ownerExpectedAt?.toISOString() ?? null,
     arrivedAt: row.arrivedAt?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     deadlineAt: row.currentTierDeadlineAt?.toISOString() ?? null,

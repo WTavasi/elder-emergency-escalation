@@ -565,6 +565,22 @@ describe('EscalationService', () => {
       expect(detail.via).toBe('sms');
     });
 
+    it('keeps when somebody said by text they would be there', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));
+
+      await build(prisma).acknowledge('event-1', 'caregiver-1', undefined, 'sms', 10);
+
+      const claim = prisma.emergencyEvent.updateMany.mock.calls[0][0] as {
+        data: { ownerExpectedAt: Date; acknowledgedAt: Date };
+      };
+      expect(claim.data.ownerExpectedAt.getTime() - claim.data.acknowledgedAt.getTime()).toBe(
+        600_000,
+      );
+      const detail = prisma.auditLog.create.mock.calls[0][0].data.detail as { etaMinutes: number };
+      expect(detail.etaMinutes).toBe(10);
+    });
+
     it('accepts an acknowledgement without a location rather than refusing it', async () => {
       const prisma = buildPrisma();
       prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.NOTIFIED }));

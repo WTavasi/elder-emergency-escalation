@@ -427,13 +427,16 @@ model EmergencyEvent {
   /// timer. Null once asked, or when nothing is waiting.
   serviceDueAt DateTime? @map("service_due_at") @db.Timestamptz(3)
 
-  triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
-  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+  triggeredAt     DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
+  acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+  /// EXTENSION. When the person who took it on said they would be there, by text:
+  /// "nakuja dakika kumi" ten minutes after they replied. Null when they did not say.
+  ownerExpectedAt DateTime? @map("owner_expected_at") @db.Timestamptz(3)
   /// EXTENSION. When the owner reached the elder. Kept when the emergency moves on (an
   /// owner on scene may still call in a responder), so "help arrived" stays true.
   /// Only the time is kept: the positions shared on the way live in Redis and expire.
-  arrivedAt      DateTime? @map("arrived_at") @db.Timestamptz(3)
-  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+  arrivedAt       DateTime? @map("arrived_at") @db.Timestamptz(3)
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(3)
 
   /// EXTENSION. What raised it: the elder pressing for help, or a daily check-in they
   /// did not answer. A missed check-in is held at the standard band and has no cancel

@@ -13,11 +13,15 @@ import {
   REPLY_ASK,
 } from '../../notification-service/services/notification-content';
 import { TYPE_WORDS, typeFromText, wordsOf } from '../../../shared/language/emergency-words';
+import {
+  readReply as readText,
+  type ReplyIntent as SharedReplyIntent,
+} from '../../../shared/language/replies';
 import { AlertsService } from './alerts.service';
 import { EscalationService } from './escalation.service';
 
 /** What a reply asks for. */
-export type ReplyIntent = 'accept' | 'decline' | 'unclear';
+export type ReplyIntent = SharedReplyIntent;
 
 /** What became of one reply, for the log and the tests. Nothing here is shown to anyone. */
 export type ReplyOutcome =
@@ -33,28 +37,18 @@ export type ReplyOutcome =
   | 'raised'
   | 'already-raised';
 
-/**
- * The words a reply is read as. The digits are what the alert asks for and are enough on
- * any phone; the rest are what people type anyway, in English and Swahili.
- */
-const ACCEPT = new Set(['1', 'yes', 'y', 'ok', 'go', 'going', 'coming', 'ndio', 'ndiyo', 'sawa']);
-const DECLINE = new Set(['2', 'no', 'n', 'cannot', "can't", 'cant', 'hapana', 'siwezi']);
-
 /** Replies one phone may send in [REPLY_WINDOW_SECONDS] before the rest are ignored. */
 export const REPLY_LIMIT = 6;
 export const REPLY_WINDOW_SECONDS = 600;
 
-/** Reads a reply by its first word, so "1 on my way" and "Yes!" both count. */
+/**
+ * What a reply means: the digits the alert asks for, or what people write anyway, in
+ * English, Swahili and Sheng ("nakuja", "niko njiani", "siwezi, niko kazini"). Read by the
+ * rules in shared/language; a reply that says both yes and no, or neither, is unclear and
+ * the person is asked again.
+ */
 export function readReply(text: string): ReplyIntent {
-  const first = text
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)[0]
-    ?.replace(/[.!,?]+$/, '');
-  if (!first) return 'unclear';
-  if (ACCEPT.has(first)) return 'accept';
-  if (DECLINE.has(first)) return 'decline';
-  return 'unclear';
+  return readText(text).intent;
 }
 
 /**
@@ -141,7 +135,8 @@ export class SmsRepliesService {
 
     // An elder's text asks for help or answers their check-in, "are you OK?";
     // anybody else's is a reply to an alert they were asked to answer.
-    const intent = readReply(text);
+    const reply = readText(text);
+    const intent = reply.intent;
     const outcome =
       person.role === Role.ELDER
         ? asksForHelp(text)
@@ -149,12 +144,17 @@ export class SmsRepliesService {
           : await this.answerCheckIn(person.id, phone, intent)
         : person.role === Role.COMMUNITY_RESPONDER
           ? await this.answerAsVolunteer(person.id, phone, intent)
-          : await this.answer(person.id, phone, intent);
+          : await this.answer(person.id, phone, intent, reply.etaMinutes);
     this.logger.log(`Text reply from ${redactPhone(phone)}: ${outcome}`);
     return outcome;
   }
 
-  private async answer(userId: string, phone: string, intent: ReplyIntent): Promise<ReplyOutcome> {
+  private async answer(
+    userId: string,
+    phone: string,
+    intent: ReplyIntent,
+    etaMinutes: number | null = null,
+  ): Promise<ReplyOutcome> {
     // The newest alert still waiting on this person: open, nobody owns it, and they were
     // asked. Newest, because that is the text they are most likely answering.
     const asked = await this.prisma.notification.findFirst({
@@ -190,14 +190,22 @@ export class SmsRepliesService {
 
     try {
       if (intent === 'accept') {
-        await this.escalation.acknowledge(asked.eventId, userId, undefined, 'sms');
+        await this.escalation.acknowledge(
+          asked.eventId,
+          userId,
+          undefined,
+          'sms',
+          etaMinutes ?? undefined,
+        );
         const place = asked.event.alertAddressLabel;
+        // "nakuja dakika kumi": the others are told when to expect them.
+        const when = etaMinutes ? ` We've told them: in about ${etaMinutes} minutes.` : '';
         await this.sms.send(
           phone,
           capSms(
-            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.` +
+            `MzaziCare: thanks. You're going to ${name}.${when} Call them: ${elder.phone}.` +
               (place ? ` Address: ${place}.` : ''),
-            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.`,
+            `MzaziCare: thanks. You're going to ${name}.${when} Call them: ${elder.phone}.`,
           ),
         );
         return 'accepted';
