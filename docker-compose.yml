@@ -52,6 +52,23 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional: the project's own road router, with Kenya's map. Not started by a plain
+  # `docker compose up`, because building it takes 10 to 30 minutes and about 8 GB of
+  # memory the first time. Start it on its own when you want real road times:
+  #
+  #   docker compose --profile routing up -d osrm
+  #
+  # then run the API with ROUTING_PROVIDER=osrm ROUTING_URL=http://localhost:5050
+  # ROUTING_RATE_PER_SECOND=0. See infra/osrm/Dockerfile and docs/running.md.
+  osrm:
+    build: ./infra/osrm
+    image: mzazicare-osrm
+    container_name: mzazicare-osrm
+    restart: unless-stopped
+    profiles: ['routing']
+    ports:
+      - '${OSRM_PORT:-5050}:5000'
+
 volumes:
   postgres-data:
   redis-data:
