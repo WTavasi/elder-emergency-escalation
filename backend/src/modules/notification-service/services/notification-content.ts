@@ -366,6 +366,55 @@ export const accountMessages = {
         );
   },
 
+  /**
+   * A caregiver changed the elder's medical details. The elder hears of every change by
+   * somebody else. The text never says what changed: a text message is no place for
+   * health data, and the details are in the app.
+   */
+  medicalChanged(byName: string): string {
+    return capSms(
+      `${firstName(byName)} has changed your medical details in MzaziCare. Open MzaziCare, then Me, to see them.`,
+      `${firstName(byName)} has changed your medical details in MzaziCare.`,
+    );
+  },
+
+  /**
+   * The weekly note to caregivers, when an elder's check-in answers drifted: much later
+   * than the weeks before, or more missed. Says what changed and suggests a call; never
+   * an alarm, because nothing has happened yet.
+   */
+  checkInDrift(
+    elderName: string,
+    drift: {
+      later: boolean;
+      moreMissed: boolean;
+      usualBefore: number;
+      usualNow: number;
+      missedNow: number;
+    },
+  ): string {
+    const elder = firstName(elderName);
+    const later = drift.later
+      ? `${elder} answered check-ins later this week: about ${drift.usualNow} minutes, against ${drift.usualBefore} before.`
+      : '';
+    const missed = drift.moreMissed
+      ? `${elder} missed ${drift.missedNow} check-ins this week, more than usual.`
+      : '';
+    const what = [later, missed].filter(Boolean).join(' ');
+    return capSms(`MzaziCare: ${what} It may be worth a call.`, `MzaziCare: ${what}`);
+  },
+
+  /** Consent to keeping medical details was withdrawn, so they were deleted. */
+  medicalDeleted(byName: string, elderName: string, byElder: boolean): string {
+    const elder = firstName(elderName);
+    return byElder
+      ? `${elder} has withdrawn consent to keeping their medical details. MzaziCare has deleted them.`
+      : capSms(
+          `${firstName(byName)} has withdrawn ${elder}'s consent to keeping medical details. MzaziCare has deleted them.`,
+          `${firstName(byName)} withdrew consent to keeping ${elder}'s medical details. They are deleted.`,
+        );
+  },
+
   /** Consent to processing was withdrawn, which ends the service for that elder. */
   serviceEnded(byName: string, elderName: string, byElder: boolean): string {
     const elder = firstName(elderName);

@@ -7,6 +7,7 @@ import type {
   DataPolicy,
   EventState,
   LegalFacts,
+  MedicalView,
   NewUser,
   Session,
   Severity,
@@ -305,6 +306,10 @@ export const api = {
   },
 
   alert: (id: string): Promise<AlertDetail> => request<AlertDetail>(`/alerts/${id}`),
+
+  /** Who opened the elder's medical details during this emergency. Never the details. */
+  medicalViews: async (id: string): Promise<MedicalView[]> =>
+    (await request<{ views: MedicalView[] }>(`/alerts/${id}/medical/views`)).views,
 
   users: {
     list: (query: UserQuery = {}): Promise<UserPage> => {

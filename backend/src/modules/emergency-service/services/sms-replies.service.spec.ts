@@ -7,10 +7,10 @@ import { SMS_LIMIT } from '../../notification-service/services/notification-cont
 import type { CheckInsService } from '../../check-in-service/services/check-ins.service';
 import type { VolunteerCallsService } from '../../community-service/services/volunteer-calls.service';
 import type { AlertsService } from './alerts.service';
+import { typeFromText } from '../../../shared/language/emergency-words';
 import type { EscalationService } from './escalation.service';
 import {
   asksForHelp,
-  typeFromText,
   normalisePhone,
   readReply,
   REPLY_LIMIT,
@@ -103,6 +103,8 @@ describe('readReply', () => {
     expect(readReply('Ndio')).toBe('accept');
     expect(readReply('no, at work')).toBe('decline');
     expect(readReply('Hapana')).toBe('decline');
+    expect(readReply('niko njiani')).toBe('accept');
+    expect(readReply('poa nakam')).toBe('accept');
   });
 
   it('does not guess at anything else', () => {
@@ -179,7 +181,13 @@ describe('SmsRepliesService', () => {
 
     await expect(t.service.handle('+254700000030', '1')).resolves.toBe('accepted');
 
-    expect(t.escalation.acknowledge).toHaveBeenCalledWith('event-1', 'family-1', undefined, 'sms');
+    expect(t.escalation.acknowledge).toHaveBeenCalledWith(
+      'event-1',
+      'family-1',
+      undefined,
+      'sms',
+      undefined,
+    );
     const [reply] = t.sent();
     expect(reply).toContain("You're going to Grace");
     // During an open emergency the elder's number is disclosed to the people asked.
@@ -245,6 +253,36 @@ describe('SmsRepliesService', () => {
     expect(t.sent()[0]).toContain('no alert is waiting');
   });
 
+  it('takes "nakuja dakika kumi" as going, in about ten minutes, and tells them so', async () => {
+    const t = build();
+
+    await expect(t.service.handle('+254700000030', 'Nakuja dakika kumi')).resolves.toBe('accepted');
+
+    expect(t.escalation.acknowledge).toHaveBeenCalledWith(
+      'event-1',
+      'family-1',
+      undefined,
+      'sms',
+      10,
+    );
+    expect(t.sent()[0]).toContain("We've told them: in about 10 minutes.");
+  });
+
+  it('reads a no written out, in Swahili or Sheng, as a no', async () => {
+    const t = build();
+    await expect(t.service.handle('+254700000030', 'siezi, niko kazini')).resolves.toBe('declined');
+  });
+
+  it('asks again rather than guess at a reply that says both', async () => {
+    const t = build();
+    await expect(t.service.handle('+254700000030', 'Siwezi sasa, nitakuja baadaye')).resolves.toBe(
+      'unclear',
+    );
+    expect(t.sent()[0]).toContain('Reply 1 to go, 2 if you cannot.');
+    expect(t.escalation.acknowledge).not.toHaveBeenCalled();
+    expect(t.escalation.decline).not.toHaveBeenCalled();
+  });
+
   it('repeats the two answers to anything it cannot read', async () => {
     const t = build();
 
@@ -297,6 +335,12 @@ describe('SmsRepliesService', () => {
       expect(t.checkIns.answer).toHaveBeenCalledWith('elder-1', 'sms');
       expect(t.escalation.acknowledge).not.toHaveBeenCalled();
       expect(t.sent()[0]).toContain("you're OK");
+    });
+
+    it('"niko sawa" answers it too', async () => {
+      const t = build({ person: ELDER });
+      await expect(t.service.handle('+254700000010', 'Niko sawa')).resolves.toBe('checked-in');
+      expect(t.checkIns.answer).toHaveBeenCalledWith('elder-1', 'sms');
     });
 
     it('a late 1 that withdrew the alert says the family was told', async () => {

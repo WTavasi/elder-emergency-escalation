@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { EmergencyType } from '@prisma/client';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { RAISED_FROM, type RaisedFrom } from '../services/escalation.service';
 
 /**
  * The body of a panic request, and it is almost empty on purpose.
@@ -35,4 +37,18 @@ export class CreateAlertDto {
   @IsString()
   @MaxLength(200)
   addressLabel?: string;
+
+  /**
+   * What is happening, when it was said in the same breath as asking: "Hey Siri,
+   * MzaziCare help fire". Reported straight after the alert is raised, exactly as if the
+   * elder had tapped it, so the service follows after the usual short wait.
+   */
+  @IsOptional()
+  @IsEnum(EmergencyType)
+  type?: EmergencyType;
+
+  /** Raised from Siri, the Assistant, the widget or the quick-settings tile. */
+  @IsOptional()
+  @IsIn(RAISED_FROM)
+  from?: RaisedFrom;
 }

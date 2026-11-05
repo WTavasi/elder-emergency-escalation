@@ -8,6 +8,14 @@ interface Detail {
   toTier?: number;
   recipients?: number;
   via?: string;
+  /** Where an alert was raised from: siri, assistant, widget or tile. */
+  from?: string;
+  /** On the elder speaking: what the words were heard to mean, and whether reported. */
+  heardType?: string | null;
+  applied?: boolean;
+  language?: string | null;
+  /** On taking it on by text: how soon they said they would be there. */
+  etaMinutes?: number;
   trigger?: string;
   reason?: string;
   score?: number;
@@ -46,11 +54,12 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
   const detail = detailOf(entry);
   const who = entry.actor?.name ?? 'Someone';
   const byText = detail.via === 'sms';
+  const how = HOW[detail.via ?? detail.from ?? ''] ?? '';
 
   switch (entry.action) {
     case 'EVENT_CREATED':
       if (detail.trigger === 'MISSED_CHECK_IN') return 'Missed the daily check-in';
-      return byText ? `${who} asked for help, by text` : `${who} asked for help`;
+      return `${who} asked for help${how}`;
     case 'SEVERITY_EVALUATED':
       return scored(detail);
     case 'TIER_DISPATCHED':
@@ -70,6 +79,9 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
     case 'VOLUNTEER_ARRIVED':
       return `${who} (volunteer) arrived`;
     case 'ACKNOWLEDGED':
+      if (detail.etaMinutes) {
+        return `${who} is on the way, by text, in about ${detail.etaMinutes} minutes`;
+      }
       return byText ? `${who} is on the way, by text` : `${who} is on the way`;
     case 'ARRIVED':
       return `${who} arrived`;
@@ -80,7 +92,9 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
     case 'RESPONDER_REQUESTED':
       return `${who} asked for an emergency responder`;
     case 'TYPE_REPORTED':
-      return reported(who, detail, byText);
+      return reported(who, detail, how);
+    case 'SPEECH_HEARD':
+      return spoke(who, detail);
     case 'STATION_ASKED':
       return stationAsked(detail);
     case 'SERVICE_DISPATCHED':
@@ -154,9 +168,29 @@ function failed(detail: Detail, deliveries: DeliveryAttempt[]): string {
 }
 
 /** "Grace said it is a fire", and what that did to severity. */
-function reported(who: string, detail: Detail, byText: boolean): string {
+/** ", by text", ", to Siri": how something was said, when not with the app's buttons. */
+const HOW: Record<string, string> = {
+  sms: ', by text',
+  voice: ', out loud',
+  siri: ', to Siri',
+  assistant: ', to the Assistant',
+  widget: ', from the home screen',
+  tile: ', from quick settings',
+};
+
+/** "Grace spoke, in Swahili: heard fire, reported". Never the words: those are on the page. */
+function spoke(who: string, detail: Detail): string {
+  const language = detail.language ? LANGUAGE[detail.language] : undefined;
+  const inLanguage = language ? `, in ${language}` : '';
+  if (!detail.heardType) return `${who} spoke${inLanguage}`;
+  const what = (TYPE_LABEL[detail.heardType] ?? detail.heardType).toLowerCase();
+  return `${who} spoke${inLanguage}: heard ${what}${detail.applied ? ', reported' : ''}`;
+}
+
+const LANGUAGE: Record<string, string> = { sw: 'Swahili', en: 'English' };
+
+function reported(who: string, detail: Detail, how: string): string {
   const what = detail.type ? (TYPE_LABEL[detail.type] ?? detail.type).toLowerCase() : 'something';
-  const how = byText ? ', by text' : '';
   const raised =
     detail.severityBefore && detail.severityAfter && detail.severityBefore !== detail.severityAfter
       ? `. Raised to ${severityWord(detail.severityAfter).toLowerCase()}`

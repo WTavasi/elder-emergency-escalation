@@ -167,16 +167,19 @@ void main() {
         pollInterval: const Duration(hours: 1),
         live: live,
       )..start();
+      // The medical details are asked once when the screen opens, apart from refreshes.
+      List<Exchange> reads() =>
+          t.calls.where((Exchange call) => !call.path.endsWith('/medical')).toList();
       await settled();
-      expect(t.calls, hasLength(1));
+      expect(reads(), hasLength(1));
 
       live.publish(const LiveChange(eventId: 'someone-else'));
       await settled();
-      expect(t.calls, hasLength(1));
+      expect(reads(), hasLength(1));
 
       live.publish(const LiveChange(eventId: 'event-1'));
       await settled();
-      expect(t.calls, hasLength(2));
+      expect(reads(), hasLength(2));
 
       controller.dispose();
       live.dispose();

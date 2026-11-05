@@ -132,6 +132,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
   String _giveTitle(ConsentKind kind) => switch (kind) {
     ConsentKind.communityHelp =>
       _isElder ? 'Let nearby volunteers help you?' : 'Let nearby volunteers help $_name?',
+    ConsentKind.medicalProfile =>
+      _isElder ? 'Keep your medical details?' : 'Keep medical details for $_name?',
+    ConsentKind.voiceReports =>
+      _isElder ? 'Speak to say what is happening?' : 'Let $_name speak to say what is happening?',
     _ => _isElder ? 'Agree to this again?' : 'Agree to this for $_name?',
   };
 
@@ -175,6 +179,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
     ConsentKind.contactSharing =>
       _isElder ? 'Sharing your phone number' : 'Sharing their phone number',
     ConsentKind.communityHelp => 'Help from nearby volunteers',
+    ConsentKind.medicalProfile => 'Medical details',
+    ConsentKind.voiceReports => 'Speaking to say what is happening',
   };
 
   String _meaning(ConsentKind kind) => switch (kind) {
@@ -200,12 +206,30 @@ class _ConsentScreenState extends State<ConsentScreen> {
           : "If it's urgent, or no emergency service covers their area, we can ask checked "
                 'volunteers near them to come. The one who says yes sees their name, address '
                 'and number. We still ask their care circle.',
+    ConsentKind.medicalProfile =>
+      _isElder
+          ? 'We keep the medical details you or your caregiver add, such as conditions, '
+                'medicines and allergies. Your caregivers can see them. Family and emergency '
+                'services see them only when we ask them to help you.'
+          : 'We keep the medical details you or $_name add, such as conditions, medicines '
+                'and allergies. Caregivers can see them. Family and emergency services see them '
+                'only when we ask them to help.',
+    ConsentKind.voiceReports =>
+      _isElder
+          ? 'After you press help, you can say what is happening. Our own server writes it '
+                'down and deletes the recording. The people helping you read the words, and '
+                'we keep them for 30 days.'
+          : 'After pressing help, $_name can say what is happening. Our own server writes it '
+                'down and deletes the recording. The people helping read the words, and we '
+                'keep them for 30 days.',
   };
 
   /// The button that withdraws one consent, named after what it stops.
   String _stopLabel(ConsentKind kind) => switch (kind) {
     ConsentKind.dataProcessing => 'Stop MzaziCare',
     ConsentKind.communityHelp => 'Stop volunteer help',
+    ConsentKind.medicalProfile => 'Delete medical details',
+    ConsentKind.voiceReports => 'Stop speaking to report',
     _ => 'Stop sharing',
   };
 
@@ -217,6 +241,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
       _isElder ? 'Stop sharing your phone number?' : "Stop sharing $_name's phone number?",
     ConsentKind.communityHelp =>
       _isElder ? 'Stop asking volunteers to help you?' : 'Stop asking volunteers to help $_name?',
+    ConsentKind.medicalProfile =>
+      _isElder ? 'Delete your medical details?' : "Delete $_name's medical details?",
+    ConsentKind.voiceReports =>
+      _isElder ? 'Stop speaking to report?' : 'Stop speaking to report for $_name?',
   };
 
   String _withdrawEffect(ConsentKind kind) => switch (kind) {
@@ -244,6 +272,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 'services.'
           : "We'll stop asking volunteers to come to $_name. We still ask their care circle "
                 'and emergency services.',
+    ConsentKind.medicalProfile => "We'll delete them now. Helpers won't see them in an emergency.",
+    ConsentKind.voiceReports =>
+      "The microphone won't be offered after the help button. Words already kept are "
+          'deleted within 30 days.',
   };
 
   String _status(ConsentItem item) {

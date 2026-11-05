@@ -88,7 +88,9 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body, or `{ type?, from? }` when it was said with the request (see below). Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts/:id/speech` | the elder | Multipart, a recording in `audio` (up to 5 MB): what the elder said after pressing help. Written down by our own speech server, read for a type, and reported as if tapped when it says one. 10 in ten minutes |
+| GET | `/api/v1/elders/:id/speech` | the elder | `{ available, consented }`: whether to offer the microphone |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
 | POST | `/api/v1/alerts/ranked` | caregiver, family, responder | `{ latitude?, longitude? }`, both or neither. Every open emergency the caller is part of, in the order to go to them: `{ measuredFrom, alerts: [{ alert, reasons, why, travelSeconds, byRoad }] }`. See below |
@@ -165,9 +167,16 @@ you can go, 2 if you cannot." The gateway posts the reply to `/sms/inbound` with
 in the address. The sender is matched to an account by number; a number that belongs to
 nobody, or to a deactivated account, gets no answer at all. The reply applies to the
 newest alert still waiting on that person, and goes through the same acknowledge and
-decline as the app, so every rule below holds for it too. The first word is read: `1`,
-`yes`, `ndio` accept; `2`, `no`, `hapana` decline; anything else gets the two answers
-repeated. The person is texted back: on accepting, the elder's number and address (both
+decline as the app, so every rule below holds for it too. `1` and `2` win whatever
+follows. Otherwise the whole reply is read for its meaning, in English, Swahili and Sheng
+(`shared/language/replies.ts`): "on my way", "nakuja", "niko njiani", "poa nakam" accept;
+"no", "siwezi, niko kazini", "siezi" decline; "no problem" and "hakuna shida" are yes. A
+reply that says both ("siwezi sasa, nitakuja baadaye") or neither gets the two answers
+repeated rather than a guess. How soon they will be there is read too: "dakika kumi",
+"10 mins", "nusu saa", "baada ya saa moja", "in 5" (a bare "saa mbili" is not, since it is
+also eight o'clock). It is kept as `ownerExpectedAt` on the alert and `etaMinutes` in the
+trail, and the elder's screen shows the time when nobody is sharing their way there. A
+time alone reads as coming. The person is texted back: on accepting, the elder's number and address (both
 disclosed during an open emergency); if somebody accepted first, who; if the alert moved
 past them, that it has. The audit entry carries `via: "sms"`. One phone may send six
 replies in ten minutes. The route always answers 200 once the token matches, because a
@@ -208,6 +217,21 @@ rules: a severity floor, a service, and when the service is asked.
 | `UNSAFE` (robbery, intruder, violence) | critical | police | at once |
 | `FALL` | high | ambulance | at the responder step |
 | `UNWELL` | high | ambulance | at the responder step |
+
+**Said with the request.** "Hey Siri, MzaziCare help fire", the Android widget, the
+quick-settings tile and the Assistant open the app, which raises the alert with
+`{ type: "FIRE", from: "siri" }`. The type is reported straight after the alert is raised,
+exactly as a tap would, so the service follows after the same short wait and can still be
+changed. `from` is `siri`, `assistant`, `widget` or `tile`, and is kept in the trail.
+
+**Said out loud.** After the press, an elder who agreed (`VOICE_REPORTS` consent) can
+speak for up to a minute. The recording goes to our own Whisper server (`WHISPER_URL`),
+is written down as said and, when not English, in English, and is then thrown away. The
+words are read by the same English, Swahili and Sheng word lists as a HELP text. What they
+say is reported only when nothing was reported yet, or when it is more urgent than what
+was (fire, then not safe, then chest or breathing, then a fall, then unwell): speech never
+lowers anything. The words, in `speech` on the alert, are kept `SPEECH_RETENTION_DAYS`
+(30); the trail records only the language and what was heard (`SPEECH_HEARD`).
 
 A floor only ever raises severity, and a rise changes the rest of the chain at once, as
 the cancel-window review does. "At once" means the nearest station of the service is
@@ -325,6 +349,33 @@ says the person came back rather than losing that a stay ever happened.
 | POST | `/api/v1/elders/:id/consent/grant` | the elder, caregiver in that chain | `{ type }`: give a consent after registration, such as `COMMUNITY_HELP`, or give back a withdrawn one. Never `DATA_PROCESSING`. A caregiver's is on the elder's behalf, so the elder is asked to confirm it, and is texted |
 | POST | `/api/v1/elders/:id/consent/withdraw` | the elder, caregiver in that chain | `{ type, confirm? }`. `confirm: true` is required for `DATA_PROCESSING` |
 
+### Medical details
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | The details, the consent, the choices the form offers, who changed what and who looked. A caregiver's look is recorded |
+| PUT | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | Replace the details. 409 until `MEDICAL_PROFILE` consent is given. A caregiver's change texts the elder |
+| GET | `/api/v1/alerts/:id/medical` | the elder, care chain, a responder asked | The details on an alert, read against what is happening. Each look is recorded |
+| GET | `/api/v1/alerts/:id/medical/views` | administrator | Who opened them during this alert, and when. Never what they say |
+
+The details are one object, every part optional: `dateOfBirth` (`YYYY-MM-DD`),
+`bloodType` (`A+` to `O-`), `flags` (ticks such as `BLOOD_THINNERS`, `HOME_OXYGEN`,
+`HARD_OF_HEARING`; the page lists them with their words), and short text for
+`conditions`, `medications`, `allergies`, `languages`, `doctorName`, `doctorPhone`,
+`hospital` and `notes`. A PUT replaces the whole object; a missing part is cleared.
+
+On an alert, `status` says whether they are shown: `shown`; `none` (nothing saved);
+`not-shared` (the elder has not agreed for themselves); `not-asked` (this person has not
+been asked to help yet); `closed` (the alert is over); `off` (`MEDICAL_DATA_KEY` is not
+set). Caregivers see them on any of the elder's alerts. Family and responders see them
+only while the alert is open and only once they were sent it. Volunteers and
+administrators get 403. With them come `highlights` (each tick, with `why` it matters for
+the reported type), `serious` (the history makes this emergency more serious) and
+`askFor` (the service to ask because of it).
+
+Withdrawing `MEDICAL_PROFILE` consent, or `DATA_PROCESSING`, deletes the details and the
+record of changes. The record of looks stays until `RETENTION_AUDIT_LOG_DAYS`.
+
 **Withdrawn consent** is honoured everywhere data leaves the server, outside an
 emergency. An elder's `phone`, home, stay and an alert's location come back as `null`,
 with a `withheld` list (`"phone"`, `"location"`) saying why, so a screen can explain
@@ -367,8 +418,8 @@ busier deployment should set `GEOCODER_URL` to its own Nominatim.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/v1/elders/:id/check-ins` | the elder, their chain, an administrator | `{ schedule, recent, canEdit }`: the arrangement and the last seven check-ins |
-| PUT | `/api/v1/elders/:id/check-ins` | the elder or their chain | `{ enabled, times: ["09:00"], graceMinutes? }`. Up to three times a day, 10 to 120 minutes to answer (30 if not given). 30 changes an hour |
+| GET | `/api/v1/elders/:id/check-ins` | the elder, their chain, an administrator | `{ schedule, recent, rhythm, canEdit }`: the arrangement, when the elder agreed (`agreedAt`), the last seven check-ins, and how soon the elder usually answers |
+| PUT | `/api/v1/elders/:id/check-ins` | the elder or their chain | `{ enabled, times: ["09:00"], graceMinutes? }`, up to three times a day; or `{ enabled, times: [], every: 60, from: "08:00", until: "20:00" }`, every half hour to six hours within a window. 10 to 120 minutes to answer (30 if not given), less than the step. 30 changes an hour |
 | POST | `/api/v1/elders/:id/check-ins/confirm` | the elder | `{ agree }`: yes starts a set-up somebody else made; no turns it off |
 | GET | `/api/v1/check-ins/mine` | elder | `{ checkIn, waitingForAgreement }`: a check-in to answer, and a set-up to agree to |
 | POST | `/api/v1/check-ins/answer` | elder | "I am all right". Returns `{ outcome }`: `answered`, `withdrawn`, `noted` or `nothing` |
@@ -380,9 +431,23 @@ moves the times, nothing is asked until the elder agrees on their own phone
 (`waitingForElder: true` until then). Turning it off never needs anybody's agreement and
 removes any check-in still waiting.
 
+**Every so often.** "Every hour from 08:00 to 20:00" is stored as the thirteen times it
+works out to, with the step and the window kept for showing and changing it
+(`schedule.every`). The time to answer has to be shorter than the step, so one check-in is
+over before the next.
+
+**Each elder's rhythm.** With five or more answers, `rhythm` says how soon the elder
+usually answers (`usualMinutes`) and when the reminder goes (`nudgeAfterMinutes`): twice
+their slow answer, so only an answer unusually late for them is nudged, at least five
+minutes, and never later than half way through the time to answer. Once a week, on Monday
+from 09:00 on the elder's clock, their last seven days are compared with the four weeks
+before; when answers came at least ten minutes later and twice as late, or two or more
+were missed and twice the share, their caregivers are texted a note suggesting a call.
+
 A one-minute clock (`CHECK_IN_TICK_MS`) does the rest. At each time it creates the day's
 check-in and asks the elder, by push if the phone has one and by SMS otherwise ("Reply 1
-if you are" when replies are on). Half way through the time to answer it asks once more.
+if you are" when replies are on). Once more at the reminder time above, half way through
+the time to answer or sooner.
 At the deadline it marks the check-in missed and raises an alert with
 `trigger: MISSED_CHECK_IN` through the ordinary escalation, or, if the elder already has
 an emergency open, links the check-in to that one. Nobody is asked in the middle of their

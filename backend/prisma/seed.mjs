@@ -9,7 +9,7 @@
  * Safe to re-run: every write is an upsert keyed on a natural unique column.
  */
 
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -787,8 +787,64 @@ async function main() {
     console.log(`  consent   3 consents recorded for ${byPhone[c.subject].name}`);
   }
 
+  await seedMedical(byPhone);
+
   console.log(`\nDone. Every seeded account signs in with the password: ${DEV_PASSWORD}`);
   console.log('Change or remove these accounts before any deployment that is not local.\n');
+}
+
+/**
+ * Grace's medical details, agreed to by Grace herself, so they show on her alerts to
+ * family and responders who are asked. Invented, like everything here. Sealed as the
+ * API seals them (AES-256-GCM, "v1:" then IV, tag and ciphertext in base64), so without
+ * MEDICAL_DATA_KEY there is nothing to seal with and this step is skipped.
+ */
+async function seedMedical(byPhone) {
+  const grace = byPhone['+254700000010'];
+  if (!grace) return;
+  await prisma.medicalProfileChange.deleteMany({ where: { elderlyId: grace.id } });
+  await prisma.medicalProfile.deleteMany({ where: { elderlyId: grace.id } });
+
+  const raw = process.env.MEDICAL_DATA_KEY;
+  if (!raw) {
+    console.log('  medical   skipped: MEDICAL_DATA_KEY is not set');
+    return;
+  }
+
+  const details = {
+    dateOfBirth: '1946-05-02',
+    bloodType: 'O+',
+    flags: ['HIGH_BLOOD_PRESSURE', 'BLOOD_THINNERS', 'WALKING_AID', 'HARD_OF_HEARING'],
+    conditions: 'Atrial fibrillation, on treatment since 2019.',
+    medications: 'Warfarin 5 mg each evening. Amlodipine 5 mg each morning.',
+    allergies: 'Penicillin: rash and swelling.',
+    languages: 'Kikuyu, Swahili',
+    doctorName: 'Dr. A. Kamau',
+    doctorPhone: '+254700000090',
+    hospital: 'Kileleshwa Medical Centre',
+    notes: 'Spare key with the neighbour at house 14.',
+  };
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', Buffer.from(raw, 'base64'), iv);
+  const body = Buffer.concat([cipher.update(JSON.stringify(details), 'utf8'), cipher.final()]);
+  const sealed = `v1:${Buffer.concat([iv, cipher.getAuthTag(), body]).toString('base64')}`;
+
+  await prisma.consentRecord.create({
+    data: {
+      subjectId: grace.id,
+      grantedById: grace.id,
+      type: 'MEDICAL_PROFILE',
+      policyVersion: '2026-10-1',
+      grantorRelationship: 'self',
+    },
+  });
+  await prisma.medicalProfile.create({
+    data: { elderlyId: grace.id, sealed, updatedById: grace.id },
+  });
+  await prisma.medicalProfileChange.create({
+    data: { elderlyId: grace.id, changedById: grace.id, fields: Object.keys(details) },
+  });
+  console.log(`  medical   details kept for ${grace.name}, agreed by her`);
 }
 
 main()

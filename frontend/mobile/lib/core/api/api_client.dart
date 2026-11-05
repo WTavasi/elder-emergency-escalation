@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../location/position_source.dart';
+import 'medical_models.dart';
 import 'models.dart';
 
 /// A request the API refused, carrying what it said.
@@ -398,13 +399,57 @@ class ApiClient {
   /// registered home, or a stay away from home that a caregiver recorded. So there is no
   /// location permission to ask for, no trail to protect, and nothing for this client to
   /// get wrong at the worst possible moment.
-  Future<Emergency> raiseAlert() async {
+  /// Raises an alert. [type] when it was said with the request, as "Hey Siri,
+  /// MzaziCare help fire" says it; [from] names where it came from: `siri`,
+  /// `assistant`, `widget` or `tile`.
+  Future<Emergency> raiseAlert({EmergencyType? type, String? from}) async {
     final Map<String, dynamic> body = await _send(
       'POST',
       '/alerts',
-      body: const <String, dynamic>{},
+      body: <String, dynamic>{'type': ?type?.wire, 'from': ?from},
     );
     return Emergency.fromJson(body);
+  }
+
+  /// Whether to offer the microphone after the press: a speech server and the elder's
+  /// consent.
+  Future<SpeechStatus> speechStatus(String elderId) async =>
+      SpeechStatus.fromJson(await _send('GET', '/elders/$elderId/speech'));
+
+  /// Sends what the elder said, recorded to [path], to be written down by our own speech
+  /// server. Answers with what was heard and whether it was reported. Longer than an
+  /// ordinary request: writing a minute of speech down takes a while.
+  Future<SpeechHeard> sendSpeech(String eventId, String path, {String mime = 'audio/mp4'}) async {
+    Future<http.StreamedResponse> send() async {
+      final http.MultipartRequest request =
+          http.MultipartRequest('POST', Uri.parse('$baseUrl/alerts/$eventId/speech'))
+            ..headers['Accept'] = 'application/json'
+            ..files.add(
+              await http.MultipartFile.fromPath(
+                'audio',
+                path,
+                contentType: http.MediaType.parse(mime),
+              ),
+            );
+      final Session? current = session;
+      if (current != null) request.headers['Authorization'] = 'Bearer ${current.accessToken}';
+      return _http.send(request).timeout(const Duration(seconds: 90));
+    }
+
+    http.Response response;
+    try {
+      response = await http.Response.fromStream(await send());
+      if (response.statusCode == 401 && session != null && await _refresh()) {
+        response = await http.Response.fromStream(await send());
+      }
+    } on Exception catch (error) {
+      throw NetworkException(_unreachable(error));
+    }
+    final Object? decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode >= 400) {
+      throw ApiException(response.statusCode, _messageFrom(decoded, response.statusCode));
+    }
+    return SpeechHeard.fromJson(decoded is Map<String, dynamic> ? decoded : <String, dynamic>{});
   }
 
   Future<Emergency> cancelAlert(String id) async {
@@ -546,6 +591,22 @@ class ApiClient {
   Future<List<NearbyService>> elderServices(String elderId) async =>
       NearbyService.listFromJson(await _send('GET', '/elders/$elderId/services'));
 
+  /// The elder's medical details, for the elder or a caregiver. A caregiver's look is
+  /// recorded, and the elder sees who looked.
+  Future<MedicalProfilePage> medicalProfile(String elderId) async =>
+      MedicalProfilePage.fromJson(await _send('GET', '/elders/$elderId/medical'));
+
+  /// Replaces the medical details. Needs the consent first.
+  Future<MedicalProfilePage> saveMedicalProfile(String elderId, MedicalDetails details) async =>
+      MedicalProfilePage.fromJson(
+        await _send('PUT', '/elders/$elderId/medical', body: details.toJson()),
+      );
+
+  /// The elder's medical details on an alert, for those asked to help. Each look is
+  /// recorded, so this is asked once per opening of the alert, not on every refresh.
+  Future<AlertMedical> alertMedical(String id) async =>
+      AlertMedical.fromJson(await _send('GET', '/alerts/$id/medical'));
+
   /// Ask for a service now, by hand: [service], or the one the emergency needs.
   Future<void> requestResponder(String id, {ResponderService? service}) async {
     await _send(
@@ -685,11 +746,21 @@ class ApiClient {
     required bool enabled,
     required List<String> times,
     int? graceMinutes,
+    CheckInEvery? every,
   }) async => CheckInsOverview.fromJson(
     await _send(
       'PUT',
       '/elders/$elderId/check-ins',
-      body: <String, dynamic>{'enabled': enabled, 'times': times, 'graceMinutes': ?graceMinutes},
+      body: <String, dynamic>{
+        'enabled': enabled,
+        'times': every == null ? times : const <String>[],
+        'graceMinutes': ?graceMinutes,
+        if (every != null) ...<String, dynamic>{
+          'every': every.minutes,
+          'from': every.from,
+          'until': every.until,
+        },
+      },
     ),
   );
 

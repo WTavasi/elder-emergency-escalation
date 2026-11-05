@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/api/medical_models.dart';
 import '../../core/api/models.dart';
 import '../../core/location/share_way_panel.dart';
 import '../../core/location/way_there.dart';
@@ -16,6 +17,7 @@ import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
+import '../medical/medical_words.dart';
 import '../voice/call_screen.dart';
 import 'alert_detail_controller.dart';
 import 'widgets/call_button.dart';
@@ -100,6 +102,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
           ),
           children: <Widget>[
             _Header(alert: alert),
+            if (detail != null && detail.speech.isNotEmpty)
+              _Said(speech: detail.speech, elderName: alert.elderName),
+            // Right under the name: whether this is one to hand on at once is the first
+            // thing a helper decides, and the history can decide it.
+            if (controller.medical case final AlertMedical medical)
+              _Medical(controller: controller, medical: medical, elderName: alert.elderName),
             _OnTheWay(
               controller: controller,
               alert: alert,
@@ -854,7 +862,7 @@ class _WhatHappened extends StatelessWidget {
     return switch (entry.action) {
       'EVENT_CREATED' when entry.trigger == AlertTrigger.missedCheckIn =>
         'Missed the daily check-in',
-      'EVENT_CREATED' => entry.byText ? '$who asked for help, by text' : '$who asked for help',
+      'EVENT_CREATED' => '$who asked for help${_how(entry)}',
       'CHECKED_IN_LATE' => '$who answered the check-in late',
       'VOLUNTEERS_ASKED' => 'Asked volunteers nearby',
       'VOLUNTEER_ACCEPTED' => '$who (volunteer) is going',
@@ -862,12 +870,19 @@ class _WhatHappened extends StatelessWidget {
       'VOLUNTEER_ARRIVED' => '$who (volunteer) arrived',
       'TIER_DISPATCHED' => _dispatched(entry),
       'ESCALATED' => _escalated(entry),
-      'ACKNOWLEDGED' => entry.byText ? '$who is on the way, by text' : '$who is on the way',
+      'ACKNOWLEDGED' => switch (entry.etaMinutes) {
+        final int minutes => '$who is on the way, by text, in about $minutes minutes',
+        null => entry.byText ? '$who is on the way, by text' : '$who is on the way',
+      },
       'ARRIVED' => '$who arrived',
       'VOICE_JOINED' => '$who joined the call',
       'DECLINED' => entry.byText ? '$who cannot come, by text' : '$who cannot come',
       'RESPONDER_REQUESTED' => '$who asked for an emergency responder',
       'TYPE_REPORTED' => _reported(who, entry),
+      'SPEECH_HEARD' => switch (entry.heardType) {
+        final EmergencyType heard => '$who spoke: ${heard.label.toLowerCase()}',
+        null => '$who spoke',
+      },
       'SERVICE_DISPATCHED' => _serviceAsked(entry),
       'STATION_ASKED' => _stationAsked(entry),
       'RESOLVED' => '$who closed it',
@@ -885,8 +900,19 @@ class _WhatHappened extends StatelessWidget {
   /// "Grace said: fire", by text when it came by text.
   static String _reported(String who, TimelineEntry entry) {
     final String what = entry.type?.label.toLowerCase() ?? 'something';
-    return entry.byText ? '$who said: $what, by text' : '$who said: $what';
+    return '$who said: $what${_how(entry)}';
   }
+
+  /// ", by text", ", to Siri": how something was said, when not with the app's buttons.
+  static String _how(TimelineEntry entry) => switch (entry.via) {
+    'sms' => ', by text',
+    'voice' => ', out loud',
+    'siri' => ', to Siri',
+    'assistant' => ', to the Assistant',
+    'widget' => ', from the home screen',
+    'tile' => ', from quick settings',
+    _ => '',
+  };
 
   /// "Fire service asked at once", or that none covers the place.
   /// "Kilimani Police Station asked, about 6 minutes away by road".
@@ -1367,6 +1393,233 @@ class _Step extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// What the elder said after pressing help, in their own words and, when they spoke
+/// another language, in English under it. Newest first: the latest is what is true now.
+class _Said extends StatelessWidget {
+  const _Said({required this.speech, required this.elderName});
+
+  final List<SpeechHeard> speech;
+  final String elderName;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<SpeechHeard> said = speech
+        .where((SpeechHeard s) => s.transcript.isNotEmpty)
+        .toList()
+        .reversed
+        .toList();
+    if (said.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: MzaziSpace.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SectionLabel('What ${firstNameOf(elderName)} said'),
+          for (final (int index, SpeechHeard heard) in said.indexed) ...<Widget>[
+            if (index > 0)
+              const Divider(height: MzaziSpace.s24)
+            else
+              const SizedBox(height: MzaziSpace.s8),
+            Text('\u201c${heard.transcript}\u201d', style: theme.textTheme.bodyLarge),
+            if (heard.english case final String english) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text('In English: $english', style: theme.textTheme.bodyMedium),
+            ],
+            const SizedBox(height: MzaziSpace.s4),
+            Text(
+              heard.heardType == null
+                  ? _time(heard.at)
+                  : '${_time(heard.at)} · Heard: ${heard.heardType!.label.toLowerCase()}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _time(DateTime at) => '${at.hour}:${at.minute.toString().padLeft(2, '0')}';
+}
+
+/// The elder's medical details on the alert: anything that makes this emergency more
+/// serious first, with why, and the service to ask because of it; then the facts an
+/// ambulance asks for; the rest folded away. Never in red: it informs, and the one button
+/// it may offer is the amber of calling somebody in.
+class _Medical extends StatefulWidget {
+  const _Medical({required this.controller, required this.medical, required this.elderName});
+
+  final AlertDetailController controller;
+  final AlertMedical medical;
+  final String elderName;
+
+  @override
+  State<_Medical> createState() => _MedicalState();
+}
+
+class _MedicalState extends State<_Medical> {
+  bool _all = false;
+
+  String get _first => firstNameOf(widget.elderName);
+
+  @override
+  Widget build(BuildContext context) {
+    final AlertMedical medical = widget.medical;
+    final ThemeData theme = Theme.of(context);
+    final String? line = switch (medical.status) {
+      AlertMedicalStatus.none => 'No medical details saved.',
+      AlertMedicalStatus.notShared => "$_first hasn't agreed to share medical details.",
+      AlertMedicalStatus.notAsked => "You'll see medical details once we ask you to help.",
+      _ => null,
+    };
+    if (medical.status != AlertMedicalStatus.shown && line == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: MzaziSpace.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const SectionLabel('Medical details'),
+          const SizedBox(height: MzaziSpace.s8),
+          if (line != null)
+            Text(line, style: theme.textTheme.bodyLarge)
+          else
+            ..._shown(context, medical, medical.details ?? MedicalDetails.empty),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _shown(BuildContext context, AlertMedical medical, MedicalDetails details) {
+    final ThemeData theme = Theme.of(context);
+    final bool dark = theme.brightness == Brightness.dark;
+    final Color amber = dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg;
+    final List<MedicalHighlight> why = medical.highlights
+        .where((MedicalHighlight h) => h.why != null)
+        .toList();
+    final List<String> also = medical.highlights
+        .where((MedicalHighlight h) => h.why == null)
+        .map((MedicalHighlight h) => h.label)
+        .toList();
+    final String? facts = ageAndBlood(medical.age, details.bloodType);
+    final ResponderService? askFor = widget.controller.medicalAskFor;
+    final bool busy = widget.controller.isWorking;
+
+    return <Widget>[
+      if (medical.serious) ...<Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(Icons.warning_amber_rounded, color: amber),
+            const SizedBox(width: MzaziSpace.s8),
+            Expanded(
+              child: Text(
+                "$_first's health makes this more serious.",
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: MzaziSpace.s8),
+      ],
+      if (facts != null) Text(facts, style: theme.textTheme.bodyLarge?.figures),
+      for (final MedicalHighlight item in why) ...<Widget>[
+        const Divider(height: MzaziSpace.s24),
+        Text(item.label, style: theme.textTheme.titleMedium),
+        const SizedBox(height: MzaziSpace.s4),
+        Text(item.why!, style: theme.textTheme.bodyMedium),
+      ],
+      if (also.isNotEmpty) ...<Widget>[
+        const Divider(height: MzaziSpace.s24),
+        Text('Also: ${also.join(', ')}.', style: theme.textTheme.bodyMedium),
+      ],
+      if (details.allergies case final String allergies) ...<Widget>[
+        const Divider(height: MzaziSpace.s24),
+        Text('Allergies', style: theme.textTheme.titleMedium),
+        const SizedBox(height: MzaziSpace.s4),
+        Text(allergies, style: theme.textTheme.bodyMedium),
+      ],
+      if (askFor != null) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s16),
+        FilledButton.icon(
+          style: CallStyle.strong(context),
+          onPressed: busy ? null : () => unawaited(widget.controller.requestResponder(askFor)),
+          icon: Icon(serviceIcon(askFor)),
+          label: Text(askFor.ask),
+        ),
+      ],
+      if (_hasMore(details)) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            // In ink: the brand red is kept for what needs a person.
+            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.onSurface),
+            onPressed: () => setState(() => _all = !_all),
+            icon: AnimatedRotation(
+              turns: _all ? 0.25 : 0,
+              duration: MzaziMotion.quick,
+              child: const Icon(Icons.chevron_right),
+            ),
+            label: Text(_all ? 'Fewer medical details' : 'All medical details'),
+          ),
+        ),
+        if (_all) ..._more(context, details),
+      ],
+      const SizedBox(height: MzaziSpace.s8),
+      Text('$_first can see that you looked.', style: theme.textTheme.bodySmall),
+    ];
+  }
+
+  static bool _hasMore(MedicalDetails d) =>
+      d.medications != null ||
+      d.conditions != null ||
+      d.languages != null ||
+      d.doctorName != null ||
+      d.doctorPhone != null ||
+      d.hospital != null ||
+      d.notes != null;
+
+  List<Widget> _more(BuildContext context, MedicalDetails details) {
+    final ThemeData theme = Theme.of(context);
+    Widget fact(String label, String value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(label, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 2),
+          Text(value, style: theme.textTheme.bodyLarge),
+        ],
+      ),
+    );
+
+    return <Widget>[
+      if (details.medications case final String text) fact('Medicines', text),
+      if (details.conditions case final String text) fact('Other conditions', text),
+      if (details.languages case final String text) fact('Speaks', text),
+      if (details.doctorName case final String text) fact('Doctor', text),
+      if (details.hospital case final String text) fact('Their hospital', text),
+      if (details.notes case final String text) fact('Notes', text),
+      if (details.doctorPhone case final String phone) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s8),
+        // Named in full: "Call Dr." is what a first name makes of a title.
+        OutlinedButton.icon(
+          style: CallStyle.soft(context),
+          onPressed: () => unawaited(
+            CallButton.dial(context, name: details.doctorName ?? 'their doctor', phone: phone),
+          ),
+          icon: const Icon(Icons.phone),
+          label: Text('Call ${details.doctorName ?? 'their doctor'}'),
+        ),
+      ],
+    ];
   }
 }
 

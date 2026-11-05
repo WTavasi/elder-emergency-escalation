@@ -1153,3 +1153,140 @@ person's initials, then sections of rows that open a page, switch something, cho
 pull-down, or open in place. What is used now and then folds away (care circles, history,
 the services nearby, the daily check-in); what matters most is out in the open: on the
 elder's page, a row to call each person in their circle, first.
+
+## Medical details, under the Data Protection Act
+
+On 7 November 2026 each elder gained a medical ID: what a helper should know in an
+emergency, shown on the alerts they are asked about.
+
+**Why it is shaped this way.** Health data is sensitive personal data under the Kenya Data
+Protection Act 2019 (section 2), and Part V (sections 44 to 46) narrows when it may be
+processed, with section 46 written for data about health. These choices follow from that
+and from the general principles (section 25), consent (sections 30 and 32), protection by
+design (section 41) and retention (section 39). Read the Act itself and the ODPC's
+guidance note on processing health data before a real deployment: this project could
+only read summaries of sections 45 and 46 when it was built.
+
+- **Its own consent.** `MEDICAL_PROFILE` is never part of registration. Nothing is kept
+  until somebody agrees, and a caregiver's agreement is for keeping the details: family
+  and responders see them only once the elder has agreed for themselves. The elder is
+  texted and asked at their next sign-in, as for every consent given for them.
+- **Who sees them.** Caregivers, anytime, since they look after the elder and keep the
+  details current. Family and emergency responders, only while an alert is open and only
+  once they were sent it. Volunteers never; administrators never, though the console shows
+  who opened them during an alert, for oversight.
+- **Only what an emergency needs** (minimisation). Sixteen ticks for what changes what a
+  helper does in the next ten minutes, a few short lines for the rest, and nothing a
+  doctor's record holds beyond that.
+- **Every look recorded, and the elder sees who.** By person, time and alert. Kept after
+  the details are deleted, as the account of who saw them, and removed with the audit
+  log after `RETENTION_AUDIT_LOG_DAYS`. Every change is recorded by part (never by what it
+  said), and the elder is texted when somebody else made it.
+- **Sealed at rest.** AES-256-GCM with `MEDICAL_DATA_KEY`, a key the database never
+  holds, so a copy of the database or a backup carries no readable health data. Without
+  the key the feature is off and says so.
+- **Never in a text or a push.** Both pass through services outside Kenya (section 48 and
+  onward govern transfers abroad). Notifications say only that details changed; the
+  details stay on this server and in the app.
+- **Withdrawal deletes.** Withdrawing the consent, or the service itself, deletes the
+  details and the record of changes in the same transaction. A closed account's details
+  go at the next retention sweep.
+
+**Read against the emergency.** Each tick carries what it means for each type: blood
+thinners in a fall ("a fall can bleed inside"), home oxygen in a fire, insulin when
+unwell. When a tick makes an emergency more serious than it looks, the alert says so in
+plain words and offers the service to ask, an ambulance for a fall, in the amber of
+calling somebody in. It never changes severity or asks a service by itself: a helper
+decides. The wording is a prompt to get a professional sooner, not a diagnosis.
+
+**Open questions for the project owner.** Section 46 limits health data to processing by
+or under the responsibility of a health care provider, or by somebody bound to
+confidentiality. Whether MzaziCare, its staff and the responders it asks meet that, for
+example through confidentiality terms and the ODPC's registration of data controllers
+handling health data, needs advice from a lawyer before a real deployment. A data
+protection impact assessment (section 31) should be written for it, and the privacy
+notice needs a line about it, which is the owner's to write. An elder who cannot agree
+for themselves, such as one with advanced dementia, can have details kept but not
+shared; whether a guardian's consent should count needs the same advice.
+
+## Saying it: Siri, the widget, and speaking after the press
+
+On 8 November 2026 an elder could ask for help, and say what is happening, without
+finding the button or reading a list.
+
+**"MzaziCare help fire" chooses Fire, and the fire service follows.** Siri hears the
+phrase on the phone (App Shortcuts, nothing to set up) and opens the app with the type,
+which raises the alert as the button does, countdown and all, and reports the type at
+once. The service is asked after the same 25 seconds as a tap, so a mistake can still be
+stopped or changed. Every type works the same way, in English and Swahili ("MzaziCare
+msaada moto"). Android has no equal to App Shortcuts that takes words after the name, so
+it has a home-screen Help button, a quick-settings tile, launcher shortcuts for each type
+and the Assistant's "open fire in MzaziCare".
+
+**One word list for everything said or written.** HELP texts, speech and later replies
+read the same English, Swahili and Sheng lists (`shared/language`), on our own server.
+Rules rather than a language model, because a safety decision has to be readable, testable
+and correctable by the people running it, and because nothing said needs to leave the
+server to be understood.
+
+**Speech never lowers anything.** What is heard is reported only when nothing was, or
+when it is more urgent than what was: "nimeanguka" after Fire was tapped is kept as what
+was heard, not reported. Asking a service follows only from a reported type, as for a tap.
+
+**Under the Data Protection Act.** The recording is personal data, often about health.
+So: its own consent (`VOICE_REPORTS`), never part of registration; our own speech server
+(Whisper, run in Docker), so nothing said goes to a company abroad; the recording deleted
+once written down and never stored; the words kept 30 days (`SPEECH_RETENTION_DAYS`) for
+the people helping, and the trail keeps only the language and what was heard. A data
+protection impact assessment should cover this with the medical details.
+
+**iOS 17 for Siri.** Siri's other words for each type ("moto", "nimeanguka") need iOS
+17, and Xcode reads them when building, so the phrases are offered from iOS 17. On iOS 15
+and 16 the app works as before, without them.
+
+**Not verified here.** The Swift for Siri and the Kotlin for the widget, tile and
+shortcuts could not be compiled where they were written; they need a build on a Mac and a
+phone. The speech server was tested with a stand-in that answers as Whisper does, because
+the model could not be downloaded there.
+
+## Check-ins through the day, and each elder's rhythm
+
+On 9 November 2026 a check-in could be every hour from 08:00 to 20:00, and learned when
+an elder's silence is unusual.
+
+**Every so often, as a list of times.** An interval is stored as the times it works out to,
+with the step and the window kept beside them, so the one-minute clock, the agreement and
+the history are unchanged. The time to answer must be shorter than the step: two
+check-ins waiting at once would be one too many questions for an elder.
+
+**A rhythm can only make a reminder sooner.** The reminder used to go half way through the
+time to answer. For an elder who always answers within two minutes, ten minutes of
+silence is already unusual, so the reminder now goes at twice their slow answer, at least
+five minutes in, and never later than half way. Five answers before the rhythm is trusted;
+fewer, and the fixed rule stands. The alert itself is never earlier or later than the
+deadline the elder agreed to.
+
+**A weekly note, not an alarm.** Answers drifting later, or more missed, can be the first
+sign of somebody becoming unwell, and is worth a call before it is an emergency. Once a
+week, on Monday morning on the elder's clock, the week is compared with the four before
+it, and only a clear change (ten minutes later and twice as late, or two or more missed
+and twice the share) texts their caregivers. A normal week sends nothing.
+
+## Replies in their own words
+
+On 10 November 2026 a text reply was read for what it meant, not only its first word.
+
+**Rules on our own server, in three languages.** English, Swahili and Sheng word lists
+(`shared/language/replies.ts`), the same approach as the emergency words: readable,
+testable and correctable, and nothing anybody writes leaves the server to be understood.
+`1` and `2` still win. "No problem" and "hakuna shida" are yes, though they carry a no.
+
+**Unsure means asking back.** A reply that says yes and no ("siwezi sasa, nitakuja
+baadaye"), or neither, is not guessed at: the person is sent the two answers again. A
+wrong yes would stop the chain for somebody who is not coming; a wrong no would skip
+somebody who is.
+
+**How soon, when they say.** "Nakuja dakika kumi", "nusu saa", "baada ya saa moja", "in
+5". A bare "saa mbili" is left alone, because it is eight o'clock as well as two hours.
+The time is kept on the alert and shown to the elder when the person coming is not sharing
+their way there; a shared way there, measured by road, wins over what was said.

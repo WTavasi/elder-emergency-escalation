@@ -82,6 +82,78 @@ describe('CheckInsService', () => {
       expect(t.saved().confirmedAt).toBeInstanceOf(Date);
     });
 
+    it('works out "every hour from 08:00 to 20:00" as thirteen times, and keeps how', async () => {
+      const t = build();
+      await t.service.setSchedule('elder-1', 'elder-1', Role.ELDER, {
+        enabled: true,
+        times: [],
+        every: 60,
+        from: '08:00',
+        until: '20:00',
+        graceMinutes: 20,
+      });
+
+      const saved = t.saved();
+      expect(saved.times).toHaveLength(13);
+      expect((saved.times as number[])[0]).toBe(480);
+      expect((saved.times as number[])[12]).toBe(1200);
+      expect(saved).toMatchObject({ intervalMinutes: 60, windowStart: 480, windowEnd: 1200 });
+    });
+
+    it('refuses an interval shorter than the time to answer, or a window that ends first', async () => {
+      await expect(
+        build().service.setSchedule('elder-1', 'elder-1', Role.ELDER, {
+          enabled: true,
+          times: [],
+          every: 30,
+          from: '08:00',
+          until: '20:00',
+          graceMinutes: 30,
+        }),
+      ).rejects.toThrow('Give less time to answer than the time between check-ins.');
+      await expect(
+        build().service.setSchedule('elder-1', 'elder-1', Role.ELDER, {
+          enabled: true,
+          times: [],
+          every: 60,
+          from: '20:00',
+          until: '08:00',
+        }),
+      ).rejects.toThrow('Stop asking later than you start.');
+    });
+
+    it('shows the circle when the elder agreed, and how soon they usually answer', async () => {
+      const t = build({
+        schedule: {
+          elderId: 'elder-1',
+          enabled: true,
+          times: [540],
+          graceMinutes: 30,
+          intervalMinutes: null,
+          windowStart: null,
+          windowEnd: null,
+          confirmedAt: AGREED,
+          setBy: null,
+        },
+      });
+      const due = new Date('2026-10-20T06:00:00Z');
+      t.prisma.checkIn.findMany.mockImplementation((args: { where: { status?: unknown } }) =>
+        Promise.resolve(
+          args.where.status === CheckInStatus.ANSWERED
+            ? [1, 2, 2, 3, 2, 1].map((m) => ({
+                dueAt: due,
+                answeredAt: new Date(due.getTime() + m * 60_000),
+              }))
+            : [],
+        ),
+      );
+
+      const overview = await t.service.overview('elder-1', 'family-1', Role.FAMILY_MEMBER);
+
+      expect(overview.schedule?.agreedAt).toBe(AGREED.toISOString());
+      expect(overview.rhythm).toEqual({ answers: 6, usualMinutes: 2, nudgeAfterMinutes: 6 });
+    });
+
     it('waits for the elder to agree when somebody in their chain sets it up', async () => {
       const t = build();
       await t.service.setSchedule('elder-1', 'carer-1', Role.CAREGIVER, {

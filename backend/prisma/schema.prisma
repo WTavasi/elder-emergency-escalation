@@ -149,6 +149,9 @@ enum AuditAction {
   /// EXTENSION. One station was asked: the nearest, or the next after a decline or no
   /// answer. Its detail carries the estimated time by road.
   STATION_ASKED
+  /// EXTENSION. The elder spoke after pressing help. The detail says in which language,
+  /// what type was heard, and whether it was reported. Never the words themselves.
+  SPEECH_HEARD
 
   @@map("audit_action")
 }
@@ -194,6 +197,14 @@ enum ConsentType {
   /// EXTENSION. Vetted community volunteers near the elder may be asked to go in an
   /// emergency, and the one who accepts is told the elder's name and address.
   COMMUNITY_HELP
+  /// EXTENSION. The elder's medical details are kept, and shown to those asked about an
+  /// open emergency. Health data is sensitive personal data, so this is its own consent,
+  /// never part of registration. Withdrawing it deletes the details.
+  MEDICAL_PROFILE
+  /// EXTENSION. After pressing help, the elder may say what is happening. The recording
+  /// goes to our own speech-to-text server, is deleted once written down, and the words
+  /// are kept for 30 days.
+  VOICE_REPORTS
 
   @@map("consent_type")
 }
@@ -277,24 +288,29 @@ model User {
   stationLongitude Decimal? @map("station_longitude") @db.Decimal(9, 6)
 
   // --- relations ---
-  triggeredEvents     EmergencyEvent[]   @relation("triggeredBy")
-  acknowledgedEvents  EmergencyEvent[]   @relation("acknowledgedBy")
-  assignmentsAsElder  CareAssignment[]   @relation("assignmentElder")
-  assignmentsAsCarer  CareAssignment[]   @relation("assignmentResponder")
+  triggeredEvents     EmergencyEvent[]       @relation("triggeredBy")
+  acknowledgedEvents  EmergencyEvent[]       @relation("acknowledgedBy")
+  assignmentsAsElder  CareAssignment[]       @relation("assignmentElder")
+  assignmentsAsCarer  CareAssignment[]       @relation("assignmentResponder")
   notifications       Notification[]
   auditLogs           AuditLog[]
-  consentsAboutMe     ConsentRecord[]    @relation("consentSubject")
-  consentsIGranted    ConsentRecord[]    @relation("consentGrantor")
-  invitationsAsElder  ChainInvitation[]  @relation("invitationElder")
-  invitationsSent     ChainInvitation[]  @relation("invitationSender")
+  consentsAboutMe     ConsentRecord[]        @relation("consentSubject")
+  consentsIGranted    ConsentRecord[]        @relation("consentGrantor")
+  invitationsAsElder  ChainInvitation[]      @relation("invitationElder")
+  invitationsSent     ChainInvitation[]      @relation("invitationSender")
   preferences         UserPreference?
-  checkInSchedule     CheckInSchedule?   @relation("checkInScheduleElder")
-  checkInSchedulesSet CheckInSchedule[]  @relation("checkInScheduleSetBy")
+  checkInSchedule     CheckInSchedule?       @relation("checkInScheduleElder")
+  checkInSchedulesSet CheckInSchedule[]      @relation("checkInScheduleSetBy")
   checkIns            CheckIn[]
-  volunteerProfile    VolunteerProfile?  @relation("volunteerProfile")
-  volunteersReviewed  VolunteerProfile[] @relation("volunteerReviewer")
+  volunteerProfile    VolunteerProfile?      @relation("volunteerProfile")
+  volunteersReviewed  VolunteerProfile[]     @relation("volunteerReviewer")
   volunteerCalls      VolunteerCall[]
-  volunteeredEvents   EmergencyEvent[]   @relation("eventVolunteer")
+  volunteeredEvents   EmergencyEvent[]       @relation("eventVolunteer")
+  medicalProfile      MedicalProfile?        @relation("medicalProfileElder")
+  medicalChanges      MedicalProfileChange[] @relation("medicalChangeElder")
+  medicalChangesMade  MedicalProfileChange[] @relation("medicalChangeBy")
+  medicalViews        MedicalProfileView[]   @relation("medicalViewElder")
+  medicalViewsMade    MedicalProfileView[]   @relation("medicalViewBy")
 
   @@index([role])
   @@map("users")
@@ -411,13 +427,16 @@ model EmergencyEvent {
   /// timer. Null once asked, or when nothing is waiting.
   serviceDueAt DateTime? @map("service_due_at") @db.Timestamptz(3)
 
-  triggeredAt    DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
-  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+  triggeredAt     DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(3)
+  acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+  /// EXTENSION. When the person who took it on said they would be there, by text:
+  /// "nakuja dakika kumi" ten minutes after they replied. Null when they did not say.
+  ownerExpectedAt DateTime? @map("owner_expected_at") @db.Timestamptz(3)
   /// EXTENSION. When the owner reached the elder. Kept when the emergency moves on (an
   /// owner on scene may still call in a responder), so "help arrived" stays true.
   /// Only the time is kept: the positions shared on the way live in Redis and expire.
-  arrivedAt      DateTime? @map("arrived_at") @db.Timestamptz(3)
-  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+  arrivedAt       DateTime? @map("arrived_at") @db.Timestamptz(3)
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(3)
 
   /// EXTENSION. What raised it: the elder pressing for help, or a daily check-in they
   /// did not answer. A missed check-in is held at the standard band and has no cancel
@@ -432,13 +451,15 @@ model EmergencyEvent {
   volunteerAcceptedAt DateTime? @map("volunteer_accepted_at") @db.Timestamptz(3)
   volunteerArrivedAt  DateTime? @map("volunteer_arrived_at") @db.Timestamptz(3)
 
-  elder          User            @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
-  owner          User?           @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
-  volunteer      User?           @relation("eventVolunteer", fields: [volunteerId], references: [id], onDelete: SetNull)
+  elder          User                 @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
+  owner          User?                @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  volunteer      User?                @relation("eventVolunteer", fields: [volunteerId], references: [id], onDelete: SetNull)
   notifications  Notification[]
   auditLogs      AuditLog[]
   checkIns       CheckIn[]
   volunteerCalls VolunteerCall[]
+  medicalViews   MedicalProfileView[]
+  speech         EventSpeech[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -690,8 +711,20 @@ model CheckInSchedule {
   times Int[]
 
   /// How long the elder has to answer before their circle is alerted. A reminder goes at
-  /// half of it.
+  /// half of it, or sooner when an answer is unusually late for this elder.
   graceMinutes Int @default(30) @map("grace_minutes")
+
+  /// EXTENSION. Every this many minutes from windowStart to windowEnd, "every hour from
+  /// 08:00 to 20:00", instead of times chosen one by one. Null for chosen times. `times`
+  /// holds what it works out to either way, so the clock reads one list.
+  intervalMinutes Int? @map("interval_minutes") @db.SmallInt
+  /// Minutes after local midnight, as for `times`.
+  windowStart     Int? @map("window_start") @db.SmallInt
+  windowEnd       Int? @map("window_end") @db.SmallInt
+
+  /// EXTENSION. When this elder's week of answers was last compared with the weeks
+  /// before, for the weekly note to their caregivers.
+  rhythmCheckedAt DateTime? @map("rhythm_checked_at") @db.Timestamptz(3)
 
   /// Who set it up last: the elder, or somebody in their chain.
   setById String? @map("set_by_id") @db.Uuid
@@ -827,4 +860,92 @@ model VolunteerCall {
   @@unique([eventId, volunteerId])
   @@index([volunteerId, askedAt])
   @@map("volunteer_calls")
+}
+
+// ---------------------------------------------------------------------------
+// medical_profiles. EXTENSION. What a responder should know about an elder's health,
+// as the phone's medical ID card holds it: conditions, medicines, allergies, blood type,
+// their doctor. Health data is sensitive personal data under the Data Protection Act, so
+// the details are sealed (AES-256-GCM, MEDICAL_DATA_KEY) and stored as one value the
+// database cannot read. Nothing queries inside them. Kept only while the elder's
+// MEDICAL_PROFILE consent stands; withdrawing it deletes the row.
+// ---------------------------------------------------------------------------
+
+model MedicalProfile {
+  elderlyId   String   @id @map("elderly_id") @db.Uuid
+  /// "v1:" then base64 of the 12-byte IV, the 16-byte tag and the ciphertext.
+  sealed      String
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  elder User @relation("medicalProfileElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+
+  @@map("medical_profiles")
+}
+
+/// EXTENSION. Who changed the medical details and which parts, so the elder sees every
+/// change. The names of the parts only, never what they said. Deleted with the details.
+model MedicalProfileChange {
+  id          String   @id @default(uuid()) @map("change_id") @db.Uuid
+  elderlyId   String   @map("elderly_id") @db.Uuid
+  changedById String?  @map("changed_by_id") @db.Uuid
+  /// Which parts changed, for example ["medications", "allergies"].
+  fields      String[]
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  elder     User  @relation("medicalChangeElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("medicalChangeBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([elderlyId, changedAt])
+  @@map("medical_profile_changes")
+}
+
+/// EXTENSION. Every time somebody other than the elder opened the medical details: who,
+/// when, and for which emergency, if any. Kept after the details are deleted, as the
+/// record of who saw them, and removed with the audit log after RETENTION_AUDIT_LOG_DAYS.
+model MedicalProfileView {
+  id        String   @id @default(uuid()) @map("view_id") @db.Uuid
+  elderlyId String   @map("elderly_id") @db.Uuid
+  viewerId  String?  @map("viewer_id") @db.Uuid
+  /// The emergency it was opened for. Null when a caregiver opened it outside one.
+  eventId   String?  @map("event_id") @db.Uuid
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz(3)
+
+  elder  User            @relation("medicalViewElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+  viewer User?           @relation("medicalViewBy", fields: [viewerId], references: [id], onDelete: SetNull)
+  event  EmergencyEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([elderlyId, viewedAt])
+  @@index([eventId])
+  @@map("medical_profile_views")
+}
+
+// ---------------------------------------------------------------------------
+// event_speech. EXTENSION. What the elder said after pressing help, written down by
+// our own speech-to-text server, in their words and in English. The recording itself
+// is never kept. Deleted after SPEECH_RETENTION_DAYS (30).
+// ---------------------------------------------------------------------------
+
+model EventSpeech {
+  id         String         @id @default(uuid()) @map("speech_id") @db.Uuid
+  eventId    String         @map("event_id") @db.Uuid
+  /// As said, in the language it was said in.
+  transcript String         @db.VarChar(2000)
+  /// In English, when it was said in another language. Null when it was English.
+  english    String?        @db.VarChar(2000)
+  /// The language the server heard, such as "sw" or "en".
+  language   String?        @db.VarChar(8)
+  /// What the words say is happening. Null when they do not say.
+  heardType  EmergencyType? @map("heard_type")
+  /// Whether heardType was reported on the emergency, or was kept as what was heard
+  /// because something as urgent was already reported.
+  applied    Boolean        @default(false)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  event EmergencyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("event_speech")
 }

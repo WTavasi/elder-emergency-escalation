@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
@@ -19,8 +21,21 @@ class HelpProgress extends StatelessWidget {
     this.compact = false,
     this.onReport,
     this.reporting = false,
+    this.onSpeak,
+    this.heard,
+    this.listening = false,
     super.key,
   });
+
+  /// Listens to the elder say what is happening. Null when speaking is not offered: no
+  /// speech server, or no consent.
+  final Future<void> Function()? onSpeak;
+
+  /// What they last said, as written down.
+  final SpeechHeard? heard;
+
+  /// What they said is being written down.
+  final bool listening;
 
   /// Says what is happening. Null where the screen is shown without an API, as in a test
   /// of the steps alone, and then the button is not offered.
@@ -71,10 +86,19 @@ class HelpProgress extends StatelessWidget {
         : owner == null
         ? "$helperVolunteer is a volunteer who lives near you. We've told your family too."
         : '$helperVolunteer, a volunteer near you, is ${(volunteer?.hasArrived ?? false) ? 'also with you' : 'also coming'}.';
-    // The time only, while they are on their way.
-    final String? when = step == 1 && journey != null
+    // The time only, while they are on their way: from their way there when they share
+    // it, or from what they said by text ("nakuja dakika kumi").
+    final DateTime? expected = owner != null ? emergency?.ownerExpectedAt : null;
+    final int? saidSeconds = expected?.difference(DateTime.now()).inSeconds;
+    final String? when = step != 1
+        ? null
+        : journey != null
         ? '${_capitalised(timeAway(journey.etaSeconds))} away.'
-        : null;
+        : saidSeconds == null
+        ? null
+        : saidSeconds > 60
+        ? '${_capitalised(timeAway(saidSeconds))} away.'
+        : 'Should be with you any minute.';
     // Nothing under the headline once somebody is with them: it would only repeat it.
     final String? detail = switch (step) {
       2 => null,
@@ -123,8 +147,11 @@ class HelpProgress extends StatelessWidget {
                       const SizedBox(height: MzaziSpace.s24),
                       WhatsHappening(
                         reported: emergency?.reportedType,
-                        busy: reporting,
+                        busy: reporting || listening,
                         onReport: onReport!,
+                        onSpeak: onSpeak,
+                        heard: heard,
+                        listening: listening,
                       ),
                     ],
                     const Spacer(),
@@ -161,12 +188,44 @@ class WhatsHappening extends StatelessWidget {
     required this.reported,
     required this.busy,
     required this.onReport,
+    this.onSpeak,
+    this.heard,
+    this.listening = false,
     super.key,
   });
 
   final EmergencyType? reported;
   final bool busy;
   final Future<void> Function(EmergencyType type) onReport;
+
+  /// Saying it out loud instead, when it is offered.
+  final Future<void> Function()? onSpeak;
+  final SpeechHeard? heard;
+  final bool listening;
+
+  /// "Say it out loud", or what it became once said.
+  List<Widget> _spoken(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final Future<void> Function()? speak = onSpeak;
+    final String? words = heard?.transcript;
+    return <Widget>[
+      if (speak != null) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s8),
+        OutlinedButton.icon(
+          onPressed: busy ? null : () => unawaited(speak()),
+          icon: const Icon(Icons.mic_none),
+          label: Text(listening ? 'Writing it down…' : 'Say it out loud'),
+        ),
+      ],
+      if (words != null && words.isNotEmpty) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s8),
+        Text('You said: \u201c$words\u201d', style: theme.textTheme.bodyLarge),
+      ] else if (heard != null) ...<Widget>[
+        const SizedBox(height: MzaziSpace.s8),
+        Text("We didn't hear anything. Try again, or tap.", style: theme.textTheme.bodyLarge),
+      ],
+    ];
+  }
 
   Future<void> _ask(BuildContext context) async {
     final EmergencyType? chosen = await showActionSheet<EmergencyType?>(
@@ -193,10 +252,16 @@ class WhatsHappening extends StatelessWidget {
     final EmergencyType? said = reported;
 
     if (said == null) {
-      return OutlinedButton.icon(
-        onPressed: busy ? null : () => _ask(context),
-        icon: const Icon(Icons.campaign_outlined),
-        label: Text(busy ? 'Sending…' : "Say what's happening"),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          OutlinedButton.icon(
+            onPressed: busy ? null : () => _ask(context),
+            icon: const Icon(Icons.campaign_outlined),
+            label: Text(busy && !listening ? 'Sending…' : "Say what's happening"),
+          ),
+          ..._spoken(context),
+        ],
       );
     }
 
@@ -227,9 +292,10 @@ class WhatsHappening extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
             onPressed: busy ? null : () => _ask(context),
-            child: Text(busy ? 'Sending…' : 'Change'),
+            child: Text(busy && !listening ? 'Sending…' : 'Change'),
           ),
         ),
+        ..._spoken(context),
       ],
     );
   }

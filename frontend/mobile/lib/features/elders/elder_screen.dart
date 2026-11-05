@@ -10,8 +10,10 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
+import '../medical/medical_id_screen.dart';
 import '../profile/nearby_services.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
@@ -342,6 +344,23 @@ class _ElderScreenState extends State<ElderScreen> {
               const SizedBox(height: MzaziSpace.s32),
               const SectionLabel('Emergency services near them'),
               NearbyServices(api: widget.api, elderId: widget.elderId, plain: true),
+              // Caregivers only. Family see these on an alert they were asked about.
+              if (elder.canEdit) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s32),
+                const SectionLabel('Medical details'),
+                const _Fact('What helpers should know in an emergency.'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => openScreen(
+                      context,
+                      MedicalIdScreen(api: widget.api, elderId: widget.elderId, forElder: false),
+                    ),
+                    icon: const Icon(Icons.medical_information_outlined),
+                    label: const Text('Medical details'),
+                  ),
+                ),
+              ],
               const SizedBox(height: MzaziSpace.s32),
               const SectionLabel('Privacy'),
               Align(

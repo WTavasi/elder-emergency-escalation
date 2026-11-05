@@ -88,6 +88,7 @@ class _CheckInSettingsState extends State<CheckInSettings> {
         enabled: draft.enabled,
         times: draft.enabled ? draft.times : const <String>[],
         graceMinutes: draft.graceMinutes,
+        every: draft.enabled ? draft.every : null,
       );
       if (mounted) setState(() => _overview = updated);
     } on ApiException catch (failure) {
@@ -106,18 +107,53 @@ class _CheckInSettingsState extends State<CheckInSettings> {
           : "Off. We can ask $_first each day if they're OK. No answer? We tell the people below. "
                 '$_first must agree first.';
     }
-    final String times = schedule.timesInWords;
+    final String when = schedule.inWords;
     final int grace = schedule.graceMinutes;
     if (schedule.waitingForElder) {
       return widget.forElder
-          ? 'Daily at $times, after you agree on your home screen.'
-          : 'Daily at $times, after $_first agrees on their phone.';
+          ? '$when, after you agree on your home screen.'
+          : '$when, after $_first agrees on their phone.';
     }
     return widget.forElder
-        ? 'Daily at $times. No answer in $grace minutes? We tell your family.'
-        : 'Daily at $times. No answer in $grace minutes? We alert the people below, like a '
+        ? '$when. No answer in $grace minutes? We tell your family.'
+        : '$when. No answer in $grace minutes? We alert the people below, like a '
               'help-button press.';
   }
+
+  /// When the elder agreed, for the circle, and how soon they usually answer.
+  List<String> _details(CheckInsOverview overview) {
+    final CheckInSchedule? schedule = overview.schedule;
+    if (schedule == null || !schedule.enabled) return const <String>[];
+    final DateTime? agreed = schedule.agreedAt;
+    final CheckInRhythm? rhythm = overview.rhythm;
+    return <String>[
+      if (!widget.forElder && agreed != null && !schedule.waitingForElder)
+        '$_first agreed on ${agreed.day} ${_months[agreed.month - 1]}.',
+      if (rhythm != null)
+        widget.forElder
+            ? 'You usually answer within ${_minutes(rhythm.usualMinutes)}. No answer after '
+                  '${_minutes(rhythm.nudgeAfterMinutes)}? We remind you.'
+            : '$_first usually answers within ${_minutes(rhythm.usualMinutes)}. No answer after '
+                  '${_minutes(rhythm.nudgeAfterMinutes)}? We remind them.',
+    ];
+  }
+
+  static String _minutes(int minutes) => minutes <= 1 ? 'a minute' : '$minutes minutes';
+
+  static const List<String> _months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +178,11 @@ class _CheckInSettingsState extends State<CheckInSettings> {
           const SizedBox(height: MzaziSpace.s8),
         ],
         if (overview != null) Text(_summary(overview), style: theme.textTheme.bodyLarge),
+        if (overview != null)
+          for (final String line in _details(overview)) ...<Widget>[
+            const SizedBox(height: MzaziSpace.s4),
+            Text(line, style: theme.textTheme.bodyMedium),
+          ],
         if (!widget.heading && change != null)
           Align(alignment: AlignmentDirectional.centerStart, child: change),
         if (_error case final String failure) ...<Widget>[
@@ -189,21 +230,33 @@ String describeCheckIn(CheckIn checkIn, {DateTime? now}) {
 
 /// What the sheet hands back.
 class CheckInDraft {
-  const CheckInDraft({required this.enabled, required this.times, required this.graceMinutes});
+  const CheckInDraft({
+    required this.enabled,
+    required this.times,
+    required this.graceMinutes,
+    this.every,
+  });
 
   /// Nothing set up yet: one check-in, at nine in the morning, half an hour to answer.
   factory CheckInDraft.from(CheckInSchedule? schedule) => CheckInDraft(
     enabled: schedule?.enabled ?? false,
-    times: schedule == null || schedule.times.isEmpty ? const <String>['09:00'] : schedule.times,
+    times: schedule == null || schedule.times.isEmpty || schedule.every != null
+        ? const <String>['09:00']
+        : schedule.times,
     graceMinutes: schedule?.graceMinutes ?? 30,
+    every: schedule?.every,
   );
 
   final bool enabled;
   final List<String> times;
   final int graceMinutes;
+
+  /// Every so often through the day, instead of [times].
+  final CheckInEvery? every;
 }
 
-/// Turning it on or off, and choosing up to three times a day.
+/// Turning it on or off, and choosing up to three times a day, or every so often
+/// through part of it.
 class CheckInSheet extends StatefulWidget {
   const CheckInSheet({
     required this.initial,
@@ -222,6 +275,9 @@ class CheckInSheet extends StatefulWidget {
 
   static const List<int> graceChoices = <int>[15, 30, 45, 60, 90, 120];
 
+  /// How often, when it is every so often: 0 is times chosen one by one.
+  static const List<int> everyChoices = <int>[0, 60, 120, 180, 240];
+
   @override
   State<CheckInSheet> createState() => _CheckInSheetState();
 }
@@ -232,6 +288,30 @@ class _CheckInSheetState extends State<CheckInSheet> {
   late int _grace = CheckInSheet.graceChoices.contains(widget.initial.graceMinutes)
       ? widget.initial.graceMinutes
       : 30;
+  late int _every = CheckInSheet.everyChoices.contains(widget.initial.every?.minutes)
+      ? widget.initial.every!.minutes
+      : 0;
+  late String _from = widget.initial.every?.from ?? '08:00';
+  late String _until = widget.initial.every?.until ?? '20:00';
+
+  /// Times to answer that end before the next check-in is asked.
+  List<int> get _graces => <int>[
+    for (final int minutes in CheckInSheet.graceChoices)
+      if (_every == 0 || minutes < _every) minutes,
+  ];
+
+  Future<void> _pick(bool start) async {
+    final List<String> parts = (start ? _from : _until).split(':');
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1])),
+      helpText: start ? 'Start asking at' : 'Stop asking at',
+    );
+    if (picked == null || !mounted) return;
+    final String time =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    setState(() => start ? _from = time : _until = time);
+  }
 
   Future<void> _addTime() async {
     final TimeOfDay? picked = await showTimePicker(
@@ -254,7 +334,9 @@ class _CheckInSheetState extends State<CheckInSheet> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final bool canSave = !_enabled || _times.isNotEmpty;
+    final bool canSave =
+        !_enabled || (_every == 0 ? _times.isNotEmpty : _until.compareTo(_from) > 0);
+    final int grace = _graces.contains(_grace) ? _grace : _graces.last;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -272,8 +354,8 @@ class _CheckInSheetState extends State<CheckInSheet> {
             const SizedBox(height: MzaziSpace.s8),
             Text(
               widget.forElder
-                  ? "We'll ask if you're OK at these times each day. One tap answers."
-                  : "We'll ask ${widget.elderFirstName} if they're OK at these times each day. "
+                  ? "We'll ask if you're OK at these times. One tap answers."
+                  : "We'll ask ${widget.elderFirstName} if they're OK at these times. "
                         '${widget.elderFirstName} must agree first.',
               style: theme.textTheme.bodyMedium,
             ),
@@ -286,6 +368,48 @@ class _CheckInSheetState extends State<CheckInSheet> {
             ),
             if (_enabled) ...<Widget>[
               const SizedBox(height: MzaziSpace.s8),
+              DropdownButtonFormField<int>(
+                initialValue: _every,
+                decoration: const InputDecoration(labelText: 'How often'),
+                items: <DropdownMenuItem<int>>[
+                  for (final int minutes in CheckInSheet.everyChoices)
+                    DropdownMenuItem<int>(
+                      value: minutes,
+                      child: Text(
+                        minutes == 0
+                            ? 'At times I choose'
+                            : _capitalised(CheckInEvery.stepInWords(minutes)),
+                      ),
+                    ),
+                ],
+                onChanged: (int? minutes) => setState(() => _every = minutes ?? _every),
+              ),
+              const SizedBox(height: MzaziSpace.s12),
+            ],
+            if (_enabled && _every != 0) ...<Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => unawaited(_pick(true)),
+                      child: Text('From $_from'),
+                    ),
+                  ),
+                  const SizedBox(width: MzaziSpace.s8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => unawaited(_pick(false)),
+                      child: Text('Until $_until'),
+                    ),
+                  ),
+                ],
+              ),
+              if (_until.compareTo(_from) <= 0) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s8),
+                Text('Stop asking later than you start.', style: theme.textTheme.bodyMedium),
+              ],
+            ],
+            if (_enabled && _every == 0) ...<Widget>[
               Wrap(
                 spacing: MzaziSpace.s8,
                 runSpacing: MzaziSpace.s8,
@@ -307,12 +431,15 @@ class _CheckInSheetState extends State<CheckInSheet> {
                     label: const Text('Add a time'),
                   ),
                 ),
+            ],
+            if (_enabled) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
               DropdownButtonFormField<int>(
-                initialValue: _grace,
+                key: ValueKey<int>(_every),
+                initialValue: grace,
                 decoration: const InputDecoration(labelText: 'Time to answer'),
                 items: <DropdownMenuItem<int>>[
-                  for (final int minutes in CheckInSheet.graceChoices)
+                  for (final int minutes in _graces)
                     DropdownMenuItem<int>(
                       value: minutes,
                       child: Text(minutes < 60 ? '$minutes minutes' : _hours(minutes)),
@@ -328,7 +455,10 @@ class _CheckInSheetState extends State<CheckInSheet> {
                       CheckInDraft(
                         enabled: _enabled,
                         times: List<String>.unmodifiable(_times),
-                        graceMinutes: _grace,
+                        graceMinutes: grace,
+                        every: _every == 0
+                            ? null
+                            : CheckInEvery(minutes: _every, from: _from, until: _until),
                       ),
                     )
                   : null,
@@ -339,6 +469,8 @@ class _CheckInSheetState extends State<CheckInSheet> {
       ),
     );
   }
+
+  static String _capitalised(String text) => '${text[0].toUpperCase()}${text.substring(1)}';
 
   static String _hours(int minutes) {
     final int hours = minutes ~/ 60;

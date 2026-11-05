@@ -49,6 +49,8 @@ const SPOKEN: Record<ConsentType, string> = {
   [ConsentType.LOCATION_SHARING]: 'location sharing',
   [ConsentType.CONTACT_SHARING]: 'contact sharing',
   [ConsentType.COMMUNITY_HELP]: 'help from nearby volunteers',
+  [ConsentType.MEDICAL_PROFILE]: 'keeping their medical details',
+  [ConsentType.VOICE_REPORTS]: 'saying what is happening after pressing help',
 };
 
 /** The relationship recorded when somebody consents for themselves. */
@@ -219,6 +221,10 @@ export class ConsentService {
    * people responding still see them, under the vital interests ground rather than
    * consent. Withdrawing processing itself ends the service: every consent is withdrawn
    * with it, the account is deactivated and its sessions end, and its history is kept.
+   *
+   * Medical details are the exception to keeping things: withdrawing that consent, or
+   * processing, deletes them and the record of their changes in the same transaction.
+   * The record of who opened them stays, as the account of who saw them.
    */
   async withdraw(
     elderId: string,
@@ -256,6 +262,10 @@ export class ConsentService {
         where: { subjectId: elderId, type: { in: types }, withdrawnAt: null },
         data: { withdrawnAt: now },
       });
+      if (types.includes(ConsentType.MEDICAL_PROFILE)) {
+        await tx.medicalProfile.deleteMany({ where: { elderlyId: elderId } });
+        await tx.medicalProfileChange.deleteMany({ where: { elderlyId: elderId } });
+      }
       if (endsService) {
         await tx.user.update({
           where: { id: elderId },
@@ -295,7 +305,9 @@ export class ConsentService {
     const byName = actor?.name ?? 'Someone';
     const text = endsService
       ? accountMessages.serviceEnded(byName, elder.name, byElder)
-      : accountMessages.consentWithdrawn(byName, elder.name, SPOKEN[type], byElder);
+      : type === ConsentType.MEDICAL_PROFILE
+        ? accountMessages.medicalDeleted(byName, elder.name, byElder)
+        : accountMessages.consentWithdrawn(byName, elder.name, SPOKEN[type], byElder);
 
     const phones = caregivers
       .map((assignment) => assignment.responder)

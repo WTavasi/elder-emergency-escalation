@@ -1,10 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuth } from '../../shared/state/AuthContext';
 import { useRealtime } from '../../shared/api/realtime';
 import { useLoader } from '../../shared/hooks/useLoader';
-import type { AlertDetail, AuditEntry, ChainMember, Journey } from '../../shared/api/types';
+import type {
+  AlertDetail,
+  AuditEntry,
+  ChainMember,
+  Journey,
+  MedicalView,
+  Role,
+} from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
@@ -206,7 +213,9 @@ export function EventDetail() {
 
       <OnTheWay alert={alert} />
       <Volunteers alert={alert} />
+      <Said alert={alert} />
       <Stations alert={alert} />
+      <MedicalLooks id={id} version={alert.timeline.length} />
 
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
@@ -512,6 +521,77 @@ function Stations({ alert }: { alert: AlertDetail }) {
               : ''}
             {station.station ? `. ${station.station}` : ''}.
           </span>
+        </p>
+      ))}
+    </section>
+  );
+}
+
+/** What the elder said after pressing help, in their words and in English. */
+function Said({ alert }: { alert: AlertDetail }) {
+  const said = (alert.speech ?? []).filter((item) => item.transcript.length > 0);
+  if (said.length === 0) return null;
+  const first = alert.elder.name.split(' ')[0];
+
+  return (
+    <section className="card stack" aria-labelledby="said-heading">
+      <h2 id="said-heading">What {first} said</h2>
+      {said.map((item) => (
+        <p key={item.at}>
+          &ldquo;{item.transcript}&rdquo;
+          {item.english ? (
+            <span className="muted" style={{ display: 'block' }}>
+              In English: {item.english}
+            </span>
+          ) : null}
+          <span className="micro muted" style={{ display: 'block' }}>
+            {formatClock(item.at)}
+            {item.heardType
+              ? `. Heard: ${(TYPE_LABEL[item.heardType] ?? item.heardType).toLowerCase()}`
+              : ''}
+            {item.applied ? ', and reported' : ''}.
+          </span>
+        </p>
+      ))}
+    </section>
+  );
+}
+
+const ROLE_WORD: Partial<Record<Role, string>> = {
+  CAREGIVER: 'caregiver',
+  FAMILY_MEMBER: 'family',
+  EMERGENCY_RESPONDER: 'emergency responder',
+};
+
+/**
+ * Who opened the elder's medical details during this emergency, and when. Never what
+ * they say: the console oversees who saw health data and has no use for the data. Left
+ * out when nobody opened them, which is most emergencies.
+ */
+function MedicalLooks({ id, version }: { id: string; version: number }) {
+  const fetcher = useCallback(() => api.medicalViews(id), [id]);
+  const { data: views, reload } = useLoader<MedicalView[]>(fetcher, '');
+  // Asked again whenever the emergency moves on, which is when somebody new is asked
+  // and may look. Not on the first render: the loader has just asked.
+  const seen = useRef(version);
+  useEffect(() => {
+    if (seen.current === version) return;
+    seen.current = version;
+    reload();
+  }, [version, reload]);
+  if (!views || views.length === 0) return null;
+
+  return (
+    <section className="card stack" aria-labelledby="medical-heading">
+      <h2 id="medical-heading">Medical details</h2>
+      <p className="micro muted">
+        Only the people asked to help see them. This lists who opened them, not what they say.
+      </p>
+      {views.map((view, index) => (
+        <p key={`${view.at}-${index}`}>
+          {view.by ? view.by.name : 'Someone who has since left'}
+          {view.by && ROLE_WORD[view.by.role] ? ` (${ROLE_WORD[view.by.role]})` : ''} opened them at{' '}
+          {formatClock(view.at)}.
         </p>
       ))}
     </section>

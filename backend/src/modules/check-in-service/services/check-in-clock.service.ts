@@ -4,7 +4,10 @@ import { AlertTrigger, CheckInStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { AlertsService } from '../../emergency-service/services/alerts.service';
+import { nudgeAfterMinutes } from './check-in-rhythm';
+import { CheckInRhythmService } from './check-in-rhythm.service';
 import { CheckInMessenger } from './check-in-messenger.service';
+import { CheckInsService } from './check-ins.service';
 import { dueTimesOn } from './check-in-times';
 
 /** A check-in is still asked if the clock reaches it this late, after a restart say. */
@@ -40,6 +43,8 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
     private readonly messenger: CheckInMessenger,
+    private readonly checkIns: CheckInsService,
+    private readonly rhythm: CheckInRhythmService,
   ) {}
 
   onModuleInit(): void {
@@ -66,6 +71,12 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
       const asked = await this.askDue(now);
       const reminded = await this.remindLate(now);
       const missed = await this.raiseMissed(now);
+      // Once a week per elder, and never allowed to hold up the minute's check-ins.
+      await this.rhythm.weekly(now).catch((error: unknown) => {
+        this.logger.warn(
+          `Weekly check-in look failed: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      });
       if (asked + reminded + missed > 0) {
         this.logger.log(`Check-ins: ${asked} asked, ${reminded} reminded, ${missed} missed`);
       }
@@ -119,6 +130,11 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
       });
       if (busy) continue;
 
+      // The reminder comes as soon as silence is unusual for this elder, and never later
+      // than half way through the time to answer.
+      const nudge =
+        nudgeAfterMinutes(await this.checkIns.rhythm(elder.id), schedule.graceMinutes) * 60_000;
+
       for (const dueAt of due) {
         const grace = schedule.graceMinutes * 60_000;
         let checkInId: string;
@@ -127,7 +143,7 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
             data: {
               elderId: elder.id,
               dueAt,
-              remindAt: new Date(dueAt.getTime() + grace / 2),
+              remindAt: new Date(dueAt.getTime() + nudge),
               deadlineAt: new Date(dueAt.getTime() + grace),
             },
             select: { id: true },

@@ -152,6 +152,28 @@ export interface StationOnAlert {
   status: 'asked' | 'declined' | 'coming';
 }
 
+/** What the elder said after pressing help, as our own speech server wrote it down. */
+export interface SpeechHeard {
+  at: string;
+  transcript: string;
+  /** In English, when it was said in another language. */
+  english: string | null;
+  language: string | null;
+  heardType: EmergencyType | null;
+  /** Reported on the emergency, so the service for it followed. */
+  applied: boolean;
+}
+
+/**
+ * Somebody who opened the elder's medical details during an emergency. The console is
+ * told who and when, never what the details say: an administrator oversees access to
+ * health data, and has no need of the data itself.
+ */
+export interface MedicalView {
+  by: { id: string; name: string; role: Role } | null;
+  at: string;
+}
+
 /** Talking through the app: whether it is set up, and who started a call. */
 export interface VoiceState {
   available: boolean;
@@ -209,6 +231,8 @@ export interface AlertDetail extends AlertSummary {
   journeys?: Journey[];
   /** The stations asked, first asked first. */
   stations?: StationOnAlert[];
+  /** What the elder said after pressing help, oldest first. Kept 30 days. */
+  speech?: SpeechHeard[];
   voice?: VoiceState;
   volunteer?: VolunteerOnAlert | null;
 }

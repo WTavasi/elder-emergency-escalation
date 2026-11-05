@@ -13,6 +13,7 @@ import { RolesGuard } from './modules/auth-service/guards/roles.guard';
 import { EscalationModule } from './modules/emergency-service/escalation.module';
 import { SmsRepliesModule } from './modules/emergency-service/sms-replies.module';
 import { HealthModule } from './modules/health-service/health.module';
+import { MedicalModule } from './modules/medical-service/medical.module';
 import { NotificationsModule } from './modules/notification-service/notifications.module';
 import { PrismaModule } from './db/prisma.module';
 import { RealtimeModule } from './modules/realtime-service/realtime.module';
@@ -43,6 +44,7 @@ import { validateEnv } from './shared/config/env.schema';
     CommunityModule,
     SmsRepliesModule,
     EldersModule,
+    MedicalModule,
     DashboardModule,
     AdminModule,
     HealthModule,

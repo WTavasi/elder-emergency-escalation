@@ -21,7 +21,8 @@ is asked or missed (`check-in-service`).
 
 | Method | Path | Who | What |
 | --- | --- | --- | --- |
-| POST | `/` | elder | Raise an emergency. Empty body; the server decides where it is |
+| POST | `/` | elder | Raise an emergency. Empty body, or `{ type, from }` from Siri, the widget or the tile; the server decides where it is |
+| POST | `/:id/speech` | elder | What they said after pressing help, as a recording. Written down by our own Whisper server, read for a type, kept as words for 30 days |
 | POST | `/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/:id/reopen` | care chain | Restart a withdrawn alert nobody could confirm |
 | GET | `/` | signed in | The emergencies the caller is part of |

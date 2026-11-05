@@ -9,6 +9,7 @@ import type {
   Severity,
 } from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
+import type { SpeechHeard } from '../services/speech.service';
 import type { StationOnAlert } from '../services/station-dispatch.service';
 import type { VoiceView } from '../services/voice.service';
 import type { VolunteerOnAlert } from '../../community-service/services/volunteer-calls.service';
@@ -58,6 +59,8 @@ export interface AlertSummary {
   /** "PANIC" when the elder pressed for help, "MISSED_CHECK_IN" for a daily check-in not answered. */
   trigger: AlertTrigger;
   acknowledgedAt: string | null;
+  /** When the person who took it on said, by text, they would be there. */
+  ownerExpectedAt: string | null;
   /** When the person who took it on reached the elder. Kept if the emergency moves on. */
   arrivedAt: string | null;
   resolvedAt: string | null;
@@ -146,4 +149,9 @@ export interface AlertDetail extends AlertSummary {
    * come or is coming. Empty on the elder's copy.
    */
   stations: StationOnAlert[];
+  /**
+   * What the elder said after pressing help, in their words and in English, oldest
+   * first, with what it was heard to mean. Kept 30 days.
+   */
+  speech: SpeechHeard[];
 }

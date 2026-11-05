@@ -324,6 +324,95 @@ class SettingsSwitchRow extends StatelessWidget {
   }
 }
 
+/// One fact, as a contact card or a phone's medical ID sets it: what it is, small, above
+/// what it says, in reading size, since what it says is the part that matters.
+class SettingsFact extends StatelessWidget {
+  const SettingsFact({required this.icon, required this.label, required this.value, super.key});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final double margin = MzaziLayout.margin(context);
+    final double iconSize = (theme.textTheme.bodyLarge?.fontSize ?? 17) * 1.4;
+
+    return MergeSemantics(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: MzaziSizes.of(context).target),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s12, margin, MzaziSpace.s12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(icon, size: iconSize, color: theme.colorScheme.onSurface),
+              const SizedBox(width: MzaziSpace.s16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(label, style: theme.textTheme.bodySmall),
+                    const SizedBox(height: 2),
+                    Text(value, style: theme.textTheme.bodyLarge),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A row in a list to pick several from, a tick at the end of each chosen one, the
+/// whole row toggling it, as iOS marks a choice.
+class SettingsCheckRow extends StatelessWidget {
+  const SettingsCheckRow({
+    required this.icon,
+    required this.title,
+    required this.checked,
+    required this.onChanged,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final bool checked;
+
+  /// Null while it cannot be changed.
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ValueChanged<bool>? change = onChanged;
+    return Semantics(
+      checked: checked,
+      button: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: change == null ? null : () => change(!checked),
+          child: _RowBody(
+            icon: icon,
+            title: title,
+            // In ink, as the action sheet marks a choice: the theme's primary is the
+            // emergency red, which a tick in a list has no business wearing. Kept in place
+            // when clear, so the words do not move as rows are ticked.
+            trailing: Icon(
+              Icons.check,
+              color: checked ? theme.colorScheme.onSurface : Colors.transparent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// A row that opens in place to show more, its chevron turning as it does. For what a
 /// person looks at now and then rather than every time, such as their care circles.
 class SettingsExpandable extends StatefulWidget {

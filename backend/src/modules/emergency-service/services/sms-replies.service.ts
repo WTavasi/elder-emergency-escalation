@@ -12,11 +12,16 @@ import {
   HELP_WORD,
   REPLY_ASK,
 } from '../../notification-service/services/notification-content';
+import { TYPE_WORDS, typeFromText, wordsOf } from '../../../shared/language/emergency-words';
+import {
+  readReply as readText,
+  type ReplyIntent as SharedReplyIntent,
+} from '../../../shared/language/replies';
 import { AlertsService } from './alerts.service';
 import { EscalationService } from './escalation.service';
 
 /** What a reply asks for. */
-export type ReplyIntent = 'accept' | 'decline' | 'unclear';
+export type ReplyIntent = SharedReplyIntent;
 
 /** What became of one reply, for the log and the tests. Nothing here is shown to anyone. */
 export type ReplyOutcome =
@@ -32,28 +37,18 @@ export type ReplyOutcome =
   | 'raised'
   | 'already-raised';
 
-/**
- * The words a reply is read as. The digits are what the alert asks for and are enough on
- * any phone; the rest are what people type anyway, in English and Swahili.
- */
-const ACCEPT = new Set(['1', 'yes', 'y', 'ok', 'go', 'going', 'coming', 'ndio', 'ndiyo', 'sawa']);
-const DECLINE = new Set(['2', 'no', 'n', 'cannot', "can't", 'cant', 'hapana', 'siwezi']);
-
 /** Replies one phone may send in [REPLY_WINDOW_SECONDS] before the rest are ignored. */
 export const REPLY_LIMIT = 6;
 export const REPLY_WINDOW_SECONDS = 600;
 
-/** Reads a reply by its first word, so "1 on my way" and "Yes!" both count. */
+/**
+ * What a reply means: the digits the alert asks for, or what people write anyway, in
+ * English, Swahili and Sheng ("nakuja", "niko njiani", "siwezi, niko kazini"). Read by the
+ * rules in shared/language; a reply that says both yes and no, or neither, is unclear and
+ * the person is asked again.
+ */
 export function readReply(text: string): ReplyIntent {
-  const first = text
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)[0]
-    ?.replace(/[.!,?]+$/, '');
-  if (!first) return 'unclear';
-  if (ACCEPT.has(first)) return 'accept';
-  if (DECLINE.has(first)) return 'decline';
-  return 'unclear';
+  return readText(text).intent;
 }
 
 /**
@@ -70,52 +65,6 @@ const HELP = new Set([HELP_WORD.toLowerCase(), 'sos', 'msaada', 'saidia']);
 export function asksForHelp(text: string): boolean {
   const first = wordsOf(text)[0];
   return !!first && (HELP.has(first) || TYPE_WORDS.has(first));
-}
-
-/**
- * The words that say what is happening, in English and Swahili, most urgent first: a text
- * that says both "fell" and "fire" is about the fire. Read anywhere in the text, so
- * "HELP FIRE", "msaada moto" and "help, I fell" all count.
- */
-const TYPE_KEYWORDS: Array<[EmergencyType, string[]]> = [
-  [EmergencyType.FIRE, ['fire', 'moto']],
-  [
-    EmergencyType.UNSAFE,
-    ['police', 'polisi', 'thief', 'thieves', 'robbery', 'robbers', 'mwizi', 'wezi', 'wizi'],
-  ],
-  [
-    EmergencyType.BREATHING,
-    ['chest', 'breathing', 'breathe', 'breath', 'kifua', 'kupumua', 'pumua'],
-  ],
-  [EmergencyType.FALL, ['fall', 'fell', 'fallen', 'slipped', 'anguka', 'nimeanguka', 'nimeteleza']],
-  [EmergencyType.UNWELL, ['unwell', 'sick', 'ill', 'mgonjwa', 'naumwa']],
-];
-
-/**
- * The words that ask for help on their own, as the first word: "MOTO", "Fell". Not the
- * words for feeling unwell, which start ordinary sentences ("ill be fine") too often to
- * raise an emergency by themselves; after HELP they still say what is happening.
- */
-const TYPE_WORDS = new Set(
-  TYPE_KEYWORDS.filter(([type]) => type !== EmergencyType.UNWELL).flatMap(([, words]) => words),
-);
-
-/** What a text says is happening, or null when it does not say. */
-export function typeFromText(text: string): EmergencyType | null {
-  const words = new Set(wordsOf(text));
-  for (const [type, keywords] of TYPE_KEYWORDS) {
-    if (keywords.some((keyword) => words.has(keyword))) return type;
-  }
-  return null;
-}
-
-function wordsOf(text: string): string[] {
-  return text
-    .trim()
-    .toLowerCase()
-    .split(/[\s,]+/)
-    .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9']+$/g, ''))
-    .filter((word) => word.length > 0);
 }
 
 /**
@@ -186,7 +135,8 @@ export class SmsRepliesService {
 
     // An elder's text asks for help or answers their check-in, "are you OK?";
     // anybody else's is a reply to an alert they were asked to answer.
-    const intent = readReply(text);
+    const reply = readText(text);
+    const intent = reply.intent;
     const outcome =
       person.role === Role.ELDER
         ? asksForHelp(text)
@@ -194,12 +144,17 @@ export class SmsRepliesService {
           : await this.answerCheckIn(person.id, phone, intent)
         : person.role === Role.COMMUNITY_RESPONDER
           ? await this.answerAsVolunteer(person.id, phone, intent)
-          : await this.answer(person.id, phone, intent);
+          : await this.answer(person.id, phone, intent, reply.etaMinutes);
     this.logger.log(`Text reply from ${redactPhone(phone)}: ${outcome}`);
     return outcome;
   }
 
-  private async answer(userId: string, phone: string, intent: ReplyIntent): Promise<ReplyOutcome> {
+  private async answer(
+    userId: string,
+    phone: string,
+    intent: ReplyIntent,
+    etaMinutes: number | null = null,
+  ): Promise<ReplyOutcome> {
     // The newest alert still waiting on this person: open, nobody owns it, and they were
     // asked. Newest, because that is the text they are most likely answering.
     const asked = await this.prisma.notification.findFirst({
@@ -235,14 +190,22 @@ export class SmsRepliesService {
 
     try {
       if (intent === 'accept') {
-        await this.escalation.acknowledge(asked.eventId, userId, undefined, 'sms');
+        await this.escalation.acknowledge(
+          asked.eventId,
+          userId,
+          undefined,
+          'sms',
+          etaMinutes ?? undefined,
+        );
         const place = asked.event.alertAddressLabel;
+        // "nakuja dakika kumi": the others are told when to expect them.
+        const when = etaMinutes ? ` We've told them: in about ${etaMinutes} minutes.` : '';
         await this.sms.send(
           phone,
           capSms(
-            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.` +
+            `MzaziCare: thanks. You're going to ${name}.${when} Call them: ${elder.phone}.` +
               (place ? ` Address: ${place}.` : ''),
-            `MzaziCare: thanks. You're going to ${name}. Call them: ${elder.phone}.`,
+            `MzaziCare: thanks. You're going to ${name}.${when} Call them: ${elder.phone}.`,
           ),
         );
         return 'accepted';

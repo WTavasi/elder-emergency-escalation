@@ -16,8 +16,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <!-- Talking through the app during an emergency. The microphone is opened only in a
-         call: for a responder who pressed "Talk to Grace", and for the elder once
-         somebody in their circle started one. The rest let the call use a headset and
+         call (for a responder who pressed "Talk to Grace", and for the elder once
+         somebody in their circle started one), and when an elder who agreed presses
+         "Say it out loud" after asking for help. The rest let the call use a headset and
          follow the network as it changes. No camera: calls are voice only. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
@@ -52,7 +53,37 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Help from a launcher shortcut or the Assistant: res/xml/shortcuts.xml. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+        <!-- A Help button for the home screen. Opens the app and starts the alert. -->
+        <receiver
+            android:name=".HelpWidgetProvider"
+            android:exported="false"
+            android:label="@string/help_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/help_widget_info" />
+        </receiver>
+        <!-- "Ask for help" in the quick settings. -->
+        <service
+            android:name=".HelpTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_help_tile"
+            android:label="@string/help_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="false" />
+        </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

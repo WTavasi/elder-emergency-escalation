@@ -13,6 +13,8 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/offline/help_card.dart';
 import '../../core/offline/sms_link.dart';
+import '../../core/quick_help/quick_help.dart';
+import '../../core/speech/speech_recorder.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/notice.dart';
@@ -26,6 +28,7 @@ import 'widgets/countdown_ring.dart';
 import 'widgets/elder_call.dart';
 import 'widgets/help_progress.dart';
 import 'widgets/panic_button.dart';
+import 'widgets/speak_sheet.dart';
 
 /// The elder's whole app.
 ///
@@ -45,8 +48,17 @@ class ElderHomeScreen extends StatefulWidget {
     this.helpCards,
     this.canOpenLink,
     this.openLink,
+    this.quickHelp,
+    this.recorder,
     super.key,
   });
+
+  /// Requests for help from Siri, the Assistant, the widget and the tile. Null means the
+  /// real channel to the phone; tests pass their own.
+  final QuickHelp? quickHelp;
+
+  /// The microphone, for saying what is happening. Null means the phone's own.
+  final SpeechRecorder Function()? recorder;
 
   /// For the consent question, the daily check-in, the privacy page and the ways to ask
   /// for help without a connection. Without it, which only a test that exercises the
@@ -81,6 +93,13 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
   /// The ways to ask for help without MzaziCare, kept on the phone.
   OfflineHelp? _offline;
 
+  /// Siri, the Assistant, the widget and the tile.
+  QuickHelp? _quickHelp;
+  StreamSubscription<QuickHelpRequest>? _quickHelpRequests;
+
+  /// Whether the microphone is offered after the press.
+  SpeechStatus _speech = SpeechStatus.off;
+
   @override
   void initState() {
     super.initState();
@@ -105,11 +124,64 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
       // Back in front after the phone was put down: the check-in may have been asked,
       // or missed and raised an alert, while the screen was away.
       _lifecycle = AppLifecycleListener(onResume: _lookAgain);
+
+      final QuickHelp quickHelp = widget.quickHelp ?? QuickHelp();
+      _quickHelp = quickHelp;
+      _quickHelpRequests = quickHelp.requests.listen((QuickHelpRequest r) {
+        unawaited(_answerQuickHelp(r));
+      });
+      unawaited(_takeQuickHelp());
+      unawaited(_loadSpeech(api, elderId));
     }
+  }
+
+  Future<void> _loadSpeech(ApiClient api, String elderId) async {
+    try {
+      final SpeechStatus status = await api.speechStatus(elderId);
+      if (mounted) setState(() => _speech = status);
+    } on Exception {
+      // Not offered this time. Tapping what is happening still works.
+    }
+  }
+
+  /// A request that opened the app, from Siri, the widget or the tile.
+  Future<void> _takeQuickHelp() async {
+    final QuickHelpRequest? request = await _quickHelp?.takePending();
+    if (request != null) await _answerQuickHelp(request);
+  }
+
+  /// "Hey Siri, MzaziCare help fire": raises the alert with Fire said, exactly as the
+  /// button and the fire row would, countdown and all. With an alert already open, only
+  /// what was said is passed on, and only if nothing was said yet: asking twice would
+  /// tell everybody twice.
+  Future<void> _answerQuickHelp(QuickHelpRequest request) async {
+    if (!mounted) return;
+    final AlertController alerts = context.read<AlertController>();
+    // An alert raised before the app was closed is picked up first, so this is not a
+    // second one.
+    await alerts.resume();
+    if (!mounted) return;
+    if (alerts.canRaise) {
+      await alerts.raise(type: request.type, from: request.from);
+      return;
+    }
+    final EmergencyType? type = request.type;
+    if (type != null && alerts.emergency?.reportedType == null) await alerts.report(type);
+  }
+
+  /// Listens, then sends what was said. The recording is deleted once sent.
+  Future<void> _speak() async {
+    final AlertController alerts = context.read<AlertController>();
+    final SpeechRecorder recorder = widget.recorder?.call() ?? MicrophoneRecorder();
+    final String? path = await listenToElder(context, recorder);
+    recorder.dispose();
+    if (path != null) await alerts.speak(path);
   }
 
   @override
   void dispose() {
+    unawaited(_quickHelpRequests?.cancel());
+    if (widget.quickHelp == null) _quickHelp?.dispose();
     _lifecycle?.dispose();
     _checkIns?.removeListener(_checkInsChanged);
     _checkIns?.dispose();
@@ -126,6 +198,7 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
     if (!mounted) return;
     unawaited(_checkIns?.refresh());
     unawaited(context.read<AlertController>().resume());
+    unawaited(_takeQuickHelp());
   }
 
   /// A check-in that was missed has raised an alert. If this screen is still showing the
@@ -242,6 +315,7 @@ class _ElderHomeScreenState extends State<ElderHomeScreen> {
                         account: auth.account,
                         canOpenLink: widget.canOpenLink,
                         openLink: widget.openLink,
+                        onSpeak: _speech.offered ? _speak : null,
                       ),
                     ),
                   ],
@@ -382,6 +456,7 @@ class _Body extends StatelessWidget {
     this.account,
     this.canOpenLink,
     this.openLink,
+    this.onSpeak,
   });
 
   final AlertController alerts;
@@ -391,6 +466,7 @@ class _Body extends StatelessWidget {
   final Account? account;
   final CanOpen? canOpenLink;
   final Open? openLink;
+  final Future<void> Function()? onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +483,7 @@ class _Body extends StatelessWidget {
         open: openLink,
       ),
       AlertPhase.cancellable => _Cancellable(alerts: alerts),
-      AlertPhase.live => _Live(alerts: alerts, api: api, checkIns: checkIns),
+      AlertPhase.live => _Live(alerts: alerts, api: api, checkIns: checkIns, onSpeak: onSpeak),
       // Withdrawn by answering the check-in late, rather than by pressing "stop".
       AlertPhase.cancelled when fromCheckIn => _Finished(
         alerts: alerts,
@@ -880,11 +956,12 @@ class _Action extends StatelessWidget {
 }
 
 class _Live extends StatelessWidget {
-  const _Live({required this.alerts, this.api, this.checkIns});
+  const _Live({required this.alerts, this.api, this.checkIns, this.onSpeak});
 
   final AlertController alerts;
   final ApiClient? api;
   final CheckInController? checkIns;
+  final Future<void> Function()? onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -895,12 +972,18 @@ class _Live extends StatelessWidget {
             emergency: alerts.emergency,
             onReport: alerts.report,
             reporting: alerts.reporting,
+            onSpeak: onSpeak,
+            heard: alerts.heard,
+            listening: alerts.listening,
           )
         : ElderCall(
             emergency: alerts.emergency,
             api: client,
             onReport: alerts.report,
             reporting: alerts.reporting,
+            onSpeak: onSpeak,
+            heard: alerts.heard,
+            listening: alerts.listening,
           );
 
     final CheckInController? checking = checkIns;
@@ -1034,6 +1117,13 @@ class _CheckInSetUpQuestion extends StatelessWidget {
   final VoidCallback onYes;
   final VoidCallback onNo;
 
+  /// "each day at 09:00", or "every hour from 08:00 to 20:00".
+  static String _when(CheckInSchedule schedule) {
+    final CheckInEvery? every = schedule.every;
+    if (every == null) return 'each day at ${schedule.timesInWords}';
+    return '${CheckInEvery.stepInWords(every.minutes)} from ${every.from} to ${every.until}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -1043,7 +1133,7 @@ class _CheckInSetUpQuestion extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
-          '$who wants us to check on you each day at ${schedule.timesInWords}. '
+          '$who wants us to check on you ${_when(schedule)}. '
           'No answer in ${schedule.graceMinutes} minutes? We tell your family. Is that OK?',
           style: theme.textTheme.bodyLarge,
         ),

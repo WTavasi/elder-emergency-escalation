@@ -55,6 +55,8 @@ are deleted by `retention-service` with the audit log window.
 | `services/check-in-clock.service.ts`     | Asking, reminding and raising, every minute       |
 | `services/check-in-messenger.service.ts` | The words, by push or SMS                         |
 | `services/check-in-times.ts`             | Times of day in the elder's own time zone         |
+| `services/check-in-rhythm.ts`            | How soon an elder usually answers, and drift      |
+| `services/check-in-rhythm.service.ts`    | The weekly note to caregivers                     |
 | `validation/set-check-ins.dto.ts`        | The request shapes                                |
 
 ## Depends on

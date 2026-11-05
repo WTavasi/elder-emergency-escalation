@@ -408,6 +408,42 @@ export class EnvSchema {
   TYPE_DISPATCH_DELAY_SECONDS: number = 25;
 
   /**
+   * The key that seals elders' medical details before they are stored: 32 random bytes
+   * in base64, from `openssl rand -base64 32`. Unset, medical details are off: nothing
+   * can be saved, and the app says so. Changing it makes every stored profile
+   * unreadable, so keep it with the database backups, never in them.
+   */
+  @ValidateIf((env: EnvSchema) => Boolean(env.MEDICAL_DATA_KEY))
+  @Matches(/^[A-Za-z0-9+/]{43}=$/, {
+    message:
+      'MEDICAL_DATA_KEY must be 32 bytes in base64. Generate one with: openssl rand -base64 32',
+  })
+  MEDICAL_DATA_KEY?: string;
+
+  /**
+   * Our own speech-to-text server, for what an elder says after pressing help: the
+   * Whisper ASR webservice in infra/whisper, such as http://localhost:9000. Unset, the
+   * app offers no microphone. Nothing said is ever sent to a service outside our own.
+   */
+  @ValidateIf((env: EnvSchema) => Boolean(env.WHISPER_URL))
+  @Matches(/^https?:\/\/\S+$/, { message: 'WHISPER_URL must start with http:// or https://' })
+  WHISPER_URL?: string;
+
+  /** How long to wait for the speech server before giving up on one recording. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(120)
+  WHISPER_TIMEOUT_SECONDS: number = 45;
+
+  /** How long what an elder said is kept, in words. The recording is never kept. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  SPEECH_RETENTION_DAYS: number = 30;
+
+  /**
    * Talking in the app during an emergency, through LiveKit. All three or none: with
    * any missing the feature is off, the alert says so, and the app shows no button.
    * LIVEKIT_URL is what the app connects to, wss://<project>.livekit.cloud for LiveKit
@@ -470,6 +506,7 @@ const SECRET_KEYS = new Set([
   'SMS_INBOUND_TOKEN',
   'LIVEKIT_API_SECRET',
   'GOOGLE_MAPS_API_KEY',
+  'MEDICAL_DATA_KEY',
 ]);
 
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {

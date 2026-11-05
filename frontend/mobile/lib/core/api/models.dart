@@ -284,7 +284,12 @@ class Emergency {
     this.trigger = AlertTrigger.panic,
     this.volunteer,
     this.reportedType,
+    this.ownerExpectedAt,
   });
+
+  /// When the person who took it on said, by text, they would be there: "nakuja dakika
+  /// kumi". Used for the time when they are not sharing their way there.
+  final DateTime? ownerExpectedAt;
 
   final String id;
   final EventState state;
@@ -354,6 +359,7 @@ class Emergency {
       trigger: AlertTrigger.parse(json['trigger']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
       reportedType: EmergencyType.parse(json['reportedType']),
+      ownerExpectedAt: _date(json['ownerExpectedAt']),
     );
   }
 }
@@ -715,11 +721,24 @@ class TimelineEntry {
     this.stationName,
     this.seconds,
     this.byRoad = false,
+    this.via,
+    this.heardType,
+    this.etaMinutes,
   });
+
+  /// On taking it on by text: how soon they said they would be there.
+  final int? etaMinutes;
 
   final String id;
   final String action;
   final int secondsFromTrigger;
+
+  /// How it was said or raised, beyond the app's own buttons: `sms`, `voice` (spoken
+  /// after the press), `siri`, `assistant`, `widget` or `tile`.
+  final String? via;
+
+  /// On the entry that records the elder speaking: what the words were heard to mean.
+  final EmergencyType? heardType;
 
   /// On the entry that records a station asked: which, how far, and whether by road.
   final String? stationName;
@@ -779,6 +798,9 @@ class TimelineEntry {
       stationName: d['name'] as String?,
       seconds: asInt(d['seconds']),
       byRoad: d['byRoad'] == true,
+      via: (d['via'] ?? d['from']) as String?,
+      heardType: EmergencyType.parse(d['heardType']),
+      etaMinutes: asInt(d['etaMinutes']),
     );
   }
 }
@@ -820,6 +842,7 @@ class AlertDetail {
     this.voice = Voice.off,
     this.volunteer,
     this.stations = const <StationOnAlert>[],
+    this.speech = const <SpeechHeard>[],
   });
 
   final AlertSummary summary;
@@ -841,6 +864,9 @@ class AlertDetail {
 
   /// The stations asked, nearest first, then any asked after a decline or no answer.
   final List<StationOnAlert> stations;
+
+  /// What the elder said after pressing help, oldest first.
+  final List<SpeechHeard> speech;
 
   factory AlertDetail.fromJson(Map<String, dynamic> json) {
     final Object? severity = json['severityFactors'];
@@ -864,6 +890,7 @@ class AlertDetail {
       voice: Voice.fromJson(json['voice']),
       volunteer: VolunteerOnAlert.fromJson(json['volunteer']),
       stations: StationOnAlert.listFromJson(json['stations']),
+      speech: SpeechHeard.listFromJson(json['speech']),
     );
   }
 }
@@ -1130,7 +1157,15 @@ enum ConsentKind {
 
   /// Vetted volunteers near the elder may be asked to go, and the one who accepts is
   /// told their name and address.
-  communityHelp('COMMUNITY_HELP');
+  communityHelp('COMMUNITY_HELP'),
+
+  /// Medical details are kept and shown to those asked about an open emergency.
+  /// Withdrawing it deletes them.
+  medicalProfile('MEDICAL_PROFILE'),
+
+  /// After pressing help, the elder may say what is happening, written down by our own
+  /// speech server. The words are kept 30 days; the recording is not kept.
+  voiceReports('VOICE_REPORTS');
 
   const ConsentKind(this.wire);
 
@@ -1296,9 +1331,18 @@ class CheckInSchedule {
     this.waitingForElder = false,
     this.setByName,
     this.setById,
+    this.every,
+    this.agreedAt,
   });
 
   final bool enabled;
+
+  /// "Every hour from 08:00 to 20:00", when it was set up that way. Null for times chosen
+  /// one by one; [times] lists them either way.
+  final CheckInEvery? every;
+
+  /// When the elder agreed, for the circle to see.
+  final DateTime? agreedAt;
 
   /// "09:00", in the elder's own time zone, earliest first.
   final List<String> times;
@@ -1310,6 +1354,13 @@ class CheckInSchedule {
   final bool waitingForElder;
   final String? setByName;
   final String? setById;
+
+  /// "Every hour from 08:00 to 20:00", or "Daily at 09:00 and 18:00".
+  String get inWords {
+    final CheckInEvery? interval = every;
+    if (interval != null) return interval.inWords;
+    return 'Daily at $timesInWords';
+  }
 
   /// "09:00", "09:00 and 18:00", "08:00, 13:00 and 20:00".
   String get timesInWords {
@@ -1330,15 +1381,84 @@ class CheckInSchedule {
       waitingForElder: json['waitingForElder'] as bool? ?? false,
       setByName: setBy is Map<String, dynamic> ? setBy['name'] as String? : null,
       setById: setBy is Map<String, dynamic> ? setBy['id'] as String? : null,
+      every: CheckInEvery.fromJson(json['every']),
+      agreedAt: _date(json['agreedAt']),
+    );
+  }
+}
+
+/// Check-ins every so often through part of the day.
+class CheckInEvery {
+  const CheckInEvery({required this.minutes, required this.from, required this.until});
+
+  final int minutes;
+
+  /// "08:00".
+  final String from;
+  final String until;
+
+  /// "every hour", "every 2 hours", "every 90 minutes".
+  static String stepInWords(int minutes) {
+    if (minutes % 60 != 0) return 'every $minutes minutes';
+    final int hours = minutes ~/ 60;
+    return hours == 1 ? 'every hour' : 'every $hours hours';
+  }
+
+  /// "Every hour from 08:00 to 20:00".
+  String get inWords {
+    final String step = stepInWords(minutes);
+    return '${step[0].toUpperCase()}${step.substring(1)} from $from to $until';
+  }
+
+  static CheckInEvery? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? minutes = json['minutes'];
+    final Object? from = json['from'];
+    final Object? until = json['until'];
+    if (minutes is! num || from is! String || until is! String) return null;
+    return CheckInEvery(minutes: minutes.toInt(), from: from, until: until);
+  }
+}
+
+/// How soon an elder usually answers, and when a reminder goes because of it.
+class CheckInRhythm {
+  const CheckInRhythm({
+    required this.answers,
+    required this.usualMinutes,
+    required this.nudgeAfterMinutes,
+  });
+
+  final int answers;
+  final int usualMinutes;
+  final int nudgeAfterMinutes;
+
+  static CheckInRhythm? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final Object? answers = json['answers'];
+    final Object? usual = json['usualMinutes'];
+    final Object? nudge = json['nudgeAfterMinutes'];
+    if (answers is! num || usual is! num || nudge is! num) return null;
+    return CheckInRhythm(
+      answers: answers.toInt(),
+      usualMinutes: usual.toInt(),
+      nudgeAfterMinutes: nudge.round(),
     );
   }
 }
 
 /// An elder's check-ins as their circle sees them: the arrangement and the last week.
 class CheckInsOverview {
-  const CheckInsOverview({required this.schedule, required this.recent, required this.canEdit});
+  const CheckInsOverview({
+    required this.schedule,
+    required this.recent,
+    required this.canEdit,
+    this.rhythm,
+  });
 
   final CheckInSchedule? schedule;
+
+  /// Null until there are enough answers to learn from.
+  final CheckInRhythm? rhythm;
 
   /// Newest first.
   final List<CheckIn> recent;
@@ -1355,6 +1475,7 @@ class CheckInsOverview {
         .whereType<CheckIn>()
         .toList(growable: false),
     canEdit: json['canEdit'] as bool? ?? false,
+    rhythm: CheckInRhythm.fromJson(json['rhythm']),
   );
 }
 
@@ -1976,4 +2097,66 @@ class NearbyService {
     }
     return services;
   }
+}
+
+/// Whether to offer the microphone after the press.
+class SpeechStatus {
+  const SpeechStatus({required this.available, required this.consented});
+
+  /// The server has a speech-to-text server to send to.
+  final bool available;
+
+  /// The elder agreed to speaking to report.
+  final bool consented;
+
+  static const SpeechStatus off = SpeechStatus(available: false, consented: false);
+
+  bool get offered => available && consented;
+
+  factory SpeechStatus.fromJson(Map<String, dynamic> json) => SpeechStatus(
+    available: json['available'] as bool? ?? false,
+    consented: json['consented'] as bool? ?? false,
+  );
+}
+
+/// What the elder said after pressing help, as written down, and what it was heard to
+/// mean.
+class SpeechHeard {
+  const SpeechHeard({
+    required this.at,
+    required this.transcript,
+    this.english,
+    this.language,
+    this.heardType,
+    this.applied = false,
+  });
+
+  final DateTime at;
+
+  /// In their own words.
+  final String transcript;
+
+  /// In English, when it was said in another language.
+  final String? english;
+
+  /// "sw", "en".
+  final String? language;
+  final EmergencyType? heardType;
+
+  /// Reported on the emergency, so the service for it follows.
+  final bool applied;
+
+  factory SpeechHeard.fromJson(Map<String, dynamic> json) => SpeechHeard(
+    at: DateTime.tryParse(json['at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+    transcript: json['transcript'] as String? ?? '',
+    english: json['english'] as String?,
+    language: json['language'] as String?,
+    heardType: EmergencyType.parse(json['heardType']),
+    applied: json['applied'] as bool? ?? false,
+  );
+
+  static List<SpeechHeard> listFromJson(Object? json) => <SpeechHeard>[
+    for (final Object? item in _list(json))
+      if (item is Map<String, dynamic>) SpeechHeard.fromJson(item),
+  ];
 }

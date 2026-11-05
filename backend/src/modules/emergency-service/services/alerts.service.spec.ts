@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import {
   AlertTrigger,
   AuditAction,
+  EmergencyType,
   CareLevel,
   EventOutcome,
   EventState,
@@ -18,6 +19,7 @@ import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { SeverityService } from './severity.service';
 import type { EscalationService } from './escalation.service';
+import type { SpeechService } from './speech.service';
 import type { EscalationTimerService } from './escalation-timer.service';
 import type { NotificationsService } from '../../notification-service/services/notifications.service';
 import { NoopRealtimePublisher } from '../../realtime-service/services/realtime.publisher';
@@ -135,8 +137,12 @@ const buildPrisma = (): PrismaMock => {
 };
 
 const buildEscalation = () =>
-  ({ dispatchTier: jest.fn().mockResolvedValue(undefined) }) as unknown as EscalationService & {
+  ({
+    dispatchTier: jest.fn().mockResolvedValue(undefined),
+    reportType: jest.fn((id: string) => Promise.resolve({ id, reportedType: 'FIRE' })),
+  }) as unknown as EscalationService & {
     dispatchTier: jest.Mock;
+    reportType: jest.Mock;
   };
 
 const buildTimers = () =>
@@ -181,6 +187,7 @@ const build = (
     } as unknown as VoiceService,
     volunteers,
     { onAlert: jest.fn().mockResolvedValue([]) } as unknown as StationDispatchService,
+    { onAlert: jest.fn().mockResolvedValue([]) } as unknown as SpeechService,
   );
 
 describe('AlertsService', () => {
@@ -264,6 +271,38 @@ describe('AlertsService', () => {
       });
 
       expect(escalation.dispatchTier).toHaveBeenCalledWith(expect.any(String), 1, 'initial');
+    });
+
+    it('reports what was said with the request, as "MzaziCare help fire" says it', async () => {
+      const prisma = buildPrisma();
+      const escalation = buildEscalation();
+      const raised = await build(prisma, buildSeverity(), escalation).create('elder-1', {
+        type: EmergencyType.FIRE,
+        from: 'siri',
+      });
+
+      expect(escalation.reportType).toHaveBeenCalledWith(
+        expect.any(String),
+        'elder-1',
+        EmergencyType.FIRE,
+        'siri',
+      );
+      expect(raised).toMatchObject({ reportedType: 'FIRE' });
+      const created = prisma.auditLog.createMany.mock.calls[0][0].data[0] as {
+        detail: Record<string, unknown>;
+      };
+      expect(created.detail.from).toBe('siri');
+    });
+
+    it('raises the alert even when what was said cannot be recorded', async () => {
+      const escalation = buildEscalation();
+      escalation.reportType.mockRejectedValue(new Error('down'));
+      await expect(
+        build(buildPrisma(), buildSeverity(), escalation).create('elder-1', {
+          type: EmergencyType.FALL,
+        }),
+      ).resolves.toBeDefined();
+      expect(escalation.dispatchTier).toHaveBeenCalled();
     });
 
     it('refuses anyone who is not the person being cared for', async () => {

@@ -841,6 +841,101 @@ location** in **Me** and the phone already allows location; the position is sent
 request and never kept. A station is measured from its address instead. With neither, the
 list says how to turn it on.
 
+### Step 16 (optional). Medical details
+
+Medical details are off until the API has a key to seal them with. Add one line to
+`backend/.env` (any 32 random bytes in base64), then restart the API and seed again:
+
+```bash
+echo "MEDICAL_DATA_KEY=$(openssl rand -base64 32)" >> backend/.env
+npm run db:seed -w @mzazicare/api
+```
+
+The seed gives Grace medical details she agreed to herself: blood thinners, a walking
+aid, hard of hearing, a penicillin allergy and her doctor.
+
+1. **As Mary**, open Grace under **People**, then **Medical details**. Press **Edit
+   medical details**, tick **Has a pacemaker** and save. Grace is texted that Mary changed
+   them (the API's log shows the text). Open **Who has looked**: Mary's own look is there.
+2. **As Grace**, open **Me**, then **Medical details**. **Changes** shows Mary's change.
+3. **As Grace, raise an alert, then Say what's happening, I fell.** As Mary, open the
+   alert: **Grace's health makes this more serious**, with why (blood thinners), and
+   **Ask for an ambulance**.
+4. **As Aisha** (`+254700000030`), open the same alert before the family is asked: **You'll
+   see medical details once we ask you to help.** Once it reaches the family, they show.
+5. **On the console**, open the alert: **Medical details** lists who opened them and
+   when, never what they say.
+6. **As Grace, open Me, Medical details, Delete medical details.** They are gone, Mary is
+   texted, and the alert shows **No medical details saved.**
+
+### Step 17 (optional). Say it: Siri, the widget and speaking after the press
+
+**"Hey Siri, MzaziCare help fire."** On an iPhone with iOS 17 or later, with the app installed and opened once
+as Grace, say it. The app opens, the countdown starts, and **Your family can see: Fire**
+is already chosen; about 25 seconds later the nearest fire station is asked, as for a
+tap. "MzaziCare help", "MzaziCare help, I fell", "MzaziCare msaada moto" work the same
+way, for every type. The phrases are also in the Shortcuts app under MzaziCare.
+
+**Android.** Long-press the home screen, **Widgets**, **MzaziCare help**, and place the
+red **Help** button. Pull down the quick settings, edit, and add **Ask for help**.
+Long-press the app icon for **Help: fire**, **Help: I fell** and the rest. With the
+Assistant: "Hey Google, open fire in MzaziCare".
+
+**Speaking after the press** needs our own speech server. It runs in Docker; the first
+start downloads the model, about 500 MB:
+
+```bash
+docker compose --profile speech up -d whisper
+echo "WHISPER_URL=http://localhost:9000" >> backend/.env
+```
+
+Restart the API. As Grace, open **Me**, **Privacy and consent**, and agree to **Speaking to
+say what is happening**. Raise an alert and, once it has gone, press **Say it out loud**.
+Say "Msaada, kuna moto jikoni" and press **Done**. A few seconds later the screen shows
+**You said: "Msaada, kuna moto jikoni"**, Fire is chosen, and Mary's screen shows **What
+Grace said**, with the English under it. The recording is deleted once written down.
+
+### Step 18 (optional). Check-ins through the day, and each elder's rhythm
+
+1. **As Mary**, open Grace's **Daily check-in**, **Change times**. Under **How often**
+   choose **Every hour**, set **From** and **Until**, keep **Time to answer** under an
+   hour, and save. The section says **Every hour from 08:00 to 20:00**, waiting for Grace.
+2. **As Grace**, the question above the help button reads **Mary wants us to check on you
+   every hour from 08:00 to 20:00**. Press yes. Mary's section now says **Grace agreed on
+   ...**.
+3. **The rhythm** needs five answers. After them, Mary's section adds **Grace usually
+   answers within ... No answer after ...? We remind them.** A quick answerer is reminded
+   after as little as five minutes; never later than half the time to answer.
+4. **The weekly note** goes on Monday from 09:00 when a week's answers came much later than
+   the four weeks before, or more were missed. Mary is texted, and the API's terminal shows
+   `Weekly check-in note`.
+
+### Step 19 (optional). Replies in their own words
+
+Needs text replies set up (`SMS_INBOUND_TOKEN`, Step 9). Raise an alert as Grace, then
+reply to the alert text as Aisha in her own words. Without a gateway, post the reply the
+way it would, with the secret the API was started with:
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/sms/inbound?token=local-text-replies-0123456789" \
+  -d from=+254700000030 -d "text=Nakuja dakika kumi"
+```
+
+Each reply is read on our own server:
+
+| Reply | Read as |
+| --- | --- |
+| `Nakuja dakika kumi` | going, in about 10 minutes |
+| `on my way, 15 mins` | going, in about 15 minutes |
+| `poa nakam` | going |
+| `Siwezi, niko kazini` | cannot come |
+| `Siwezi sasa, nitakuja baadaye` | not sure: "Reply 1 to go, 2 if you cannot." |
+
+After "Nakuja dakika kumi", Aisha is texted that the others were told about 10 minutes,
+Grace's screen shows **About 10 minutes away.**, and the trail says **Aisha Wanjiru is on
+the way, by text, in about 10 minutes**. Grace can answer a check-in with **Niko sawa**
+as well as 1.
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
