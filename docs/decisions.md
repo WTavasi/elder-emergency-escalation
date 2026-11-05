@@ -1031,3 +1031,55 @@ which the evaluation needs and which the voice report (phase 5) will need to be 
 emergency and deleted with it. They can be health information, so the privacy notice
 needs a line saying so; that change is the project owner's to approve. The plan for the
 phases after this one is in `docs/roadmap.md`.
+
+## Road travel times, and a map in the app
+
+Until now a time to the elder came from a router only when one was switched on, and
+volunteers were ranked by the straight line from their area to the alert. In Nairobi the
+straight line can mislead badly: across a river with one bridge, or a highway with one
+crossing, the nearest on the map can be the furthest to reach. On 5 November 2026 roads
+decide wherever distance does, and the app shows them.
+
+**One router, shared.** The routing service moved out of the emergency module into
+`shared/routing`, because the journeys of people on their way and the choice of
+volunteers both need it and must not depend on each other. It answers one route, or
+many places to one in a single OSRM table request. Every request shares one slot sized
+to the router's limit (`ROUTING_RATE_PER_SECOND`, 1 for the public server, 0 for our
+own). A journey never waits for the slot; choosing volunteers waits about a second at
+most, then goes ahead on the straight line. Every answer says which it was.
+
+**Volunteers by road distance, not time.** A volunteer may walk, ride a boda or drive,
+and a driving time would be wrong for two of the three. Whose area contains the alert is
+still the straight line, because the area is a circle the volunteer drew. Who is nearest
+is measured along roads from the centre of each area, for the nearest few times the
+number asked, in one request. The text says "about 1.8 km away by road", or the plain
+distance when it was not measured.
+
+**Not emergency responders, yet.** A responder account has a coverage area, not a base.
+A road time from the middle of "Kileleshwa and Lavington" to the alert would look precise
+and mean nothing. Ranking ambulances and stations by road needs each unit's base address
+first; that is a small change to the responder form when the services join.
+
+**Everybody on their way, on a map.** The person who took the emergency on and the
+volunteer going can both share their way there, each under their own key, so neither
+overwrites the other. Each journey carries the road from where they were last routed, as
+a simplified line of points, for the map. The care circle sees a small map under Where:
+the elder's place, each person on their way, and their road. Tapping it opens the map
+full screen, where it moves; a small map that panned inside a scrolling page would fight
+the scroll. The volunteer sees the elder's place and their own way there once they have
+said they will go, and nothing before. The elder sees times, never positions.
+
+**OpenStreetMap, drawn by flutter_map.** No map SDK, no API key and no account with a
+mapping company, as the project owner chose. OpenStreetMap's own map pictures are used
+at this scale, with the credit in the corner and an identifying User-Agent, as its
+policy asks; `MAP_TILES_URL` moves to a provider when traffic grows. A straight-line
+estimate draws no road, rather than a line across buildings that nobody worked out.
+
+**Spoken directions stay with the maps apps.** Turn-by-turn navigation is a product of
+its own, and Google Maps and Apple Maps do it far better than this app could. "Get
+directions" opens Google Maps, and on an iPhone offers Apple Maps first.
+
+**Our own router in production.** The public OSRM server is for trying things out. The
+project's own (`infra/osrm`) is the official OSRM image with Kenya's map prepared inside
+it when built, so it starts in seconds and needs nothing from outside to answer. It runs
+as its own service beside the API.
