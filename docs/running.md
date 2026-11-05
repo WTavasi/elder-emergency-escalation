@@ -895,6 +895,21 @@ Say "Msaada, kuna moto jikoni" and press **Done**. A few seconds later the scree
 **You said: "Msaada, kuna moto jikoni"**, Fire is chosen, and Mary's screen shows **What
 Grace said**, with the English under it. The recording is deleted once written down.
 
+### Step 18 (optional). Check-ins through the day, and each elder's rhythm
+
+1. **As Mary**, open Grace's **Daily check-in**, **Change times**. Under **How often**
+   choose **Every hour**, set **From** and **Until**, keep **Time to answer** under an
+   hour, and save. The section says **Every hour from 08:00 to 20:00**, waiting for Grace.
+2. **As Grace**, the question above the help button reads **Mary wants us to check on you
+   every hour from 08:00 to 20:00**. Press yes. Mary's section now says **Grace agreed on
+   ...**.
+3. **The rhythm** needs five answers. After them, Mary's section adds **Grace usually
+   answers within ... No answer after ...? We remind them.** A quick answerer is reminded
+   after as little as five minutes; never later than half the time to answer.
+4. **The weekly note** goes on Monday from 09:00 when a week's answers came much later than
+   the four weeks before, or more were missed. Mary is texted, and the API's terminal shows
+   `Weekly check-in note`.
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,

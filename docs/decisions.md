@@ -1244,3 +1244,26 @@ protection impact assessment should cover this with the medical details.
 shortcuts could not be compiled where they were written; they need a build on a Mac and a
 phone. The speech server was tested with a stand-in that answers as Whisper does, because
 the model could not be downloaded there.
+
+## Check-ins through the day, and each elder's rhythm
+
+On 9 November 2026 a check-in could be every hour from 08:00 to 20:00, and learned when
+an elder's silence is unusual.
+
+**Every so often, as a list of times.** An interval is stored as the times it works out to,
+with the step and the window kept beside them, so the one-minute clock, the agreement and
+the history are unchanged. The time to answer must be shorter than the step: two
+check-ins waiting at once would be one too many questions for an elder.
+
+**A rhythm can only make a reminder sooner.** The reminder used to go half way through the
+time to answer. For an elder who always answers within two minutes, ten minutes of
+silence is already unusual, so the reminder now goes at twice their slow answer, at least
+five minutes in, and never later than half way. Five answers before the rhythm is trusted;
+fewer, and the fixed rule stands. The alert itself is never earlier or later than the
+deadline the elder agreed to.
+
+**A weekly note, not an alarm.** Answers drifting later, or more missed, can be the first
+sign of somebody becoming unwell, and is worth a call before it is an emergency. Once a
+week, on Monday morning on the elder's clock, the week is compared with the four before
+it, and only a clear change (ten minutes later and twice as late, or two or more missed
+and twice the share) texts their caregivers. A normal week sends nothing.

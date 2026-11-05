@@ -411,8 +411,8 @@ busier deployment should set `GEOCODER_URL` to its own Nominatim.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/v1/elders/:id/check-ins` | the elder, their chain, an administrator | `{ schedule, recent, canEdit }`: the arrangement and the last seven check-ins |
-| PUT | `/api/v1/elders/:id/check-ins` | the elder or their chain | `{ enabled, times: ["09:00"], graceMinutes? }`. Up to three times a day, 10 to 120 minutes to answer (30 if not given). 30 changes an hour |
+| GET | `/api/v1/elders/:id/check-ins` | the elder, their chain, an administrator | `{ schedule, recent, rhythm, canEdit }`: the arrangement, when the elder agreed (`agreedAt`), the last seven check-ins, and how soon the elder usually answers |
+| PUT | `/api/v1/elders/:id/check-ins` | the elder or their chain | `{ enabled, times: ["09:00"], graceMinutes? }`, up to three times a day; or `{ enabled, times: [], every: 60, from: "08:00", until: "20:00" }`, every half hour to six hours within a window. 10 to 120 minutes to answer (30 if not given), less than the step. 30 changes an hour |
 | POST | `/api/v1/elders/:id/check-ins/confirm` | the elder | `{ agree }`: yes starts a set-up somebody else made; no turns it off |
 | GET | `/api/v1/check-ins/mine` | elder | `{ checkIn, waitingForAgreement }`: a check-in to answer, and a set-up to agree to |
 | POST | `/api/v1/check-ins/answer` | elder | "I am all right". Returns `{ outcome }`: `answered`, `withdrawn`, `noted` or `nothing` |
@@ -424,9 +424,23 @@ moves the times, nothing is asked until the elder agrees on their own phone
 (`waitingForElder: true` until then). Turning it off never needs anybody's agreement and
 removes any check-in still waiting.
 
+**Every so often.** "Every hour from 08:00 to 20:00" is stored as the thirteen times it
+works out to, with the step and the window kept for showing and changing it
+(`schedule.every`). The time to answer has to be shorter than the step, so one check-in is
+over before the next.
+
+**Each elder's rhythm.** With five or more answers, `rhythm` says how soon the elder
+usually answers (`usualMinutes`) and when the reminder goes (`nudgeAfterMinutes`): twice
+their slow answer, so only an answer unusually late for them is nudged, at least five
+minutes, and never later than half way through the time to answer. Once a week, on Monday
+from 09:00 on the elder's clock, their last seven days are compared with the four weeks
+before; when answers came at least ten minutes later and twice as late, or two or more
+were missed and twice the share, their caregivers are texted a note suggesting a call.
+
 A one-minute clock (`CHECK_IN_TICK_MS`) does the rest. At each time it creates the day's
 check-in and asks the elder, by push if the phone has one and by SMS otherwise ("Reply 1
-if you are" when replies are on). Half way through the time to answer it asks once more.
+if you are" when replies are on). Once more at the reminder time above, half way through
+the time to answer or sooner.
 At the deadline it marks the check-in missed and raises an alert with
 `trigger: MISSED_CHECK_IN` through the ordinary escalation, or, if the elder already has
 an emergency open, links the check-in to that one. Nobody is asked in the middle of their

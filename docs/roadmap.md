@@ -27,7 +27,7 @@ communicate.
 | 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | skipped for now |
 | M | Medical details for those asked to help | assess | built |
 | 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | built |
-| 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | |
+| 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | built |
 | 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | |
 
 **1. Say what is happening.** The elder's waiting screen and HELP texts take a type; each
@@ -71,9 +71,10 @@ Swahili and Sheng word lists pick the type, which is reported as a tap would be,
 service follows after the usual short wait. Its own consent, the recording never kept,
 the words kept 30 days. See decisions.md.
 
-**6. Check-ins.** Intervals (every hour from 08:00 to 20:00) as well as fixed times; the
-family sees the agreement; each elder's rhythm, with an early nudge when an answer is
-unusually late and a weekly note when answers drift.
+**6. Check-ins.** Built. Every half hour to six hours within a window as well as chosen
+times; the elder agrees and the circle sees when; each elder's rhythm, with an earlier
+reminder when an answer is unusually late for them and a weekly note to caregivers when
+answers drift later or more are missed. See decisions.md.
 
 **7. Replies.** Free text in English, Swahili and Sheng read for its meaning and a time
 ("nakuja dakika kumi"); unsure means asking back.
