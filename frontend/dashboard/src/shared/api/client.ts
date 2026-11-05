@@ -321,7 +321,13 @@ export const api = {
       request<UserRow>('/admin/users', { method: 'POST', body: JSON.stringify(user) }),
     update: (
       id: string,
-      changes: { name?: string; email?: string | null; coverage?: NewUser['coverage'] },
+      changes: {
+        name?: string;
+        email?: string | null;
+        coverage?: NewUser['coverage'];
+        responderService?: NewUser['responderService'];
+        station?: NewUser['station'] | null;
+      },
     ): Promise<UserRow> =>
       request<UserRow>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }),
     deactivate: (ids: string[]): Promise<{ updated: number }> =>

@@ -1,5 +1,5 @@
 import type { AuditEntry, ChainMember, DeliveryAttempt } from '../api/types';
-import { SERVICE_LABEL, TYPE_LABEL, severityWord } from './format';
+import { SERVICE_LABEL, TYPE_LABEL, severityWord, timeAway } from './format';
 
 /** The parts of an audit entry's detail that a sentence can use. Every field is optional. */
 interface Detail {
@@ -18,6 +18,9 @@ interface Detail {
   channel?: string;
   notificationId?: string;
   type?: string;
+  name?: string;
+  seconds?: number;
+  byRoad?: boolean;
   service?: string;
   early?: boolean;
 }
@@ -78,6 +81,8 @@ export function timelineSentence(entry: AuditEntry, context: TimelineContext): s
       return `${who} asked for an emergency responder`;
     case 'TYPE_REPORTED':
       return reported(who, detail, byText);
+    case 'STATION_ASKED':
+      return stationAsked(detail);
     case 'SERVICE_DISPATCHED':
       return dispatchedService(detail);
     case 'RESOLVED':
@@ -165,6 +170,22 @@ function dispatchedService(detail: Detail): string {
   return detail.recipients === 0
     ? `No ${service.toLowerCase()} covers the place, so volunteers nearby were asked`
     : `${service} asked at once`;
+}
+
+/** "Kilimani Police Station asked, about 6 minutes away by road", and why it was asked. */
+function stationAsked(detail: Detail): string {
+  const who = detail.name ?? 'A station';
+  const away =
+    typeof detail.seconds === 'number'
+      ? `, ${timeAway(detail.seconds)} away${detail.byRoad ? ' by road' : ''}`
+      : '';
+  const why =
+    detail.reason === 'declined'
+      ? ' after the one before could not come'
+      : detail.reason === 'no-answer'
+        ? ' after no answer from the one before'
+        : '';
+  return `${who} asked${away}${why}`;
 }
 
 /** "Aisha", "Aisha and Brian", "Aisha, Brian and Kevin". */

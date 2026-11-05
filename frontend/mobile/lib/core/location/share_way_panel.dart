@@ -44,9 +44,12 @@ class ShareWayPanel extends StatelessWidget {
 
     if (way.isSharingFor(eventId)) {
       final Journey? latest = way.journey ?? journey;
-      final Color live = theme.colorScheme.primary;
+      // The "on the way" blue, not the brand red: sharing is reassurance, not an emergency.
+      final Color live = theme.brightness == Brightness.dark
+          ? MzaziColorsDark.pillAcknowledgedFg
+          : MzaziColorsLight.pillAcknowledgedFg;
       children = <Widget>[
-        // A plain status line first, in the brand ink with the location mark, so it is
+        // A plain status line first, in the on-the-way ink with the location mark, so it is
         // clear at a glance that the phone is sharing right now.
         Row(
           children: <Widget>[

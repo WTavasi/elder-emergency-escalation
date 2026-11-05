@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/location/position_source.dart';
 import 'package:mzazicare/features/responder/alerts_controller.dart';
 
 import 'support.dart';
@@ -50,6 +52,77 @@ void main() {
       ]);
 
       expect(ordered.first.eventId, 'older');
+    });
+  });
+
+  group('ranked', () {
+    test('keeps the server\'s order, with why each one is there', () async {
+      final List<Exchange> sent = <Exchange>[];
+      late Map<String, dynamic> body;
+      final ({ApiClient api, List<Exchange> calls}) harness = buildApi((
+        http.Request request,
+        int _,
+      ) {
+        body = jsonDecode(request.body.isEmpty ? '{}' : request.body) as Map<String, dynamic>;
+        return <http.Response>[
+          json(<String, dynamic>{
+            'measuredFrom': 'here',
+            'alerts': <Map<String, dynamic>>[
+              <String, dynamic>{
+                'alert': summaryBody(id: 'far-but-first', severityScore: 10),
+                'reasons': <String>['Nobody has taken this on yet.', 'Fire reported.'],
+                'travelSeconds': 900,
+                'byRoad': true,
+              },
+              <String, dynamic>{
+                'alert': summaryBody(id: 'second', severityScore: 90),
+                'reasons': <String>['Aisha is on the way.'],
+              },
+            ],
+          }),
+        ];
+      });
+      sent.addAll(harness.calls);
+
+      final AlertsController controller = AlertsController(
+        api: harness.api,
+        whereAmI: () async => const Fix(latitude: -1.28, longitude: 36.78),
+      );
+      await controller.refresh();
+
+      // Not re-sorted by score here: the server weighed more than the score.
+      expect(controller.alerts.map((AlertSummary a) => a.eventId), <String>[
+        'far-but-first',
+        'second',
+      ]);
+      expect(controller.reasonsFor('far-but-first'), contains('Fire reported.'));
+      expect(controller.measuredFrom, MeasuredFrom.here);
+      expect(harness.calls.single.path, '/api/v1/alerts/ranked');
+      expect(body, <String, dynamic>{'latitude': -1.28, 'longitude': 36.78});
+      controller.dispose();
+    });
+
+    test('sends no position when the person has not allowed it', () async {
+      late String sentBody;
+      final ({ApiClient api, List<Exchange> calls}) harness = buildApi((
+        http.Request request,
+        int _,
+      ) {
+        sentBody = request.body;
+        return <http.Response>[
+          json(<String, dynamic>{'alerts': <dynamic>[]}),
+        ];
+      });
+
+      final AlertsController controller = AlertsController(
+        api: harness.api,
+        whereAmI: () async => null,
+      );
+      await controller.refresh();
+
+      expect(sentBody, '{}');
+      expect(controller.measuredFrom, MeasuredFrom.nowhere);
+      controller.dispose();
     });
   });
 
@@ -109,7 +182,11 @@ void main() {
         call += 1;
         return <http.Response>[
           call == 1
-              ? json(<Map<String, dynamic>>[summaryBody()])
+              ? json(<String, dynamic>{
+                  'alerts': <Map<String, dynamic>>[
+                    <String, dynamic>{'alert': summaryBody(), 'reasons': <String>[]},
+                  ],
+                })
               : json(<String, dynamic>{'message': 'Service unavailable'}, 503),
         ];
       });

@@ -23,8 +23,8 @@ communicate.
 | --- | --- | --- | --- |
 | 1 | Say what is happening; send the right service | assess, route | built |
 | 2 | Road travel times everywhere; an in-app map | route | built |
-| 3 | Who to go to first, when several alerts are open | route | next |
-| 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | |
+| 3 | Who to go to first, when several alerts are open; stations nearest first | route | built |
+| 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | next |
 | 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | |
 | 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | |
 | 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | |
@@ -44,7 +44,9 @@ emergency responders by road waits for each unit's base address. See decisions.m
 **3. Who to go to first.** For a caregiver or service with several open alerts, a ranked
 list and map: first what nobody is handling, then by urgency and type, then where this
 person would cut the time until help arrives most compared with whoever is already going.
-Each card says why. Uses the person's location only when they allow it, and never keeps it.
+Each row says why. Uses the person's location only when they allow it, and never keeps it.
+Responder units are stations with an address, asked one at a time, nearest by road first,
+the next after a decline or three minutes. See decisions.md.
 
 **4. Adaptive escalation.** A simulator first, replaying thousands of made-up emergencies
 against the real rules. Then: each responder's reliability by time of day, waits sized to

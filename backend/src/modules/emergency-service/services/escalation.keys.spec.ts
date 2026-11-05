@@ -1,4 +1,13 @@
-import { parseReviewKey, parseTimerKey, reviewKey, timerKey } from './escalation.keys';
+import {
+  parseReviewKey,
+  parseServiceKey,
+  parseStationKey,
+  parseTimerKey,
+  reviewKey,
+  serviceKey,
+  stationKey,
+  timerKey,
+} from './escalation.keys';
 
 describe('timer keys', () => {
   it('round-trips an event and tier', () => {
@@ -35,5 +44,18 @@ describe('severity review keys', () => {
     expect(parseTimerKey(reviewKey('event-1'))).toBeNull();
     expect(parseReviewKey(timerKey('event-1', 2))).toBeNull();
     expect(parseReviewKey('session:abc')).toBeNull();
+  });
+
+  it('reads a station wait back to its emergency, and nothing else as one', () => {
+    expect(parseStationKey(stationKey('event-1'))).toBe('event-1');
+    expect(parseStationKey(reviewKey('event-1'))).toBeNull();
+    expect(parseStationKey(timerKey('event-1', 3))).toBeNull();
+    expect(parseTimerKey(stationKey('event-1'))).toBeNull();
+  });
+
+  it('reads the wait before a service is asked back to its emergency', () => {
+    expect(parseServiceKey(serviceKey('event-1'))).toBe('event-1');
+    expect(parseServiceKey(stationKey('event-1'))).toBeNull();
+    expect(parseStationKey(serviceKey('event-1'))).toBeNull();
   });
 });

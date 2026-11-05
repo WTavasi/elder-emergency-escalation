@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -33,6 +35,18 @@ void _tall(WidgetTester tester) {
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
 }
+
+/// A station asked about the emergency, as the detail view lists it.
+Map<String, dynamic> _station(String name, String service) => <String, dynamic>{
+  'name': name,
+  'service': service,
+  'station': null,
+  'askedAt': DateTime.now().toUtc().toIso8601String(),
+  'etaSeconds': 360,
+  'byRoad': false,
+  'reason': 'nearest',
+  'status': 'asked',
+};
 
 Map<String, dynamic> _owned({String? elderPhone = '+254700000010'}) {
   final Map<String, dynamic> body = detailBody(
@@ -122,11 +136,12 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('once a responder has been asked, the screen says so instead of offering it', (
+  testWidgets('once a responder has been asked, the screen says so and offers another service', (
     WidgetTester tester,
   ) async {
     final Map<String, dynamic> asked = _owned()
-      ..['responderRequestedAt'] = DateTime.now().toUtc().toIso8601String();
+      ..['responderRequestedAt'] = DateTime.now().toUtc().toIso8601String()
+      ..['stations'] = <Map<String, dynamic>>[_station('Kileleshwa Response Unit', 'GENERAL')];
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(asked)],
     );
@@ -143,6 +158,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ask for an emergency responder'), findsNothing);
+    expect(find.text('Ask for another service'), findsOneWidget);
     expect(find.text("We've asked for an emergency responder."), findsOneWidget);
     expect(find.text('Call Grace'), findsOneWidget);
 
@@ -238,6 +254,52 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('lists the emergency services asked, nearest first, with an estimate', (
+    WidgetTester tester,
+  ) async {
+    _tall(tester);
+    final Map<String, dynamic> body = detailBody()
+      ..['stations'] = <Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'Kilimani Police Station',
+          'service': 'POLICE',
+          'station': 'Lenana Road, Kilimani, Nairobi',
+          'askedAt': '2026-10-20T10:00:30.000Z',
+          'etaSeconds': 360,
+          'byRoad': true,
+          'reason': 'nearest',
+          'status': 'declined',
+        },
+        <String, dynamic>{
+          'name': 'Kileleshwa Police Station',
+          'service': 'POLICE',
+          'station': 'Off Laikipia Road, Kileleshwa, Nairobi',
+          'askedAt': '2026-10-20T10:01:00.000Z',
+          'etaSeconds': 540,
+          'byRoad': true,
+          'reason': 'declined',
+          'status': 'asked',
+        },
+      ];
+    final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+      (http.Request request, int _) => <http.Response>[json(body)],
+    );
+    final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+
+    await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
+    await controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('EMERGENCY SERVICES'), findsOneWidget);
+    expect(find.text('Kilimani Police Station'), findsOneWidget);
+    expect(find.text("Can't come."), findsOneWidget);
+    expect(
+      find.text('Asked, no answer yet. About 9 minutes away by road, from the station.'),
+      findsOneWidget,
+    );
+    controller.dispose();
+  });
+
   testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
     _tall(tester);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
@@ -291,6 +353,19 @@ void main() {
         'occurredAt': '2026-10-20T10:00:31.000Z',
         'secondsFromTrigger': 31,
       },
+      <String, dynamic>{
+        'id': 'log-station',
+        'action': 'STATION_ASKED',
+        'actor': null,
+        'detail': <String, dynamic>{
+          'name': 'Central Fire Station',
+          'seconds': 720,
+          'byRoad': true,
+          'reason': 'nearest',
+        },
+        'occurredAt': '2026-10-20T10:00:31.000Z',
+        'secondsFromTrigger': 31,
+      },
     ]);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(body)],
@@ -303,6 +378,7 @@ void main() {
 
     expect(find.text('Grace Wanjiru said: fire, by text'), findsOneWidget);
     expect(find.text('Fire service asked at once'), findsOneWidget);
+    expect(find.text('Central Fire Station asked, about 12 minutes away by road'), findsOneWidget);
     controller.dispose();
   });
 
@@ -369,7 +445,10 @@ void main() {
     Map<String, dynamic> reported(String type, {bool serviceAsked = false}) => _owned()
       ..['reportedType'] = type
       ..['serviceRequested'] = serviceAsked ? 'FIRE' : null
-      ..['serviceRequestedAt'] = serviceAsked ? DateTime.now().toUtc().toIso8601String() : null;
+      ..['serviceRequestedAt'] = serviceAsked ? DateTime.now().toUtc().toIso8601String() : null
+      ..['stations'] = serviceAsked
+          ? <Map<String, dynamic>>[_station('Central Fire Station', 'FIRE')]
+          : <Map<String, dynamic>>[];
 
     testWidgets('says what the elder reported, and names the service the button asks for', (
       WidgetTester tester,
@@ -417,6 +496,48 @@ void main() {
       expect(find.text('Grace says: Fire'), findsOneWidget);
       expect(find.text("We've asked for the fire service."), findsOneWidget);
       expect(find.text('Ask for the fire service'), findsNothing);
+      controller.dispose();
+    });
+
+    testWidgets('the family chooses which service to ask, the one needed first', (
+      WidgetTester tester,
+    ) async {
+      Map<String, dynamic>? sent;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        if (request.url.path.endsWith('/request-responder')) {
+          sent = jsonDecode(request.body) as Map<String, dynamic>;
+          return <http.Response>[json(<String, dynamic>{}, 202)];
+        }
+        return <http.Response>[json(reported('UNSAFE'))];
+      });
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+        myRole: Role.familyMember,
+      );
+
+      await tester.pumpWidget(
+        _wrap(controller, AlertSummary.fromJson(summaryBody(state: 'ACKNOWLEDGED'))),
+      );
+      await controller.refresh();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ask for the police'));
+      await tester.pumpAndSettle();
+      expect(find.text('Who should we ask?'), findsOneWidget);
+      // Every service is offered; the one this emergency needs is first.
+      for (final String name in <String>[
+        'Police',
+        'Ambulance',
+        'Fire service',
+        'Emergency responder',
+      ]) {
+        expect(find.text(name), findsOneWidget);
+      }
+      await tester.tap(find.text('Ambulance'));
+      await tester.pumpAndSettle();
+
+      expect(sent, <String, dynamic>{'service': 'AMBULANCE'});
       controller.dispose();
     });
 
@@ -863,8 +984,9 @@ void main() {
       );
       await tester.tap(map);
       await tester.pumpAndSettle();
-      expect(find.text('Map'), findsOneWidget);
+      // Full screen: the back arrow alone in the bar, and everyone back in view on the map.
       expect(find.byType(MapCanvas), findsOneWidget);
+      expect(find.byTooltip('Show everyone'), findsOneWidget);
       // Directions are still handed to a maps app, from under the map.
       await tester.tap(find.text('Get directions'));
       await tester.pumpAndSettle();

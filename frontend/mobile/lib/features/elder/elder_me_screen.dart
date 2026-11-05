@@ -9,24 +9,24 @@ import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/confirm_sign_out.dart';
 import '../../core/theme/appearance.dart';
-import '../../core/theme/theme.dart';
 import '../../core/widgets/page_title.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
-import '../legal/legal_screens.dart';
+import '../profile/nearby_services.dart';
+import '../profile/profile_screen.dart';
 import '../responder/widgets/call_button.dart';
 
-/// The elder's own page, laid out like the emergency card a phone keeps: who this phone
-/// belongs to, where home is, who comes and how to ring them, their daily check-in,
-/// how the screen looks, their privacy, and signing out.
+/// The elder's own page, laid out as an iPhone's Settings and as personal as the card a
+/// phone keeps: who this phone belongs to and where home is at the top, then the people
+/// they can ring, out in the open, one press each. Then who else can come, their daily
+/// check-in, how the screen looks, their privacy, and signing out.
 ///
 /// Signing out used to sit in the corner of the elder's home screen, next to the panic
 /// control. For an elder it is almost never wanted and it is costly when pressed by
 /// mistake: the phone can no longer ask for help, and getting back in needs a password
-/// somebody else may have set up. So it moved here, one step away, at the bottom where
-/// the thumb reaches it, and behind a question. The session itself no longer expires
-/// for an elder, so nothing pushes them out either.
+/// somebody else may have set up. So it is here, last, and behind a question. The
+/// session itself does not expire for an elder, so nothing pushes them out either.
 class ElderMeScreen extends StatelessWidget {
   const ElderMeScreen({required this.api, super.key});
 
@@ -63,12 +63,8 @@ class ElderMeScreen extends StatelessWidget {
     final AuthController auth = context.watch<AuthController>();
     final Account? account = auth.account;
     final AppearanceController? appearance = AppearanceController.maybeOf(context);
+    final String? home = account?.home?.addressLabel;
 
-    final double margin = MzaziLayout.margin(context);
-
-    // The same page, in the same order and the same parts, as everybody else's account
-    // page: a large title, then sections under small labels, with privacy and terms in a
-    // part of their own and signing out last.
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -79,49 +75,59 @@ class ElderMeScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
                   const PageTitle('Me'),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        _IdCard(account: account),
-                        const SizedBox(height: MzaziSpace.s32),
-                        const _WhoComes(),
-                        const SizedBox(height: MzaziSpace.s32),
-                        CheckInSettings(
-                          api: api,
-                          elderId: account.id,
-                          elderName: account.name,
-                          forElder: true,
-                        ),
-                        if (appearance != null) ...<Widget>[
-                          const SizedBox(height: MzaziSpace.s32),
-                          const SectionLabel('Screen'),
-                          AppearancePicker(controller: appearance),
-                          ElderModeSwitch(controller: appearance, role: account.role),
+                  ProfileHeader(
+                    name: account.name,
+                    subtitle: account.phone,
+                    detail: home != null && home.isNotEmpty ? 'Home: $home' : null,
+                  ),
+                  const _WhoComes(),
+                  SettingsSection(
+                    title: 'Help nearby',
+                    children: <Widget>[
+                      NearbyServices(api: api, elderId: account.id, forElder: true),
+                    ],
+                  ),
+                  SettingsSection(
+                    title: 'Daily check-in',
+                    children: <Widget>[
+                      SettingsExpandable(
+                        icon: Icons.event_available_outlined,
+                        title: 'Your daily check-in',
+                        summary: 'When we ask if you are OK',
+                        children: <Widget>[
+                          CheckInSettings(
+                            api: api,
+                            elderId: account.id,
+                            elderName: account.name,
+                            forElder: true,
+                            heading: false,
+                          ),
                         ],
-                        const SizedBox(height: MzaziSpace.s32),
-                        const SectionLabel('Privacy and terms'),
-                        const SizedBox(height: MzaziSpace.s8),
-                        OutlinedButton.icon(
-                          onPressed: () => unawaited(_openConsent(context, auth, account)),
-                          icon: const Icon(Icons.privacy_tip_outlined),
-                          label: const Text('Privacy and consent'),
-                        ),
-                        const SizedBox(height: MzaziSpace.s8),
-                        const LegalLinks(),
-                        const SizedBox(height: MzaziSpace.s24),
-                        const SectionLabel('This phone'),
-                        const SizedBox(height: MzaziSpace.s16),
-                        // Last on the page, and behind a question: the one control here
-                        // that takes the help button away.
-                        OutlinedButton.icon(
-                          onPressed: () => unawaited(_signOut(context)),
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Sign out'),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  if (appearance != null)
+                    DisplaySection(controller: appearance, role: account.role),
+                  PrivacySection(
+                    leading: <Widget>[
+                      SettingsRow(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Privacy and consent',
+                        onTap: () => unawaited(_openConsent(context, auth, account)),
+                      ),
+                    ],
+                  ),
+                  SettingsSection(
+                    children: <Widget>[
+                      // Last on the page, and behind a question: the one control here
+                      // that takes the help button away.
+                      SettingsRow(
+                        icon: Icons.logout,
+                        title: 'Sign out',
+                        destructive: true,
+                        onTap: () => unawaited(_signOut(context)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -130,50 +136,10 @@ class ElderMeScreen extends StatelessWidget {
   }
 }
 
-/// Name, number and home, set apart like the card a phone shows on its lock screen, so
-/// somebody helping can read it at a glance. Plain colours: red is kept for an emergency.
-class _IdCard extends StatelessWidget {
-  const _IdCard({required this.account});
-
-  final Account account;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final String? home = account.home?.addressLabel;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(MzaziSpace.s16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(account.name, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: MzaziSpace.s4),
-            Text(
-              account.phone,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-              ),
-            ),
-            if (home != null && home.isNotEmpty) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s16),
-              Text('Home', style: theme.textTheme.labelLarge),
-              const SizedBox(height: MzaziSpace.s4),
-              Text(home, style: theme.textTheme.bodyLarge),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The elder's carers, in the order they are asked, each one press from a call. The
-/// same people the help button reaches, so the elder can ring one directly when it is
-/// not an emergency, or check who will come.
+/// The elder's carers, in the order they are asked, each one press from a call: out in
+/// the open at the top, because ringing somebody is what this page is most often for.
+/// The same people the help button reaches, so the elder can ring one when it is not an
+/// emergency, or check who will come.
 class _WhoComes extends StatefulWidget {
   const _WhoComes();
 
@@ -209,31 +175,41 @@ class _WhoComesState extends State<_WhoComes> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final List<Carer>? carers = _carers;
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    // The amber of a call, so a row that rings somebody looks like the buttons that do.
+    final Color amber = dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SettingsSection(
+      title: 'Call your people',
+      footer: carers == null || carers.isEmpty ? null : 'The help button asks them in this order.',
       children: <Widget>[
-        const SectionLabel('Who we ask when you press for help'),
-        const SizedBox(height: MzaziSpace.s8),
         if (carers == null)
-          _failed
-              ? Text("Couldn't load this. Try again later.", style: theme.textTheme.bodyLarge)
-              : const SizedBox(height: MzaziSpace.s24)
+          SettingsRow(
+            icon: Icons.people_outline,
+            title: _failed ? "Couldn't load this" : 'Loading…',
+            subtitle: _failed ? 'Try again later.' : null,
+          )
         else if (carers.isEmpty)
-          Text('No one yet. Ask your caregiver to add someone.', style: theme.textTheme.bodyLarge)
+          const SettingsRow(
+            icon: Icons.people_outline,
+            title: 'No one yet',
+            subtitle: 'Ask your caregiver to add someone.',
+          )
         else
-          for (final Carer carer in carers) ...<Widget>[
-            Text(carer.name, style: theme.textTheme.titleMedium),
-            Text(
-              carer.place == 1 ? '${_role(carer.role)} · asked first' : _role(carer.role),
-              style: theme.textTheme.bodyMedium,
+          for (final Carer carer in carers)
+            SettingsRow(
+              icon: Icons.phone,
+              iconColour: amber,
+              // It rings somebody rather than opening a page, so no chevron.
+              chevron: false,
+              title: 'Call ${carer.name.trim().split(RegExp(r'\s+')).first}',
+              subtitle: carer.place == 1
+                  ? '${carer.name}, ${_role(carer.role).toLowerCase()}, asked first'
+                  : '${carer.name}, ${_role(carer.role).toLowerCase()}',
+              onTap: () =>
+                  unawaited(CallButton.dial(context, name: carer.name, phone: carer.phone)),
             ),
-            const SizedBox(height: MzaziSpace.s8),
-            CallButton(name: carer.name, phone: carer.phone),
-            const SizedBox(height: MzaziSpace.s16),
-          ],
       ],
     );
   }

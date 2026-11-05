@@ -167,6 +167,15 @@ class WayThere extends ChangeNotifier {
   /// Whether this phone may read its location now, without asking.
   Future<LocationAccess> checkAccess() => _source.access(ask: false);
 
+  /// Where this phone is now, for sorting open alerts by distance, only if the person
+  /// turned on "Share live location" and the phone already allows it. Never asks for
+  /// access, and nothing is kept: the reading goes with one request and is gone.
+  Future<Fix?> fixIfAllowed() async {
+    if (!enabled) return null;
+    if (await _source.access(ask: false) != LocationAccess.granted) return null;
+    return _source.current();
+  }
+
   /// Starts sharing for an emergency this person took on. Does nothing when the
   /// preference is off or this emergency is already being shared.
   ///

@@ -1083,3 +1083,73 @@ directions" opens Google Maps, and on an iPhone offers Apple Maps first.
 project's own (`infra/osrm`) is the official OSRM image with Kenya's map prepared inside
 it when built, so it starts in seconds and needs nothing from outside to answer. It runs
 as its own service beside the API.
+
+## Stations nearest first, and who to go to first
+
+On 6 November 2026 responder units became stations, and the open alerts list became the
+order to go to them.
+
+**A station, not an area.** A responder account had only the area it covers, and a road
+time from the middle of "Kileleshwa and Lavington" would look precise and mean nothing.
+Each unit can now say where it is based: Kilimani Police Station on Lenana Road, the
+Central Fire Station on Tom Mboya Street. The seed uses real Nairobi stations with their
+real names and roads and made-up phone numbers, as the project owner asked. Their
+coordinates are approximate, because no map service could be reached when they were
+written; the console's address search corrects one in a few seconds.
+
+**Nearest first, then the next.** Until now the responder step asked every unit covering
+the place at once, which would send every police station in the city to one call. A
+dispatcher sends the nearest, and the next if it cannot go. So one station is asked, the
+nearest by road of the service the emergency needs; a decline passes it over at once,
+and three minutes without an answer has the next one asked too, while the silent one can
+still answer. The project owner chose this over asking the nearest two at once, or all of
+them in order. The three minutes is `STATION_WAIT_SECONDS`, and like every timer here it
+has a durable copy, so a restart cannot lose it.
+
+**The family sees which station, and roughly how far.** "Kilimani Police Station. Asked,
+no answer yet. About 6 minutes away by road, from the station." From the station, because
+the unit may be out on another call; the owner chose to show it as an estimate rather than
+not at all.
+
+**Who to go to first.** For somebody with several open alerts, the server orders them: what
+nobody has taken on, then their own, then what somebody else is handling; within each, by
+severity, then the urgent kind, then time. Time is how near this person is for one nobody
+has, and how much sooner they would get there than whoever is going for one somebody has,
+when that is two minutes or more. Every alert says why; a list row adds only the reason it
+cannot show by itself. A small map shows them all.
+
+**Location only when allowed, never kept.** The times are measured from the phone only if
+the person turned on "Share live location" and the phone already allows it; the app never
+asks for permission to sort a list. The position goes in the body of one request, which no
+log records, and is not stored. Otherwise a station's own address is used. This is a new
+use of a person's location, beside sharing it on the way, so the privacy notice needs a
+line saying so; that change is the project owner's to approve.
+
+**The map follows the design rules.** The phase 2 map coloured people on their way with the
+theme's primary colour, which is the emergency red, and a volunteer with a colour from
+outside the tokens. Pins now say what they are in the state colours: red only for an elder
+nobody has taken on, the "on the way" blue for anybody going, ink otherwise, each with its
+name. The full-screen map's top bar has the back arrow and nothing else, and "show everyone"
+is a round button on the map, where Maps keeps its controls.
+
+**Revised the same day: the default responder, a short wait, and a choice.** Making every
+responder a station replaced the two general response units in the seed, so every elder's
+chain ended at a police station. They are back as the default emergency responder, asked
+when the family has not answered and nobody has said what is happening; the stations are
+asked when what is happening needs them. The project owner also asked for:
+
+- **A short wait before a service is asked for a report.** About 25 seconds after the elder
+  says chest pain, fire or not safe, not at the tap, so a mistaken tap can be changed first.
+  What is reported when the wait ends decides.
+- **A choice for the family.** "Ask for…" now asks which service: the one the emergency
+  needs first, then the others. The nearest station of the one chosen is asked at once, and
+  another can be asked later; none twice.
+- **Everybody can see who can come.** The elder's page and their circle's page about them
+  list the nearest responder, ambulance, police and fire service, and roughly how far each
+  is by road.
+
+**The Me pages, as Settings.** Both are now grouped rows: a personal header with the
+person's initials, then sections of rows that open a page, switch something, choose from a
+pull-down, or open in place. What is used now and then folds away (care circles, history,
+the services nearby, the daily check-in); what matters most is out in the open: on the
+elder's page, a row to call each person in their circle, first.

@@ -34,7 +34,7 @@ Every seeded account uses the password `Dev!2026`.
 | `+254700000010` | Grace Wanjiru, elder |
 | `+254700000020` | Mary Otieno, caregiver, tier 1 for Grace |
 | `+254700000030` | Aisha Wanjiru, family member, tier 2 for Grace |
-| `+254700000040` | Emergency responder, tier 3 |
+| `+254700000040` | Kileleshwa Response Unit, the default emergency responder |
 | `+254700000001` | Administrator |
 
 The collection uses these five. The seed makes more elders, families and volunteers

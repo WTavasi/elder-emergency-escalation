@@ -9,6 +9,7 @@ import type {
   Severity,
 } from '@prisma/client';
 import type { JourneyView } from '../services/journey.service';
+import type { StationOnAlert } from '../services/station-dispatch.service';
 import type { VoiceView } from '../services/voice.service';
 import type { VolunteerOnAlert } from '../../community-service/services/volunteer-calls.service';
 
@@ -139,4 +140,10 @@ export interface AlertDetail extends AlertSummary {
    * sees the first name only; the circle also sees the number, to call them.
    */
   volunteer: VolunteerOnAlert | null;
+  /**
+   * The stations asked, first asked first: each one's name, its address, its estimated
+   * time by road from the station, why it was asked, and whether it is asked, cannot
+   * come or is coming. Empty on the elder's copy.
+   */
+  stations: StationOnAlert[];
 }

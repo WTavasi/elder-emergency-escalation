@@ -9,7 +9,9 @@ import 'package:mzazicare/core/auth/auth_controller.dart';
 import 'package:mzazicare/core/auth/session_store.dart';
 import 'package:mzazicare/core/location/position_source.dart';
 import 'package:mzazicare/core/location/way_there.dart';
+import 'package:mzazicare/core/theme/appearance.dart';
 import 'package:mzazicare/core/theme/theme.dart';
+import 'package:mzazicare/core/widgets/settings_list.dart';
 import 'package:mzazicare/features/profile/profile_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +27,7 @@ void main() {
     http.Response Function(http.Request request) answer, {
     WayThere? way,
     Map<String, dynamic>? profile,
+    AppearanceController? appearance,
   }) async {
     final List<({String method, String path, Map<String, dynamic>? body})> seen =
         <({String method, String path, Map<String, dynamic>? body})>[];
@@ -65,13 +68,16 @@ void main() {
 
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final Widget app = ChangeNotifierProvider<AuthController>.value(
+    final Widget page = ChangeNotifierProvider<AuthController>.value(
       value: auth,
       child: MaterialApp(
         theme: MzaziTheme.light(AppAudience.standard),
         home: const ProfileScreen(),
       ),
     );
+    final Widget app = appearance == null
+        ? page
+        : ChangeNotifierProvider<AppearanceController>.value(value: appearance, child: page);
     await tester.pumpWidget(
       way == null ? app : ChangeNotifierProvider<WayThere>.value(value: way, child: app),
     );
@@ -82,21 +88,50 @@ void main() {
     WidgetTester tester,
   ) async {
     await pump(tester, (_) => json(<String, dynamic>{}));
+    await tester.pumpAndSettle();
 
     expect(find.text('Me'), findsOneWidget);
-    expect(find.text('Caregiver'), findsOneWidget);
-    expect(find.text('+254700000020'), findsOneWidget);
+    expect(find.text('Mary Otieno'), findsOneWidget);
+    expect(find.text('Caregiver · +254700000020'), findsOneWidget);
+    expect(find.text('MO'), findsOneWidget);
+    // The account in rows, each to a page of its own.
+    for (final String row in <String>['Name and email', 'Phone number', 'Password']) {
+      expect(find.text(row), findsOneWidget);
+    }
+
     // Nothing to save until something changes.
+    await tester.tap(find.text('Name and email'));
+    await tester.pumpAndSettle();
+    expect(find.text('Your details'), findsOneWidget);
     final FilledButton save = tester.widget<FilledButton>(
       find.ancestor(of: find.text('Save changes'), matching: find.byType(FilledButton)),
     );
     expect(save.onPressed, isNull);
   });
 
+  testWidgets('chooses light or dark from a pull-down, with a tick by the current one', (
+    WidgetTester tester,
+  ) async {
+    final AppearanceController appearance = AppearanceController();
+    await pump(tester, (_) => json(<String, dynamic>{}), appearance: appearance);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Automatic'), findsOneWidget);
+    await tester.tap(find.text('Appearance'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark').last);
+    await tester.pumpAndSettle();
+
+    expect(appearance.mode, ThemeMode.dark);
+    expect(find.text('Dark'), findsOneWidget);
+  });
+
   testWidgets('the phone number is as tall as the name and email, and opens as one button', (
     WidgetTester tester,
   ) async {
     await pump(tester, (_) => json(<String, dynamic>{}));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Name and email'));
     await tester.pumpAndSettle();
 
     // How far into its field a line of text sits. The same for the value in two fields
@@ -106,10 +141,6 @@ void main() {
         tester.getTopLeft(text).dy -
         tester.getTopLeft(find.ancestor(of: text, matching: find.byType(InputDecorator)).first).dy;
     expect(into(find.text('+254700000020')), into(find.text('Mary Otieno').last));
-    expect(
-      into(find.text("You sign in with this number. We'll text a code to change it.")),
-      into(find.text('At least 8 characters')),
-    );
 
     // Anywhere on the field, not only the word, opens the change.
     await tester.tap(find.text('+254700000020'));
@@ -138,10 +169,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Asked first for Grace Wanjiru'), findsOneWidget);
+    // Folded away until opened, with what is inside said in a few words.
+    expect(find.text('Your care circles'), findsOneWidget);
+    expect(find.text('1 person'), findsOneWidget);
+    expect(find.text('Grace Wanjiru'), findsNothing);
+
+    await tester.tap(find.text('Your care circles'));
+    await tester.pumpAndSettle();
+    expect(find.text('Grace Wanjiru'), findsOneWidget);
+    expect(find.text('Asked first'), findsOneWidget);
+
+    await tester.tap(find.text('Your history'));
+    await tester.pumpAndSettle();
     expect(find.text("You've helped with 3 emergencies."), findsOneWidget);
-    expect(find.text('You usually answer in about 2 minutes.'), findsOneWidget);
-    expect(find.text('Last answered on 9 October 2026.'), findsOneWidget);
+    expect(
+      find.text('You usually answer in about 2 minutes. Last answered on 9 October 2026.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('moves the account to a new number with the password and a code', (
@@ -162,7 +206,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Change'));
+    await tester.tap(find.text('Phone number'));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'New phone number'), '0711000111');
     await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'Dev!2026');
@@ -183,8 +227,8 @@ void main() {
 
     expect(seen.last.path, '/api/v1/auth/me/phone');
     expect(seen.last.body, <String, dynamic>{'phone': '+254711000111', 'code': '123456'});
-    expect(find.text('+254711000111'), findsOneWidget);
-    expect(find.textContaining('Number changed'), findsOneWidget);
+    // Back on the page, which shows the new number.
+    expect(find.text('Caregiver · +254711000111'), findsOneWidget);
   });
 
   testWidgets('links the privacy notice and the terms', (WidgetTester tester) async {
@@ -258,6 +302,9 @@ void main() {
         'home': null,
       }),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Name and email'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Email (optional)'),
@@ -278,15 +325,18 @@ void main() {
   ) async {
     await pump(
       tester,
-      (_) => json(<String, dynamic>{'message': 'Your current password is not right'}, 400),
+      (_) => json(<String, dynamic>{'message': 'Your current password is wrong.'}, 400),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Password'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'nope');
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Another!2026');
     await tester.tap(find.text('Change password').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Your current password is not right'), findsOneWidget);
+    expect(find.text('Your current password is wrong.'), findsOneWidget);
   });
 
   testWidgets('changes the password and says other phones will be signed out', (
@@ -296,6 +346,9 @@ void main() {
       tester,
       (_) => json(sessionBody(access: 'access-2', refresh: 'refresh-2')),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Password'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Current password'), 'Dev!2026');
     await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'Another!2026');
@@ -339,8 +392,8 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      final Finder toggle = find.widgetWithText(SwitchListTile, 'Share live location');
-      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      final Finder toggle = find.widgetWithText(SettingsSwitchRow, 'Share live location');
+      expect(tester.widget<SettingsSwitchRow>(toggle).value, isFalse);
 
       await tester.tap(toggle);
       await tester.pumpAndSettle();
@@ -348,7 +401,7 @@ void main() {
       // Checked, then asked: already allowed, so nothing to explain first.
       expect(source.asked, <bool>[false, true]);
       expect(t.patches.single, contains('"shareWayThere":true'));
-      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      expect(tester.widget<SettingsSwitchRow>(toggle).value, isTrue);
       t.way.dispose();
     });
 
@@ -361,7 +414,7 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Share live location'));
+      await tester.tap(find.widgetWithText(SettingsSwitchRow, 'Share live location'));
       await tester.pumpAndSettle();
 
       // Apple's pattern: one way on, called Continue, and the phone asks only after it.
@@ -382,7 +435,7 @@ void main() {
       final ({WayThere way, List<String> patches}) t = await sharing();
       await pump(tester, (_) => json(<String, dynamic>{}), way: t.way);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Share live location'));
+      await tester.tap(find.widgetWithText(SettingsSwitchRow, 'Share live location'));
       await tester.pumpAndSettle();
 
       expect(t.patches, isEmpty);

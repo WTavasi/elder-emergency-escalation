@@ -154,7 +154,8 @@ class HelpProgress extends StatelessWidget {
 /// One large button that opens a sheet of five rows, each a picture and a few words,
 /// rather than five buttons on this screen, which at the elder's size would push the
 /// rest of it off a small phone. Once said, it shows what the family can see, and for a
-/// fire or danger, the one thing to do while help comes.
+/// fire or danger, the one thing to do while help comes. The service is asked a few
+/// seconds later, so a mistaken tap can be changed with Change first.
 class WhatsHappening extends StatelessWidget {
   const WhatsHappening({
     required this.reported,
@@ -200,9 +201,10 @@ class WhatsHappening extends StatelessWidget {
     }
 
     final String? advice = switch (said) {
-      EmergencyType.fire => 'Get out if you can. Call 999.',
-      EmergencyType.unsafe => 'Go somewhere safe if you can. Call 999.',
-      EmergencyType.breathing => "We've asked for an ambulance.",
+      // Asked a few seconds after the tap, so a wrong one can be changed first.
+      EmergencyType.fire => "Get out if you can. We're asking the fire service.",
+      EmergencyType.unsafe => "Go somewhere safe if you can. We're asking the police.",
+      EmergencyType.breathing => "We're asking for an ambulance.",
       _ => null,
     };
     return Column(

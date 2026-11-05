@@ -107,7 +107,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
         MaterialPageRoute<void>(
           builder: (BuildContext _) => EmergencyMapScreen(
             listenable: Listenable.merge(<Listenable?>[volunteer, _way]),
-            read: _mapData,
+            read: () => _mapData()?.contents,
             actions: <Widget>[
               DirectionsButton(
                 latitude: elder.latitude,

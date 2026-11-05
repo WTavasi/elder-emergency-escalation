@@ -206,6 +206,7 @@ export function EventDetail() {
 
       <OnTheWay alert={alert} />
       <Volunteers alert={alert} />
+      <Stations alert={alert} />
 
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
@@ -484,6 +485,40 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
     </section>
   );
 }
+
+/**
+ * The stations asked, nearest by road first, then any asked after a decline or no
+ * answer. The time is from the station, so it is an estimate: the unit may be out.
+ */
+function Stations({ alert }: { alert: AlertDetail }) {
+  const stations = alert.stations ?? [];
+  if (stations.length === 0) return null;
+
+  return (
+    <section className="card stack" aria-labelledby="stations-heading" aria-live="polite">
+      <h2 id="stations-heading">Emergency services</h2>
+      {stations.map((station) => (
+        <p key={`${station.name}-${station.askedAt}`}>
+          <strong>{station.name}</strong>{' '}
+          {station.status === 'declined'
+            ? "can't come."
+            : station.status === 'coming'
+              ? 'is on the way.'
+              : 'asked, no answer yet.'}
+          <span className="micro muted" style={{ display: 'block' }}>
+            Asked {formatClock(station.askedAt)}
+            {station.etaSeconds !== null && station.status !== 'declined'
+              ? `. ${capitalised(timeAway(station.etaSeconds))} away${station.byRoad ? ' by road' : ''}, from the station`
+              : ''}
+            {station.station ? `. ${station.station}` : ''}.
+          </span>
+        </p>
+      ))}
+    </section>
+  );
+}
+
+const capitalised = (text: string): string => `${text[0]?.toUpperCase() ?? ''}${text.slice(1)}`;
 
 function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
   const how = journey.source === 'osrm' ? 'by road' : 'in a straight line';

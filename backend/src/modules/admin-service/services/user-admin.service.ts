@@ -20,6 +20,7 @@ import {
 } from '../../realtime-service/services/realtime.publisher';
 import type {
   CoverageDto,
+  StationDto,
   CreateUserDto,
   ListUsersDto,
   UpdateUserDto,
@@ -38,6 +39,8 @@ export interface UserRow {
   coverage: { areaName: string; latitude: number; longitude: number; radiusKm: number } | null;
   /** For a responder, which service they are. Null for everybody else. */
   responderService: ResponderService | null;
+  /** For a responder unit, where it is based. Null when not set. */
+  station: { label: string; latitude: number; longitude: number } | null;
   /** Places this account holds in elders' chains. */
   chainPlaces: number;
   /** For an elder, how many people are in their own chain. Zero for everybody else. */
@@ -64,6 +67,9 @@ const ROW_SELECT = {
   coverageLongitude: true,
   coverageRadiusKm: true,
   responderService: true,
+  stationLabel: true,
+  stationLatitude: true,
+  stationLongitude: true,
   _count: { select: { assignmentsAsCarer: true, assignmentsAsElder: true } },
 } satisfies Prisma.UserSelect;
 
@@ -94,8 +100,24 @@ function toRow(user: RowSource): UserRow {
       user.role === Role.EMERGENCY_RESPONDER
         ? (user.responderService ?? ResponderService.GENERAL)
         : null,
+    station:
+      user.stationLabel !== null && user.stationLatitude !== null && user.stationLongitude !== null
+        ? {
+            label: user.stationLabel,
+            latitude: Number(user.stationLatitude),
+            longitude: Number(user.stationLongitude),
+          }
+        : null,
     chainPlaces: user._count.assignmentsAsCarer,
     chainSize: user._count.assignmentsAsElder,
+  };
+}
+
+function stationColumns(station: StationDto | null) {
+  return {
+    stationLabel: station ? station.label.trim() : null,
+    stationLatitude: station?.latitude ?? null,
+    stationLongitude: station?.longitude ?? null,
   };
 }
 
@@ -184,6 +206,7 @@ export class UserAdminService {
           ...(dto.role === Role.EMERGENCY_RESPONDER && dto.coverage
             ? {
                 ...coverageColumns(dto.coverage),
+                ...(dto.station ? stationColumns(dto.station) : {}),
                 responderService: dto.responderService ?? ResponderService.GENERAL,
               }
             : {}),
@@ -207,6 +230,9 @@ export class UserAdminService {
     if (dto.responderService && existing.role !== Role.EMERGENCY_RESPONDER) {
       throw new BadRequestException('Only an emergency responder has a service.');
     }
+    if (dto.station !== undefined && existing.role !== Role.EMERGENCY_RESPONDER) {
+      throw new BadRequestException('Only an emergency responder has a station.');
+    }
 
     try {
       const user = await this.prisma.user.update({
@@ -218,6 +244,7 @@ export class UserAdminService {
             : {}),
           ...(dto.coverage ? coverageColumns(dto.coverage) : {}),
           ...(dto.responderService ? { responderService: dto.responderService } : {}),
+          ...(dto.station !== undefined ? stationColumns(dto.station) : {}),
         },
         select: ROW_SELECT,
       });

@@ -12,6 +12,7 @@ import '../../core/widgets/notice.dart';
 import '../../core/widgets/section_label.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
+import '../profile/nearby_services.dart';
 import '../responder/widgets/call_button.dart';
 import 'widgets/address_picker.dart';
 import 'widgets/pairing_sheet.dart';
@@ -311,7 +312,8 @@ class _ElderScreenState extends State<ElderScreen> {
               const SectionLabel('Who we ask, in order'),
               const SizedBox(height: MzaziSpace.s12),
               Text(
-                'Last, we ask an emergency responder near them.',
+                'Last, the emergency responder near them. Police, fire or an ambulance are '
+                'asked too when what is happening needs them.',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: MzaziSpace.s8),
@@ -337,6 +339,9 @@ class _ElderScreenState extends State<ElderScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: MzaziSpace.s32),
+              const SectionLabel('Emergency services near them'),
+              NearbyServices(api: widget.api, elderId: widget.elderId, plain: true),
               const SizedBox(height: MzaziSpace.s32),
               const SectionLabel('Privacy'),
               Align(

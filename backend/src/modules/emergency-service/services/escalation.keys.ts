@@ -47,3 +47,36 @@ export function parseTimerKey(key: string): ParsedTimerKey | null {
 
   return { eventId: parts[2], tier };
 }
+
+/**
+ * When the station asked last is passed over for the next nearest. One per emergency,
+ * under its own prefix, so a tier timer being cleared never clears it: a station can be
+ * waiting while the family's tiers move on beside it.
+ */
+export const STATION_PREFIX = 'escalation:station';
+
+export const stationKey = (eventId: string): string => `${STATION_PREFIX}:${eventId}`;
+
+/** The emergency a station key belongs to, or null for any other key. */
+export function parseStationKey(key: string): string | null {
+  const parts = key.split(':');
+  if (parts.length !== 3) return null;
+  if (`${parts[0]}:${parts[1]}` !== STATION_PREFIX) return null;
+  return parts[2] || null;
+}
+
+/**
+ * When the service for a reported type is asked: a short while after the report, so a
+ * mistaken tap can be changed first. One per emergency, under its own prefix.
+ */
+export const SERVICE_PREFIX = 'escalation:service';
+
+export const serviceKey = (eventId: string): string => `${SERVICE_PREFIX}:${eventId}`;
+
+/** The emergency a service key belongs to, or null for any other key. */
+export function parseServiceKey(key: string): string | null {
+  const parts = key.split(':');
+  if (parts.length !== 3) return null;
+  if (`${parts[0]}:${parts[1]}` !== SERVICE_PREFIX) return null;
+  return parts[2] || null;
+}

@@ -132,7 +132,11 @@ void main() {
     test('the alert list re-reads when one of its emergencies changes', () async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[
-          json(<Map<String, dynamic>>[summaryBody()]),
+          json(<String, dynamic>{
+            'alerts': <Map<String, dynamic>>[
+              <String, dynamic>{'alert': summaryBody(), 'reasons': <String>[]},
+            ],
+          }),
         ],
       );
       final LiveUpdates live = LiveUpdates()..connectionChanged(true);
@@ -180,7 +184,9 @@ void main() {
 
     test('a screen built without the hub keeps working as it did', () async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
-        (http.Request request, int _) => <http.Response>[json(<Map<String, dynamic>>[])],
+        (http.Request request, int _) => <http.Response>[
+          json(<String, dynamic>{'alerts': <dynamic>[]}),
+        ],
       );
       final AlertsController controller = AlertsController(
         api: t.api,

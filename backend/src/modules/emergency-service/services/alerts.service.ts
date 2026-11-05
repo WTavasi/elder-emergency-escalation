@@ -29,6 +29,7 @@ import {
 import { EscalationService } from './escalation.service';
 import { EscalationTimerService } from './escalation-timer.service';
 import { JourneyService } from './journey.service';
+import { StationDispatchService } from './station-dispatch.service';
 import { VoiceService } from './voice.service';
 import { NotificationsService } from '../../notification-service/services/notifications.service';
 import {
@@ -149,6 +150,7 @@ export class AlertsService {
     private readonly journeys: JourneyService,
     private readonly voice: VoiceService,
     private readonly volunteers: VolunteerCallsService,
+    private readonly stations: StationDispatchService,
   ) {}
 
   /**
@@ -528,7 +530,7 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries, journeys, voice, volunteer] = await Promise.all([
+    const [row, chain, logs, deliveries, journeys, voice, volunteer, stations] = await Promise.all([
       this.prisma.emergencyEvent.findUniqueOrThrow({
         where: { id: eventId },
         include: SUMMARY_INCLUDE,
@@ -554,6 +556,8 @@ export class AlertsService {
       this.journeys.current(event, event.elderlyId === userId),
       this.voice.current(eventId, OPEN_STATES.includes(event.state)),
       this.volunteers.onAlert(eventId, event.elderlyId === userId),
+      // The circle's to see; the elder's screen says who is coming, not who was asked.
+      event.elderlyId === userId ? Promise.resolve([]) : this.stations.onAlert(event),
     ]);
 
     const triggeredAt = row.triggeredAt.getTime();
@@ -592,6 +596,7 @@ export class AlertsService {
       journeys: journeys.all,
       voice,
       volunteer,
+      stations,
     };
   }
 

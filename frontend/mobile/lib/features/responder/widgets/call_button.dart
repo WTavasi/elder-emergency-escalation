@@ -68,8 +68,21 @@ class CallButton extends StatelessWidget {
     );
   }
 
-  Future<void> _call(BuildContext context) async {
+  Future<void> _call(BuildContext context) =>
+      dial(context, name: name, phone: phone, canOpen: canOpen, open: open);
+
+  /// Rings [phone] with the phone's own dialler, or shows the number to dial by hand on
+  /// a device that cannot. For anything that calls somebody, button or row.
+  static Future<void> dial(
+    BuildContext context, {
+    required String name,
+    required String phone,
+    CanOpen? canOpen,
+    Open? open,
+  }) async {
     final Uri uri = Uri(scheme: 'tel', path: phone);
+    final String trimmed = name.trim();
+    final String firstName = trimmed.isEmpty ? 'them' : trimmed.split(RegExp(r'\s+')).first;
 
     final CanOpen check = canOpen ?? canLaunchUrl;
     final Open go = open ?? launchUrl;
@@ -84,7 +97,7 @@ class CallButton extends StatelessWidget {
     if (!context.mounted) return;
     await showActionSheet<void>(
       context,
-      title: 'Call $_firstName',
+      title: 'Call $firstName',
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

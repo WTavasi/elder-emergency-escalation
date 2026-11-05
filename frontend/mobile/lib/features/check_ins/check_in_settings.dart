@@ -21,6 +21,7 @@ class CheckInSettings extends StatefulWidget {
     required this.elderId,
     required this.elderName,
     this.forElder = false,
+    this.heading = true,
     super.key,
   });
 
@@ -30,6 +31,10 @@ class CheckInSettings extends StatefulWidget {
 
   /// Read by the elder themselves, so "you" rather than their name.
   final bool forElder;
+
+  /// Its own small-capitals heading, with the change beside it. Off inside a row that
+  /// already names it, where the change goes under the summary instead.
+  final bool heading;
 
   @override
   State<CheckInSettings> createState() => _CheckInSettingsState();
@@ -122,20 +127,23 @@ class _CheckInSettingsState extends State<CheckInSettings> {
     final bool canChange = overview != null && (widget.forElder || overview.canEdit);
     final List<CheckIn> recent = overview?.recent.take(3).toList() ?? const <CheckIn>[];
 
+    final Widget? change = canChange
+        ? TextButton(
+            onPressed: _busy ? null : () => unawaited(_change()),
+            child: Text(overview.isOn ? 'Change times' : 'Set up'),
+          )
+        : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SectionLabel(
-          'Daily check-in',
-          trailing: canChange
-              ? TextButton(
-                  onPressed: _busy ? null : () => unawaited(_change()),
-                  child: Text(overview.isOn ? 'Change times' : 'Set up'),
-                )
-              : null,
-        ),
-        const SizedBox(height: MzaziSpace.s8),
+        if (widget.heading) ...<Widget>[
+          SectionLabel('Daily check-in', trailing: change),
+          const SizedBox(height: MzaziSpace.s8),
+        ],
         if (overview != null) Text(_summary(overview), style: theme.textTheme.bodyLarge),
+        if (!widget.heading && change != null)
+          Align(alignment: AlignmentDirectional.centerStart, child: change),
         if (_error case final String failure) ...<Widget>[
           const SizedBox(height: MzaziSpace.s8),
           Notice(message: failure, isError: true),

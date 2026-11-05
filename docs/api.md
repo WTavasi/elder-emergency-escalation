@@ -91,13 +91,15 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
+| POST | `/api/v1/alerts/ranked` | caregiver, family, responder | `{ latitude?, longitude? }`, both or neither. Every open emergency the caller is part of, in the order to go to them: `{ measuredFrom, alerts: [{ alert, reasons, why, travelSeconds, byRoad }] }`. See below |
 | GET | `/api/v1/alerts` | bearer | Emergencies the caller is part of. `q` searches the elder's name and the name of whoever took it on, and "check-in" or "missed" also finds alerts raised by a missed check-in; `from` and `to` bound the date; `offset` pages; the total is in `X-Total-Count` |
 | GET | `/api/v1/alerts/:id` | participants | One emergency, with its chain, audit trail and deliveries |
 | POST | `/api/v1/alerts/:id/acknowledge` | participants | Take ownership, stopping the chain |
 | POST | `/api/v1/alerts/:id/decline` | asked at this tier, or a service asked at once | Say you cannot come, so the chain moves on at once. A service asked ahead of the chain may decline too; the chain stays where it was |
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome, and optionally `confirmedType`, what it actually was |
 | POST | `/api/v1/alerts/:id/type` | participants | `{ type }`: say what is happening (`FALL`, `BREATHING`, `UNWELL`, `FIRE`, `UNSAFE`). Can raise severity and ask a service at once; see below |
-| POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain. 403 for an emergency responder; 409 once a responder has been asked, by a person or by the chain reaching them |
+| POST | `/api/v1/alerts/:id/request-responder` | participants | `{ service? }`: ask for a service now, the one the emergency needs or the one chosen (`GENERAL`, `AMBULANCE`, `POLICE`, `FIRE`). Before the responder step it supersedes the chain; after it, the nearest station of that service is asked beside those already asked. 403 for an emergency responder; 409 for a service already asked, or when nobody else covers the place |
+| GET | `/api/v1/elders/:id/services` | the elder, their circle, administrator | `{ hasHome, services }`: the nearest emergency responder, ambulance, police and fire service to the elder's home, by road, the default responder first |
 | POST | `/api/v1/alerts/:id/position` | the owner or the volunteer going, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 | POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |
@@ -208,9 +210,12 @@ rules: a severity floor, a service, and when the service is asked.
 | `UNWELL` | high | ambulance | at the responder step |
 
 A floor only ever raises severity, and a rise changes the rest of the chain at once, as
-the cancel-window review does. "At once" means the service's responders covering the
-alert are pushed and texted now, ahead of the chain, once per emergency, while the family
-is asked as before. Responder accounts have a `responderService`: `GENERAL`, `AMBULANCE`,
+the cancel-window review does. "At once" means the nearest station of the service is
+pushed and texted ahead of the chain, while the family is asked as before, though not at
+the tap: `TYPE_DISPATCH_DELAY_SECONDS` (25) later, so a mistaken tap can be changed first.
+What is reported when the wait ends is what counts; changed to a fall, nothing is asked
+early. The wait is a Redis key (`escalation:service:`) with a durable copy in
+`service_due_at`, recovered on boot. No service is asked twice. Responder accounts have a `responderService`: `GENERAL`, `AMBULANCE`,
 `FIRE` or `POLICE`. The service asked is the type's if any of its responders covers the
 place, else a general responder, else whoever covers it; with nobody at all, volunteers
 nearby. The summary carries `reportedType`, `confirmedType`, `serviceRequested` and
@@ -219,6 +224,33 @@ floor lifted the band. The audit trail has `TYPE_REPORTED` (`type`, `via`, `seve
 `severityAfter`) and `SERVICE_DISPATCHED` (`service`, `recipients`). Pushes to a service
 start with the type ("Fire: Grace needs help"); a family member's lock screen shows Fire
 and Not safe, never the health types, which they see in the app.
+
+**Stations, nearest first.** A responder account is a station, with `station: { label,
+latitude, longitude }` where it is based. When a service is asked, at once for an urgent
+type or at the responder step, only one station is asked: of those whose area covers the
+alert, the service's own first, then general ones, then anybody, each group by road time
+from its station (from the middle of its area when it has none). A station that declines
+is passed over at once for the next nearest; one silent for `STATION_WAIT_SECONDS` (180)
+has the next asked too, and can still answer. Nobody is asked twice. Taking the emergency
+on stops it. The wait is a Redis key with a durable copy in `station_deadline_at`,
+recovered on boot like the tier timers. Each station asked is a `STATION_ASKED` entry
+(`responderId`, `name`, `service`, `station`, `seconds`, `byRoad`, `reason`: `nearest`,
+`declined` or `no-answer`), and the detail view carries `stations: [{ name, service,
+station, askedAt, etaSeconds, byRoad, reason, status }]`, `status` being `asked`,
+`declined` or `coming`. The time is from the station, an estimate. Empty on the elder's
+copy.
+
+**Who to go to first.** `POST /alerts/ranked` orders the caller's open emergencies: first
+what nobody has taken on, then the caller's own, then what somebody else is handling;
+within each, by severity, then whether the reported type is one asked for at once, then
+time. Time is the travel time from the caller for one nobody has, and how much sooner the
+caller would get there than whoever is going (by their shared journey) for one somebody
+has, counted from two minutes. It is measured from `latitude` and `longitude` when sent,
+else from the caller's station, else not at all (`measuredFrom`: `here`, `station` or
+null). The position is used for that answer only: it is not stored, logged or sent on.
+`reasons` are short sentences, most important first ("Nobody has taken this on yet.",
+"Critical.", "Fire reported.", "About 9 minutes from you by road."); `why` is the one a
+list row cannot show by itself, the distance or the time saved, or null.
 
 Every alert carries `trigger`: `PANIC` for a press of the button, `MISSED_CHECK_IN` for a
 daily check-in nobody answered. The second kind is held at the standard band whatever the
@@ -433,8 +465,8 @@ same length) and `daily` (one point per day, with the days nothing happened incl
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/v1/admin/users` | administrator | `{ items, total, page, pageSize }`. Filters: `q` (name, phone or email), `role`, `status` (`active` or `deactivated`). Each row has `chainPlaces`, the elders' chains it is in, and `chainSize`, for an elder the people in their own chain |
-| POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage?, responderService? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }`; `responderService` is `GENERAL` unless given |
-| PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage?, responderService? }` |
+| POST | `/api/v1/admin/users` | administrator | `{ name, phone, email?, role, password, coverage?, responderService?, station? }` for a responder or an administrator. A responder needs `coverage: { areaName, latitude, longitude, radiusKm }`; `responderService` is `GENERAL` unless given; `station: { label, latitude, longitude }` is where the unit is based |
+| PATCH | `/api/v1/admin/users/:id` | administrator | `{ name?, email?, coverage?, responderService?, station? }`. `station: null` removes it |
 | POST | `/api/v1/admin/users/deactivate` | administrator | `{ ids }` |
 | POST | `/api/v1/admin/users/reactivate` | administrator | `{ ids }` |
 

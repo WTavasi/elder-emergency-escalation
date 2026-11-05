@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../location/position_source.dart';
 import 'models.dart';
 
 /// A request the API refused, carrying what it said.
@@ -459,6 +460,35 @@ class ApiClient {
         .toList(growable: false);
   }
 
+  /// Every open emergency this person is part of, in the order to go to them, each
+  /// with why. [here] is this phone's position, sent only when the person allowed it;
+  /// the server uses it for this answer and keeps nothing. Null from a server that
+  /// does not rank: one that answers 404, or answers without a ranking.
+  Future<({List<RankedAlert> alerts, MeasuredFrom from})?> rankedAlerts({Fix? here}) async {
+    final Object? body;
+    try {
+      body = await _sendRaw(
+        'POST',
+        '/alerts/ranked',
+        body: <String, dynamic>{
+          if (here != null) 'latitude': here.latitude,
+          if (here != null) 'longitude': here.longitude,
+        },
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+    if (body is! Map<String, dynamic> || body['alerts'] is! List<dynamic>) return null;
+    return (
+      alerts: (body['alerts'] as List<dynamic>)
+          .map(RankedAlert.fromJson)
+          .whereType<RankedAlert>()
+          .toList(),
+      from: MeasuredFrom.parse(body['measuredFrom']),
+    );
+  }
+
   /// One emergency in full: the chain, the timeline and the severity reasoning.
   Future<AlertDetail> alertDetail(String id) async {
     final Map<String, dynamic> body = await _send('GET', '/alerts/$id');
@@ -511,9 +541,18 @@ class ApiClient {
     );
   }
 
-  /// Escalate past the care circle to an emergency responder, by hand.
-  Future<void> requestResponder(String id) async {
-    await _send('POST', '/alerts/$id/request-responder', body: const <String, dynamic>{});
+  /// The nearest emergency responder, ambulance, police and fire service to an elder's
+  /// home, by road. Empty when the elder has no home recorded.
+  Future<List<NearbyService>> elderServices(String elderId) async =>
+      NearbyService.listFromJson(await _send('GET', '/elders/$elderId/services'));
+
+  /// Ask for a service now, by hand: [service], or the one the emergency needs.
+  Future<void> requestResponder(String id, {ResponderService? service}) async {
+    await _send(
+      'POST',
+      '/alerts/$id/request-responder',
+      body: <String, dynamic>{if (service != null) 'service': service.wire},
+    );
   }
 
   /// A token to join this emergency's voice room. The server allows it for the elder and

@@ -156,6 +156,12 @@ every other phone the account is signed in on.
 The elder's own page, behind the round button at the top of their screen, has the same
 idea at their size: who comes, the daily check-in, privacy, and signing out.
 
+**Me.** Everybody's own page is laid out as an iPhone's Settings: their initials and name
+at the top, opening their details, then sections of rows. Care circles, history, the
+emergency services near an elder and the daily check-in fold away until tapped; light or
+dark is a pull-down and Elder mode a switch; signing out is last. On the elder's page,
+calling each person in their circle comes first, out in the open.
+
 **Light or dark.** The app follows the phone's setting. Anybody can override it under
 **Screen** on their account page: Same as this phone, Light or Dark. The choice is kept
 on the phone. The emergency colours do not change with it: the help button keeps its
@@ -164,7 +170,11 @@ red, with a brighter edge in dark mode, and the countdown is yellow in both.
 **Caregivers, family members and responders.** A bar along the bottom with **Alerts**,
 **People** (caregivers and family only) and **Me**, the Alerts tab carrying the number
 nobody has answered. Alerts has an Open view of the emergencies they are part of, and a
-History view grouped by day; pull down to refresh. For each one: who is being asked,
+History view grouped by day; pull down to refresh. Open is in the order to go: what
+nobody has taken on first, then your own, then the rest, each row with the one reason it
+cannot show by itself (how far, or how much sooner you would be there), and a small map
+of them all when there are two or more. For each one: who is being asked, which emergency
+services were asked and roughly how far each station is,
 where the elder is on a map with everybody on their way and their road, a Get
 directions button that hands spoken directions to Google Maps or, on an iPhone, Apple
 Maps, calling the elder or a responder, and taking it on, declining or closing it with

@@ -13,6 +13,8 @@ import {
 import { Role, type EmergencyEvent } from '@prisma/client';
 import type { AlertDetail, AlertSummary } from '../views/alert-views';
 import { AlertsService } from '../services/alerts.service';
+import { AlertRankingService, type RankedAlerts } from '../services/alert-ranking.service';
+import { RankAlertsDto } from '../validation/rank-alerts.dto';
 import {
   CurrentUser,
   type AuthenticatedUser,
@@ -25,7 +27,30 @@ import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 
 @Controller('alerts')
 export class AlertsController {
-  constructor(private readonly alerts: AlertsService) {}
+  constructor(
+    private readonly alerts: AlertsService,
+    private readonly ranking: AlertRankingService,
+  ) {}
+
+  /**
+   * Every open emergency the caller is part of, in the order to go to them, each with
+   * why. A POST rather than a GET so a position, when sent, travels in the body and not
+   * in a URL that a proxy might log. Nothing is created.
+   */
+  @Roles(Role.CAREGIVER, Role.FAMILY_MEMBER, Role.EMERGENCY_RESPONDER)
+  @Throttle(30, 60)
+  @HttpCode(HttpStatus.OK)
+  @Post('ranked')
+  ranked(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RankAlertsDto,
+  ): Promise<RankedAlerts> {
+    const here =
+      dto.latitude !== undefined && dto.longitude !== undefined
+        ? { latitude: dto.latitude, longitude: dto.longitude }
+        : undefined;
+    return this.ranking.rank(user.userId, user.role, here);
+  }
 
   /** The panic button. Only the person being cared for can raise their own alert. */
   @Roles(Role.ELDER)

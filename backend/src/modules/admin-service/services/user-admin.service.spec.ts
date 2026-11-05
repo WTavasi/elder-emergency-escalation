@@ -154,6 +154,28 @@ describe('UserAdminService', () => {
       expect(prisma.user.create.mock.calls[1][0].data.responderService).toBe(ResponderService.FIRE);
     });
 
+    it('records where a responder unit is based, when given', async () => {
+      const { service, prisma } = build();
+
+      await service.create(
+        {
+          ...responder,
+          station: {
+            label: 'Kilimani Police Station, Lenana Road',
+            latitude: -1.29,
+            longitude: 36.78,
+          },
+        },
+        ADMIN,
+      );
+
+      expect(prisma.user.create.mock.calls[0][0].data).toMatchObject({
+        stationLabel: 'Kilimani Police Station, Lenana Road',
+        stationLatitude: -1.29,
+        stationLongitude: 36.78,
+      });
+    });
+
     it('refuses a responder with no area', async () => {
       const { service } = build();
       await expect(service.create({ ...responder, coverage: undefined }, ADMIN)).rejects.toThrow(
@@ -241,6 +263,13 @@ describe('UserAdminService', () => {
       await expect(
         service.update(CAREGIVER, { responderService: ResponderService.POLICE }),
       ).rejects.toThrow('Only an emergency responder has a service.');
+    });
+
+    it('refuses a station for anybody but a responder', async () => {
+      const { service } = build();
+      await expect(service.update(CAREGIVER, { station: null })).rejects.toThrow(
+        'Only an emergency responder has a station.',
+      );
     });
 
     it('refuses an area for anybody but a responder', async () => {

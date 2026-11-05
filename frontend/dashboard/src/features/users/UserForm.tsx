@@ -5,6 +5,7 @@ import type {
   Coverage,
   NewUser,
   ResponderService,
+  Station,
   UserRow,
 } from '../../shared/api/types';
 import { SERVICE_LABEL } from '../../shared/utils/format';
@@ -22,7 +23,10 @@ const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  * A responder also needs an area, found by address search, because dispatch picks
  * responders by whether an emergency falls inside their circle.
  *
- * Editing changes the name, the email and, for a responder, the area. The phone number
+ * A responder can also have a station, the address the unit is based at, found the same
+ * way, because the nearest station by road is asked first.
+ *
+ * Editing changes the name, the email and, for a responder, the area and station. The phone number
  * and the role are not edited here: the number is how the person signs in and how
  * every chain reaches them, and a change of role is a different person's job.
  */
@@ -47,34 +51,13 @@ export function UserForm({
   const [password, setPassword] = useState('');
   const [coverage, setCoverage] = useState<Coverage | null>(user?.coverage ?? null);
   const [service, setService] = useState<ResponderService>(user?.responderService ?? 'GENERAL');
-  const [areaQuery, setAreaQuery] = useState('');
-  const [matches, setMatches] = useState<AddressMatch[] | null>(null);
-  const [attribution, setAttribution] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [station, setStation] = useState<Station | null>(user?.station ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const isResponder = editing
     ? user.role === 'EMERGENCY_RESPONDER'
     : role === 'EMERGENCY_RESPONDER';
-
-  async function searchArea() {
-    if (areaQuery.trim().length < 3) {
-      setError('Type at least three letters of a place to search for.');
-      return;
-    }
-    setSearching(true);
-    setError(null);
-    try {
-      const found = await api.searchAddress(areaQuery.trim());
-      setMatches(found.results);
-      setAttribution(found.attribution);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not search. Try again.');
-    } finally {
-      setSearching(false);
-    }
-  }
 
   function choose(match: AddressMatch) {
     setCoverage({
@@ -102,7 +85,7 @@ export function UserForm({
           name: name.trim(),
           email: email.trim() || null,
           ...(isResponder && coverage ? { coverage } : {}),
-          ...(isResponder ? { responderService: service } : {}),
+          ...(isResponder ? { responderService: service, station } : {}),
         });
         onSaved(`${name.trim()} was updated.`);
         return;
@@ -123,7 +106,9 @@ export function UserForm({
         ...(email.trim() ? { email: email.trim() } : {}),
         role,
         password,
-        ...(isResponder && coverage ? { coverage, responderService: service } : {}),
+        ...(isResponder && coverage
+          ? { coverage, responderService: service, ...(station ? { station } : {}) }
+          : {}),
       });
       onSaved(`${name.trim()} was added and sent an SMS saying so. Give them their password.`);
     } catch (caught) {
@@ -303,53 +288,13 @@ export function UserForm({
                   </span>
                 </p>
               ) : null}
-              <div className="row" style={{ flexWrap: 'nowrap' }}>
-                <input
-                  id="user-area"
-                  style={{ flex: 1, width: 'auto' }}
-                  placeholder="Search for a place, e.g. Kilimani, Nairobi"
-                  value={areaQuery}
-                  onChange={(changeEvent) => setAreaQuery(changeEvent.target.value)}
-                  onKeyDown={(keyEvent) => {
-                    if (keyEvent.key === 'Enter') {
-                      keyEvent.preventDefault();
-                      void searchArea();
-                    }
-                  }}
-                />
-                <button type="button" onClick={() => void searchArea()} disabled={searching}>
-                  {searching ? 'Searching' : 'Search'}
-                </button>
-              </div>
-              {matches !== null ? (
-                matches.length === 0 ? (
-                  <p className="muted micro" style={{ margin: 0 }}>
-                    Nothing found. Try a nearby town or estate.
-                  </p>
-                ) : (
-                  <>
-                    <ul className="choices">
-                      {matches.map((match) => (
-                        <li key={`${match.latitude},${match.longitude}`}>
-                          <label>
-                            <input
-                              type="radio"
-                              name="area"
-                              checked={
-                                coverage?.latitude === match.latitude &&
-                                coverage?.longitude === match.longitude
-                              }
-                              onChange={() => choose(match)}
-                            />
-                            {match.label}
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="field__hint">{attribution}</p>
-                  </>
-                )
-              ) : null}
+              <PlaceSearch
+                id="user-area"
+                placeholder="Search for a place, e.g. Kilimani, Nairobi"
+                chosen={coverage}
+                onChoose={choose}
+                onError={setError}
+              />
             </div>
             {coverage ? (
               <>
@@ -371,9 +316,135 @@ export function UserForm({
                 </div>
               </>
             ) : null}
+
+            <label htmlFor="user-station" className="form-grid__top">
+              Station
+            </label>
+            <div className="stack" style={{ gap: 'var(--space-8)' }}>
+              {station ? (
+                <p style={{ margin: 0 }}>
+                  {station.label}{' '}
+                  <span className="figures micro">
+                    {station.latitude.toFixed(4)}, {station.longitude.toFixed(4)}
+                  </span>{' '}
+                  <button type="button" className="link-button" onClick={() => setStation(null)}>
+                    Remove
+                  </button>
+                </p>
+              ) : null}
+              <PlaceSearch
+                id="user-station"
+                placeholder="Search for the station's address"
+                chosen={station}
+                onChoose={(match) =>
+                  setStation({
+                    label: match.label,
+                    latitude: match.latitude,
+                    longitude: match.longitude,
+                  })
+                }
+                onError={setError}
+              />
+              <p className="field__hint">
+                Where the unit is based. The nearest station by road is asked first. Without one,
+                the middle of the area is used.
+              </p>
+            </div>
           </>
         ) : null}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * A place, found by address search and chosen from a short list. Used for a responder's
+ * area and for their station.
+ */
+function PlaceSearch({
+  id,
+  placeholder,
+  chosen,
+  onChoose,
+  onError,
+}: {
+  id: string;
+  placeholder: string;
+  chosen: { latitude: number; longitude: number } | null;
+  onChoose: (match: AddressMatch) => void;
+  onError: (message: string | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [matches, setMatches] = useState<AddressMatch[] | null>(null);
+  const [attribution, setAttribution] = useState('');
+  const [searching, setSearching] = useState(false);
+
+  async function search() {
+    if (query.trim().length < 3) {
+      onError('Type at least three letters of a place to search for.');
+      return;
+    }
+    setSearching(true);
+    onError(null);
+    try {
+      const found = await api.searchAddress(query.trim());
+      setMatches(found.results);
+      setAttribution(found.attribution);
+    } catch (caught) {
+      onError(caught instanceof ApiError ? caught.message : "Couldn't search. Try again.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="row" style={{ flexWrap: 'nowrap' }}>
+        <input
+          id={id}
+          style={{ flex: 1, width: 'auto' }}
+          placeholder={placeholder}
+          value={query}
+          onChange={(changeEvent) => setQuery(changeEvent.target.value)}
+          onKeyDown={(keyEvent) => {
+            if (keyEvent.key === 'Enter') {
+              keyEvent.preventDefault();
+              void search();
+            }
+          }}
+        />
+        <button type="button" onClick={() => void search()} disabled={searching}>
+          {searching ? 'Searching' : 'Search'}
+        </button>
+      </div>
+      {matches !== null ? (
+        matches.length === 0 ? (
+          <p className="muted micro" style={{ margin: 0 }}>
+            Nothing found. Try a nearby town or estate.
+          </p>
+        ) : (
+          <>
+            <ul className="choices">
+              {matches.map((match) => (
+                <li key={`${match.latitude},${match.longitude}`}>
+                  <label>
+                    <input
+                      type="radio"
+                      name={id}
+                      checked={
+                        chosen?.latitude === match.latitude && chosen?.longitude === match.longitude
+                      }
+                      onChange={() => onChoose(match)}
+                    />
+                    {match.label}
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <p className="field__hint">{attribution}</p>
+          </>
+        )
+      ) : null}
+    </>
   );
 }

@@ -40,6 +40,10 @@ abstract class PositionSource {
   /// Readings while somebody listens. Stops when the subscription is cancelled.
   Stream<Fix> watch();
 
+  /// One reading, now, without starting a stream or its notification. Null when the
+  /// phone could not get one in a few seconds. Never asks for access.
+  Future<Fix?> current();
+
   /// The phone's settings, for an access that only they can change.
   Future<void> openSettings(LocationAccess access);
 }
@@ -80,6 +84,25 @@ class DevicePositionSource implements PositionSource {
       accuracyMetres: position.accuracy > 0 ? position.accuracy : null,
     ),
   );
+
+  @override
+  Future<Fix?> current() async {
+    try {
+      final Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+      return Fix(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyMetres: position.accuracy > 0 ? position.accuracy : null,
+      );
+    } on Exception {
+      return null;
+    }
+  }
 
   @override
   Future<void> openSettings(LocationAccess access) async {

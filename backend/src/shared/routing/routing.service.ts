@@ -104,6 +104,25 @@ export class RoutingService {
     }
   }
 
+  /**
+   * The time from one place to each of several, in the same order, in one request: a
+   * person to every open emergency they could go to. Waits briefly for the slot, as
+   * [travelTimes] does, and falls back per place.
+   */
+  async travelTimesFrom(from: Coordinates, destinations: Coordinates[]): Promise<RouteEstimate[]> {
+    const estimates = destinations.map((to) => RoutingService.estimate(from, to));
+    if (destinations.length === 0 || !this.enabled) return estimates;
+    if (!(await this.takeSlot(SLOT_TRIES))) return estimates;
+
+    try {
+      const routed = await this.fromTableOut(from, destinations.slice(0, MAX_TABLE_ORIGINS));
+      return estimates.map((estimate, index) => routed[index] ?? estimate);
+    } catch (error) {
+      this.logger.warn(`Travel times fell back to estimates: ${RoutingService.reason(error)}`);
+      return estimates;
+    }
+  }
+
   /** The straight line, lengthened for roads, at a city driving speed. */
   static estimate(from: Coordinates, to: Coordinates): RouteEstimate {
     const distanceMetres = Math.round(distanceInMetres(from, to) * DETOUR_FACTOR);
@@ -210,6 +229,38 @@ export class RoutingService {
       const distance = firstNumber(distances[index]);
       // Null where the router has no road between them, such as a place off the map.
       if (duration === null || distance === null) return undefined;
+      return {
+        durationSeconds: Math.round(duration),
+        distanceMetres: Math.round(distance),
+        source: 'osrm' as const,
+      };
+    });
+  }
+
+  /** One request for one origin to many destinations: the origin first, then each. */
+  private async fromTableOut(
+    from: Coordinates,
+    destinations: Coordinates[],
+  ): Promise<Array<RouteEstimate | undefined>> {
+    const places = [from, ...destinations].map(lonLat).join(';');
+    const body = (await this.ask(`/table/v1/driving/${places}`, {
+      sources: '0',
+      destinations: destinations.map((_, index) => String(index + 1)).join(';'),
+      annotations: 'duration,distance',
+    })) as { code?: string; durations?: unknown; distances?: unknown };
+    if (body.code !== 'Ok' || !Array.isArray(body.durations)) {
+      throw new Error(`router gave no table (${body.code ?? 'no code'})`);
+    }
+    // One row, the origin's, with a column per destination.
+    const durations = Array.isArray(body.durations[0]) ? (body.durations[0] as unknown[]) : [];
+    const distances =
+      Array.isArray(body.distances) && Array.isArray(body.distances[0])
+        ? (body.distances[0] as unknown[])
+        : [];
+    return destinations.map((_, index) => {
+      const duration = durations[index];
+      const distance = distances[index];
+      if (typeof duration !== 'number' || typeof distance !== 'number') return undefined;
       return {
         durationSeconds: Math.round(duration),
         distanceMetres: Math.round(distance),
