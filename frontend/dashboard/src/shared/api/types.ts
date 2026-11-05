@@ -124,8 +124,11 @@ export interface ChainMember {
   priorityOrder: number;
 }
 
-/** The person who took it on, on their way, while they share it. Never stored. */
+/** Somebody on their way, while they share it: the owner or the volunteer. Never stored. */
 export interface Journey {
+  /** Optional, so a console a release ahead of the API still reads the page. */
+  userId?: string;
+  traveller?: 'owner' | 'volunteer';
   etaSeconds: number;
   distanceMetres: number;
   /** "osrm" for a route by road, "estimate" for the straight-line guess. */
@@ -133,6 +136,8 @@ export interface Journey {
   updatedAt: string;
   latitude: number | null;
   longitude: number | null;
+  /** The road, as [latitude, longitude] points, when a router drew it. */
+  path?: Array<[number, number]> | null;
 }
 
 /** Talking through the app: whether it is set up, and who started a call. */
@@ -149,6 +154,8 @@ export interface VolunteerOnAlert {
   name: string | null;
   phone: string | null;
   distanceMetres: number | null;
+  /** Whether that distance is along roads rather than the straight line. */
+  byRoad?: boolean;
   acceptedAt: string | null;
   arrivedAt: string | null;
 }
@@ -186,6 +193,8 @@ export interface AlertDetail extends AlertSummary {
   deliveries: DeliveryAttempt[];
   /** Optional, so a console a release ahead of the API still reads the page. */
   journey?: Journey | null;
+  /** Everybody sharing their way there, soonest first. */
+  journeys?: Journey[];
   voice?: VoiceState;
   volunteer?: VolunteerOnAlert | null;
 }
