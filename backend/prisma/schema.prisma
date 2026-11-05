@@ -194,6 +194,10 @@ enum ConsentType {
   /// EXTENSION. Vetted community volunteers near the elder may be asked to go in an
   /// emergency, and the one who accepts is told the elder's name and address.
   COMMUNITY_HELP
+  /// EXTENSION. The elder's medical details are kept, and shown to those asked about an
+  /// open emergency. Health data is sensitive personal data, so this is its own consent,
+  /// never part of registration. Withdrawing it deletes the details.
+  MEDICAL_PROFILE
 
   @@map("consent_type")
 }
@@ -277,24 +281,29 @@ model User {
   stationLongitude Decimal? @map("station_longitude") @db.Decimal(9, 6)
 
   // --- relations ---
-  triggeredEvents     EmergencyEvent[]   @relation("triggeredBy")
-  acknowledgedEvents  EmergencyEvent[]   @relation("acknowledgedBy")
-  assignmentsAsElder  CareAssignment[]   @relation("assignmentElder")
-  assignmentsAsCarer  CareAssignment[]   @relation("assignmentResponder")
+  triggeredEvents     EmergencyEvent[]       @relation("triggeredBy")
+  acknowledgedEvents  EmergencyEvent[]       @relation("acknowledgedBy")
+  assignmentsAsElder  CareAssignment[]       @relation("assignmentElder")
+  assignmentsAsCarer  CareAssignment[]       @relation("assignmentResponder")
   notifications       Notification[]
   auditLogs           AuditLog[]
-  consentsAboutMe     ConsentRecord[]    @relation("consentSubject")
-  consentsIGranted    ConsentRecord[]    @relation("consentGrantor")
-  invitationsAsElder  ChainInvitation[]  @relation("invitationElder")
-  invitationsSent     ChainInvitation[]  @relation("invitationSender")
+  consentsAboutMe     ConsentRecord[]        @relation("consentSubject")
+  consentsIGranted    ConsentRecord[]        @relation("consentGrantor")
+  invitationsAsElder  ChainInvitation[]      @relation("invitationElder")
+  invitationsSent     ChainInvitation[]      @relation("invitationSender")
   preferences         UserPreference?
-  checkInSchedule     CheckInSchedule?   @relation("checkInScheduleElder")
-  checkInSchedulesSet CheckInSchedule[]  @relation("checkInScheduleSetBy")
+  checkInSchedule     CheckInSchedule?       @relation("checkInScheduleElder")
+  checkInSchedulesSet CheckInSchedule[]      @relation("checkInScheduleSetBy")
   checkIns            CheckIn[]
-  volunteerProfile    VolunteerProfile?  @relation("volunteerProfile")
-  volunteersReviewed  VolunteerProfile[] @relation("volunteerReviewer")
+  volunteerProfile    VolunteerProfile?      @relation("volunteerProfile")
+  volunteersReviewed  VolunteerProfile[]     @relation("volunteerReviewer")
   volunteerCalls      VolunteerCall[]
-  volunteeredEvents   EmergencyEvent[]   @relation("eventVolunteer")
+  volunteeredEvents   EmergencyEvent[]       @relation("eventVolunteer")
+  medicalProfile      MedicalProfile?        @relation("medicalProfileElder")
+  medicalChanges      MedicalProfileChange[] @relation("medicalChangeElder")
+  medicalChangesMade  MedicalProfileChange[] @relation("medicalChangeBy")
+  medicalViews        MedicalProfileView[]   @relation("medicalViewElder")
+  medicalViewsMade    MedicalProfileView[]   @relation("medicalViewBy")
 
   @@index([role])
   @@map("users")
@@ -432,13 +441,14 @@ model EmergencyEvent {
   volunteerAcceptedAt DateTime? @map("volunteer_accepted_at") @db.Timestamptz(3)
   volunteerArrivedAt  DateTime? @map("volunteer_arrived_at") @db.Timestamptz(3)
 
-  elder          User            @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
-  owner          User?           @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
-  volunteer      User?           @relation("eventVolunteer", fields: [volunteerId], references: [id], onDelete: SetNull)
+  elder          User                 @relation("triggeredBy", fields: [elderlyId], references: [id], onDelete: Restrict)
+  owner          User?                @relation("acknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  volunteer      User?                @relation("eventVolunteer", fields: [volunteerId], references: [id], onDelete: SetNull)
   notifications  Notification[]
   auditLogs      AuditLog[]
   checkIns       CheckIn[]
   volunteerCalls VolunteerCall[]
+  medicalViews   MedicalProfileView[]
 
   // The escalation engine and the dashboard both query open events by state.
   @@index([state])
@@ -827,4 +837,63 @@ model VolunteerCall {
   @@unique([eventId, volunteerId])
   @@index([volunteerId, askedAt])
   @@map("volunteer_calls")
+}
+
+// ---------------------------------------------------------------------------
+// medical_profiles. EXTENSION. What a responder should know about an elder's health,
+// as the phone's medical ID card holds it: conditions, medicines, allergies, blood type,
+// their doctor. Health data is sensitive personal data under the Data Protection Act, so
+// the details are sealed (AES-256-GCM, MEDICAL_DATA_KEY) and stored as one value the
+// database cannot read. Nothing queries inside them. Kept only while the elder's
+// MEDICAL_PROFILE consent stands; withdrawing it deletes the row.
+// ---------------------------------------------------------------------------
+
+model MedicalProfile {
+  elderlyId   String   @id @map("elderly_id") @db.Uuid
+  /// "v1:" then base64 of the 12-byte IV, the 16-byte tag and the ciphertext.
+  sealed      String
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  elder User @relation("medicalProfileElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+
+  @@map("medical_profiles")
+}
+
+/// EXTENSION. Who changed the medical details and which parts, so the elder sees every
+/// change. The names of the parts only, never what they said. Deleted with the details.
+model MedicalProfileChange {
+  id          String   @id @default(uuid()) @map("change_id") @db.Uuid
+  elderlyId   String   @map("elderly_id") @db.Uuid
+  changedById String?  @map("changed_by_id") @db.Uuid
+  /// Which parts changed, for example ["medications", "allergies"].
+  fields      String[]
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  elder     User  @relation("medicalChangeElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("medicalChangeBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([elderlyId, changedAt])
+  @@map("medical_profile_changes")
+}
+
+/// EXTENSION. Every time somebody other than the elder opened the medical details: who,
+/// when, and for which emergency, if any. Kept after the details are deleted, as the
+/// record of who saw them, and removed with the audit log after RETENTION_AUDIT_LOG_DAYS.
+model MedicalProfileView {
+  id        String   @id @default(uuid()) @map("view_id") @db.Uuid
+  elderlyId String   @map("elderly_id") @db.Uuid
+  viewerId  String?  @map("viewer_id") @db.Uuid
+  /// The emergency it was opened for. Null when a caregiver opened it outside one.
+  eventId   String?  @map("event_id") @db.Uuid
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz(3)
+
+  elder  User            @relation("medicalViewElder", fields: [elderlyId], references: [id], onDelete: Cascade)
+  viewer User?           @relation("medicalViewBy", fields: [viewerId], references: [id], onDelete: SetNull)
+  event  EmergencyEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([elderlyId, viewedAt])
+  @@index([eventId])
+  @@map("medical_profile_views")
 }

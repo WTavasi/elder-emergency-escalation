@@ -11,6 +11,8 @@ export interface RetentionOutcome {
   eventsDeleted: number;
   auditLogsDeleted: number;
   checkInsDeleted: number;
+  medicalViewsDeleted: number;
+  medicalProfilesDeleted: number;
   eventCutoff: string;
   auditCutoff: string;
 }
@@ -105,11 +107,22 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
+    // Who opened an elder's medical details is kept as long as the audit log, and the
+    // details of a closed account go at the next sweep: there is nobody left to help.
+    const medicalViews = await this.prisma.medicalProfileView.deleteMany({
+      where: { viewedAt: { lt: auditCutoff } },
+    });
+    const medicalProfiles = await this.prisma.medicalProfile.deleteMany({
+      where: { elder: { deactivatedAt: { not: null } } },
+    });
+
     const outcome: RetentionOutcome = {
       ranAt: now.toISOString(),
       eventsDeleted: events.count,
       auditLogsDeleted: auditLogs.count,
       checkInsDeleted: checkIns.count,
+      medicalViewsDeleted: medicalViews.count,
+      medicalProfilesDeleted: medicalProfiles.count,
       eventCutoff: eventCutoff.toISOString(),
       auditCutoff: auditCutoff.toISOString(),
     };

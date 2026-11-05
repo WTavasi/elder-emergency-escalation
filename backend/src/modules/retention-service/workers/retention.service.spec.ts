@@ -7,12 +7,16 @@ interface PrismaMock {
   emergencyEvent: { deleteMany: jest.Mock };
   auditLog: { deleteMany: jest.Mock };
   checkIn: { deleteMany: jest.Mock };
+  medicalProfileView: { deleteMany: jest.Mock };
+  medicalProfile: { deleteMany: jest.Mock };
 }
 
 const buildPrisma = (): PrismaMock => ({
   emergencyEvent: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
   auditLog: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
   checkIn: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+  medicalProfileView: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+  medicalProfile: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
 });
 
 const build = (prisma: PrismaMock, settings: Record<string, unknown> = {}): RetentionService =>
@@ -27,6 +31,18 @@ const NOW = new Date('2026-09-16T12:00:00.000Z');
 
 describe('RetentionService', () => {
   describe('what it deletes', () => {
+    it("keeps who opened medical details as long as the audit log, and drops closed accounts' details", async () => {
+      const prisma = buildPrisma();
+      await build(prisma, { RETENTION_AUDIT_LOG_DAYS: 30 }).sweep(NOW);
+
+      expect(prisma.medicalProfileView.deleteMany).toHaveBeenCalledWith({
+        where: { viewedAt: { lt: new Date('2026-08-17T12:00:00.000Z') } },
+      });
+      expect(prisma.medicalProfile.deleteMany).toHaveBeenCalledWith({
+        where: { elder: { deactivatedAt: { not: null } } },
+      });
+    });
+
     it('only ever deletes an emergency that reached a closed state', async () => {
       const prisma = buildPrisma();
       await build(prisma).sweep(NOW);

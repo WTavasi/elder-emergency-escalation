@@ -50,6 +50,8 @@ const buildPrisma = (rows = onHerBehalf) => {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
+    medicalProfile: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    medicalProfileChange: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
     $transaction: jest.fn(),
   };
   mock.$transaction.mockImplementation((fn: (tx: typeof mock) => unknown) => fn(mock));
@@ -75,8 +77,9 @@ describe('ConsentService', () => {
 
       expect(view.needsConfirmation).toBe(true);
       expect(view.canWithdraw).toBe(true);
-      // One per kind, including help from volunteers, which nobody has given yet.
-      expect(view.items).toHaveLength(4);
+      // One per kind, including help from volunteers and medical details, which nobody
+      // has given yet.
+      expect(view.items).toHaveLength(5);
       expect(view.items.find((item) => item.type === ConsentType.COMMUNITY_HELP)?.active).toBe(
         false,
       );
@@ -227,6 +230,41 @@ describe('ConsentService', () => {
         expect.stringContaining('withdrawn consent to location sharing'),
       );
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps her medical details when another consent is withdrawn', async () => {
+      const prisma = buildPrisma();
+      await build(prisma).withdraw(
+        'elder-1',
+        'elder-1',
+        Role.ELDER,
+        ConsentType.LOCATION_SHARING,
+        false,
+      );
+      expect(prisma.medicalProfile.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('deletes her medical details when that consent is withdrawn, and says so', async () => {
+      const prisma = buildPrisma();
+      const sms = buildSms();
+      await build(prisma, sms).withdraw(
+        'elder-1',
+        'caregiver-1',
+        Role.CAREGIVER,
+        ConsentType.MEDICAL_PROFILE,
+        false,
+      );
+
+      expect(prisma.medicalProfile.deleteMany).toHaveBeenCalledWith({
+        where: { elderlyId: 'elder-1' },
+      });
+      expect(prisma.medicalProfileChange.deleteMany).toHaveBeenCalledWith({
+        where: { elderlyId: 'elder-1' },
+      });
+      expect(sms.send).toHaveBeenCalledWith(
+        '+254700000010',
+        expect.stringContaining('MzaziCare has deleted them'),
+      );
     });
 
     it('lets her caregiver withdraw for her, and tells her', async () => {
