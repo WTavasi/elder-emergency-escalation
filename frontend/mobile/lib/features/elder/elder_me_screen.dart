@@ -13,6 +13,7 @@ import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
+import '../medical/medical_id_screen.dart';
 import '../profile/nearby_services.dart';
 import '../profile/profile_screen.dart';
 import '../responder/widgets/call_button.dart';
@@ -81,6 +82,19 @@ class ElderMeScreen extends StatelessWidget {
                     detail: home != null && home.isNotEmpty ? 'Home: $home' : null,
                   ),
                   const _WhoComes(),
+                  SettingsSection(
+                    children: <Widget>[
+                      SettingsRow(
+                        icon: Icons.medical_information_outlined,
+                        title: 'Medical details',
+                        subtitle: 'What helpers should know',
+                        onTap: () => openScreen(
+                          context,
+                          MedicalIdScreen(api: api, elderId: account.id, forElder: true),
+                        ),
+                      ),
+                    ],
+                  ),
                   SettingsSection(
                     title: 'Help nearby',
                     children: <Widget>[

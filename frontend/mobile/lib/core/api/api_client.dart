@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../location/position_source.dart';
+import 'medical_models.dart';
 import 'models.dart';
 
 /// A request the API refused, carrying what it said.
@@ -545,6 +546,22 @@ class ApiClient {
   /// home, by road. Empty when the elder has no home recorded.
   Future<List<NearbyService>> elderServices(String elderId) async =>
       NearbyService.listFromJson(await _send('GET', '/elders/$elderId/services'));
+
+  /// The elder's medical details, for the elder or a caregiver. A caregiver's look is
+  /// recorded, and the elder sees who looked.
+  Future<MedicalProfilePage> medicalProfile(String elderId) async =>
+      MedicalProfilePage.fromJson(await _send('GET', '/elders/$elderId/medical'));
+
+  /// Replaces the medical details. Needs the consent first.
+  Future<MedicalProfilePage> saveMedicalProfile(String elderId, MedicalDetails details) async =>
+      MedicalProfilePage.fromJson(
+        await _send('PUT', '/elders/$elderId/medical', body: details.toJson()),
+      );
+
+  /// The elder's medical details on an alert, for those asked to help. Each look is
+  /// recorded, so this is asked once per opening of the alert, not on every refresh.
+  Future<AlertMedical> alertMedical(String id) async =>
+      AlertMedical.fromJson(await _send('GET', '/alerts/$id/medical'));
 
   /// Ask for a service now, by hand: [service], or the one the emergency needs.
   Future<void> requestResponder(String id, {ResponderService? service}) async {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/api/medical_models.dart';
 import '../../core/api/models.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/location/way_there.dart';
@@ -70,6 +71,60 @@ class AlertDetailController extends ChangeNotifier {
   bool _disposed = false;
 
   AlertDetail? get detail => _detail;
+
+  AlertMedical? _medical;
+  bool _medicalAsked = false;
+  bool _medicalLoading = false;
+  EmergencyType? _medicalReadFor;
+
+  /// The elder's medical details for this emergency, read against what is happening.
+  /// Null until asked, and for anybody the server never shows them to.
+  AlertMedical? get medical => _medical;
+
+  /// Asked when the screen opens, and again when what is happening changes. Not on every
+  /// refresh: the server records each look, and the elder sees them. While this person
+  /// has not been asked to help yet nothing is shown or recorded, so it is asked again.
+  void _followMedical() {
+    final AlertSummary? summary = _detail?.summary;
+    if (summary == null || _medicalLoading) return;
+    if (myRole == Role.elder || myRole == Role.communityResponder) return;
+    final EmergencyType? type = summary.confirmedType ?? summary.reportedType;
+    final AlertMedicalStatus? status = _medical?.status;
+    final bool due =
+        !_medicalAsked ||
+        (status == AlertMedicalStatus.notAsked && summary.state.isOpen) ||
+        (status == AlertMedicalStatus.shown && type != _medicalReadFor);
+    if (due) unawaited(_loadMedical(type));
+  }
+
+  Future<void> _loadMedical(EmergencyType? type) async {
+    _medicalAsked = true;
+    _medicalLoading = true;
+    try {
+      final AlertMedical medical = await _api.alertMedical(eventId);
+      if (_disposed) return;
+      _medical = medical;
+      _medicalReadFor = type;
+      notifyListeners();
+    } on ApiException {
+      // Never in the way of the emergency: the section is simply left out.
+    } on NetworkException {
+      // The next refresh does not ask again; reopening the alert does.
+    } finally {
+      _medicalLoading = false;
+    }
+  }
+
+  /// The service the medical history says to ask, when it has not been asked yet and
+  /// this person may ask.
+  ResponderService? get medicalAskFor {
+    final AlertMedical? medical = _medical;
+    final ResponderService? service = medical?.askFor;
+    if (medical == null || !medical.serious || service == null) return null;
+    if (!canAskForResponder || servicesAsked.contains(service)) return null;
+    return service;
+  }
+
   bool get isLoading => _isLoading;
 
   /// True while an action is in flight. Every control reads this, so one press cannot
@@ -102,6 +157,7 @@ class AlertDetailController extends ChangeNotifier {
       _detail = fetched;
       _loadError = null;
       _followWayThere();
+      _followMedical();
     } on ApiException catch (error) {
       if (_disposed) return;
       _loadError = error.message;

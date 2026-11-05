@@ -152,6 +152,16 @@ export interface StationOnAlert {
   status: 'asked' | 'declined' | 'coming';
 }
 
+/**
+ * Somebody who opened the elder's medical details during an emergency. The console is
+ * told who and when, never what the details say: an administrator oversees access to
+ * health data, and has no need of the data itself.
+ */
+export interface MedicalView {
+  by: { id: string; name: string; role: Role } | null;
+  at: string;
+}
+
 /** Talking through the app: whether it is set up, and who started a call. */
 export interface VoiceState {
   available: boolean;

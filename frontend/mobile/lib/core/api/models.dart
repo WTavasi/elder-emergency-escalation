@@ -1130,7 +1130,11 @@ enum ConsentKind {
 
   /// Vetted volunteers near the elder may be asked to go, and the one who accepts is
   /// told their name and address.
-  communityHelp('COMMUNITY_HELP');
+  communityHelp('COMMUNITY_HELP'),
+
+  /// Medical details are kept and shown to those asked about an open emergency.
+  /// Withdrawing it deletes them.
+  medicalProfile('MEDICAL_PROFILE');
 
   const ConsentKind(this.wire);
 

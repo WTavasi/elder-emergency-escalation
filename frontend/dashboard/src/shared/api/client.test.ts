@@ -219,4 +219,20 @@ describe('api client', () => {
 
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/alerts');
   });
+
+  it('asks who opened the medical details, and reads back only who and when', async () => {
+    const views = [
+      {
+        by: { id: 'f1', name: 'Aisha Wanjiru', role: 'FAMILY_MEMBER' },
+        at: '2026-11-05T09:00:00Z',
+      },
+    ];
+    const fetchMock = vi.fn().mockResolvedValue(json({ views }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { api } = await import('./client');
+
+    await expect(api.medicalViews('event-1')).resolves.toEqual(views);
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/alerts/event-1/medical/views');
+  });
 });
