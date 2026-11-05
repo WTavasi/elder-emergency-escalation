@@ -167,9 +167,16 @@ you can go, 2 if you cannot." The gateway posts the reply to `/sms/inbound` with
 in the address. The sender is matched to an account by number; a number that belongs to
 nobody, or to a deactivated account, gets no answer at all. The reply applies to the
 newest alert still waiting on that person, and goes through the same acknowledge and
-decline as the app, so every rule below holds for it too. The first word is read: `1`,
-`yes`, `ndio` accept; `2`, `no`, `hapana` decline; anything else gets the two answers
-repeated. The person is texted back: on accepting, the elder's number and address (both
+decline as the app, so every rule below holds for it too. `1` and `2` win whatever
+follows. Otherwise the whole reply is read for its meaning, in English, Swahili and Sheng
+(`shared/language/replies.ts`): "on my way", "nakuja", "niko njiani", "poa nakam" accept;
+"no", "siwezi, niko kazini", "siezi" decline; "no problem" and "hakuna shida" are yes. A
+reply that says both ("siwezi sasa, nitakuja baadaye") or neither gets the two answers
+repeated rather than a guess. How soon they will be there is read too: "dakika kumi",
+"10 mins", "nusu saa", "baada ya saa moja", "in 5" (a bare "saa mbili" is not, since it is
+also eight o'clock). It is kept as `ownerExpectedAt` on the alert and `etaMinutes` in the
+trail, and the elder's screen shows the time when nobody is sharing their way there. A
+time alone reads as coming. The person is texted back: on accepting, the elder's number and address (both
 disclosed during an open emergency); if somebody accepted first, who; if the alert moved
 past them, that it has. The audit entry carries `via: "sms"`. One phone may send six
 replies in ten minutes. The route always answers 200 once the token matches, because a

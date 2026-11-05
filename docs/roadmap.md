@@ -28,7 +28,7 @@ communicate.
 | M | Medical details for those asked to help | assess | built |
 | 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | built |
 | 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | built |
-| 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | |
+| 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | built |
 
 **1. Say what is happening.** The elder's waiting screen and HELP texts take a type; each
 type has a severity floor and a service (ambulance, fire, police), asked at once for chest
@@ -76,5 +76,6 @@ times; the elder agrees and the circle sees when; each elder's rhythm, with an e
 reminder when an answer is unusually late for them and a weekly note to caregivers when
 answers drift later or more are missed. See decisions.md.
 
-**7. Replies.** Free text in English, Swahili and Sheng read for its meaning and a time
-("nakuja dakika kumi"); unsure means asking back.
+**7. Replies.** Built. Free text in English, Swahili and Sheng read for its meaning and a
+time ("nakuja dakika kumi"), on our own server; unsure means asking back. The time is
+kept and shown to the elder when nobody shares their way there. See decisions.md.

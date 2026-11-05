@@ -1267,3 +1267,22 @@ sign of somebody becoming unwell, and is worth a call before it is an emergency.
 week, on Monday morning on the elder's clock, the week is compared with the four before
 it, and only a clear change (ten minutes later and twice as late, or two or more missed
 and twice the share) texts their caregivers. A normal week sends nothing.
+
+## Replies in their own words
+
+On 10 November 2026 a text reply was read for what it meant, not only its first word.
+
+**Rules on our own server, in three languages.** English, Swahili and Sheng word lists
+(`shared/language/replies.ts`), the same approach as the emergency words: readable,
+testable and correctable, and nothing anybody writes leaves the server to be understood.
+`1` and `2` still win. "No problem" and "hakuna shida" are yes, though they carry a no.
+
+**Unsure means asking back.** A reply that says yes and no ("siwezi sasa, nitakuja
+baadaye"), or neither, is not guessed at: the person is sent the two answers again. A
+wrong yes would stop the chain for somebody who is not coming; a wrong no would skip
+somebody who is.
+
+**How soon, when they say.** "Nakuja dakika kumi", "nusu saa", "baada ya saa moja", "in
+5". A bare "saa mbili" is left alone, because it is eight o'clock as well as two hours.
+The time is kept on the alert and shown to the elder when the person coming is not sharing
+their way there; a shared way there, measured by road, wins over what was said.

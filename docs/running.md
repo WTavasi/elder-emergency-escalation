@@ -910,6 +910,32 @@ Grace said**, with the English under it. The recording is deleted once written d
    the four weeks before, or more were missed. Mary is texted, and the API's terminal shows
    `Weekly check-in note`.
 
+### Step 19 (optional). Replies in their own words
+
+Needs text replies set up (`SMS_INBOUND_TOKEN`, Step 9). Raise an alert as Grace, then
+reply to the alert text as Aisha in her own words. Without a gateway, post the reply the
+way it would, with the secret the API was started with:
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/sms/inbound?token=local-text-replies-0123456789" \
+  -d from=+254700000030 -d "text=Nakuja dakika kumi"
+```
+
+Each reply is read on our own server:
+
+| Reply | Read as |
+| --- | --- |
+| `Nakuja dakika kumi` | going, in about 10 minutes |
+| `on my way, 15 mins` | going, in about 15 minutes |
+| `poa nakam` | going |
+| `Siwezi, niko kazini` | cannot come |
+| `Siwezi sasa, nitakuja baadaye` | not sure: "Reply 1 to go, 2 if you cannot." |
+
+After "Nakuja dakika kumi", Aisha is texted that the others were told about 10 minutes,
+Grace's screen shows **About 10 minutes away.**, and the trail says **Aisha Wanjiru is on
+the way, by text, in about 10 minutes**. Grace can answer a check-in with **Niko sawa**
+as well as 1.
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
