@@ -1240,6 +1240,10 @@ once written down and never stored; the words kept 30 days (`SPEECH_RETENTION_DA
 the people helping, and the trail keeps only the language and what was heard. A data
 protection impact assessment should cover this with the medical details.
 
+**iOS 17 for Siri.** Siri's other words for each type ("moto", "nimeanguka") need iOS
+17, and Xcode reads them when building, so the phrases are offered from iOS 17. On iOS 15
+and 16 the app works as before, without them.
+
 **Not verified here.** The Swift for Siri and the Kotlin for the widget, tile and
 shortcuts could not be compiled where they were written; they need a build on a Mac and a
 phone. The speech server was tested with a stand-in that answers as Whisper does, because

@@ -54,7 +54,12 @@ final class QuickHelpBridge {
 
 /// What is happening, as Siri hears it: "MzaziCare help fire", "MzaziCare msaada moto".
 /// The words are matched by Siri on the phone; the type is all that reaches the app.
-@available(iOS 16.0, *)
+///
+/// iOS 17 and later, for the synonyms ("moto", "nimeanguka", "polisi"): Siri's other
+/// words for each type, which iOS 16 cannot take. The list has to be written out as it
+/// is, because Xcode reads it when building, so it cannot be left out for older phones
+/// only. On iOS 15 and 16 the app works as before, without the Siri phrases.
+@available(iOS 17.0, *)
 enum HelpKind: String, AppEnum {
   case fire
   case fall
@@ -93,7 +98,7 @@ enum HelpKind: String, AppEnum {
 /// Asks for help exactly as the button does, countdown and all, with what is happening
 /// when it was said. Opens the app: the alert is raised there, signed in as the elder,
 /// and the elder sees the countdown and can stop it.
-@available(iOS 16.0, *)
+@available(iOS 17.0, *)
 struct AskForHelpIntent: AppIntent {
   static var title: LocalizedStringResource = "Ask for help"
   static var description = IntentDescription(
@@ -112,8 +117,9 @@ struct AskForHelpIntent: AppIntent {
 
 /// "Hey Siri, MzaziCare help", "Hey Siri, MzaziCare help fire". Ready without setting
 /// anything up: App Shortcuts are there as soon as the app is installed and opened once.
-@available(iOS 16.0, *)
+@available(iOS 17.0, *)
 struct MzaziCareShortcuts: AppShortcutsProvider {
+  @AppShortcutsBuilder
   static var appShortcuts: [AppShortcut] {
     AppShortcut(
       intent: AskForHelpIntent(),

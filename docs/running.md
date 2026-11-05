@@ -870,7 +870,7 @@ aid, hard of hearing, a penicillin allergy and her doctor.
 
 ### Step 17 (optional). Say it: Siri, the widget and speaking after the press
 
-**"Hey Siri, MzaziCare help fire."** On an iPhone with the app installed and opened once
+**"Hey Siri, MzaziCare help fire."** On an iPhone with iOS 17 or later, with the app installed and opened once
 as Grace, say it. The app opens, the countdown starts, and **Your family can see: Fire**
 is already chosen; about 25 seconds later the nearest fire station is asked, as for a
 tap. "MzaziCare help", "MzaziCare help, I fell", "MzaziCare msaada moto" work the same
