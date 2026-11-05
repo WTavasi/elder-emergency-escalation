@@ -181,4 +181,28 @@ describe('RoutingService', () => {
       expect(service.fetcher).not.toHaveBeenCalled();
     });
   });
+
+  describe('travelTimesFrom', () => {
+    const NEAR = { latitude: -1.2835, longitude: 36.7745 };
+
+    it('asks for one place to many in one request, the origin first', async () => {
+      const { service } = build({ ROUTING_PROVIDER: 'osrm' });
+      service.fetcher = answer({
+        code: 'Ok',
+        durations: [[640.2, null]],
+        distances: [[4100.4, null]],
+      });
+
+      const [reached, unreached] = await service.travelTimesFrom(FROM, [TO, NEAR]);
+
+      expect(reached).toEqual({ durationSeconds: 640, distanceMetres: 4100, source: 'osrm' });
+      expect(unreached.source).toBe('estimate');
+      const [url] = (service.fetcher as jest.Mock).mock.calls[0] as [URL];
+      expect(url.pathname).toBe(
+        '/table/v1/driving/36.7869,-1.2921;36.7701,-1.2805;36.7745,-1.2835',
+      );
+      expect(url.searchParams.get('sources')).toBe('0');
+      expect(url.searchParams.get('destinations')).toBe('1;2');
+    });
+  });
 });

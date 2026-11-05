@@ -25,9 +25,10 @@ is asked or missed (`check-in-service`).
 | POST | `/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/:id/reopen` | care chain | Restart a withdrawn alert nobody could confirm |
 | GET | `/` | signed in | The emergencies the caller is part of |
+| POST | `/ranked` | caregiver, family, responder | Their open emergencies in the order to go to them, each with why (`AlertRankingService`). An optional position in the body, never kept |
 | GET | `/:id` | participants | One emergency, with its chain and what has happened |
 | POST | `/:id/acknowledge` | participants | Take it on, which stops the chain |
-| POST | `/:id/decline` | asked at this tier | Cannot come; moves on at once if nobody else at the tier is left |
+| POST | `/:id/decline` | asked at this tier | Cannot come; moves on at once if nobody else at the tier is left. A station declining has the next nearest asked at once |
 | POST | `/:id/resolve` | participants | Close it with an outcome |
 | POST | `/:id/request-responder` | participants | Call in an emergency responder now |
 | POST | `/:id/voice` | participants, not an administrator | A token to join the emergency's voice room (`VoiceService`); the first responder to join is who the elder's screen names |
@@ -51,6 +52,11 @@ Every state change goes through `shared/utils/event-lifecycle.ts`, the one table
 which state may become which. Its writes are conditional on the row still being in a
 state the move can come from, so a timer that fires as somebody acknowledges, or two
 people reopening at once, cannot overwrite each other.
+
+The responder step asks one station, the nearest by road of the service the emergency
+needs (`StationDispatchService`). A decline asks the next nearest at once; a wait of
+`STATION_WAIT_SECONDS` with no answer asks the next one too. That wait is a Redis key under
+`escalation:station:`, with a durable copy in `station_deadline_at`, recovered on boot.
 
 ## Data it writes
 
