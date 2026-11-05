@@ -49,6 +49,7 @@ const COLUMNS: CsvColumn<UserRow>[] = [
   },
   { header: 'Area', value: (row) => row.coverage?.areaName },
   { header: 'Radius km', value: (row) => row.coverage?.radiusKm },
+  { header: 'Station', value: (row) => row.station?.label },
   { header: 'Places in chains', value: (row) => row.chainPlaces },
   { header: 'People in their chain', value: (row) => (row.role === 'ELDER' ? row.chainSize : '') },
   { header: 'Status', value: (row) => (row.deactivatedAt ? 'Deactivated' : 'Active') },
@@ -391,6 +392,9 @@ export function Users() {
                           <div className="micro">
                             within <span className="figures">{row.coverage.radiusKm}</span> km
                           </div>
+                          {row.station ? (
+                            <div className="micro muted">Based at {row.station.label}</div>
+                          ) : null}
                         </>
                       ) : (
                         <span className="muted">&ndash;</span>

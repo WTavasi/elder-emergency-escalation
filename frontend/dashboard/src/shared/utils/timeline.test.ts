@@ -115,6 +115,33 @@ describe('the record of an emergency, in sentences', () => {
     );
   });
 
+  it('names each station asked, how far by road, and why it was asked', () => {
+    expect(
+      say(
+        entry('STATION_ASKED', {
+          name: 'Kilimani Police Station',
+          seconds: 360,
+          byRoad: true,
+          reason: 'nearest',
+        }),
+      ),
+    ).toBe('Kilimani Police Station asked, about 6 minutes away by road');
+    expect(
+      say(
+        entry('STATION_ASKED', {
+          name: 'Kileleshwa Police Station',
+          seconds: 540,
+          reason: 'declined',
+        }),
+      ),
+    ).toBe(
+      'Kileleshwa Police Station asked, about 9 minutes away after the one before could not come',
+    );
+    expect(
+      say(entry('STATION_ASKED', { name: 'Muthangari Police Station', reason: 'no-answer' })),
+    ).toBe('Muthangari Police Station asked after no answer from the one before');
+  });
+
   it('tidies an action it does not know rather than leaving a blank line', () => {
     expect(say(entry('SOMETHING_NEW'))).toBe('Something new');
   });

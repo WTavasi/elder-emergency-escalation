@@ -140,6 +140,18 @@ export interface Journey {
   path?: Array<[number, number]> | null;
 }
 
+/** One station asked about an emergency. Its time is from the station, an estimate. */
+export interface StationOnAlert {
+  name: string;
+  service: ResponderService;
+  station: string | null;
+  askedAt: string;
+  etaSeconds: number | null;
+  byRoad: boolean;
+  reason: 'nearest' | 'declined' | 'no-answer';
+  status: 'asked' | 'declined' | 'coming';
+}
+
 /** Talking through the app: whether it is set up, and who started a call. */
 export interface VoiceState {
   available: boolean;
@@ -195,6 +207,8 @@ export interface AlertDetail extends AlertSummary {
   journey?: Journey | null;
   /** Everybody sharing their way there, soonest first. */
   journeys?: Journey[];
+  /** The stations asked, first asked first. */
+  stations?: StationOnAlert[];
   voice?: VoiceState;
   volunteer?: VolunteerOnAlert | null;
 }
@@ -281,10 +295,19 @@ export interface UserRow {
   coverage: Coverage | null;
   /** For an emergency responder, which service they are. */
   responderService?: ResponderService | null;
+  /** For a responder unit, where it is based. */
+  station?: Station | null;
   /** The elders' chains this account is in. */
   chainPlaces: number;
   /** For an elder, how many people are in their own chain. */
   chainSize: number;
+}
+
+/** Where a responder unit is based: its address and the point it is at. */
+export interface Station {
+  label: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface Coverage {
@@ -317,6 +340,7 @@ export interface NewUser {
   password: string;
   coverage?: Coverage;
   responderService?: ResponderService;
+  station?: Station;
 }
 
 /** One match from the address search, used for a responder's area. */
