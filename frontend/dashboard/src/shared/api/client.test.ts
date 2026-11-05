@@ -25,6 +25,41 @@ describe('api client', () => {
     sessionStorage.clear();
   });
 
+  it('never shows a server fault or its status code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(json({ statusCode: 500, message: 'Internal server error' }, 500)),
+    );
+    const { api } = await import('./client');
+
+    await expect(api.alerts()).rejects.toThrow(
+      "MzaziCare isn't working right now. Try again in a few minutes.",
+    );
+  });
+
+  it('passes on a message written for a person, and only the first of a list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(json({ message: 'This emergency is already closed.' }, 409))
+        .mockResolvedValueOnce(json({ message: ['Enter a valid email address.', 'More.'] }, 400)),
+    );
+    const { api } = await import('./client');
+
+    await expect(api.alerts()).rejects.toThrow('This emergency is already closed.');
+    await expect(api.alerts()).rejects.toThrow(/^Enter a valid email address\.$/);
+  });
+
+  it('says plainly when the API cannot be reached', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    const { api } = await import('./client');
+
+    await expect(api.alerts()).rejects.toThrow(
+      "Can't reach MzaziCare. Check your connection and try again.",
+    );
+  });
+
   it('sends the access token as a bearer credential', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json([]));
     vi.stubGlobal('fetch', fetchMock);

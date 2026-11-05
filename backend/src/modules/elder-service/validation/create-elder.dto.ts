@@ -51,11 +51,11 @@ export class CreateElderDto {
   @Matches(E164, { message: E164_MESSAGE })
   phone: string;
 
-  @Matches(/^\d{6}$/, { message: 'code must be the six digits sent by SMS' })
+  @Matches(/^\d{6}$/, { message: 'Enter the 6-digit code from the text.' })
   code: string;
 
   @IsString()
-  @MinLength(8, { message: 'password must be at least 8 characters' })
+  @MinLength(8, { message: 'Use at least 8 characters for the password.' })
   @MaxLength(200)
   password: string;
 
@@ -78,6 +78,6 @@ export class CreateElderDto {
    * The caregiver confirms the elder agreed, or that they may agree on the elder's
    * behalf. Recorded as consent rows naming the caregiver as the one who gave it.
    */
-  @Equals(true, { message: 'consent must be confirmed to register an elder' })
+  @Equals(true, { message: 'Confirm they agree before adding them.' })
   consentConfirmed: boolean;
 }

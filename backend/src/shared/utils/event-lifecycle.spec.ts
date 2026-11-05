@@ -85,16 +85,16 @@ describe('assertTransition', () => {
 
   it('refuses a closed emergency in words a person can act on', () => {
     expect(() => assertTransition(EventState.RESOLVED, EventState.ACKNOWLEDGED)).toThrow(
-      'This emergency is already closed',
+      'This emergency is already closed.',
     );
     expect(() => assertTransition(EventState.CANCELLED, EventState.RESOLVED)).toThrow(
-      'This alert was cancelled',
+      'This alert was cancelled.',
     );
   });
 
-  it('names both states for any other refused move', () => {
+  it('asks for a refresh for any other refused move, in plain words', () => {
     expect(() => assertTransition(EventState.ACKNOWLEDGED, EventState.CANCELLED)).toThrow(
-      'An emergency that is acknowledged cannot become cancelled',
+      'This emergency has changed. Refresh and try again.',
     );
   });
 });

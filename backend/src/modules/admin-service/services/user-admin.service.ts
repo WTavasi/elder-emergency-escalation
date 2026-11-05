@@ -170,7 +170,7 @@ export class UserAdminService {
    */
   async create(dto: CreateUserDto, actorId: string): Promise<UserRow> {
     if (dto.role === Role.EMERGENCY_RESPONDER && !dto.coverage) {
-      throw new BadRequestException('A responder needs an area, because dispatch matches by area');
+      throw new BadRequestException('A responder needs an area.');
     }
 
     try {
@@ -202,10 +202,10 @@ export class UserAdminService {
   async update(id: string, dto: UpdateUserDto): Promise<UserRow> {
     const existing = await this.require(id);
     if (dto.coverage && existing.role !== Role.EMERGENCY_RESPONDER) {
-      throw new BadRequestException('Only an emergency responder has an area');
+      throw new BadRequestException('Only an emergency responder has an area.');
     }
     if (dto.responderService && existing.role !== Role.EMERGENCY_RESPONDER) {
-      throw new BadRequestException('Only an emergency responder has a service');
+      throw new BadRequestException('Only an emergency responder has a service.');
     }
 
     try {
@@ -239,14 +239,15 @@ export class UserAdminService {
   async deactivate(ids: string[], actorId: string): Promise<{ updated: number }> {
     const unique = [...new Set(ids)];
     if (unique.includes(actorId)) {
-      throw new BadRequestException('You cannot deactivate your own account');
+      throw new BadRequestException("You can't deactivate your own account.");
     }
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: unique } },
       select: { id: true, name: true, role: true, deactivatedAt: true },
     });
-    if (users.length !== unique.length) throw new NotFoundException('Account not found');
+    if (users.length !== unique.length)
+      throw new NotFoundException("We couldn't find this account.");
 
     const handling = await this.prisma.emergencyEvent.findMany({
       where: { acknowledgedBy: { in: unique }, state: { in: OPEN_STATES } },
@@ -256,7 +257,7 @@ export class UserAdminService {
       const names = [...new Set(handling.map((event) => event.owner?.name ?? 'Somebody'))];
       throw new ConflictException(
         `${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} handling an open emergency. ` +
-          'Deactivate once it is closed.',
+          'Turn the account off once it is closed.',
       );
     }
 
@@ -268,7 +269,7 @@ export class UserAdminService {
         where: { role: Role.ADMINISTRATOR, deactivatedAt: null },
       });
       if (activeAdmins - adminsLeaving < 1) {
-        throw new ConflictException('At least one administrator has to stay active');
+        throw new ConflictException('At least one administrator has to stay active.');
       }
     }
 
@@ -297,7 +298,7 @@ export class UserAdminService {
 
   private async require(id: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('Account not found');
+    if (!user) throw new NotFoundException("We couldn't find this account.");
     return user;
   }
 
@@ -307,8 +308,8 @@ export class UserAdminService {
       const field = String((error.meta?.target as string[] | undefined)?.join(', ') ?? '');
       return new ConflictException(
         field.includes('email')
-          ? 'Another account already uses that email address'
-          : 'Another account already uses that phone number',
+          ? 'Another account already uses this email address.'
+          : 'Another account already uses this phone number.',
       );
     }
     return error;

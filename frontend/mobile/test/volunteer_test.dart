@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
+import 'package:mzazicare/core/map/emergency_map.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/consent/consent_screen.dart';
 import 'package:mzazicare/features/elder/widgets/help_progress.dart';
@@ -37,34 +38,42 @@ Map<String, dynamic> profileBody({
   'reviewNote': null,
 };
 
-Map<String, dynamic> callBody({String status = 'ASKED', bool accepted = false, bool open = true}) =>
-    <String, dynamic>{
-      'eventId': 'event-1',
-      'status': status,
-      'askedAt': '2026-10-23T09:00:01.000Z',
-      'distanceMetres': 300,
-      'severity': 'CRITICAL',
-      'raisedAt': '2026-10-23T09:00:00.000Z',
-      'open': open,
-      'takenByAnother': false,
-      'elder': accepted && open
-          ? <String, dynamic>{
-              'name': 'Grace Wanjiru',
-              'phone': '+254700000010',
-              'addressLabel': 'Kileleshwa, Nairobi',
-              'latitude': -1.2833,
-              'longitude': 36.7833,
-            }
-          : null,
-      'circleOwner': null,
-      'acceptedAt': accepted ? '2026-10-23T09:02:00.000Z' : null,
-      'arrivedAt': null,
-    };
+Map<String, dynamic> callBody({
+  String status = 'ASKED',
+  bool accepted = false,
+  bool open = true,
+  bool byRoad = false,
+}) => <String, dynamic>{
+  'eventId': 'event-1',
+  'status': status,
+  'askedAt': '2026-10-23T09:00:01.000Z',
+  'distanceMetres': 300,
+  'byRoad': byRoad,
+  'severity': 'CRITICAL',
+  'raisedAt': '2026-10-23T09:00:00.000Z',
+  'open': open,
+  'takenByAnother': false,
+  'elder': accepted && open
+      ? <String, dynamic>{
+          'name': 'Grace Wanjiru',
+          'phone': '+254700000010',
+          'addressLabel': 'Kileleshwa, Nairobi',
+          'latitude': -1.2833,
+          'longitude': 36.7833,
+        }
+      : null,
+  'circleOwner': null,
+  'acceptedAt': accepted ? '2026-10-23T09:02:00.000Z' : null,
+  'arrivedAt': null,
+};
 
 /// The volunteer routes, answering from what has happened so far.
 class _Server {
-  _Server({Map<String, dynamic>? profile, this.calls = const <Map<String, dynamic>>[], this.taken = false})
-    : profile = profile ?? profileBody() {
+  _Server({
+    Map<String, dynamic>? profile,
+    this.calls = const <Map<String, dynamic>>[],
+    this.taken = false,
+  }) : profile = profile ?? profileBody() {
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(_answer);
     api = t.api;
     exchanges = t.calls;
@@ -115,7 +124,11 @@ class _Server {
           'needsConfirmation': true,
           'canWithdraw': true,
           'items': <Map<String, dynamic>>[
-            <String, dynamic>{'type': 'COMMUNITY_HELP', 'active': true, 'givenAt': '2026-10-23T09:00:00.000Z'},
+            <String, dynamic>{
+              'type': 'COMMUNITY_HELP',
+              'active': true,
+              'givenAt': '2026-10-23T09:00:00.000Z',
+            },
           ],
         }),
       ];
@@ -153,7 +166,9 @@ void main() {
       expect(asked.elder, isNull);
       expect(roughDistance(asked.distanceMetres), 'about 300 m');
 
-      final VolunteerCall going = VolunteerCall.fromJson(callBody(status: 'ACCEPTED', accepted: true))!;
+      final VolunteerCall going = VolunteerCall.fromJson(
+        callBody(status: 'ACCEPTED', accepted: true),
+      )!;
       expect(going.going, isTrue);
       expect(going.elder?.name, 'Grace Wanjiru');
     });
@@ -175,7 +190,11 @@ void main() {
     test('an emergency carries the volunteer going', () {
       final Emergency emergency = Emergency.fromJson(<String, dynamic>{
         ...emergencyBody(),
-        'volunteer': <String, dynamic>{'asked': 3, 'name': 'Joseph', 'acceptedAt': '2026-10-23T09:02:00.000Z'},
+        'volunteer': <String, dynamic>{
+          'asked': 3,
+          'name': 'Joseph',
+          'acceptedAt': '2026-10-23T09:02:00.000Z',
+        },
       });
       expect(emergency.volunteer?.going, isTrue);
       expect(emergency.volunteer?.phone, isNull);
@@ -185,7 +204,10 @@ void main() {
   group('the controller', () {
     test('loads the application and the calls, and answers', () async {
       final _Server server = _Server(calls: <Map<String, dynamic>>[callBody()]);
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
 
       await controller.load();
       expect(controller.profile.approved, isTrue);
@@ -199,7 +221,10 @@ void main() {
 
     test('somebody else going first is shown, not lost', () async {
       final _Server server = _Server(calls: <Map<String, dynamic>>[callBody()], taken: true);
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await expectLater(controller.answer('event-1', VolunteerAnswer.accept), completion(isFalse));
@@ -213,8 +238,10 @@ void main() {
       WidgetTester tester,
     ) async {
       final _Server server = _Server(profile: profileBody(status: 'NOT_APPLIED', withArea: false));
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null)
-        ..start();
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      )..start();
       bool opened = false;
 
       await tester.pumpWidget(
@@ -233,8 +260,10 @@ void main() {
       WidgetTester tester,
     ) async {
       final _Server server = _Server(calls: <Map<String, dynamic>>[callBody()]);
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null)
-        ..start();
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      )..start();
 
       await tester.pumpWidget(_withVolunteer(controller, NearbyScreen(onOpenApplication: () {})));
       await tester.pumpAndSettle();
@@ -256,7 +285,10 @@ void main() {
       WidgetTester tester,
     ) async {
       final _Server server = _Server(calls: <Map<String, dynamic>>[callBody()]);
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await tester.binding.setSurfaceSize(const Size(800, 1600));
@@ -279,11 +311,36 @@ void main() {
       expect(find.text('Get directions'), findsOneWidget);
       expect(find.text("Swipe when you're with Grace"), findsOneWidget);
       expect(find.text('I can no longer go'), findsOneWidget);
+      // Where Grace is, on a map, once they are going.
+      final Finder map = find.byType(EmergencyMap);
+      expect(map, findsOneWidget);
+      expect(tester.widget<EmergencyMap>(map).destinationLabel, 'Grace');
+    });
+
+    testWidgets('says when the distance is by road', (WidgetTester tester) async {
+      final _Server server = _Server(calls: <Map<String, dynamic>>[callBody(byRoad: true)]);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
+      await controller.load();
+
+      await tester.pumpWidget(
+        _withVolunteer(controller, const VolunteerCallScreen(eventId: 'event-1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Urgent: someone about 300 m away by road needs help'), findsOneWidget);
+      // No map before they say they will go: it would say where.
+      expect(find.byType(EmergencyMap), findsNothing);
     });
 
     testWidgets('a volunteer who cannot go says so in one press', (WidgetTester tester) async {
       final _Server server = _Server(calls: <Map<String, dynamic>>[callBody()]);
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await tester.pumpWidget(
@@ -303,7 +360,10 @@ void main() {
       final _Server server = _Server(
         calls: <Map<String, dynamic>>[callBody(status: 'ACCEPTED', accepted: true, open: false)],
       );
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await tester.pumpWidget(
@@ -319,7 +379,10 @@ void main() {
   group('the application', () {
     testWidgets('says what is missing rather than sending half of it', (WidgetTester tester) async {
       final _Server server = _Server(profile: profileBody(status: 'NOT_APPLIED', withArea: false));
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await tester.binding.setSurfaceSize(const Size(800, 2000));
@@ -336,7 +399,10 @@ void main() {
 
     testWidgets('sends what they can do, where and how far', (WidgetTester tester) async {
       final _Server server = _Server(profile: profileBody(status: 'REJECTED'));
-      final VolunteerController controller = VolunteerController(api: server.api, pollInterval: null);
+      final VolunteerController controller = VolunteerController(
+        api: server.api,
+        pollInterval: null,
+      );
       await controller.load();
 
       await tester.binding.setSurfaceSize(const Size(800, 2000));
@@ -397,10 +463,16 @@ void main() {
       expect(server.sent.last, <String, dynamic>{'type': 'COMMUNITY_HELP'});
     });
 
-    testWidgets('the elder is told the volunteer coming, by first name', (WidgetTester tester) async {
+    testWidgets('the elder is told the volunteer coming, by first name', (
+      WidgetTester tester,
+    ) async {
       final Emergency emergency = Emergency.fromJson(<String, dynamic>{
         ...emergencyBody(),
-        'volunteer': <String, dynamic>{'asked': 2, 'name': 'Joseph', 'acceptedAt': '2026-10-23T09:02:00.000Z'},
+        'volunteer': <String, dynamic>{
+          'asked': 2,
+          'name': 'Joseph',
+          'acceptedAt': '2026-10-23T09:02:00.000Z',
+        },
       });
 
       await tester.pumpWidget(
@@ -429,7 +501,10 @@ void main() {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
         (http.Request request, int _) => <http.Response>[json(body)],
       );
-      final AlertDetailController controller = AlertDetailController(api: t.api, eventId: 'event-1');
+      final AlertDetailController controller = AlertDetailController(
+        api: t.api,
+        eventId: 'event-1',
+      );
 
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));

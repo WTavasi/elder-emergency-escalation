@@ -62,6 +62,14 @@ dependencies:
   # only: the token allows the microphone and nothing else. 2.13 needs Dart 3.10.
   livekit_client: ^2.13.1
 
+  # The map on an open emergency: where the elder is, everybody on their way, and the
+  # road each is taking (lib/core/map/). OpenStreetMap tiles, drawn by flutter_map, so
+  # there is no map SDK, no API key and no account with a mapping company. Turn-by-turn
+  # directions are still handed to Google or Apple Maps, which do them far better.
+  # latlong2 is flutter_map's own type for a point. 8.3.2 was two months old when added.
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

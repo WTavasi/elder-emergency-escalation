@@ -143,7 +143,7 @@ export class ChainService {
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('An account already exists with that phone number');
+        throw new ConflictException('An account already uses this phone number.');
       }
       throw error;
     }
@@ -267,7 +267,7 @@ export class ChainService {
   ): Promise<ChainView> {
     const elder = await this.requireInChain(elderId, userId, role);
     if (role !== Role.CAREGIVER) {
-      throw new ForbiddenException('Only a caregiver can change who is in the chain');
+      throw new ForbiddenException('Only a caregiver can change the care circle.');
     }
 
     const tier = await tierForRole(this.prisma, Role.FAMILY_MEMBER);
@@ -284,14 +284,14 @@ export class ChainService {
     if (existing) {
       if (!ADDABLE_ROLES.includes(existing.role)) {
         throw new BadRequestException(
-          'That number belongs to an account that cannot be added to a chain from the app',
+          "That number belongs to an account that can't be added here.",
         );
       }
       await this.prisma.careAssignment
         .create({ data: { elderlyId: elderId, responderId: existing.id, priorityOrder: tier } })
         .catch((error: unknown) => {
           if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            throw new ConflictException('That person is already in this chain');
+            throw new ConflictException('That person is already in this care circle.');
           }
           throw error;
         });
@@ -310,7 +310,7 @@ export class ChainService {
         })
         .catch((error: unknown) => {
           if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            throw new ConflictException('A place in this chain is already held for that number');
+            throw new ConflictException('Someone with this number is already in the care circle.');
           }
           throw error;
         });
@@ -338,7 +338,7 @@ export class ChainService {
   ): Promise<ChainView> {
     const elder = await this.requireInChain(elderId, userId, role);
     if (role !== Role.CAREGIVER) {
-      throw new ForbiddenException('Only a caregiver can change who is in the chain');
+      throw new ForbiddenException('Only a caregiver can change the care circle.');
     }
 
     const open = await this.prisma.emergencyEvent.count({
@@ -346,7 +346,7 @@ export class ChainService {
     });
     if (open > 0) {
       throw new ConflictException(
-        `${elder.name} has an emergency open. Change the chain once it is closed.`,
+        `${elder.name} has an emergency open. Change the care circle once it is closed.`,
       );
     }
 
@@ -357,10 +357,10 @@ export class ChainService {
 
     if (assignment) {
       if (assignment.responder.id === userId) {
-        throw new BadRequestException('You cannot remove yourself from the chain');
+        throw new BadRequestException("You can't remove yourself from the care circle.");
       }
       if (!ADDABLE_ROLES.includes(assignment.responder.role)) {
-        throw new BadRequestException('Emergency responders are managed by an administrator');
+        throw new BadRequestException('Emergency responders are managed by an administrator.');
       }
       await this.prisma.careAssignment.delete({ where: { id: assignment.id } });
 
@@ -380,7 +380,7 @@ export class ChainService {
       where: { id: entryId, elderlyId: elderId },
       select: { id: true },
     });
-    if (!invitation) throw new NotFoundException('That place is not in this chain');
+    if (!invitation) throw new NotFoundException("That place isn't in this care circle.");
 
     // A held place was never taken, so there is nobody to tell.
     await this.prisma.chainInvitation.delete({ where: { id: invitation.id } });
@@ -394,14 +394,15 @@ export class ChainService {
       where: { id: elderId },
       select: { id: true, name: true, role: true },
     });
-    if (!elder || elder.role !== Role.ELDER) throw new NotFoundException('No such elder');
+    if (!elder || elder.role !== Role.ELDER)
+      throw new NotFoundException("We couldn't find this person.");
     if (role === Role.ADMINISTRATOR) return elder;
 
     const assignment = await this.prisma.careAssignment.findFirst({
       where: { elderlyId: elderId, responderId: userId },
       select: { id: true },
     });
-    if (!assignment) throw new ForbiddenException('You do not look after this person');
+    if (!assignment) throw new ForbiddenException("You're not in this person's care circle.");
     return elder;
   }
 }

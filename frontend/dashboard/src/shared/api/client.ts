@@ -97,13 +97,47 @@ async function parse(response: Response): Promise<unknown> {
   }
 }
 
-function messageFrom(body: unknown, fallback: string): string {
+/** Said whenever the API cannot be reached at all. */
+export const UNREACHABLE = "Can't reach MzaziCare. Check your connection and try again.";
+
+/** Messages the server framework sends on its own, written for logs rather than people. */
+const FRAMEWORK_DEFAULTS = new Set([
+  'Bad Request',
+  'Unauthorized',
+  'Forbidden',
+  'Forbidden resource',
+  'Not Found',
+  'Conflict',
+  'Internal server error',
+  'Internal Server Error',
+  'Service Unavailable',
+  'Too Many Requests',
+]);
+
+/**
+ * The API's own message where it wrote one for a person; otherwise a plain sentence for
+ * the kind of failure. A fault on the server's side is never described, and no status
+ * code is shown.
+ */
+function messageFrom(body: unknown, status: number): string {
+  if (status >= 500) return "MzaziCare isn't working right now. Try again in a few minutes.";
+  if (status === 429) return 'Too many tries. Wait a minute, then try again.';
   if (body && typeof body === 'object' && 'message' in body) {
     const message = (body as { message: unknown }).message;
-    if (typeof message === 'string') return message;
-    if (Array.isArray(message)) return message.join(', ');
+    if (
+      typeof message === 'string' &&
+      message &&
+      !FRAMEWORK_DEFAULTS.has(message) &&
+      !(message.startsWith('Cannot ') && message.includes('/'))
+    ) {
+      return message;
+    }
+    if (Array.isArray(message) && message.length > 0) return String(message[0]);
   }
-  return fallback;
+  if (status === 401) return 'Please sign in again.';
+  if (status === 403) return "Your account can't do this.";
+  if (status === 404) return "We couldn't find that. It may have been removed.";
+  return 'Something went wrong. Try again.';
 }
 
 /**
@@ -129,7 +163,12 @@ async function requestWithHeaders<T>(
   if (init.body) headers.set('Content-Type', 'application/json');
   if (current) headers.set('Authorization', `Bearer ${current.accessToken}`);
 
-  const response = await fetch(`${BASE}${path}`, { ...init, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, { ...init, headers });
+  } catch {
+    throw new ApiError(0, UNREACHABLE);
+  }
 
   if (response.status === 401 && retry && current) {
     const renewed = await refreshSession();
@@ -139,7 +178,7 @@ async function requestWithHeaders<T>(
   const body = await parse(response);
 
   if (!response.ok) {
-    throw new ApiError(response.status, messageFrom(body, `Request failed (${response.status})`));
+    throw new ApiError(response.status, messageFrom(body, response.status));
   }
 
   return { body: body as T, headers: response.headers };

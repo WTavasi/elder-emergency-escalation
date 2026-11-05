@@ -561,7 +561,7 @@ describe('EscalationService', () => {
       );
 
       await expect(build(prisma).acknowledge('event-1', 'caregiver-1')).rejects.toThrow(
-        /already responding/,
+        /already on the way/,
       );
     });
 
@@ -1180,7 +1180,7 @@ describe('EscalationService', () => {
       prisma.user.findUnique.mockResolvedValue({ role: Role.EMERGENCY_RESPONDER });
 
       await expect(build(prisma, timers).requestResponder('event-1', 'unit-near')).rejects.toThrow(
-        'You are the emergency responder on this alert',
+        "You're the emergency responder on this alert.",
       );
       expect(timers.cancelAll).not.toHaveBeenCalled();
       expect(notified(prisma)).toEqual([]);

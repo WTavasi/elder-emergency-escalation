@@ -219,7 +219,7 @@ class _WhoComesState extends State<_WhoComes> {
         const SizedBox(height: MzaziSpace.s8),
         if (carers == null)
           _failed
-              ? Text('Could not load this. Try again later.', style: theme.textTheme.bodyLarge)
+              ? Text("Couldn't load this. Try again later.", style: theme.textTheme.bodyLarge)
               : const SizedBox(height: MzaziSpace.s24)
         else if (carers.isEmpty)
           Text('No one yet. Ask your caregiver to add someone.', style: theme.textTheme.bodyLarge)

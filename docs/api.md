@@ -98,7 +98,7 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 | POST | `/api/v1/alerts/:id/resolve` | participants | Close with a recorded outcome, and optionally `confirmedType`, what it actually was |
 | POST | `/api/v1/alerts/:id/type` | participants | `{ type }`: say what is happening (`FALL`, `BREATHING`, `UNWELL`, `FIRE`, `UNSAFE`). Can raise severity and ask a service at once; see below |
 | POST | `/api/v1/alerts/:id/request-responder` | participants | Call in the responder now, superseding the chain. 403 for an emergency responder; 409 once a responder has been asked, by a person or by the chain reaching them |
-| POST | `/api/v1/alerts/:id/position` | the owner, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
+| POST | `/api/v1/alerts/:id/position` | the owner or the volunteer going, sharing on | `{ latitude, longitude, accuracyMetres? }` on the way; returns `{ arrived, journey }` |
 | POST | `/api/v1/alerts/:id/arrived` | the owner | "I'm here": moves it to `ON_SCENE` and records `arrivedAt` |
 | POST | `/api/v1/alerts/:id/voice` | participants, not an administrator | A token to join the emergency's voice room: `{ url, token, room, expiresInSeconds }`. 503 when no voice service is set up, 409 once closed |
 | POST | `/api/v1/sms/inbound?token=` | the SMS gateway | A reply to an alert text, or HELP from an elder, as Africa's Talking posts it (`from`, `text`, and others ignored). 404 unless `SMS_INBOUND_TOKEN` is set and matches |
@@ -109,17 +109,30 @@ caller is not part of returns 404 rather than 403, so the API does not confirm t
 exists.
 
 **On the way, and arrived.** A person who turned on "Share live location"
-(`PATCH /auth/me/preferences { shareWayThere: true }`) and took an emergency on can send
-their position while they travel. The server works out the time to the elder (an OSRM
-route when `ROUTING_PROVIDER=osrm`, otherwise a straight-line estimate), keeps the last
-position in Redis for three minutes, and tells the room to re-read. The detail view then
-carries `journey`: `{ etaSeconds, distanceMetres, source, updatedAt, latitude, longitude }`,
-with the coordinates left out for the elder, who sees the time only. A position within
-`ARRIVAL_RADIUS_METRES` (100) of the alert, from a fix at least that precise, counts as
-arriving, the same as "I'm here". Arriving moves the emergency to `ON_SCENE`, sets
-`arrivedAt`, writes an `ARRIVED` audit entry with the seconds from the alert and from the
-acknowledgement, and forgets the position. No position is ever written to the database.
-An owner on scene can still call in a responder; `arrivedAt` stays set.
+(`PATCH /auth/me/preferences { shareWayThere: true }`) and is on their way, because they
+took the emergency on or because they are the community volunteer going, can send their
+position while they travel. The server works out the time to the elder by road (an OSRM
+route when `ROUTING_PROVIDER=osrm`, otherwise a straight-line estimate), keeps each
+person's last position in Redis for three minutes under their own key, and tells the room
+to re-read. The router is asked at most every 30 seconds per person; in between, the last
+route is scaled to what is left.
+
+The detail view carries `journeys`, everybody sharing, soonest first:
+`{ userId, traveller, etaSeconds, distanceMetres, source, updatedAt, latitude, longitude,
+path }`. `traveller` is `owner` or `volunteer`. `source` is `osrm` for a road, `estimate`
+for the straight line, and screens say which. `path` is the road from where they were
+last routed to the elder, as `[latitude, longitude]` pairs, simplified for a small map;
+`null` for an estimate. The elder's copy has the times only: no coordinates and no
+path. `journey` is the owner's alone, kept for older screens. A person drops out of
+`journeys` as soon as they arrive or withdraw, not three minutes later.
+
+A position within `ARRIVAL_RADIUS_METRES` (100) of the alert, from a fix at least that
+precise, counts as arriving, the same as "I'm here". For the owner, arriving moves the
+emergency to `ON_SCENE`, sets `arrivedAt`, writes an `ARRIVED` audit entry with the
+seconds from the alert and from the acknowledgement, and forgets the position. For the
+volunteer it records `VOLUNTEER_ARRIVED` with `method: geofence` and leaves the state
+alone, as their "I'm here" does. No position is ever written to the database. An owner
+on scene can still call in a responder; `arrivedAt` stays set.
 
 Every alert carries the elder's **phone number**, so a caregiver can ring before deciding
 whether to set off, which is the most natural first move on receiving one. It widens
@@ -374,13 +387,19 @@ columns, the same form an emergency responder's takes.
 **When volunteers are asked.** Only for an elder with an active `COMMUNITY_HELP`
 consent, and only approved volunteers who have switched themselves available, whose own
 area contains the place of the alert, and who are not already in the elder's chain;
-the nearest `VOLUNTEER_MAX_ASKED` (10). Asked once per emergency: with the first tier of a
+the nearest `VOLUNTEER_MAX_ASKED` (10) by road. Whose area contains the alert is a straight
+line, because an area is a circle the volunteer drew; who is nearest is measured along
+roads from the centre of each area, in one router request for the nearest few times the
+number asked, so a volunteer across a river with one bridge is not chosen over one down
+the road. A distance rather than a time, because a volunteer may walk, ride or drive.
+Without a router the straight line ranks them, as before. Asked once per emergency: with the first tier of a
 critical alert, when a review raises an alert to critical, or when an alert reaches the
 responder tier and no professional responder covers the place (beside the fallback to the
 chain's own responder). `VOLUNTEERS_ASKED` records how many and why.
 
 **What a volunteer is told.** Before accepting: how far (from the centre of their area,
-rounded), how urgent and how long ago. Never who or where. The first to accept, by a
+by road when it was measured, rounded: "about 1.8 km away by road"), how urgent and how
+long ago. A call carries `distanceMetres` and `byRoad`. Never who or where. The first to accept, by a
 conditional write so two at once cannot both win, is given the elder's name, number,
 address and coordinates, and the rest are stood down. That disclosure lasts only while
 the emergency is open. A reply of 1 or 2 to the volunteer's text does the same as the
@@ -388,7 +407,7 @@ app.
 
 **Beside the chain.** Accepting does not take the emergency on, stop a timer or change its
 state; the family is still asked. The alert detail carries `volunteer: { askedAt, asked,
-name, phone, distanceMetres, acceptedAt, arrivedAt }` (`null` when none were asked); the
+name, phone, distanceMetres, byRoad, acceptedAt, arrivedAt }` (`null` when none were asked); the
 elder's copy has the first name and no number. Everybody already told about the emergency
 is texted who is going. Closing or withdrawing the emergency stands the volunteers down and
 thanks the one going. Audit actions: `VOLUNTEER_ACCEPTED`, `VOLUNTEER_WITHDREW`,

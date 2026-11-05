@@ -397,26 +397,42 @@ export function EventDetail() {
 }
 
 /**
- * The person who took it on: how long until they are with the elder, where they are
- * now, or when they arrived, and whether anybody has started talking to the elder in
- * the app. Shown only while there is something to show. The position comes from the API
- * for the care circle and the console alike, is a few seconds old at most, and is never
- * stored; the link opens it in a map rather than putting a map on this page.
+ * Everybody on their way, the person who took it on and the volunteer going: how long
+ * until they are with the elder and where they are now; or when the owner arrived; and
+ * whether anybody has started talking to the elder in the app. Shown only while there is
+ * something to show. Positions come from the API for the care circle and the console
+ * alike, are a few seconds old at most, and are never stored; the link opens one in a
+ * map rather than putting a map on this page.
  */
 function OnTheWay({ alert }: { alert: AlertDetail }) {
   const open = OPEN_STATES.includes(alert.state);
   const owner = alert.acknowledgedBy?.name.split(' ')[0];
-  const journey = alert.journey ?? null;
   const caller = alert.voice?.startedBy ?? null;
+  // An API from before several people could share sends the owner's alone.
+  const journeys = alert.journeys ?? (alert.journey ? [alert.journey] : []);
+  const travellers = open
+    ? journeys.flatMap((journey) => {
+        const name =
+          journey.traveller === 'volunteer'
+            ? alert.volunteer?.name?.split(' ')[0]
+            : alert.arrivedAt
+              ? undefined
+              : owner;
+        return name ? [{ name, journey }] : [];
+      })
+    : [];
 
-  const travelling = open && owner && !alert.arrivedAt && journey;
   const arrived = owner && alert.arrivedAt;
-  if (!travelling && !arrived && !(open && caller)) return null;
+  if (travellers.length === 0 && !arrived && !(open && caller)) return null;
 
   return (
     <section className="card stack" aria-labelledby="on-the-way-heading" aria-live="polite">
-      <h2 id="on-the-way-heading">{arrived ? 'With the elder' : 'On the way'}</h2>
-      {travelling && journey ? <Travelling owner={owner} journey={journey} /> : null}
+      <h2 id="on-the-way-heading">
+        {arrived && travellers.length === 0 ? 'With the elder' : 'On the way'}
+      </h2>
+      {travellers.map(({ name, journey }) => (
+        <Travelling key={journey.userId ?? name} owner={name} journey={journey} />
+      ))}
       {arrived && alert.arrivedAt ? (
         <p>
           {owner} arrived {formatClock(alert.arrivedAt)}
@@ -456,7 +472,9 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
         <p>
           <strong>{volunteer.name}</strong> said they would go at{' '}
           {formatClock(volunteer.acceptedAt)}
-          {volunteer.distanceMetres !== null ? `, ${distance(volunteer.distanceMetres)} away` : ''}
+          {volunteer.distanceMetres !== null
+            ? `, ${distance(volunteer.distanceMetres)} away${volunteer.byRoad ? ' by road' : ''}`
+            : ''}
           {volunteer.arrivedAt ? ` and arrived ${formatClock(volunteer.arrivedAt)}.` : '.'}
           {volunteer.phone ? <span className="micro muted figures"> {volunteer.phone}</span> : null}
         </p>

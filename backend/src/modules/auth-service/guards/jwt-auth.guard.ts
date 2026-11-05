@@ -39,7 +39,7 @@ export class JwtAuthGuard implements CanActivate {
     const raw = Array.isArray(header) ? header[0] : header;
 
     if (!raw?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing bearer token');
+      throw new UnauthorizedException('Please sign in again.');
     }
 
     const payload = await this.tokens.verifyAccess(raw.slice('Bearer '.length).trim());

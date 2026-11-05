@@ -87,15 +87,14 @@ export function sourcesOf(to: EventState): EventState[] {
   return (Object.keys(TRANSITIONS) as EventState[]).filter((from) => canTransition(from, to));
 }
 
-const named = (state: EventState): string => state.toLowerCase();
-
 /** Refuses a move the table does not allow, in words a person can act on. */
 export function assertTransition(from: EventState, to: EventState): void {
   if (canTransition(from, to)) return;
 
-  if (from === EventState.CANCELLED) throw new ConflictException('This alert was cancelled');
-  if (from === EventState.RESOLVED) throw new ConflictException('This emergency is already closed');
-  throw new ConflictException(`An emergency that is ${named(from)} cannot become ${named(to)}`);
+  if (from === EventState.CANCELLED) throw new ConflictException('This alert was cancelled.');
+  if (from === EventState.RESOLVED)
+    throw new ConflictException('This emergency is already closed.');
+  throw new ConflictException('This emergency has changed. Refresh and try again.');
 }
 
 /**

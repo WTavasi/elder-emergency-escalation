@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
 import 'package:mzazicare/core/location/way_there.dart';
+import 'package:mzazicare/core/map/emergency_map.dart';
 import 'package:mzazicare/core/theme/theme.dart';
 import 'package:mzazicare/features/responder/alert_detail_controller.dart';
 import 'package:mzazicare/features/responder/alert_detail_screen.dart';
@@ -25,6 +26,13 @@ Widget _wrap(
     home: AlertDetailScreen(fallback: fallback, canOpen: canOpen, open: open),
   ),
 );
+
+/// A screen tall enough for the whole trail, which sits under the map.
+void _tall(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1200, 4800);
+  tester.view.devicePixelRatio = 2;
+  addTearDown(tester.view.reset);
+}
 
 Map<String, dynamic> _owned({String? elderPhone = '+254700000010'}) {
   final Map<String, dynamic> body = detailBody(
@@ -183,6 +191,7 @@ void main() {
   testWidgets('an alert the elder raised by texting HELP says so in the trail', (
     WidgetTester tester,
   ) async {
+    _tall(tester);
     final Map<String, dynamic> body = detailBody();
     final List<Map<String, dynamic>> timeline = (body['timeline'] as List<Map<String, dynamic>>)
         .toList();
@@ -208,6 +217,7 @@ void main() {
   testWidgets('the trail is numbered on one line, the latest filled in', (
     WidgetTester tester,
   ) async {
+    _tall(tester);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
     );
@@ -218,9 +228,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Three steps worth showing in the fixture: asked, sent, moved on. Scoring is left out.
-    final double one = tester.getCenter(find.text('1')).dy;
+    final double one = tester.getCenter(find.text('1').first).dy;
     final double two = tester.getCenter(find.text('2').first).dy;
-    final double three = tester.getCenter(find.text('3')).dy;
+    final double three = tester.getCenter(find.text('3').first).dy;
     expect(one, lessThan(two));
     expect(two, lessThan(three));
     expect(find.text('1 second after the alert'), findsOneWidget);
@@ -229,6 +239,7 @@ void main() {
   });
 
   testWidgets('the trail reads as sentences rather than enum names', (WidgetTester tester) async {
+    _tall(tester);
     final ({ApiClient api, List<Exchange> calls}) t = buildApi(
       (http.Request request, int _) => <http.Response>[json(detailBody())],
     );
@@ -261,6 +272,7 @@ void main() {
   testWidgets('the trail says what was reported and which service was asked', (
     WidgetTester tester,
   ) async {
+    _tall(tester);
     final Map<String, dynamic> body = detailBody();
     (body['timeline'] as List<dynamic>).addAll(<Map<String, dynamic>>[
       <String, dynamic>{
@@ -842,11 +854,21 @@ void main() {
       // Not theirs, so nothing to swipe.
       expect(find.text("Swipe when you're with Grace"), findsNothing);
 
-      await tester.ensureVisible(find.text('See where Peter is'));
-      await tester.tap(find.text('See where Peter is'));
-      await tester.pump();
-
-      expect(opened.single.queryParameters['query'], '-1.27,36.82');
+      // Peter is on the map beside Grace, and the map opens full screen.
+      final Finder map = find.byType(EmergencyMap);
+      await tester.scrollUntilVisible(map, 200, scrollable: find.byType(Scrollable).first);
+      expect(
+        tester.widget<EmergencyMap>(map).travellers.map((MapTraveller who) => who.label),
+        <String>['Peter'],
+      );
+      await tester.tap(map);
+      await tester.pumpAndSettle();
+      expect(find.text('Map'), findsOneWidget);
+      expect(find.byType(MapCanvas), findsOneWidget);
+      // Directions are still handed to a maps app, from under the map.
+      await tester.tap(find.text('Get directions'));
+      await tester.pumpAndSettle();
+      expect(opened.single.host, 'www.google.com');
       controller.dispose();
     });
 
@@ -980,7 +1002,7 @@ void main() {
           },
         };
 
-    testWidgets('is not offered when the server has no voice service, and a test build says why', (
+    testWidgets('is not offered when the server has no voice service, and says so plainly', (
       WidgetTester tester,
     ) async {
       final ({ApiClient api, List<Exchange> calls}) t = buildApi(
@@ -998,8 +1020,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Talk to Grace'), findsNothing);
-      // Tests run as a development build, where the missing settings are named.
-      expect(find.textContaining('LiveKit settings'), findsOneWidget);
+      // Said plainly, with no setup details.
+      expect(find.text("Calls through the app aren't available right now."), findsOneWidget);
+      expect(find.textContaining('LiveKit'), findsNothing);
       controller.dispose();
     });
 

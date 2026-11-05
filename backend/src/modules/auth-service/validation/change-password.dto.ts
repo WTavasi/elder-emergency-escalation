@@ -6,7 +6,7 @@ export class ChangePasswordDto {
   currentPassword: string;
 
   @IsString()
-  @MinLength(8, { message: 'the new password must be at least 8 characters' })
+  @MinLength(8, { message: 'Use at least 8 characters for the new password.' })
   @MaxLength(200)
   newPassword: string;
 }

@@ -204,7 +204,7 @@ describe('SmsRepliesService', () => {
   it('says who is already going when somebody accepted first', async () => {
     const t = build({ taken: TAKEN });
     t.escalation.acknowledge.mockRejectedValue(
-      new ConflictException('Someone is already responding to this emergency'),
+      new ConflictException('Someone else is already on the way.'),
     );
 
     await expect(t.service.handle('+254700000030', '1')).resolves.toBe('taken');
@@ -214,7 +214,7 @@ describe('SmsRepliesService', () => {
   it('says so when the alert has moved past the tier that asked them', async () => {
     const t = build();
     t.escalation.decline.mockRejectedValue(
-      new ForbiddenException('You were not asked to respond to this emergency'),
+      new ForbiddenException("You weren't asked to help with this emergency."),
     );
 
     await expect(t.service.handle('+254700000030', '2')).resolves.toBe('moved-on');

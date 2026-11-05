@@ -123,9 +123,15 @@ export interface AlertDetail extends AlertSummary {
   /**
    * The person who took it on, on their way, when they chose to share it. Null when
    * nobody is sharing, they have arrived, or their last position is over three minutes
-   * old. The elder sees the time and the distance; their care circle also sees where.
+   * old. The elder sees the time and the distance; their care circle also sees where,
+   * and the road. Kept for screens that show only the owner; `journeys` has everybody.
    */
   journey: JourneyView | null;
+  /**
+   * Everybody sharing their way there, soonest first: the person who took it on and the
+   * community volunteer going, each with `traveller` saying which.
+   */
+  journeys: JourneyView[];
   /** Whether talking in the app is possible on this emergency, and who started it. */
   voice: VoiceView;
   /**

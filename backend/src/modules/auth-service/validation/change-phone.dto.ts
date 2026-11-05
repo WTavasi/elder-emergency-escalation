@@ -25,6 +25,6 @@ export class ChangePhoneDto {
   @Matches(E164, { message: E164_MESSAGE })
   phone: string;
 
-  @Matches(/^\d{6}$/, { message: 'code must be the six digits sent by SMS' })
+  @Matches(/^\d{6}$/, { message: 'Enter the 6-digit code from the text.' })
   code: string;
 }

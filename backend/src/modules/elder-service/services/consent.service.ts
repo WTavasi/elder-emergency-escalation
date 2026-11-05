@@ -78,7 +78,8 @@ export class ConsentService {
   async view(elderId: string, actorId: string, actorRole: Role): Promise<ConsentView> {
     const elder = await this.requireElder(elderId);
     const relation = await this.relationTo(elderId, actorId, actorRole);
-    if (relation === 'none') throw new ForbiddenException('You do not look after this person');
+    if (relation === 'none')
+      throw new ForbiddenException("You're not in this person's care circle.");
 
     return this.build(elder, relation === 'elder' || relation === 'caregiver');
   }
@@ -93,7 +94,7 @@ export class ConsentService {
   async confirm(elderId: string, actorId: string): Promise<ConsentView> {
     const elder = await this.requireElder(elderId);
     if (actorId !== elderId) {
-      throw new ForbiddenException('Only the person themselves can confirm their consent');
+      throw new ForbiddenException('Only they can confirm this.');
     }
 
     const rows = await this.prisma.consentRecord.findMany({
@@ -142,13 +143,11 @@ export class ConsentService {
     const elder = await this.requireElder(elderId);
     const relation = await this.relationTo(elderId, actorId, actorRole);
     if (relation !== 'elder' && relation !== 'caregiver') {
-      throw new ForbiddenException(
-        'Only the person themselves or their caregiver can agree to this',
-      );
+      throw new ForbiddenException('Only they or their caregiver can agree to this.');
     }
     if (type === ConsentType.DATA_PROCESSING) {
       throw new BadRequestException(
-        'This is given when the account is made, and withdrawing it closes the account.',
+        'This comes with the account. Withdrawing it closes the account.',
       );
     }
 
@@ -231,13 +230,13 @@ export class ConsentService {
     const elder = await this.requireElder(elderId);
     const relation = await this.relationTo(elderId, actorId, actorRole);
     if (relation !== 'elder' && relation !== 'caregiver') {
-      throw new ForbiddenException('Only the person themselves or their caregiver can withdraw');
+      throw new ForbiddenException('Only they or their caregiver can withdraw this.');
     }
 
     const endsService = type === ConsentType.DATA_PROCESSING;
     if (endsService && !confirmed) {
       throw new BadRequestException(
-        'Withdrawing this ends the service: no more alerts can be raised. Send confirm: true to go ahead.',
+        'Withdrawing this ends the service. No more alerts can be raised.',
       );
     }
     if (endsService) {
@@ -245,9 +244,7 @@ export class ConsentService {
         where: { elderlyId: elderId, state: { in: OPEN_STATES } },
       });
       if (open > 0) {
-        throw new ConflictException(
-          'There is an emergency open. Close it first, then withdraw consent.',
-        );
+        throw new ConflictException('An emergency is open. Close it first, then withdraw.');
       }
     }
 
@@ -364,7 +361,8 @@ export class ConsentService {
       where: { id: elderId },
       select: { id: true, name: true, phone: true, role: true },
     });
-    if (!elder || elder.role !== Role.ELDER) throw new NotFoundException('No such elder');
+    if (!elder || elder.role !== Role.ELDER)
+      throw new NotFoundException("We couldn't find this person.");
     return elder;
   }
 

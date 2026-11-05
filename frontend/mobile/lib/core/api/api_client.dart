@@ -699,18 +699,18 @@ class ApiClient {
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }
 
-  /// What to say when the server could not be reached.
-  ///
-  /// In a debug build the message names the address that was tried. Nearly every
-  /// "could not reach" during development is the app pointed at the wrong address for
-  /// the device it is on, and naming it turns a twelve second mystery into a one line
-  /// fix. A release build keeps to the plain sentence: the exception's own text, a
-  /// SocketException and an errno, means nothing to the person holding the phone.
+  /// What to say when the server could not be reached: one plain sentence, in every
+  /// build. The address tried and the exception go to the debug log instead, because
+  /// nearly every "can't reach" in development is the app pointed at the wrong address,
+  /// and that is for the developer's console, not the screen.
   String _unreachable(Object error) {
-    if (!kDebugMode) return 'No connection. Check your internet and try again.';
-    return 'No connection to ${Uri.parse(baseUrl).origin}. '
-        'Check your internet and try again. ($error)';
+    if (kDebugMode) debugPrint('Could not reach ${Uri.parse(baseUrl).origin}: $error');
+    return unreachableMessage;
   }
+
+  /// Said whenever the server cannot be reached at all.
+  static const String unreachableMessage =
+      "Can't reach MzaziCare. Check your connection and try again.";
 
   /// The decoded body, whatever JSON shape it is.
   ///
@@ -818,14 +818,47 @@ class ApiClient {
   /// than for a log, and rewording it here would undo the care taken over it: the
   /// sign-in failure in particular is worded identically for a wrong password and an
   /// unknown number, so that the app cannot be used to discover who is registered.
+  ///
+  /// Except where the server has nothing to say to a person: a fault on its side, which
+  /// is never the person's to read about, or a framework default such as "Forbidden
+  /// resource". Those become a plain sentence chosen by the kind of failure.
   static String _messageFrom(Object? decoded, int statusCode) {
+    if (statusCode >= 500) return serverDownMessage;
+    if (statusCode == 429) return 'Too many tries. Wait a minute, then try again.';
     if (decoded is Map<String, dynamic>) {
       final Object? message = decoded['message'];
-      if (message is String && message.isNotEmpty) return message;
-      if (message is List && message.isNotEmpty) return message.join(', ');
+      if (message is String && message.isNotEmpty && !_frameworkDefault(message)) {
+        return message;
+      }
+      if (message is List && message.isNotEmpty) return message.first.toString();
     }
-    return 'Something went wrong. Try again. (Error $statusCode)';
+    return switch (statusCode) {
+      401 => 'Please sign in again.',
+      403 => "Your account can't do this.",
+      404 => "We couldn't find that. It may have been removed.",
+      _ => 'Something went wrong. Try again.',
+    };
   }
+
+  /// Said when the server answered but could not do its part.
+  static const String serverDownMessage =
+      "MzaziCare isn't working right now. Try again in a few minutes.";
+
+  /// The messages a server framework sends on its own, which were written for logs.
+  static bool _frameworkDefault(String message) =>
+      const <String>{
+        'Bad Request',
+        'Unauthorized',
+        'Forbidden',
+        'Forbidden resource',
+        'Not Found',
+        'Conflict',
+        'Internal server error',
+        'Internal Server Error',
+        'Service Unavailable',
+        'Too Many Requests',
+      }.contains(message) ||
+      message.startsWith('Cannot ') && message.contains('/');
 }
 
 /// What a volunteer can say about a call, and the route each takes.

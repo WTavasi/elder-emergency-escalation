@@ -38,7 +38,7 @@ export class VolunteerAreaDto {
 /** Applying, or changing an application. */
 export class ApplyDto {
   @IsArray()
-  @ArrayMinSize(1, { message: 'say what you can do: at least one kind of training' })
+  @ArrayMinSize(1, { message: 'Choose at least one kind of training.' })
   @ArrayMaxSize(5)
   @ArrayUnique()
   @IsEnum(VolunteerTraining, { each: true })
@@ -49,7 +49,7 @@ export class ApplyDto {
   @MaxLength(300)
   note?: string;
 
-  @IsDefined({ message: 'choose the area you can help in' })
+  @IsDefined({ message: 'Choose the area you can help in.' })
   @ValidateNested()
   @Type(() => VolunteerAreaDto)
   area: VolunteerAreaDto;

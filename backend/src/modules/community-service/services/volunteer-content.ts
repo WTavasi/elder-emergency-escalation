@@ -18,47 +18,57 @@ export function roughDistance(metres: number): string {
 }
 
 /**
+ * How far a volunteer is: by road when a router measured it, else the straight line.
+ * A distance rather than a time, because a volunteer may walk, ride or drive.
+ */
+export interface Away {
+  distanceMetres: number;
+  byRoad: boolean;
+}
+
+/** "about 1.8 km away by road", or "about 1.2 km away" for the straight line. */
+export function howFarAway(away: Away): string {
+  return `${roughDistance(away.distanceMetres)} away${away.byRoad ? ' by road' : ''}`;
+}
+
+/**
  * The words a volunteer reads.
  *
  * Before they accept, nothing says who or where: not the name, not the street, not a
  * point on a map. A volunteer is a stranger to the elder until they say they will go, and
  * the disclosure is the price of going, not of being asked. The distance is measured from
- * the centre of their own area, rounded, so it says how far without saying where.
+ * the centre of their own area, by road when a router could, and rounded, so it says how
+ * far without saying where.
  */
 export const volunteerMessages = {
-  ask(
-    eventId: string,
-    distanceMetres: number,
-    severity: Severity,
-    replies: boolean,
-  ): VolunteerMessage {
-    const far = roughDistance(distanceMetres);
+  ask(eventId: string, away: Away, severity: Severity, replies: boolean): VolunteerMessage {
+    const far = howFarAway(away);
     const urgent = severity === Severity.CRITICAL;
     return {
       title: urgent ? 'Urgent: someone near you needs help' : 'Someone near you needs help',
-      body: `An older person ${far} away needs help. Can you go?`,
+      body: `An older person ${far} needs help. Can you go?`,
       sms: replies
         ? capSms(
-            `MzaziCare: an older person ${far} away needs help. Reply 1 to go, 2 if you cannot.`,
-            `MzaziCare: someone ${far} away needs help. Reply 1 to go, 2 if not.`,
+            `MzaziCare: an older person ${far} needs help. Reply 1 to go, 2 if you cannot.`,
+            `MzaziCare: someone ${far} needs help. Reply 1 to go, 2 if not.`,
           )
         : capSms(
-            `MzaziCare: an older person ${far} away needs help. Can you go? Open MzaziCare to answer.`,
-            `MzaziCare: someone ${far} away needs help. Open MzaziCare.`,
+            `MzaziCare: an older person ${far} needs help. Can you go? Open MzaziCare to answer.`,
+            `MzaziCare: someone ${far} needs help. Open MzaziCare.`,
           ),
       data: { type: 'volunteer-call', eventId },
     };
   },
 
   /** The one who accepted is no longer going, so the others are asked again. */
-  stillNeeded(eventId: string, distanceMetres: number): VolunteerMessage {
-    const far = roughDistance(distanceMetres);
+  stillNeeded(eventId: string, away: Away): VolunteerMessage {
+    const far = howFarAway(away);
     return {
       title: 'Still needed nearby',
-      body: `The volunteer who was going cannot. An older person ${far} away still needs help. Can you go?`,
+      body: `The volunteer who was going cannot. An older person ${far} still needs help. Can you go?`,
       sms: capSms(
-        `MzaziCare: the volunteer who was going cannot. An older person ${far} away still needs help. Open MzaziCare to answer.`,
-        `MzaziCare: still needed, someone ${far} away. Open MzaziCare.`,
+        `MzaziCare: the volunteer who was going cannot. An older person ${far} still needs help. Open MzaziCare to answer.`,
+        `MzaziCare: still needed, someone ${far}. Open MzaziCare.`,
       ),
       data: { type: 'volunteer-call', eventId },
     };
@@ -97,8 +107,8 @@ export const volunteerMessages = {
   },
 
   /** To the people already told about the emergency. */
-  toTheCircle(volunteerName: string, elderName: string, distanceMetres: number): VolunteerMessage {
-    const text = `${volunteerName}, a checked volunteer ${roughDistance(distanceMetres)} away, is going to ${firstName(elderName)}. We'll still ask you as usual.`;
+  toTheCircle(volunteerName: string, elderName: string, away: Away): VolunteerMessage {
+    const text = `${volunteerName}, a checked volunteer ${howFarAway(away)}, is going to ${firstName(elderName)}. We'll still ask you as usual.`;
     return {
       title: `A volunteer is going to ${firstName(elderName)}`,
       body: text,

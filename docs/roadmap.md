@@ -22,8 +22,8 @@ communicate.
 | Phase | What | Decision | State |
 | --- | --- | --- | --- |
 | 1 | Say what is happening; send the right service | assess, route | built |
-| 2 | Road travel times everywhere; an in-app map | route | next |
-| 3 | Who to go to first, when several alerts are open | route | |
+| 2 | Road travel times everywhere; an in-app map | route | built |
+| 3 | Who to go to first, when several alerts are open | route | next |
 | 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | |
 | 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | |
 | 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | |
@@ -34,11 +34,12 @@ type has a severity floor and a service (ambulance, fire, police), asked at once
 pain or breathing, fire and danger, and at the responder step for a fall or feeling
 unwell. Closing confirms what it really was. See decisions.md.
 
-**2. Road travel times and a map.** OSRM's road travel times for choosing volunteers and
-stations and for every time shown, with the straight line only as a labelled fallback. A
-self-hosted OSRM with Kenya's map in production. An in-app map (OpenStreetMap tiles)
-showing the elder, everybody on their way and the route; spoken directions hand off to
-Google or Apple Maps.
+**2. Road travel times and a map.** OSRM's road distances for choosing volunteers and
+road times for every time shown, with the straight line only as a labelled fallback. A
+self-hosted OSRM with Kenya's map (`infra/osrm`). An in-app map (OpenStreetMap tiles)
+showing the elder, everybody on their way and the road each is taking; the volunteer
+going shares their way too. Spoken directions hand off to Google or Apple Maps. Ranking
+emergency responders by road waits for each unit's base address. See decisions.md.
 
 **3. Who to go to first.** For a caregiver or service with several open alerts, a ranked
 list and map: first what nobody is handling, then by urgency and type, then where this

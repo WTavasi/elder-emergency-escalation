@@ -1,5 +1,8 @@
+import 'dart:io' show SocketException;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:mzazicare/core/api/api_client.dart';
 import 'package:mzazicare/core/api/models.dart';
 
@@ -106,6 +109,73 @@ void main() {
       await expectLater(t.api.raiseAlert(), throwsA(isA<ApiException>()));
 
       expect(changes.last, isNull);
+    });
+  });
+
+  group('what a failure says', () {
+    Future<String> failure(http.Response Function() answer) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request _, int _) => <http.Response>[answer()],
+      );
+      try {
+        await t.api.raiseAlert();
+      } on ApiException catch (error) {
+        return error.message;
+      } on NetworkException catch (error) {
+        return error.message;
+      }
+      return 'no failure';
+    }
+
+    test('passes on what the server says to a person', () async {
+      expect(
+        await failure(() => json(<String, String>{'message': 'This alert was cancelled.'}, 409)),
+        'This alert was cancelled.',
+      );
+    });
+
+    test('never shows a server fault or an error code', () async {
+      final String said = await failure(
+        () => json(<String, Object>{'statusCode': 500, 'message': 'Internal server error'}, 500),
+      );
+      expect(said, "MzaziCare isn't working right now. Try again in a few minutes.");
+      expect(said, isNot(contains('500')));
+    });
+
+    test('turns a framework default into a plain sentence', () async {
+      expect(
+        await failure(() => json(<String, String>{'message': 'Forbidden resource'}, 403)),
+        "Your account can't do this.",
+      );
+      expect(
+        await failure(() => json(<String, String>{'message': 'Cannot POST /api/v1/x'}, 404)),
+        "We couldn't find that. It may have been removed.",
+      );
+    });
+
+    test('shows one validation message, not a list', () async {
+      expect(
+        await failure(
+          () => json(<String, Object>{
+            'message': <String>['Enter a valid email address.', 'Type at least 3 letters.'],
+          }, 400),
+        ),
+        'Enter a valid email address.',
+      );
+    });
+
+    test('says plainly when the server cannot be reached, with no address or exception', () async {
+      final ApiClient api = ApiClient(
+        baseUrl: 'http://api.test/api/v1',
+        httpClient: MockClient((http.Request _) => throw const SocketException('refused')),
+      );
+      Object? caught;
+      try {
+        await api.raiseAlert();
+      } on NetworkException catch (error) {
+        caught = error;
+      }
+      expect(caught.toString(), "Can't reach MzaziCare. Check your connection and try again.");
     });
   });
 

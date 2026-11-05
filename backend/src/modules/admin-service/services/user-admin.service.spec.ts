@@ -171,7 +171,7 @@ describe('UserAdminService', () => {
         }),
       );
       await expect(service.create({ ...responder }, ADMIN)).rejects.toThrow(
-        'Another account already uses that phone number',
+        'Another account already uses this phone number.',
       );
     });
   });
@@ -206,7 +206,7 @@ describe('UserAdminService', () => {
     it("refuses the administrator's own account", async () => {
       const { service } = build();
       await expect(service.deactivate([ADMIN], ADMIN)).rejects.toThrow(
-        'You cannot deactivate your own account',
+        "You can't deactivate your own account.",
       );
     });
 
@@ -240,13 +240,13 @@ describe('UserAdminService', () => {
       const { service } = build();
       await expect(
         service.update(CAREGIVER, { responderService: ResponderService.POLICE }),
-      ).rejects.toThrow('Only an emergency responder has a service');
+      ).rejects.toThrow('Only an emergency responder has a service.');
     });
 
     it('refuses an area for anybody but a responder', async () => {
       const { service } = build();
       await expect(service.update(CAREGIVER, { coverage: responder.coverage })).rejects.toThrow(
-        'Only an emergency responder has an area',
+        'Only an emergency responder has an area.',
       );
     });
 

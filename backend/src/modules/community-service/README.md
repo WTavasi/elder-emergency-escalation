@@ -35,9 +35,11 @@ the consent an elder gives to it (`elder-service`).
 `VolunteerCallsService.askNearby` is called by the escalation service, without waiting:
 with a critical alert, and at the responder tier when no professional covers the place.
 It asks once per emergency, only for an elder with an active `COMMUNITY_HELP` consent, and
-only approved, available volunteers whose own area contains the alert, nearest first, up
-to `VOLUNTEER_MAX_ASKED`. A volunteer is told the distance and how urgent, never who or
-where, until they accept. The first to accept (a conditional write) is given the elder's
+only approved, available volunteers whose own area contains the alert, nearest by road
+first (one `RoutingService.travelTimes` request, the straight line when no router answers),
+up to `VOLUNTEER_MAX_ASKED`. A volunteer is told the distance, by road when it was
+measured, and how urgent, never who or where, until they accept. The one going may share
+their way there through the emergency service's journeys, like the owner. The first to accept (a conditional write) is given the elder's
 name, number and address while the emergency is open; the others are stood down; the
 emergency itself is not touched.
 

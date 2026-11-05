@@ -1,15 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/models.dart';
-import '../../core/location/location_permission.dart';
-import '../../core/location/position_source.dart';
+import '../../core/location/share_way_panel.dart';
 import '../../core/location/way_there.dart';
+import '../../core/map/emergency_map.dart';
 import '../../core/theme/theme.dart';
 import '../../core/voice/voice_call.dart';
 import '../../core/widgets/action_sheet.dart';
@@ -57,6 +55,29 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     context.read<AlertDetailController>().start();
   }
 
+  /// The map full screen, kept up to date while it is open, with directions under it.
+  void _openMap(BuildContext context, AlertDetailController controller, AlertSummary alert) {
+    final WayThere? way = controller.wayThere;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext _) => EmergencyMapScreen(
+            listenable: Listenable.merge(<Listenable?>[controller, way]),
+            read: () => _mapOf(controller, alert),
+            actions: <Widget>[
+              DirectionsButton(
+                latitude: alert.latitude!,
+                longitude: alert.longitude!,
+                addressLabel: alert.addressLabel,
+                open: widget.open,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final AlertDetailController controller = context.watch<AlertDetailController>();
@@ -82,8 +103,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             _OnTheWay(
               controller: controller,
               alert: alert,
-              journey: detail?.journey,
-              open: widget.open,
+              journeys: detail?.journeys ?? const <Journey>[],
+              volunteerName: detail?.volunteer?.name,
             ),
             if (detail?.volunteer case final VolunteerOnAlert volunteer) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
@@ -98,14 +119,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (controller.canTalk) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
               _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
-            ] else if (kDebugMode && controller.talkIsOff) ...<Widget>[
-              // Never in a release build, where a missing feature is simply not offered.
+            ] else if (controller.talkIsOff) ...<Widget>[
+              // Said plainly, so nobody looks for a button that is not there. Phoning
+              // is right above.
               const SizedBox(height: MzaziSpace.s24),
-              const Notice(
-                message:
-                    'Talk to is hidden: the server has no LiveKit settings. '
-                    'See step 10 of docs/running.md.',
-              ),
+              const Notice(message: "Calls through the app aren't available right now."),
             ],
             if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
               const SizedBox(height: MzaziSpace.s24),
@@ -113,7 +131,14 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               const SizedBox(height: MzaziSpace.s12),
               if (alert.addressLabel != null)
                 Text(alert.addressLabel!, style: theme.textTheme.bodyLarge),
-              if (alert.state.isOpen && alert.hasPlace) ...<Widget>[
+              if (_mapOf(controller, alert) case final EmergencyMapData map) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s12),
+                EmergencyMap(
+                  destination: map.destination,
+                  destinationLabel: map.destinationLabel,
+                  travellers: map.travellers,
+                  onOpen: () => _openMap(context, controller, alert),
+                ),
                 const SizedBox(height: MzaziSpace.s12),
                 SizedBox(
                   width: double.infinity,
@@ -153,7 +178,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (controller.loadError != null) ...<Widget>[
               const SizedBox(height: MzaziSpace.s16),
               Text(
-                'Could not update this screen. ${controller.loadError}',
+                "Couldn't refresh this. Pull down to try again.",
                 style: theme.textTheme.bodySmall,
               ),
             ],
@@ -969,7 +994,7 @@ class _Volunteer extends StatelessWidget {
     final String line = volunteer.going && name != null
         ? volunteer.hasArrived
               ? '$name, a checked volunteer, is with $elderFirst.'
-              : '$name, a checked volunteer${metres == null ? '' : ' ${roughDistance(metres)} away'}, is on the way.'
+              : '$name, a checked volunteer${metres == null ? '' : ' ${howFarAway(metres, byRoad: volunteer.byRoad)}'}, is on the way.'
         : volunteer.asked == 0
         ? 'No volunteers free nearby.'
         : open
@@ -999,221 +1024,137 @@ class _Volunteer extends StatelessWidget {
   }
 }
 
-/// The way there, while the person who took it on is travelling.
+/// Who is on their way, and how long until they arrive.
 ///
-/// For that person: whether their way there is being shared, and how long they have
-/// left. For everybody else in the circle: how long until somebody is with her, and a
-/// link to see where they are now. Nothing at all once they have arrived.
+/// For the person who took it on: sharing their own way there. For everybody else in
+/// the circle: each person on their way and the time left, the one who took it on and
+/// the volunteer alike. Where they are is on the map, under Where. Nothing once nobody
+/// is on their way.
 class _OnTheWay extends StatelessWidget {
-  const _OnTheWay({required this.controller, required this.alert, this.journey, this.open});
+  const _OnTheWay({
+    required this.controller,
+    required this.alert,
+    this.journeys = const <Journey>[],
+    this.volunteerName,
+  });
 
   final AlertDetailController controller;
   final AlertSummary alert;
-  final Journey? journey;
-  final Open? open;
+  final List<Journey> journeys;
+  final String? volunteerName;
 
   @override
   Widget build(BuildContext context) {
-    if (!alert.state.isOpen || alert.ownerName == null || alert.arrivedAt != null) {
-      return const SizedBox.shrink();
-    }
+    if (!alert.state.isOpen) return const SizedBox.shrink();
 
+    final List<Widget> children = <Widget>[];
     final WayThere? way = controller.wayThere;
-    if (controller.isMine) {
-      if (way == null) return const SizedBox.shrink();
-      return ListenableBuilder(
-        listenable: way,
-        builder: (BuildContext context, Widget? _) => _mine(context, way),
+    if (controller.isMine && alert.arrivedAt == null && way != null) {
+      Journey? mine;
+      for (final Journey journey in journeys) {
+        if (journey.traveller == Traveller.owner) mine = journey;
+      }
+      children.add(
+        ShareWayPanel(
+          way: way,
+          eventId: alert.eventId,
+          elderFirst: alert.elderName.split(' ').first,
+          journey: mine,
+        ),
       );
     }
 
-    final Journey? shared = journey;
-    if (shared == null) return const SizedBox.shrink();
-    return _theirs(context, shared);
-  }
-
-  Widget _mine(BuildContext context, WayThere way) {
-    final ThemeData theme = Theme.of(context);
-    final String elder = alert.elderName.split(' ').first;
-    final List<Widget> children;
-
-    if (way.isSharingFor(alert.eventId)) {
-      final Journey? latest = way.journey ?? journey;
-      final Color live = theme.colorScheme.primary;
-      children = <Widget>[
-        // A plain status line first, in the brand ink with the location mark, so it is
-        // clear at a glance that the phone is sharing right now.
-        Row(
-          children: <Widget>[
-            Icon(Icons.my_location, size: 20, color: live),
-            const SizedBox(width: MzaziSpace.s8),
-            Text('Sharing your location', style: theme.textTheme.labelLarge?.copyWith(color: live)),
-          ],
-        ),
-        const SizedBox(height: MzaziSpace.s8),
-        Text(
-          latest == null
-              ? 'Finding your location…'
-              : '${_capitalised(timeAway(latest.etaSeconds))} to $elder',
-          style: theme.textTheme.titleLarge,
-        ),
-        const SizedBox(height: MzaziSpace.s4),
-        Text('Sharing stops when you arrive.', style: theme.textTheme.bodyMedium),
-        const SizedBox(height: MzaziSpace.s12),
-        // A full button rather than a text link, in the error ink, because stopping
-        // takes the time away from somebody waiting for help. It asks first.
-        OutlinedButton.icon(
-          onPressed: () => unawaited(_confirmStop(context, way, elder)),
-          icon: const Icon(Icons.location_off_outlined),
-          label: const Text('Stop sharing'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: theme.colorScheme.error,
-            side: BorderSide(color: theme.colorScheme.error),
-          ),
-        ),
-      ];
-    } else if (way.eventId == alert.eventId && way.problem != null) {
-      final bool settings =
-          way.access == LocationAccess.deniedForever || way.access == LocationAccess.serviceOff;
-      children = <Widget>[
-        Notice(message: way.problem!, isError: true),
-        const SizedBox(height: MzaziSpace.s12),
-        // Asks the phone for location when it has not been asked, after saying why. A
-        // retry that only checked could never succeed on a phone that was never asked.
-        settings
-            ? OutlinedButton.icon(
-                onPressed: () => unawaited(way.openSettings()),
-                icon: const Icon(Icons.settings_outlined),
-                label: const Text('Open Settings'),
-              )
-            : OutlinedButton.icon(
-                onPressed: () => unawaited(shareWithPermission(context, way, alert.eventId)),
-                icon: const Icon(Icons.my_location),
-                label: Text(
-                  way.access == LocationAccess.denied ? 'Allow location' : 'Try sharing again',
-                ),
-              ),
-      ];
-    } else if (way.enabled) {
-      children = <Widget>[
-        Text('Your location is not shared.', style: theme.textTheme.bodyMedium),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton(
-            onPressed: () => unawaited(shareWithPermission(context, way, alert.eventId)),
-            child: const Text('Share live location'),
-          ),
-        ),
-      ];
-    } else {
-      children = <Widget>[
-        Text(
-          'Turn on Share live location in Me. $elder will see how far away you are.',
-          style: theme.textTheme.bodyMedium,
-        ),
-      ];
+    for (final Journey journey in journeys) {
+      // Their own way there is in the panel above.
+      if (controller.isMine && journey.traveller == Traveller.owner) continue;
+      final String? name = journey.traveller == Traveller.owner ? alert.ownerName : volunteerName;
+      if (name == null) continue;
+      if (children.isNotEmpty) children.add(const SizedBox(height: MzaziSpace.s16));
+      children.add(_Travelling(name: name.split(' ').first, journey: journey));
     }
 
-    return _section(children);
-  }
-
-  Widget _theirs(BuildContext context, Journey shared) {
-    final ThemeData theme = Theme.of(context);
-    final String owner = alert.ownerName!.split(' ').first;
-    final String how = shared.byRoad ? 'by road' : 'in a straight line';
-
-    return _section(<Widget>[
-      Text('$owner is ${timeAway(shared.etaSeconds)} away', style: theme.textTheme.titleLarge),
-      const SizedBox(height: MzaziSpace.s4),
-      Text(
-        '${distanceWords(shared.distanceMetres)} $how, updated '
-        '${elapsedSince(shared.updatedAt)}.',
-        style: theme.textTheme.bodyMedium,
-      ),
-      if (shared.hasPosition) ...<Widget>[
-        const SizedBox(height: MzaziSpace.s12),
-        SizedBox(
-          width: double.infinity,
-          child: _SeeWhere(
-            name: owner,
-            latitude: shared.latitude!,
-            longitude: shared.longitude!,
-            open: open,
-          ),
+    if (children.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: MzaziSpace.s24),
+      child: Semantics(
+        liveRegion: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const SectionLabel('On the way'),
+            const SizedBox(height: MzaziSpace.s12),
+            ...children,
+          ],
         ),
-      ],
-    ]);
-  }
-
-  Widget _section(List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(top: MzaziSpace.s24),
-    child: Semantics(
-      liveRegion: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          const SectionLabel('On the way'),
-          const SizedBox(height: MzaziSpace.s12),
-          ...children,
-        ],
       ),
-    ),
-  );
-
-  /// Stopping is a choice with a cost to somebody else, so it is said plainly before it
-  /// happens. The safe answer is the quiet one and keeps sharing.
-  static Future<void> _confirmStop(BuildContext context, WayThere way, String elder) async {
-    final bool? stop = await showActionSheet<bool>(
-      context,
-      title: 'Stop sharing location?',
-      message:
-          '$elder and the care circle will no longer see where you are. You can share again here.',
-      actions: const <SheetAction<bool>>[
-        SheetAction<bool>(
-          'Stop sharing',
-          true,
-          icon: Icons.location_off_outlined,
-          primary: true,
-          destructive: true,
-        ),
-        SheetAction<bool>('Keep sharing', false, icon: Icons.my_location),
-      ],
     );
-    if (stop == true) way.stop();
   }
-
-  static String _capitalised(String text) =>
-      text.isEmpty ? text : '${text[0].toUpperCase()}${text.substring(1)}';
 }
 
-/// Where the person on their way is now, in the phone's maps app.
-///
-/// A link rather than a map in the app, for the same reasons as the directions button:
-/// no map SDK, no key, and the maps app shows a place better than this app could.
-class _SeeWhere extends StatelessWidget {
-  const _SeeWhere({required this.name, required this.latitude, required this.longitude, this.open});
+/// One person on their way: "Peter is about 9 minutes away", and how that was measured.
+class _Travelling extends StatelessWidget {
+  const _Travelling({required this.name, required this.journey});
 
   final String name;
-  final double latitude;
-  final double longitude;
-  final Open? open;
-
-  Uri get uri => Uri.https('www.google.com', '/maps/search/', <String, String>{
-    'api': '1',
-    'query': '$latitude,$longitude',
-  });
+  final Journey journey;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: () {
-        final Open go = open ?? (Uri link) => launchUrl(link, mode: LaunchMode.externalApplication);
-        unawaited(go(uri).catchError((Object _) => false));
-      },
-      icon: const Icon(Icons.near_me_outlined),
-      label: Text('See where $name is'),
+    final ThemeData theme = Theme.of(context);
+    final String how = journey.byRoad ? 'by road' : 'in a straight line';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text('$name is ${timeAway(journey.etaSeconds)} away', style: theme.textTheme.titleLarge),
+        const SizedBox(height: MzaziSpace.s4),
+        Text(
+          '${distanceWords(journey.distanceMetres)} $how, updated '
+          '${elapsedSince(journey.updatedAt)}.',
+          style: theme.textTheme.bodyMedium,
+        ),
+      ],
     );
   }
+}
+
+/// Everybody on the map: each journey that carries a position, by name, with this
+/// phone's own way there as fresh as this phone knows it.
+EmergencyMapData? _mapOf(AlertDetailController controller, AlertSummary fallback) {
+  final AlertDetail? detail = controller.detail;
+  final AlertSummary alert = detail?.summary ?? fallback;
+  if (!alert.state.isOpen || !alert.hasPlace) return null;
+
+  final WayThere? way = controller.wayThere;
+  final Journey? live = controller.isMine && way != null && way.isSharingFor(alert.eventId)
+      ? way.journey
+      : null;
+
+  final List<MapTraveller> travellers = <MapTraveller>[];
+  bool placedMine = false;
+  for (final Journey journey in detail?.journeys ?? const <Journey>[]) {
+    final bool owner = journey.traveller == Traveller.owner;
+    final bool mine = owner && controller.isMine;
+    final String? name = owner ? alert.ownerName : detail?.volunteer?.name;
+    if (name == null) continue;
+    final MapTraveller? who = MapTraveller.fromJourney(
+      mine && live != null && live.hasPosition ? live : journey,
+      name,
+      isYou: mine,
+    );
+    if (who != null) travellers.add(who);
+    if (mine) placedMine = true;
+  }
+  // Sharing has started here but the emergency has not been re-read since.
+  if (!placedMine && live != null) {
+    final MapTraveller? who = MapTraveller.fromJourney(live, alert.ownerName ?? '', isYou: true);
+    if (who != null) travellers.add(who);
+  }
+
+  return EmergencyMapData(
+    destination: MapPoint(alert.latitude!, alert.longitude!),
+    destinationLabel: alert.elderName.split(' ').first,
+    travellers: travellers,
+  );
 }
 
 /// Talking to the elder through the app.

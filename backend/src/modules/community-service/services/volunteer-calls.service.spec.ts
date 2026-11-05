@@ -8,6 +8,8 @@ import {
   VolunteerStatus,
 } from '@prisma/client';
 import type { PrismaService } from '../../../db/prisma.service';
+import type { RedisService } from '../../../shared/redis/redis.service';
+import { RoutingService, type RouteEstimate } from '../../../shared/routing/routing.service';
 import { NoopRealtimePublisher } from '../../realtime-service/services/realtime.publisher';
 import { VolunteerCallsService } from './volunteer-calls.service';
 import type { VolunteerMessenger } from './volunteer-messenger.service';
@@ -175,11 +177,14 @@ function world(
   const config = {
     get: (key: string, fallback: unknown) => (key in settings ? settings[key] : fallback),
   };
+  // The real service, with no router switched on: the straight-line estimate.
+  const routing = new RoutingService({} as RedisService, config as unknown as ConfigService);
   const service = new VolunteerCallsService(
     prisma as unknown as PrismaService,
     new NoopRealtimePublisher(),
     messenger as unknown as VolunteerMessenger,
     config as unknown as ConfigService,
+    routing,
   );
   const sentTo = () => messenger.send.mock.calls.map((call: unknown[]) => call[0] as Row);
   const texts = () =>
@@ -187,7 +192,7 @@ function world(
       const message = call[1] as { title: string; body: string; sms: string };
       return `${message.title} ${message.body} ${message.sms}`;
     });
-  return { service, prisma, event, calls, audit, messenger, settings, sentTo, texts };
+  return { service, prisma, event, calls, audit, messenger, settings, sentTo, texts, routing };
 }
 
 const asked = (volunteerId: string, extra: Row = {}): Row => ({
@@ -230,6 +235,44 @@ describe('VolunteerCallsService', () => {
         detail: { reason: 'critical', asked: 2 },
       });
       expect(t.calls.every((call) => call.askedVia === 'push')).toBe(true);
+    });
+
+    it('ranks by road when a router answers, and says the distance is by road', async () => {
+      const t = world({
+        candidates: [volunteer('across-the-river', 300), volunteer('down-the-road', 800)],
+      });
+      t.settings.VOLUNTEER_MAX_ASKED = 1;
+      // Nearest on the map, but the bridge is far: 4.2 km by road against 1.1 km.
+      const road = (distanceMetres: number): RouteEstimate => ({
+        distanceMetres,
+        durationSeconds: distanceMetres / 7,
+        source: 'osrm',
+      });
+      jest.spyOn(t.routing, 'travelTimes').mockResolvedValue([road(4200), road(1100)]);
+
+      await t.service.askNearby('event-1', 'critical');
+
+      expect(t.calls).toHaveLength(1);
+      expect(t.calls[0]).toMatchObject({
+        volunteerId: 'down-the-road',
+        distanceMetres: 1100,
+        byRoad: true,
+      });
+      expect(t.texts()[0]).toContain('about 1.1 km away by road');
+    });
+
+    it('measures from the centre of each area to the alert, in one request', async () => {
+      const t = world({ candidates: [volunteer('near', 300), volunteer('mid', 800)] });
+      const measure = jest.spyOn(t.routing, 'travelTimes');
+
+      await t.service.askNearby('event-1', 'critical');
+
+      expect(measure).toHaveBeenCalledTimes(1);
+      const [origins, destination] = measure.mock.calls[0];
+      expect(origins).toHaveLength(2);
+      expect(destination).toEqual(ALERT);
+      // No router: the straight line, said without "by road".
+      expect(t.calls[0]).toMatchObject({ distanceMetres: 300, byRoad: false });
     });
 
     it('says how far but never who or where', async () => {

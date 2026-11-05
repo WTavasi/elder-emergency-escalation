@@ -4,4 +4,4 @@
  * into this before sending it, so the API only ever sees one shape.
  */
 export const E164 = /^\+[1-9]\d{7,14}$/;
-export const E164_MESSAGE = 'phone must be in international format, for example +254712345678';
+export const E164_MESSAGE = 'Enter the full number, like +254712345678.';

@@ -17,7 +17,7 @@ export class LoginDto {
   phone?: string;
 
   @ValidateIf((dto: LoginDto) => dto.phone === undefined)
-  @IsEmail({}, { message: 'email must be a valid address' })
+  @IsEmail({}, { message: 'Enter a valid email address.' })
   @MaxLength(160)
   email?: string;
 

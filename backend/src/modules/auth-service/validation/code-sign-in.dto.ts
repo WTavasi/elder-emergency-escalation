@@ -9,6 +9,6 @@ export class CodeSignInDto {
   @Matches(E164, { message: E164_MESSAGE })
   phone: string;
 
-  @Matches(/^\d{6}$/, { message: 'code must be six digits' })
+  @Matches(/^\d{6}$/, { message: 'Enter the 6-digit code.' })
   code: string;
 }

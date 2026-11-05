@@ -17,7 +17,7 @@ export class ResolveDto {
    */
   @ValidateIf((dto: ResolveDto) => dto.outcome === EventOutcome.OTHER)
   @IsString()
-  @IsNotEmpty({ message: 'Say briefly what happened when the outcome is OTHER' })
+  @IsNotEmpty({ message: 'Say briefly what happened.' })
   @ValidateIf((dto: ResolveDto) => dto.note !== undefined)
   @MaxLength(300)
   note?: string;

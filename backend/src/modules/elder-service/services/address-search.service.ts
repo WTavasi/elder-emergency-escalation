@@ -80,12 +80,16 @@ export class AddressSearchService {
       });
     } catch (error) {
       this.logger.warn(`Address search failed: ${error instanceof Error ? error.message : error}`);
-      throw new ServiceUnavailableException('Address search is not reachable. Try again shortly.');
+      throw new ServiceUnavailableException(
+        "Address search isn't available right now. Try again soon.",
+      );
     }
 
     if (!response.ok) {
       this.logger.warn(`Address search answered ${response.status}`);
-      throw new ServiceUnavailableException('Address search is not available. Try again shortly.');
+      throw new ServiceUnavailableException(
+        "Address search isn't available right now. Try again soon.",
+      );
     }
 
     const raw = (await response.json()) as { display_name?: string; lat?: string; lon?: string }[];

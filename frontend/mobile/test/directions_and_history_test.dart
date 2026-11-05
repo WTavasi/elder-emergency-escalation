@@ -37,6 +37,37 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
     });
 
+    testWidgets('on an iPhone, offers Apple Maps for spoken directions', (
+      WidgetTester tester,
+    ) async {
+      Uri? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.iOS),
+          home: Scaffold(
+            body: DirectionsButton(
+              latitude: -1.286389,
+              longitude: 36.817223,
+              open: (Uri uri) async {
+                opened = uri;
+                return true;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Get directions'));
+      await tester.pumpAndSettle();
+      expect(find.text('Google Maps'), findsOneWidget);
+      await tester.tap(find.text('Apple Maps'));
+      await tester.pumpAndSettle();
+
+      expect(opened?.host, 'maps.apple.com');
+      expect(opened?.queryParameters['daddr'], '-1.286389,36.817223');
+      expect(opened?.queryParameters['dirflg'], 'd');
+    });
+
     testWidgets('says what to search for when nothing can open the link', (
       WidgetTester tester,
     ) async {

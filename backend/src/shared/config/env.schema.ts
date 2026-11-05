@@ -364,6 +364,17 @@ export class EnvSchema {
   ROUTING_URL = 'https://router.project-osrm.org';
 
   /**
+   * How many requests a second the router allows, shared by every instance of the API.
+   * 1 for the public demonstration server. 0 means no limit, for the project's own
+   * router (infra/osrm), which answers in milliseconds and has nobody else to share with.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  ROUTING_RATE_PER_SECOND: number = 1;
+
+  /**
    * How close a shared position has to come to the alert's location to count as
    * arriving. 100 metres covers a phone's usual accuracy in a city and the walk from
    * the gate to the door.

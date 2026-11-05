@@ -174,7 +174,7 @@ const build = (
     notifications,
     new NoopRealtimePublisher(),
     config,
-    { current: jest.fn().mockResolvedValue(null) } as unknown as JourneyService,
+    { current: jest.fn().mockResolvedValue({ owner: null, all: [] }) } as unknown as JourneyService,
     {
       current: jest.fn().mockResolvedValue({ available: false, startedBy: null, startedAt: null }),
     } as unknown as VoiceService,
@@ -430,7 +430,7 @@ describe('AlertsService', () => {
       );
 
       await expect(build(prisma).cancel(event().id, 'elder-1')).rejects.toThrow(
-        /window to cancel has passed/,
+        /too late to cancel/,
       );
     });
 
@@ -446,7 +446,7 @@ describe('AlertsService', () => {
       const prisma = buildPrisma();
       prisma.emergencyEvent.findUnique.mockResolvedValue(event({ state: EventState.ACKNOWLEDGED }));
       await expect(build(prisma).cancel(event().id, 'elder-1')).rejects.toThrow(
-        /already responding/,
+        /already on the way/,
       );
     });
 

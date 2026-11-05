@@ -107,23 +107,23 @@ export class VoiceService implements OnModuleInit {
 
   async join(eventId: string, userId: string): Promise<VoiceAccess> {
     if (!this.available) {
-      throw new ServiceUnavailableException('Talking in the app is not set up on this server');
+      throw new ServiceUnavailableException("Calls through the app aren't available right now.");
     }
 
     const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
-    if (!event) throw new NotFoundException('Emergency not found');
+    if (!event) throw new NotFoundException("We couldn't find this emergency.");
     if (!OPEN_STATES.includes(event.state)) {
-      throw new ConflictException('This emergency is already closed');
+      throw new ConflictException('This emergency is already closed.');
     }
 
     const person = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, role: true },
     });
-    if (!person) throw new NotFoundException('Account not found');
+    if (!person) throw new NotFoundException("We couldn't find this account.");
     // The console watches; it does not take part. Same rule as the buttons.
     if (person.role === Role.ADMINISTRATOR) {
-      throw new ForbiddenException('The console cannot join an emergency');
+      throw new ForbiddenException("Calls can't be joined from the console.");
     }
 
     const isElder = event.elderlyId === userId;

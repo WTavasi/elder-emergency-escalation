@@ -95,7 +95,7 @@ export class CreateUserDto {
   phone: string;
 
   @IsOptional()
-  @IsEmail({}, { message: 'email must be a valid address' })
+  @IsEmail({}, { message: 'Enter a valid email address.' })
   @MaxLength(160)
   email?: string;
 
@@ -109,7 +109,7 @@ export class CreateUserDto {
    * They change it from their account, or reset it with a code in the app.
    */
   @IsString()
-  @MinLength(8, { message: 'the password must be at least 8 characters' })
+  @MinLength(8, { message: 'Use at least 8 characters for the password.' })
   @MaxLength(200)
   password: string;
 
@@ -141,7 +141,7 @@ export class UpdateUserDto {
   @IsOptional()
   @Transform(({ value }) => (value === '' ? null : value))
   @ValidateIf((dto: UpdateUserDto) => dto.email !== null)
-  @IsEmail({}, { message: 'email must be a valid address' })
+  @IsEmail({}, { message: 'Enter a valid email address.' })
   @MaxLength(160)
   email?: string | null;
 

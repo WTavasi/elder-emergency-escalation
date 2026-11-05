@@ -412,8 +412,10 @@ push address. Android is enough for the demonstration.
 
 A caregiver who turns on **Share live location** and takes an emergency on shares where
 they are until they arrive. Grace's phone shows "Mary Otieno is coming" with the minutes
-left; anybody else in the circle also gets a "See where Mary is" button. Nobody has to
-drive anywhere to try it: both emulators can pretend to move.
+left; anybody else in the circle sees a map under **Where**, with Grace's home, Mary, and
+the road she is taking. Tapping the map opens it full screen. A community volunteer who
+said they would go shares the same way, and appears on the same map. Nobody has to drive
+anywhere to try it: both emulators can pretend to move.
 
 You need two sessions: the elder (Grace, `+254700000010`) and the caregiver (Mary,
 `+254700000020`). The easiest pair is the Android emulator for Mary and the iOS Simulator
@@ -451,15 +453,43 @@ for Grace, or Postman for Grace (folder **2b** raises her alert).
 While sharing, Android shows a **Sharing live location** notification and iOS shows the
 blue location indicator. Both disappear when sharing stops.
 
-**Real road times.** By default the time is a straight-line estimate. To use real routes,
-start the API with the public OSRM router switched on for that run:
+**Real road times.** By default the time is a straight-line estimate, the screens say "in
+a straight line", and no road is drawn on the map. To use real roads, start the API with
+the public OSRM router switched on for that run:
 
 ```bash
 ROUTING_PROVIDER=osrm npm run dev
 ```
 
-The public server allows one request a second and is for testing only, so leave it off
-unless you are looking at the times.
+The times then say "by road", the map draws the road, and volunteers are chosen by road
+distance. The public server allows one request a second and is for testing only.
+
+**Your own router, as production runs it.** The project's router has Kenya's map built
+in (`infra/osrm/Dockerfile`). The first build downloads the map and prepares it, which
+takes 10 to 30 minutes and about 8 GB of memory; give Docker Desktop that much under
+**Settings → Resources** first. After that it starts in seconds.
+
+```bash
+docker compose --profile routing up -d osrm
+curl "http://localhost:5050/route/v1/driving/36.811,-1.268;36.7833,-1.2833?overview=false"
+```
+
+The second line should print a route with `"code":"Ok"`. Then run the API against it,
+with no rate limit:
+
+```bash
+ROUTING_PROVIDER=osrm ROUTING_URL=http://localhost:5050 ROUTING_RATE_PER_SECOND=0 npm run dev
+```
+
+In production the same image runs as its own service (on Render, a private service from
+`infra/osrm`, with at least 2 GB of memory), and the API's `ROUTING_URL` points at it.
+Rebuild it every month or two for new roads.
+
+**The map's pictures.** The app draws OpenStreetMap's own map pictures by default, which
+their policy allows at this scale with the credit shown in the corner. A busier
+deployment points the app at a tile provider with
+`--dart-define=MAP_TILES_URL=https://<provider>/{z}/{x}/{y}.png` and
+`--dart-define=MAP_TILES_CREDIT="© <provider>, © OpenStreetMap contributors"`.
 
 ### Step 9 (optional). Answer an alert by text
 
@@ -571,9 +601,9 @@ audio goes through LiveKit. Nothing is recorded.
 4. Restart the API. Any alert's detail now carries `"voice": { "available": true, ... }`.
 
 Until these are set, **Talk to Grace** does not appear anywhere and Grace's phone never
-joins. The API says so when it starts (`Talking in the app is off`), and a development
-build of the app says so on the alert, where the button would be. A release build shows
-nothing, because a feature the server cannot provide is not offered.
+joins. The API says so when it starts (`Talking in the app is off`), and the app says
+"Calls through the app aren't available right now." on the alert, where the button
+would be.
 
 **2. Make a call.** Two devices on this Mac work: Grace on the iOS Simulator and Mary on
 the Android emulator. Use headphones, or two people in two rooms will whistle at each

@@ -40,9 +40,9 @@ Mac's network, so it uses `localhost`. Passing an address overrides that:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 ```
 
-A real phone always needs one; see below. If sign in says it could not reach
-MzaziCare, a debug build names the address it tried, which is nearly always the
-problem.
+A real phone always needs one; see below. If sign in says it can't reach MzaziCare,
+the debug console (the terminal running `flutter run`) prints the address it tried,
+which is nearly always the problem.
 
 VS Code has both as run configurations: **Mobile: Android emulator** and
 **Mobile: iOS Simulator** in the Run and Debug panel.
@@ -165,9 +165,15 @@ red, with a brighter edge in dark mode, and the countdown is yellow in both.
 **People** (caregivers and family only) and **Me**, the Alerts tab carrying the number
 nobody has answered. Alerts has an Open view of the emergencies they are part of, and a
 History view grouped by day; pull down to refresh. For each one: who is being asked,
-where the elder is with a Get directions button that opens the phone's maps app,
-calling the elder or a responder, and taking it on, declining or closing it with an
-outcome.
+where the elder is on a map with everybody on their way and their road, a Get
+directions button that hands spoken directions to Google Maps or, on an iPhone, Apple
+Maps, calling the elder or a responder, and taking it on, declining or closing it with
+an outcome. Tap the map to open it full screen.
+
+**The map.** OpenStreetMap's map pictures, drawn by flutter_map: no map SDK and no key.
+To use another tile source, build with `--dart-define=MAP_TILES_URL=...` and
+`--dart-define=MAP_TILES_CREDIT=...`. In widget tests the map draws pins and roads
+without pictures, because tests have no network.
 
 ## Where things live
 
@@ -192,7 +198,8 @@ uses is under `lib/core/`. To change a screen, start in its feature folder.
 | `lib/core/offline/` | What the elder's phone keeps for asking without a connection, and text links |
 | `lib/core/live/` | Live updates over the socket |
 | `lib/core/push/` | Push notifications, when the build has a Firebase project |
-| `lib/core/location/` | A responder's live location, shared only when they turn it on |
+| `lib/core/location/` | Live location for whoever is on their way, shared only when they turn it on |
+| `lib/core/map/` | The map of an emergency: the elder, everybody on their way, their roads |
 | `lib/core/voice/` | Calls through the app |
 | `lib/core/phone/` | The phone field, its country list and reading a typed number |
 | `lib/core/theme/` | The theme, built from the design tokens, and the light or dark setting |

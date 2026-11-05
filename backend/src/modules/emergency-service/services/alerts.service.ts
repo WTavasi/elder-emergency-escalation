@@ -175,9 +175,9 @@ export class AlertsService {
 
     const elder = await this.prisma.user.findUnique({ where: { id: elderId } });
 
-    if (!elder) throw new NotFoundException('Account no longer exists');
+    if (!elder) throw new NotFoundException('This account no longer exists.');
     if (elder.role !== Role.ELDER) {
-      throw new ForbiddenException('Only the person being cared for can raise an alert');
+      throw new ForbiddenException('Only the person being cared for can raise an alert.');
     }
 
     const recentEventCount = await this.countRecentEvents(elderId, at);
@@ -295,16 +295,16 @@ export class AlertsService {
     const event = await this.requireEvent(eventId);
 
     if (event.elderlyId !== userId) {
-      throw new ForbiddenException('Only the person who raised this alert can cancel it');
+      throw new ForbiddenException('Only the person who raised this alert can cancel it.');
     }
     if (event.state === EventState.CANCELLED) {
-      throw new ConflictException('This alert was already cancelled');
+      throw new ConflictException('This alert was already cancelled.');
     }
     // Ownership, not state, is what ends the right to cancel. An alert whose first tier
     // was empty is already ESCALATED inside the window, and nobody has taken it on.
     if (event.acknowledgedBy || event.state === EventState.ACKNOWLEDGED) {
       throw new ConflictException(
-        'Someone is already responding to this alert. Speak to them rather than cancelling.',
+        'Someone is already on the way. Call them instead of cancelling.',
       );
     }
     assertTransition(event.state, EventState.CANCELLED);
@@ -312,9 +312,7 @@ export class AlertsService {
     const graceWindow = this.config.get<number>('CANCEL_GRACE_WINDOW', 10);
     const elapsedSeconds = (Date.now() - event.triggeredAt.getTime()) / 1000;
     if (elapsedSeconds > graceWindow) {
-      throw new ConflictException(
-        `The ${graceWindow} second window to cancel has passed. Help is on the way.`,
-      );
+      throw new ConflictException(`It's too late to cancel. Help is on the way.`);
     }
 
     const now = new Date();
@@ -372,7 +370,7 @@ export class AlertsService {
     const event = await this.requireEvent(eventId);
 
     if (event.state !== EventState.CANCELLED) {
-      throw new ConflictException('Only a cancelled alert can be reopened');
+      throw new ConflictException('Only a cancelled alert can be reopened.');
     }
     assertTransition(event.state, INITIAL_STATE);
 
@@ -384,12 +382,12 @@ export class AlertsService {
         });
 
     if (!isElder && !assignment) {
-      throw new ForbiddenException('Only this person’s care chain can reopen their alert');
+      throw new ForbiddenException('Only their care circle can reopen this alert.');
     }
 
     const at = new Date();
     const elder = await this.prisma.user.findUnique({ where: { id: event.elderlyId } });
-    if (!elder) throw new NotFoundException('Emergency not found');
+    if (!elder) throw new NotFoundException("We couldn't find this emergency.");
 
     // The alert being reopened is not its own history, so it is left out of the count.
     const assessment = await this.severity.evaluate(
@@ -460,7 +458,7 @@ export class AlertsService {
   async answerMissedCheckIn(eventId: string, elderId: string): Promise<'withdrawn' | 'noted'> {
     const event = await this.requireEvent(eventId);
     if (event.elderlyId !== elderId || event.trigger !== AlertTrigger.MISSED_CHECK_IN) {
-      throw new ForbiddenException('That alert was not raised for a check-in of yours');
+      throw new ForbiddenException("That alert wasn't for your check-in.");
     }
     if (!OPEN_STATES.includes(event.state)) return 'noted';
 
@@ -530,7 +528,7 @@ export class AlertsService {
   async findOne(eventId: string, userId: string, role: Role): Promise<AlertDetail> {
     const event = await this.requireVisible(eventId, userId, role);
 
-    const [row, chain, logs, deliveries, journey, voice, volunteer] = await Promise.all([
+    const [row, chain, logs, deliveries, journeys, voice, volunteer] = await Promise.all([
       this.prisma.emergencyEvent.findUniqueOrThrow({
         where: { id: eventId },
         include: SUMMARY_INCLUDE,
@@ -553,7 +551,7 @@ export class AlertsService {
         orderBy: { createdAt: 'asc' },
         include: { recipient: { select: { id: true, name: true, role: true } } },
       }),
-      this.journeys.current(eventId, event.elderlyId === userId),
+      this.journeys.current(event, event.elderlyId === userId),
       this.voice.current(eventId, OPEN_STATES.includes(event.state)),
       this.volunteers.onAlert(eventId, event.elderlyId === userId),
     ]);
@@ -590,7 +588,8 @@ export class AlertsService {
         deliveredAt: delivery.deliveredAt?.toISOString() ?? null,
         acknowledgedAt: delivery.acknowledgedAt?.toISOString() ?? null,
       })),
-      journey,
+      journey: journeys.owner,
+      journeys: journeys.all,
       voice,
       volunteer,
     };
@@ -714,14 +713,14 @@ export class AlertsService {
       }),
       this.prisma.notification.findFirst({ where: { eventId, recipientId: userId } }),
     ]);
-    if (!assignment && !asked) throw new NotFoundException('Emergency not found');
+    if (!assignment && !asked) throw new NotFoundException("We couldn't find this emergency.");
 
     return event;
   }
 
   private async requireEvent(eventId: string): Promise<EmergencyEvent> {
     const event = await this.prisma.emergencyEvent.findUnique({ where: { id: eventId } });
-    if (!event) throw new NotFoundException('Emergency not found');
+    if (!event) throw new NotFoundException("We couldn't find this emergency.");
     return event;
   }
 

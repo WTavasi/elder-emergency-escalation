@@ -104,13 +104,13 @@ export class CheckInsService {
     dto: SetCheckInsDto,
   ): Promise<CheckInsOverview> {
     const canEdit = await this.access(elderId, actorId, role);
-    if (!canEdit) throw new ForbiddenException('Only the elder or their chain can set this up');
+    if (!canEdit) throw new ForbiddenException('Only they or their care circle can set this up.');
 
     const times = [...new Set(dto.times.map(parseTime))]
       .filter((minutes): minutes is number => minutes !== null)
       .sort((a, b) => a - b);
     if (dto.enabled && times.length === 0) {
-      throw new BadRequestException('Choose at least one time of day');
+      throw new BadRequestException('Choose at least one time of day.');
     }
 
     const byElder = actorId === elderId;
@@ -156,9 +156,9 @@ export class CheckInsService {
 
   /** The elder's answer to a set-up somebody else made for them. */
   async confirm(elderId: string, actorId: string, agree: boolean): Promise<ElderCheckIns> {
-    if (actorId !== elderId) throw new ForbiddenException('Only the elder can agree to this');
+    if (actorId !== elderId) throw new ForbiddenException('Only they can agree to this.');
     const schedule = await this.prisma.checkInSchedule.findUnique({ where: { elderId } });
-    if (!schedule) throw new NotFoundException('Nobody has set up a check-in');
+    if (!schedule) throw new NotFoundException('No check-in is set up.');
 
     await this.prisma.checkInSchedule.update({
       where: { elderId },
@@ -242,7 +242,8 @@ export class CheckInsService {
       where: { id: elderId },
       select: { role: true },
     });
-    if (!elder || elder.role !== Role.ELDER) throw new NotFoundException('No such elder');
+    if (!elder || elder.role !== Role.ELDER)
+      throw new NotFoundException("We couldn't find this person.");
     if (actorId === elderId) return true;
     if (role === Role.ADMINISTRATOR) return false;
 
@@ -250,7 +251,7 @@ export class CheckInsService {
       where: { elderlyId: elderId, responderId: actorId },
       select: { id: true },
     });
-    if (!assignment) throw new ForbiddenException('You do not look after this person');
+    if (!assignment) throw new ForbiddenException("You're not in this person's care circle.");
     return role === Role.CAREGIVER || role === Role.FAMILY_MEMBER;
   }
 
