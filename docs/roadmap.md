@@ -26,7 +26,7 @@ communicate.
 | 3 | Who to go to first, when several alerts are open; stations nearest first | route | built |
 | 4 | Adaptive escalation and severity that learns, measured by a simulator | time, assess | skipped for now |
 | M | Medical details for those asked to help | assess | built |
-| 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | next |
+| 5 | Speak to report: voice, transcript, translation, "Hey Siri" | assess, communicate | built |
 | 6 | Check-ins at intervals, agreed by everyone, with each elder's rhythm | detect | |
 | 7 | Understanding free-text replies in English, Swahili and Sheng | communicate | |
 
@@ -63,11 +63,13 @@ unlikely to answer, text first for people who do not open push at night, and sev
 weights calibrated from outcomes, approved by an administrator. An elder's history can
 raise severity, never lower it.
 
-**5. Speak to report.** The microphone opens after the press; up to a minute of speech;
-speech-to-text on our own server, in the original language and in English; a suggested
-type that can raise severity, while asking a service from speech needs a person's tap.
-"Hey Siri, MzaziCare help" on iPhone; a widget and quick-settings tile on Android. Its own
-consent, 30 days' retention and a data protection impact assessment.
+**5. Speak to report.** Built. "Hey Siri, MzaziCare help fire" raises the alert with the
+type said, for every type; on Android a home-screen widget, a quick-settings tile,
+launcher shortcuts and the Assistant. After the press, the elder can speak for up to a
+minute; our own Whisper server writes it down as said and in English, and the English,
+Swahili and Sheng word lists pick the type, which is reported as a tap would be, so the
+service follows after the usual short wait. Its own consent, the recording never kept,
+the words kept 30 days. See decisions.md.
 
 **6. Check-ins.** Intervals (every hour from 08:00 to 20:00) as well as fixed times; the
 family sees the agreement; each elder's rhythm, with an early nudge when an answer is

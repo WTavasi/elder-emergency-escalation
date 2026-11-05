@@ -868,6 +868,33 @@ aid, hard of hearing, a penicillin allergy and her doctor.
 6. **As Grace, open Me, Medical details, Delete medical details.** They are gone, Mary is
    texted, and the alert shows **No medical details saved.**
 
+### Step 17 (optional). Say it: Siri, the widget and speaking after the press
+
+**"Hey Siri, MzaziCare help fire."** On an iPhone with the app installed and opened once
+as Grace, say it. The app opens, the countdown starts, and **Your family can see: Fire**
+is already chosen; about 25 seconds later the nearest fire station is asked, as for a
+tap. "MzaziCare help", "MzaziCare help, I fell", "MzaziCare msaada moto" work the same
+way, for every type. The phrases are also in the Shortcuts app under MzaziCare.
+
+**Android.** Long-press the home screen, **Widgets**, **MzaziCare help**, and place the
+red **Help** button. Pull down the quick settings, edit, and add **Ask for help**.
+Long-press the app icon for **Help: fire**, **Help: I fell** and the rest. With the
+Assistant: "Hey Google, open fire in MzaziCare".
+
+**Speaking after the press** needs our own speech server. It runs in Docker; the first
+start downloads the model, about 500 MB:
+
+```bash
+docker compose --profile speech up -d whisper
+echo "WHISPER_URL=http://localhost:9000" >> backend/.env
+```
+
+Restart the API. As Grace, open **Me**, **Privacy and consent**, and agree to **Speaking to
+say what is happening**. Raise an alert and, once it has gone, press **Say it out loud**.
+Say "Msaada, kuna moto jikoni" and press **Done**. A few seconds later the screen shows
+**You said: "Msaada, kuna moto jikoni"**, Fire is chosen, and Mary's screen shows **What
+Grace said**, with the English under it. The recording is deleted once written down.
+
 ## The first run on a new machine, or after pulling changes
 
 Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,

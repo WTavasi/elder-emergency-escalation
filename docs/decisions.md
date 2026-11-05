@@ -1208,3 +1208,39 @@ protection impact assessment (section 31) should be written for it, and the priv
 notice needs a line about it, which is the owner's to write. An elder who cannot agree
 for themselves, such as one with advanced dementia, can have details kept but not
 shared; whether a guardian's consent should count needs the same advice.
+
+## Saying it: Siri, the widget, and speaking after the press
+
+On 8 November 2026 an elder could ask for help, and say what is happening, without
+finding the button or reading a list.
+
+**"MzaziCare help fire" chooses Fire, and the fire service follows.** Siri hears the
+phrase on the phone (App Shortcuts, nothing to set up) and opens the app with the type,
+which raises the alert as the button does, countdown and all, and reports the type at
+once. The service is asked after the same 25 seconds as a tap, so a mistake can still be
+stopped or changed. Every type works the same way, in English and Swahili ("MzaziCare
+msaada moto"). Android has no equal to App Shortcuts that takes words after the name, so
+it has a home-screen Help button, a quick-settings tile, launcher shortcuts for each type
+and the Assistant's "open fire in MzaziCare".
+
+**One word list for everything said or written.** HELP texts, speech and later replies
+read the same English, Swahili and Sheng lists (`shared/language`), on our own server.
+Rules rather than a language model, because a safety decision has to be readable, testable
+and correctable by the people running it, and because nothing said needs to leave the
+server to be understood.
+
+**Speech never lowers anything.** What is heard is reported only when nothing was, or
+when it is more urgent than what was: "nimeanguka" after Fire was tapped is kept as what
+was heard, not reported. Asking a service follows only from a reported type, as for a tap.
+
+**Under the Data Protection Act.** The recording is personal data, often about health.
+So: its own consent (`VOICE_REPORTS`), never part of registration; our own speech server
+(Whisper, run in Docker), so nothing said goes to a company abroad; the recording deleted
+once written down and never stored; the words kept 30 days (`SPEECH_RETENTION_DAYS`) for
+the people helping, and the trail keeps only the language and what was heard. A data
+protection impact assessment should cover this with the medical details.
+
+**Not verified here.** The Swift for Siri and the Kotlin for the widget, tile and
+shortcuts could not be compiled where they were written; they need a build on a Mac and a
+phone. The speech server was tested with a stand-in that answers as Whisper does, because
+the model could not be downloaded there.

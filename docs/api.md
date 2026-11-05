@@ -88,7 +88,9 @@ number is the handle. Setting it up: `docs/running.md`, Google sign-in.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body. Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts` | elder | Raise an emergency. Empty body, or `{ type?, from? }` when it was said with the request (see below). Scores severity and writes the audit trail |
+| POST | `/api/v1/alerts/:id/speech` | the elder | Multipart, a recording in `audio` (up to 5 MB): what the elder said after pressing help. Written down by our own speech server, read for a type, and reported as if tapped when it says one. 10 in ten minutes |
+| GET | `/api/v1/elders/:id/speech` | the elder | `{ available, consented }`: whether to offer the microphone |
 | POST | `/api/v1/alerts/:id/cancel` | elder | Withdraw inside the grace window, while nobody has taken it on |
 | POST | `/api/v1/alerts/:id/reopen` | care chain | Restart a cancelled alert nobody could confirm |
 | POST | `/api/v1/alerts/ranked` | caregiver, family, responder | `{ latitude?, longitude? }`, both or neither. Every open emergency the caller is part of, in the order to go to them: `{ measuredFrom, alerts: [{ alert, reasons, why, travelSeconds, byRoad }] }`. See below |
@@ -208,6 +210,21 @@ rules: a severity floor, a service, and when the service is asked.
 | `UNSAFE` (robbery, intruder, violence) | critical | police | at once |
 | `FALL` | high | ambulance | at the responder step |
 | `UNWELL` | high | ambulance | at the responder step |
+
+**Said with the request.** "Hey Siri, MzaziCare help fire", the Android widget, the
+quick-settings tile and the Assistant open the app, which raises the alert with
+`{ type: "FIRE", from: "siri" }`. The type is reported straight after the alert is raised,
+exactly as a tap would, so the service follows after the same short wait and can still be
+changed. `from` is `siri`, `assistant`, `widget` or `tile`, and is kept in the trail.
+
+**Said out loud.** After the press, an elder who agreed (`VOICE_REPORTS` consent) can
+speak for up to a minute. The recording goes to our own Whisper server (`WHISPER_URL`),
+is written down as said and, when not English, in English, and is then thrown away. The
+words are read by the same English, Swahili and Sheng word lists as a HELP text. What they
+say is reported only when nothing was reported yet, or when it is more urgent than what
+was (fire, then not safe, then chest or breathing, then a fall, then unwell): speech never
+lowers anything. The words, in `speech` on the alert, are kept `SPEECH_RETENTION_DAYS`
+(30); the trail records only the language and what was heard (`SPEECH_HEARD`).
 
 A floor only ever raises severity, and a rise changes the rest of the chain at once, as
 the cancel-window review does. "At once" means the nearest station of the service is
