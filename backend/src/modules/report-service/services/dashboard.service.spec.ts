@@ -42,7 +42,7 @@ describe('DashboardService', () => {
       } as unknown as ConfigService,
     );
     expect(service.policy()).toEqual({
-      retention: { enabled: true, closedEmergencyDays: 180, auditLogDays: 365 },
+      retention: { enabled: true, closedEmergencyDays: 180, auditLogDays: 365, speechDays: 30 },
     });
   });
 

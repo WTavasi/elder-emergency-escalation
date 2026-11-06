@@ -16,6 +16,7 @@ import '../../core/widgets/emergency_type_icon.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import 'alert_detail_controller.dart';
 import 'alert_detail_screen.dart';
 import 'alerts_controller.dart';
@@ -147,22 +148,37 @@ class _AlertListScreenState extends State<AlertListScreen> {
         if (group.heading != null)
           Padding(
             padding: EdgeInsets.fromLTRB(
-              MzaziLayout.margin(context),
+              MzaziLayout.margin(context) + groupInset,
               MzaziSpace.s24,
-              MzaziLayout.margin(context),
+              MzaziLayout.margin(context) + groupInset,
               0,
             ),
             child: SectionLabel(group.heading!),
           ),
         if (alerts.openOnly && group.heading == null) ..._overview(context, alerts),
-        for (final AlertSummary alert in group.alerts) ...<Widget>[
-          _AlertRow(
-            alert: alert,
-            why: alerts.openOnly ? alerts.whyFor(alert.eventId) : null,
-            onOpen: () => _open(context, alert, alerts),
+        // Each day's alerts, or the open ones, in one rounded group, as Mail groups a
+        // mailbox: rows divided by hairlines that start under the names.
+        Padding(
+          padding: EdgeInsets.only(top: group.heading == null ? MzaziSpace.s16 : 0),
+          child: GroupSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (final (int index, AlertSummary alert) in group.alerts.indexed) ...<Widget>[
+                  if (index > 0) const Divider(height: 1, indent: MzaziSpace.s32),
+                  Semantics(
+                    container: true,
+                    child: _AlertRow(
+                      alert: alert,
+                      why: alerts.openOnly ? alerts.whyFor(alert.eventId) : null,
+                      onOpen: () => _open(context, alert, alerts),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const Divider(indent: MzaziSpace.s16),
-        ],
+        ),
       ],
     ];
   }
@@ -420,7 +436,12 @@ class _HistorySearchState extends State<_HistorySearch> {
                   },
                 ),
               ),
+              const SizedBox(width: MzaziSpace.s8),
+              // A round grey button, so it reads as something to press beside the field.
               IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
                 tooltip: 'Choose dates',
                 icon: Icon(days == null ? Icons.calendar_today_outlined : Icons.event),
                 onPressed: () => unawaited(_pickDays()),
@@ -465,6 +486,8 @@ class _HistorySearchState extends State<_HistorySearch> {
 /// A Material segmented button is a rounded capsule, which on this screen would be the
 /// one rounded shape left. Two tabs under the title say the same thing in type, and each
 /// is a full-height touch target.
+/// Open or History, as Apple's segmented control: a grey track with the chosen segment
+/// lifted out on the surface colour.
 class _ViewSwitch extends StatelessWidget {
   const _ViewSwitch({required this.openOnly, required this.onChanged});
 
@@ -473,15 +496,24 @@ class _ViewSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
-      child: Row(
-        children: <Widget>[
-          _Tab(label: 'Open', selected: openOnly, onTap: () => onChanged(true)),
-          _Tab(label: 'History', selected: !openOnly, onTap: () => onChanged(false)),
-        ],
+    final ThemeData theme = Theme.of(context);
+    final double margin = MzaziLayout.margin(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(margin, 0, margin, MzaziSpace.s8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(MzaziRadius.field),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Row(
+            children: <Widget>[
+              _Tab(label: 'Open', selected: openOnly, onTap: () => onChanged(true)),
+              _Tab(label: 'History', selected: !openOnly, onTap: () => onChanged(false)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -498,29 +530,27 @@ class _Tab extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color ink = selected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant;
+    final BorderRadius radius = BorderRadius.circular(MzaziRadius.field - 2);
 
     return Expanded(
       child: Semantics(
         selected: selected,
         button: true,
-        child: InkWell(
-          onTap: selected ? null : onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: MzaziA11y.standardMinTouchTarget),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: selected ? ink : Colors.transparent,
-                  width: MzaziStroke.focus,
-                ),
+        child: Material(
+          color: selected ? theme.colorScheme.surface : Colors.transparent,
+          borderRadius: radius,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: selected ? null : onTap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: MzaziA11y.standardMinTouchTarget - 4),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: selected
+                    ? theme.textTheme.titleSmall?.copyWith(color: ink)
+                    : theme.textTheme.bodyMedium?.copyWith(color: ink),
               ),
-            ),
-            child: Text(
-              label,
-              style: selected
-                  ? theme.textTheme.titleSmall?.copyWith(color: ink)
-                  : theme.textTheme.bodyMedium?.copyWith(color: ink),
             ),
           ),
         ),

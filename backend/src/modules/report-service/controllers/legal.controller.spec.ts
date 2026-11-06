@@ -3,7 +3,7 @@ import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '../../../shared/config/po
 import type { DashboardService } from '../services/dashboard.service';
 import { LegalController } from './legal.controller';
 
-const retention = { enabled: true, closedEmergencyDays: 365, auditLogDays: 365 };
+const retention = { enabled: true, closedEmergencyDays: 365, auditLogDays: 365, speechDays: 30 };
 const dashboard = { policy: () => ({ retention }) } as unknown as DashboardService;
 const configWith = (values: Record<string, string>) =>
   ({ get: (key: string) => values[key] }) as unknown as ConfigService;

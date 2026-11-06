@@ -1909,6 +1909,7 @@ class LegalFacts {
     required this.retentionEnabled,
     required this.closedEmergencyDays,
     required this.auditLogDays,
+    this.speechDays = 30,
     this.contact,
   });
 
@@ -1917,6 +1918,9 @@ class LegalFacts {
   final bool retentionEnabled;
   final int closedEmergencyDays;
   final int auditLogDays;
+
+  /// How long the words an elder said after pressing help are kept.
+  final int speechDays;
 
   /// Null until the deployment names one.
   final DataContact? contact;
@@ -1931,6 +1935,7 @@ class LegalFacts {
       retentionEnabled: retention['enabled'] as bool? ?? true,
       closedEmergencyDays: (retention['closedEmergencyDays'] as num?)?.toInt() ?? 365,
       auditLogDays: (retention['auditLogDays'] as num?)?.toInt() ?? 365,
+      speechDays: (retention['speechDays'] as num?)?.toInt() ?? 30,
       contact: contact is Map<String, dynamic>
           ? DataContact(
               name: contact['name'] as String?,

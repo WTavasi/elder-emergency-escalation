@@ -49,6 +49,8 @@ export interface DataPolicy {
     enabled: boolean;
     closedEmergencyDays: number;
     auditLogDays: number;
+    /** How long the words an elder said after pressing help are kept. */
+    speechDays: number;
   };
 }
 

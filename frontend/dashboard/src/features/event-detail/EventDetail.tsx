@@ -9,7 +9,7 @@ import type {
   AuditEntry,
   ChainMember,
   Journey,
-  MedicalView,
+  MedicalLooks as Looks,
   Role,
 } from '../../shared/api/types';
 import { OPEN_STATES } from '../../shared/api/types';
@@ -570,7 +570,7 @@ const ROLE_WORD: Partial<Record<Role, string>> = {
  */
 function MedicalLooks({ id, version }: { id: string; version: number }) {
   const fetcher = useCallback(() => api.medicalViews(id), [id]);
-  const { data: views, reload } = useLoader<MedicalView[]>(fetcher, '');
+  const { data: looks, reload } = useLoader<Looks>(fetcher, '');
   // Asked again whenever the emergency moves on, which is when somebody new is asked
   // and may look. Not on the first render: the loader has just asked.
   const seen = useRef(version);
@@ -579,7 +579,9 @@ function MedicalLooks({ id, version }: { id: string; version: number }) {
     seen.current = version;
     reload();
   }, [version, reload]);
-  if (!views || views.length === 0) return null;
+  const views = looks?.views ?? [];
+  const guardian = looks?.sharing?.byElder ? null : (looks?.sharing?.guardian ?? null);
+  if (views.length === 0 && !guardian) return null;
 
   return (
     <section className="card stack" aria-labelledby="medical-heading">
@@ -587,6 +589,12 @@ function MedicalLooks({ id, version }: { id: string; version: number }) {
       <p className="micro muted">
         Only the people asked to help see them. This lists who opened them, not what they say.
       </p>
+      {guardian ? (
+        <p>
+          Shared because {guardian.by?.name ?? 'a caregiver who has since left'} said this elder
+          can&apos;t decide for themselves and acts for them, since {formatClock(guardian.at)}.
+        </p>
+      ) : null}
       {views.map((view, index) => (
         <p key={`${view.at}-${index}`}>
           {view.by ? view.by.name : 'Someone who has since left'}

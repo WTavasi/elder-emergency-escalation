@@ -8,7 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import 'volunteer_call_screen.dart';
 import 'volunteer_controller.dart';
 
@@ -41,14 +41,16 @@ class NearbyScreen extends StatelessWidget {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else ...<Widget>[
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
-                  child: _Standing(
-                    profile: profile,
-                    busy: volunteer.busy,
-                    onAvailable: (bool on) => unawaited(volunteer.setAvailable(on)),
-                    onOpenApplication: onOpenApplication,
-                  ),
+                GroupCard(
+                  top: 0,
+                  children: <Widget>[
+                    _Standing(
+                      profile: profile,
+                      busy: volunteer.busy,
+                      onAvailable: (bool on) => unawaited(volunteer.setAvailable(on)),
+                      onOpenApplication: onOpenApplication,
+                    ),
+                  ],
                 ),
                 if (volunteer.error case final String failure)
                   Padding(
@@ -60,18 +62,25 @@ class NearbyScreen extends StatelessWidget {
                     ),
                     child: Notice(message: failure, isError: true),
                   ),
-                if (going != null) ...<Widget>[
-                  const _Heading("You're going"),
-                  _CallRow(call: going),
-                ],
-                if (volunteer.waiting.isNotEmpty) ...<Widget>[
-                  const _Heading('Needs help now'),
-                  for (final VolunteerCall call in volunteer.waiting) _CallRow(call: call),
-                ],
-                if (volunteer.earlier.isNotEmpty) ...<Widget>[
-                  const _Heading('Earlier'),
-                  for (final VolunteerCall call in volunteer.earlier) _CallRow(call: call),
-                ],
+                if (going != null)
+                  SettingsSection(
+                    title: "You're going",
+                    children: <Widget>[_CallRow(call: going)],
+                  ),
+                if (volunteer.waiting.isNotEmpty)
+                  SettingsSection(
+                    title: 'Needs help now',
+                    children: <Widget>[
+                      for (final VolunteerCall call in volunteer.waiting) _CallRow(call: call),
+                    ],
+                  ),
+                if (volunteer.earlier.isNotEmpty)
+                  SettingsSection(
+                    title: 'Earlier',
+                    children: <Widget>[
+                      for (final VolunteerCall call in volunteer.earlier) _CallRow(call: call),
+                    ],
+                  ),
               ],
             ],
           ),
@@ -156,18 +165,6 @@ class _Standing extends StatelessWidget {
       note == null || note.trim().isEmpty ? '' : ': ${note.trim()}';
 }
 
-class _Heading extends StatelessWidget {
-  const _Heading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(MzaziSpace.s16, MzaziSpace.s24, MzaziSpace.s16, 0),
-    child: SectionLabel(text),
-  );
-}
-
 /// One call: how far, how urgent, how long ago, and where it stands.
 class _CallRow extends StatelessWidget {
   const _CallRow({required this.call});
@@ -182,16 +179,21 @@ class _CallRow extends StatelessWidget {
         : 'Someone ${howFarAway(call.distanceMetres, byRoad: call.byRoad)}';
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: groupInset),
       minTileHeight: MzaziSizes.of(context).target,
       title: Text(headline, style: theme.textTheme.titleMedium),
       subtitle: Text(callStanding(call)),
-      trailing: call.severity == Severity.critical && call.open
-          ? Text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (call.severity == Severity.critical && call.open)
+            Text(
               'Urgent',
               style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
-            )
-          : null,
+            ),
+          Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+        ],
+      ),
       onTap: () => unawaited(
         Navigator.of(context).push(
           MaterialPageRoute<void>(

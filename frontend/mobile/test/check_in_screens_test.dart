@@ -469,6 +469,7 @@ void main() {
         find.text('Call Grace first. They missed a daily check-in. No one pressed for help.'),
         findsOneWidget,
       );
+      await _openTrail(tester);
       expect(find.text('Missed the daily check-in'), findsOneWidget);
       expect(find.text('Grace Wanjiru answered the check-in late'), findsOneWidget);
       expect(find.text('Cancelled: Grace Wanjiru answered the check-in'), findsOneWidget);
@@ -477,4 +478,13 @@ void main() {
       controller.dispose();
     });
   });
+}
+
+/// The trail is on its own page now: opens it from the alert.
+Future<void> _openTrail(WidgetTester tester) async {
+  final Finder row = find.text('What happened');
+  await tester.ensureVisible(row);
+  await tester.pumpAndSettle();
+  await tester.tap(row);
+  await tester.pumpAndSettle();
 }

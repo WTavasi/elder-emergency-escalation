@@ -195,9 +195,11 @@ tell within a second what is happening and what to press, the screen is not done
 
 An iPhone app in the app, and a Mac app in the console, dense and tool-like because it is
 read at a desk. Both follow Apple's conventions. The app: the phone's own face (SF Pro) on Apple's type scale, 20-point margins,
-rounded solid buttons, and questions as sheets that slide up from the bottom. Type and
-spacing do the work boxes would otherwise do: lists run edge to edge under hairlines,
-sections open with a small-capitals label, and there are almost no cards. Colour is spent
+rounded solid buttons, and questions as sheets that slide up from the bottom. Rows sit in
+rounded white groups on the grey page, as the Settings app and Health set them out, each
+group under a small-capitals label; the first group on a screen holds what matters most,
+and the rest opens on a page of its own. Every button looks pressable: a filled or grey
+shape, never bare words. Colour is spent
 on state, and on the way in, where MzaziCare's red fills the top of the screen. Elder
 mode is the same app at a larger size (22pt semibold body, 72pt buttons); it starts on
 for an elder and anybody can switch it. The elder's screen has the help button in the
@@ -223,8 +225,8 @@ or grey, and every pair is gated for contrast in CI in both themes.
 
 - **Emergency Red** (emergency-red): the help button, an emergency nobody has answered,
   and a destructive confirmation. On the elder's no-connection screen it is the first way
-  to ask for help. Also, under review, the filled buttons and text links of both the app
-  and the console (see the One Red Rule).
+  to ask for help. Also, under review, the filled buttons of both the app and the console
+  (see the One Red Rule).
 - **Emergency Edge** (emergency-edge): the help button's outline in dark mode, where the
   red alone is 2:1 against the page; the console banner's outline while nobody has the
   emergency.
@@ -255,8 +257,8 @@ or grey, and every pair is gated for contrast in CI in both themes.
 unanswered emergency, a destructive confirmation. A selected switch, a ticked box, a
 spinner or a caret is never red. Two exceptions: MzaziCare's red on the way in (across the
 top of the app's screens, down the side of the console's sign-in), where no emergency can
-be on screen yet; and the filled buttons and text links of the app and the console, which
-take the red as an Apple app's controls take its tint, and are under review.
+be on screen yet; and the filled buttons of the app and the console, which take the red
+as an Apple app's controls take its tint, and are under review. Text buttons are grey.
 
 **The You-Can-Still-Act Rule.** Yellow is spent on exactly two moments on the elder's
 screen, and never as decoration.
@@ -281,8 +283,8 @@ and heavier, it does not change it.
 - **Body** (400 / 600, 17 / 22): everything a person reads.
 - **Subheadline** (400 / 600, 15 / 20): secondary text in the softer ink. Nothing a
   person has to read is smaller.
-- **Label** (600 / 700, 13 / 20, opened out, small capitals): section labels over a
-  hairline, as the Settings app heads its groups.
+- **Label** (600 / 700, 13 / 20, opened out, small capitals): section labels above a
+  rounded group, as the Settings app heads its groups.
 - **Figures:** the same face with tabular digits, so times, phone numbers, codes and the
   countdown line up and do not jitter as they change.
 
@@ -312,8 +314,11 @@ app on the phone is set in, Roboto on Android included.
 ## Layout
 
 An 8-point rhythm (4, 8, 12, 16, 24, 32, 48, 64). In the app, Apple's side margins: 20pt,
-or 16pt on the narrowest phones, the same on every screen; lists run edge to edge, one row
-per item, divided by hairlines; each screen opens with one large left-aligned title. The
+or 16pt on the narrowest phones, the same on every screen; rows sit in rounded groups inset
+by the margin, one row per item, divided by hairlines that start where the words do, with
+16pt inside the group; each screen opens with one large left-aligned title. What a person
+needs first is in the first groups, open; detail that gives context is a row that opens a
+page of its own, not a section that expands in place. The
 screens on the way in (sign in, sign up, reset) put MzaziCare's red across the top with a
 curved lower edge and the form below it, low on the screen where the thumb is. Places people go often
 sit in a bottom bar (Alerts, People, Me), and the decision on an emergency is pinned to
@@ -329,7 +334,8 @@ a whole row opens what it shows, with a chevron at its end.
 
 ## Elevation & Depth
 
-Flat. Depth comes from tone (page, surface, sunk surface) and hairlines, not shadows.
+Flat. Depth comes from tone (the grey page, the white group on it, the sunk grey of a
+button) and hairlines, not shadows.
 Material's elevation tint is switched off, because it would tint every surface with the
 emergency red. In the console, chart tooltips, menus and sheets carry a single soft
 shadow to show they float above the page, and nothing else does; the bar at the top of a
@@ -377,8 +383,9 @@ the darkest ink with yellow text.
   console alike. The colour is under review, because it puts red on actions that are not
   emergencies, such as signing in and saving; see "Don't" below.
 - **Secondary:** ink on the sunk grey, no outline, as Apple's grey buttons are.
-- **Text:** MzaziCare red, not underlined (in the console, underlined under the pointer),
-  as an Apple app's links take its tint. Under review with the filled button.
+- **Text:** a smaller grey pill, ink on the sunk grey, so it looks pressable rather than
+  like a sentence; the same in the console's quiet buttons and in-text actions. On the
+  yellow countdown screen it is an ink outline instead, as grey would not show.
 - **Call buttons:** amber wash with amber ink, because they reach a person.
 - **Focus:** a 3px Focus Blue ring.
 

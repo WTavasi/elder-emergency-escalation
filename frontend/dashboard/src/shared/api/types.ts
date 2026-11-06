@@ -174,6 +174,19 @@ export interface MedicalView {
   at: string;
 }
 
+/**
+ * Who opened an elder's medical details during an alert, and on whose word they are
+ * shared: the elder's own, or a caregiver's who said the elder cannot decide and that
+ * they act for them. Null while nothing may be kept. Never the details themselves.
+ */
+export interface MedicalLooks {
+  views: MedicalView[];
+  sharing: {
+    byElder: boolean;
+    guardian: { by: { id: string; name: string; role: Role } | null; at: string } | null;
+  } | null;
+}
+
 /** Talking through the app: whether it is set up, and who started a call. */
 export interface VoiceState {
   available: boolean;
@@ -251,7 +264,13 @@ export interface EmergencySnapshot {
 }
 
 export interface DataPolicy {
-  retention: { enabled: boolean; closedEmergencyDays: number; auditLogDays: number };
+  retention: {
+    enabled: boolean;
+    closedEmergencyDays: number;
+    auditLogDays: number;
+    /** How long what an elder said after pressing help is kept. Older servers omit it. */
+    speechDays?: number;
+  };
 }
 
 /** The public parts of the privacy notice that depend on the server's settings. */

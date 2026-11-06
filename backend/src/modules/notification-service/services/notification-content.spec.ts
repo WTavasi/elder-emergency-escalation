@@ -245,6 +245,10 @@ describe('accountMessages', () => {
       accountMessages.alreadyRegistered(),
       accountMessages.addedToChain(long, long),
       accountMessages.invitedToChain(long, long),
+      accountMessages.medicalGuardian(long, long, true),
+      accountMessages.medicalGuardian(long, long, false),
+      accountMessages.medicalGuardianEnded(long, long, true),
+      accountMessages.medicalGuardianEnded(long, long, false),
     ]) {
       expect(text.length).toBeLessThanOrEqual(SMS_LIMIT);
     }

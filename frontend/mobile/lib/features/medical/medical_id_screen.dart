@@ -131,6 +131,51 @@ class _MedicalIdScreenState extends State<MedicalIdScreen> {
     );
   }
 
+  /// A caregiver saying the elder can't decide this for themselves and that they act for
+  /// them. Only for an elder who cannot, which the sheet says plainly.
+  Future<void> _decideFor() async {
+    final bool? sure = await showActionSheet<bool>(
+      context,
+      title: 'Decide for $_name?',
+      message:
+          "Only if $_name can't decide this for themselves, for example because of dementia or "
+          "a serious illness. You'll act for them: family and emergency services will see these "
+          "when we ask them to help. We'll record your name and the time, and text $_name and "
+          'the other caregivers. Any of you can stop this.',
+      actions: const <SheetAction<bool>>[
+        SheetAction<bool>('I act for them', true, icon: Icons.check, primary: true),
+        SheetAction<bool>('Not now', false, icon: Icons.close),
+      ],
+    );
+    if (!mounted || sure != true) return;
+    await _run(() => widget.api.decideMedicalFor(widget.elderId));
+  }
+
+  /// Taking that back: the elder deciding for themselves, or a caregiver stepping back.
+  Future<void> _stopDeciding(MedicalGuardian guardian) async {
+    final String who = firstNameOf(guardian.by?.name ?? '');
+    final bool? sure = await showActionSheet<bool>(
+      context,
+      title: widget.forElder ? 'Decide this yourself?' : 'Stop deciding for $_name?',
+      message: widget.forElder
+          ? "${who.isEmpty ? 'Your caregiver' : who} will no longer decide for you. Your "
+                'caregivers still see these. Share them if you want helpers to see them too.'
+          : "Family and emergency services won't see these until $_name agrees to share them. "
+                "We'll text $_name and the other caregivers.",
+      actions: <SheetAction<bool>>[
+        SheetAction<bool>(
+          widget.forElder ? 'Decide myself' : 'Stop deciding',
+          true,
+          icon: Icons.check,
+          primary: true,
+        ),
+        const SheetAction<bool>('Not now', false, icon: Icons.close),
+      ],
+    );
+    if (!mounted || sure != true) return;
+    await _run(() => widget.api.stopDecidingMedicalFor(widget.elderId));
+  }
+
   Future<void> _delete() async {
     final bool? sure = await showActionSheet<bool>(
       context,
@@ -337,11 +382,20 @@ class _MedicalIdScreenState extends State<MedicalIdScreen> {
     ];
   }
 
-  /// Who sees these, and, until the elder agrees for themselves, that nobody else does.
+  /// Who sees these, and, until the elder agrees for themselves or a caregiver decides for
+  /// them, that nobody else does.
   Widget _sharing(MedicalProfilePage page) {
-    if (page.consentByElder) {
+    final MedicalGuardian? guardian = page.consentByElder ? null : page.guardian;
+    if (page.shared) {
+      final String who = guardian?.by?.name ?? 'A caregiver';
       return SettingsSection(
         title: 'Who can see these',
+        footer: guardian == null
+            ? null
+            : widget.forElder
+            ? '$who decides this for you, since ${dayAndTime(guardian.at)}.'
+            : "$who said $_name can't decide this and acts for them, since "
+                  '${dayAndTime(guardian.at)}.',
         children: <Widget>[
           SettingsRow(
             icon: Icons.lock_outline,
@@ -356,6 +410,12 @@ class _MedicalIdScreenState extends State<MedicalIdScreen> {
                 : 'Only when we ask them to help $_name',
             chevron: false,
           ),
+          if (guardian != null)
+            SettingsRow(
+              icon: Icons.person_outline,
+              title: widget.forElder ? 'Decide this myself' : 'Stop deciding for $_name',
+              onTap: _busy ? null : () => unawaited(_stopDeciding(guardian)),
+            ),
         ],
       );
     }
@@ -375,6 +435,13 @@ class _MedicalIdScreenState extends State<MedicalIdScreen> {
             icon: Icons.emergency_outlined,
             title: 'Share in an emergency',
             onTap: _busy ? null : () => unawaited(_share()),
+          )
+        else
+          SettingsRow(
+            icon: Icons.person_outline,
+            title: 'Decide for $_name',
+            subtitle: "If $_name can't decide this themselves",
+            onTap: _busy ? null : () => unawaited(_decideFor()),
           ),
       ],
     );

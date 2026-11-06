@@ -8,6 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
+import '../../core/widgets/settings_list.dart';
 import 'add_elder_screen.dart';
 import 'elder_screen.dart';
 
@@ -81,7 +82,6 @@ class _EldersScreenState extends State<EldersScreen> {
             padding: const EdgeInsets.only(bottom: MzaziSpace.s24),
             children: <Widget>[
               const PageTitle('People'),
-              const Divider(),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.all(MzaziSpace.s16),
@@ -95,10 +95,13 @@ class _EldersScreenState extends State<EldersScreen> {
               else if (elders != null && elders.isEmpty)
                 _Empty(isCaregiver: widget.isCaregiver)
               else if (elders != null)
-                for (final ElderSummary elder in elders) ...<Widget>[
-                  _ElderRow(elder: elder, onOpen: () => unawaited(_open(elder))),
-                  const Divider(indent: MzaziSpace.s16),
-                ],
+                // One rounded group of the people you look after, as Contacts lists them.
+                SettingsSection(
+                  children: <Widget>[
+                    for (final ElderSummary elder in elders)
+                      _ElderRow(elder: elder, onOpen: () => unawaited(_open(elder))),
+                  ],
+                ),
               if (widget.isCaregiver)
                 Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -133,17 +136,35 @@ class _ElderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
+    final bool dark = theme.brightness == Brightness.dark;
+    final Color wash = dark ? MzaziColorsDark.selection : MzaziColorsLight.selection;
+    final double size = (theme.textTheme.titleMedium?.fontSize ?? 17) * 2.4;
+
     return InkWell(
       onTap: onOpen,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          MzaziSpace.s16,
-          MzaziSpace.s16,
+          groupInset,
+          MzaziSpace.s12,
           MzaziSpace.s8,
-          MzaziSpace.s16,
+          MzaziSpace.s12,
         ),
         child: Row(
           children: <Widget>[
+            // Their initials, as a contact shows them, so a long list reads by face.
+            ExcludeSemantics(
+              child: Container(
+                width: size,
+                height: size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: wash, shape: BoxShape.circle),
+                child: Text(
+                  ProfileHeader.initials(elder.name),
+                  style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurface),
+                ),
+              ),
+            ),
+            const SizedBox(width: MzaziSpace.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

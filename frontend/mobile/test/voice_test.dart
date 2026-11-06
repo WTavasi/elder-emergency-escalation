@@ -270,7 +270,17 @@ void main() {
     expect(find.text('WHAT GRACE SAID'), findsOneWidget);
     expect(find.text('“Msaada! Kuna moto jikoni”'), findsOneWidget);
     expect(find.text('In English: Help! There is a fire in the kitchen'), findsOneWidget);
+    await _openTrail(tester);
     expect(find.text('Grace Wanjiru said: fire, to Siri'), findsOneWidget);
     controller.dispose();
   });
+}
+
+/// The trail is on its own page now: opens it from the alert.
+Future<void> _openTrail(WidgetTester tester) async {
+  final Finder row = find.text('What happened');
+  await tester.ensureVisible(row);
+  await tester.pumpAndSettle();
+  await tester.tap(row);
+  await tester.pumpAndSettle();
 }

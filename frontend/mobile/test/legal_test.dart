@@ -15,9 +15,14 @@ void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues(<String, String>{}));
 
   Map<String, dynamic> facts({Map<String, dynamic>? contact}) => <String, dynamic>{
-    'privacyVersion': '2026-10-1',
+    'privacyVersion': '2026-11-1',
     'termsVersion': '2026-10-1',
-    'retention': <String, dynamic>{'enabled': true, 'closedEmergencyDays': 365, 'auditLogDays': 180},
+    'retention': <String, dynamic>{
+      'enabled': true,
+      'closedEmergencyDays': 365,
+      'auditLogDays': 180,
+      'speechDays': 30,
+    },
     'contact': contact,
   };
 
@@ -62,7 +67,10 @@ void main() {
     expect(find.textContaining('deleted 365 days after they close'), findsOneWidget);
     expect(find.textContaining('after 180 days'), findsOneWidget);
     expect(find.text('MzaziCare data contact\ndata@example.org'), findsOneWidget);
-    expect(find.text('Version 2026-10-1'), findsOneWidget);
+    expect(find.textContaining('kept for 30 days, then deleted'), findsOneWidget);
+    expect(find.textContaining('a caregiver can say so and decide for them'), findsOneWidget);
+    expect(find.textContaining('never put in a text or a notification'), findsOneWidget);
+    expect(find.text('Version 2026-11-1'), findsOneWidget);
   });
 
   testWidgets('says that an open emergency is answered whatever was withdrawn', (

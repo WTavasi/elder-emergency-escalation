@@ -1539,12 +1539,14 @@ textarea {
   gap: var(--space-4);
 }
 
+/* The smaller buttons keep the grey shape of every button, so each reads as something
+   to press, as the round grey buttons in Apple's toolbars do. */
 .button--quiet {
-  background: none;
-  color: var(--text-soft);
+  background: var(--surface-sunk);
+  color: var(--text);
 }
 .button--quiet:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
   color: var(--text);
 }
 
@@ -1863,19 +1865,19 @@ legend {
   opacity: 1;
 }
 
-/* A button that reads as a link, for an action that opens something rather than doing
-   it: the console's red, as a link is. */
+/* A small button for an action that opens something rather than doing it: the grey
+   shape of every button at the size of its words, so it never passes for plain text. */
 .link-button {
   min-height: 0;
-  padding: 0;
+  padding: var(--space-4) var(--space-12);
   border: none;
-  background: none;
-  color: var(--danger);
-  font-weight: var(--font-weight-body);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
+  color: var(--text);
+  font-weight: var(--font-weight-strong);
 }
 .link-button:hover:not(:disabled) {
-  background: none;
-  text-decoration: underline;
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
 }
 
 .prose h3 {

@@ -1169,8 +1169,9 @@ only read summaries of sections 45 and 46 when it was built.
 
 - **Its own consent.** `MEDICAL_PROFILE` is never part of registration. Nothing is kept
   until somebody agrees, and a caregiver's agreement is for keeping the details: family
-  and responders see them only once the elder has agreed for themselves. The elder is
-  texted and asked at their next sign-in, as for every consent given for them.
+  and responders see them only once the elder has agreed for themselves, or a caregiver
+  has said the elder cannot and that they act for them (below). The elder is texted and
+  asked at their next sign-in, as for every consent given for them.
 - **Who sees them.** Caregivers, anytime, since they look after the elder and keep the
   details current. Family and emergency responders, only while an alert is open and only
   once they were sent it. Volunteers never; administrators never, though the console shows
@@ -1205,9 +1206,26 @@ confidentiality. Whether MzaziCare, its staff and the responders it asks meet th
 example through confidentiality terms and the ODPC's registration of data controllers
 handling health data, needs advice from a lawyer before a real deployment. A data
 protection impact assessment (section 31) should be written for it, and the privacy
-notice needs a line about it, which is the owner's to write. An elder who cannot agree
-for themselves, such as one with advanced dementia, can have details kept but not
-shared; whether a guardian's consent should count needs the same advice.
+notice needs a line about it, which is the owner's to write.
+
+**Answered by the owner, 6 November 2026.** MzaziCare is the handler of this data and
+the logging above is what it needs. The privacy notice now has the line. A guardian's
+consent counts for an elder who cannot give their own (section 32 lets a person with
+parental authority or a guardian consent for one who cannot), declared by a caregiver:
+
+- **The caregiver declares it.** On the elder's medical page a caregiver confirms that
+  the elder cannot decide this for themselves, for example because of dementia or a
+  serious illness, and that they act for them. The sheet says so in those words.
+- **Recorded, not overwritten.** A `MEDICAL_PROFILE` consent row granted by that
+  caregiver with the relationship `guardian`, so who said it and when is kept beside the
+  consent to keep the details. Ending it sets its withdrawal time.
+- **Everybody hears of it.** The elder and the other caregivers are texted, with no
+  health data in the text. The elder and their caregivers see on the page who said it
+  and since when; the console shows it on an alert beside who looked.
+- **Withdrawable by any of them.** The elder (who may be able to decide after all) or any
+  caregiver. The details stay with the caregivers; they stop being shown to anybody else.
+- **Never over the elder's own word.** It cannot be declared once the elder agreed for
+  themselves, and the elder agreeing later makes it unneeded.
 
 ## Saying it: Siri, the widget, and speaking after the press
 
@@ -1290,3 +1308,48 @@ somebody who is.
 5". A bare "saa mbili" is left alone, because it is eight o'clock as well as two hours.
 The time is kept on the alert and shown to the elder when the person coming is not sharing
 their way there; a shared way there, measured by road, wins over what was said.
+
+## Rounded groups, the important part first, and buttons that look pressable
+
+The caregiver's page for an emergency had grown to a dozen sections, several of them rows
+that expanded in place, so what to do next was below the fold and mixed with history.
+
+**Rounded groups on a grey page.** Rows now sit in white groups with rounded corners,
+inset by the page margin, as Settings and Health set them out, in place of lists running
+edge to edge under a label and a rule. A group's edge says where a section starts and
+ends, which a rule under a label did less clearly. Each row stays its own stop for a
+screen reader.
+
+**What to act on first, the rest one tap away.** The emergency page opens with its state
+(who is being asked, who is coming), then a warning when the elder's health makes it more
+serious, then what is happening now (the way, the services, the volunteer, talking to
+the elder), then the latest thing the elder said, then where they are, then the medical
+summary. The full trail, the whole chain and everything the elder said are rows that open
+a page of their own, as the full medical record already did. Nothing a caregiver needs to
+act on is behind a row that expands.
+
+**Buttons look like buttons.** Text buttons were red words, which read as part of a
+sentence and added red that does not mean an emergency. They are now a smaller grey pill,
+ink on the sunk grey, in the app and in the console's quiet buttons and in-text actions.
+On the yellow countdown, where grey would not show, they are an ink outline. The red
+filled button stays under review, as before; red links leave that review because there
+are none.
+
+The same layout was carried to the elder's page (a contact card: call, where they are,
+details, who is asked, the check-in, care and privacy), the people list, the alerts list
+(with a segmented control for open and past alerts), the consent pages and the
+volunteer's nearby list.
+
+## The privacy notice, November 2026
+
+Version `2026-11-1` adds what the phases since October brought, as the owner approved on
+6 November 2026: the kind of emergency, when somebody says it; text replies read for
+whether somebody is coming and how soon; medical details, who sees them, that they are
+sealed and never in a text or a notification, and that withdrawing deletes them; a
+caregiver deciding about them for an elder who cannot; what an elder says after pressing
+help, written down on MzaziCare's own server and kept for `SPEECH_RETENTION_DAYS` (now
+given in `/legal`, so the notice states the server's figure); live location used to list
+open emergencies nearest first, never kept; and the weekly note on check-in answers.
+"No health records are held" became "no health records are fetched from anywhere", which
+stays true. Consents keep the version they were given under; the new version applies to
+those given from now.

@@ -227,12 +227,13 @@ describe('api client', () => {
         at: '2026-11-05T09:00:00Z',
       },
     ];
-    const fetchMock = vi.fn().mockResolvedValue(json({ views }));
+    const sharing = { byElder: true, guardian: null };
+    const fetchMock = vi.fn().mockResolvedValue(json({ views, sharing }));
     vi.stubGlobal('fetch', fetchMock);
 
     const { api } = await import('./client');
 
-    await expect(api.medicalViews('event-1')).resolves.toEqual(views);
+    await expect(api.medicalViews('event-1')).resolves.toEqual({ views, sharing });
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/alerts/event-1/medical/views');
   });
 });

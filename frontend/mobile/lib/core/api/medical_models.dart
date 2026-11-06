@@ -139,6 +139,15 @@ class MedicalChange {
   final DateTime at;
 }
 
+/// A caregiver who said the elder cannot decide about their medical details for themselves,
+/// and that they act for them, and when.
+class MedicalGuardian {
+  const MedicalGuardian({required this.by, required this.at});
+
+  final MedicalPerson? by;
+  final DateTime at;
+}
+
 class MedicalView {
   const MedicalView({required this.by, required this.eventId, required this.at});
 
@@ -155,6 +164,7 @@ class MedicalProfilePage {
     required this.enabled,
     required this.consentActive,
     required this.consentByElder,
+    this.guardian,
     required this.details,
     required this.age,
     required this.updatedAt,
@@ -177,6 +187,13 @@ class MedicalProfilePage {
 
   /// The elder agreed themselves: those asked about an alert see them.
   final bool consentByElder;
+
+  /// A caregiver decides for the elder, who cannot: those asked about an alert see them,
+  /// as when the elder agrees. Null when nobody does.
+  final MedicalGuardian? guardian;
+
+  /// Shown to the people asked about an alert, on the elder's word or a guardian's.
+  bool get shared => consentByElder || guardian != null;
   final MedicalDetails? details;
   final int? age;
   final DateTime? updatedAt;
@@ -193,6 +210,7 @@ class MedicalProfilePage {
   factory MedicalProfilePage.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> consent =
         json['consent'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final Object? guardian = consent['guardian'];
     final Map<String, dynamic> options =
         json['options'] as Map<String, dynamic>? ?? const <String, dynamic>{};
     final List<Object?> flags = options['flags'] as List<Object?>? ?? const <Object?>[];
@@ -205,6 +223,9 @@ class MedicalProfilePage {
       enabled: json['enabled'] as bool? ?? false,
       consentActive: consent['active'] as bool? ?? false,
       consentByElder: consent['byElder'] as bool? ?? false,
+      guardian: guardian is Map<String, dynamic> && _when(guardian['at']) != null
+          ? MedicalGuardian(by: MedicalPerson.fromJson(guardian['by']), at: _when(guardian['at'])!)
+          : null,
       details: MedicalDetails.fromJson(json['details']),
       age: (json['age'] as num?)?.toInt(),
       updatedAt: _when(json['updatedAt']),

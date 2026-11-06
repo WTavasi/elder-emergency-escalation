@@ -602,6 +602,16 @@ class ApiClient {
         await _send('PUT', '/elders/$elderId/medical', body: details.toJson()),
       );
 
+  /// A caregiver saying the elder can't decide about their medical details and that they
+  /// act for them, so the people asked in an emergency see them. The elder and the other
+  /// caregivers are texted.
+  Future<MedicalProfilePage> decideMedicalFor(String elderId) async =>
+      MedicalProfilePage.fromJson(await _send('POST', '/elders/$elderId/medical/guardian'));
+
+  /// The elder, or any caregiver, taking that back. The details stay.
+  Future<MedicalProfilePage> stopDecidingMedicalFor(String elderId) async =>
+      MedicalProfilePage.fromJson(await _send('DELETE', '/elders/$elderId/medical/guardian'));
+
   /// The elder's medical details on an alert, for those asked to help. Each look is
   /// recorded, so this is asked once per opening of the alert, not on every refresh.
   Future<AlertMedical> alertMedical(String id) async =>
