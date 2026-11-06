@@ -415,6 +415,38 @@ export const accountMessages = {
         );
   },
 
+  /**
+   * A caregiver has said the elder cannot decide about their medical details and that they
+   * act for them, so the details are shown to the people asked during an emergency. Told to
+   * the elder, who can undo it, and to the other caregivers. Never any health data.
+   */
+  medicalGuardian(byName: string, elderName: string, toElder: boolean): string {
+    const by = firstName(byName);
+    return toElder
+      ? capSms(
+          `${by} now decides for you about your medical details in MzaziCare. They will be shown to people asked to help in an emergency. You can stop this.`,
+          `${by} now decides for you about your medical details in MzaziCare. You can stop this in the app.`,
+        )
+      : capSms(
+          `${by} now decides for ${firstName(elderName)} about medical details in MzaziCare. They will be shown to people asked to help in an emergency.`,
+          `${by} now decides for ${firstName(elderName)} about medical details in MzaziCare.`,
+        );
+  },
+
+  /** That decision was withdrawn: the details are kept, but no longer shown beyond the caregivers. */
+  medicalGuardianEnded(byName: string, elderName: string, byElder: boolean): string {
+    const elder = firstName(elderName);
+    return byElder
+      ? capSms(
+          `${elder} now decides about their own medical details. MzaziCare will no longer show them to people asked to help.`,
+          `${elder} now decides about their own medical details in MzaziCare.`,
+        )
+      : capSms(
+          `${firstName(byName)} no longer decides for ${elder} about medical details. MzaziCare will no longer show them to people asked to help.`,
+          `${firstName(byName)} no longer decides for ${elder} about medical details in MzaziCare.`,
+        );
+  },
+
   /** Consent to processing was withdrawn, which ends the service for that elder. */
   serviceEnded(byName: string, elderName: string, byElder: boolean): string {
     const elder = firstName(elderName);

@@ -100,6 +100,7 @@ export class DashboardService {
         enabled: this.config.get<boolean>('RETENTION_ENABLED', true),
         closedEmergencyDays: this.config.get<number>('RETENTION_RESOLVED_EVENT_DAYS', 365),
         auditLogDays: this.config.get<number>('RETENTION_AUDIT_LOG_DAYS', 365),
+        speechDays: this.config.get<number>('SPEECH_RETENTION_DAYS', 30),
       },
     };
   }

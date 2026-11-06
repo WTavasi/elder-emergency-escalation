@@ -34,6 +34,12 @@ String retentionSentence(LegalFacts? facts) {
       '${facts.auditLogDays} days. An open emergency is never deleted.';
 }
 
+/// How long what an elder said is kept, with the server's figure when it is known.
+String speechSentence(LegalFacts? facts) {
+  final String days = facts == null ? 'a short time' : '${facts.speechDays} days';
+  return 'What an elder said after pressing help is kept for $days, then deleted.';
+}
+
 /// The privacy notice: what is kept, why, who sees it, for how long, and how to change
 /// your mind. A screen rather than a linked PDF, so it can be read on the phone it is
 /// about, before an account exists.
@@ -55,10 +61,18 @@ class PrivacyNoticeScreen extends StatelessWidget {
               'form of your password that cannot be turned back into it.',
           'An elder: their home address, how much help they need (set by a caregiver, not a '
               'diagnosis), and where they are staying if somebody records a stay.',
-          'Each emergency: when and where it was raised, who was asked, who answered and '
-              'when, and how it ended. Calls inside the app record who joined and when, never '
-              'what was said.',
-          'Daily check-ins, if they are turned on: the times, and whether each was answered.',
+          'Each emergency: when and where it was raised, what kind it is if somebody says, '
+              'who was asked, who answered and when, and how it ended. Calls inside the app '
+              'record who joined and when, never what was said.',
+          'Text replies to an alert, read to tell whether the person is coming and how soon.',
+          'Medical details, only if somebody agrees to keep them: conditions, medicines, '
+              'allergies and the doctor, as the elder or a caregiver types them. They are '
+              'locked with a key the database does not hold. Every look and change is recorded.',
+          'What an elder says after pressing help, only if they agree to it. Our own server '
+              'writes it down and deletes the recording. No outside service hears it.',
+          'Daily check-ins, if they are turned on: the times, and whether each was answered. '
+              'Once a week a caregiver may get a note if answers come much later than usual or '
+              'are missed more often.',
           'Volunteers: the area you help in, how far you will go, your training and whether '
               'you are available.',
           'What was agreed, by whom, on whose behalf, and anything withdrawn.',
@@ -67,13 +81,23 @@ class PrivacyNoticeScreen extends StatelessWidget {
           'Your phone\'s location is never tracked. A place is recorded once, when an alert '
               'is raised. If you turn on Share my way there, your position is used while you '
               'are on your way to an emergency and not kept after you arrive.',
-          'No contacts are read from your phone, no health records are held, and there is no '
-              'advertising or analytics of any kind.',
+          'If you turn on Share live location, your position is also used to list open '
+              'emergencies nearest first. It is not kept. Otherwise a station\'s own address is '
+              'used.',
+          'No contacts are read from your phone, no health records are fetched from '
+              'anywhere, and there is no advertising or analytics of any kind.',
         ]),
         const _Section('Who sees it', <String>[
           'The people in an elder\'s care circle see the elder\'s details and each other\'s '
               'numbers, so they can reach one another in an emergency.',
           'An emergency responder sees an emergency when the circle asks for one.',
+          'Medical details: the elder and their caregivers at any time. Family and emergency '
+              'responders only while an emergency they were asked about is open, and only if '
+              'the elder agreed. Volunteers and administrators never see them, and the elder '
+              'sees who looked.',
+          'If an elder cannot decide about their medical details, a caregiver can say so and '
+              'decide for them. Their name and the time are recorded, the elder and the other '
+              'caregivers are told by text, and any of them can stop it.',
           'A community volunteer is told who and where only if the elder agreed to volunteer '
               'help, only after they say they will go, and only while the emergency is open.',
           'Administrators can read records to keep the service running, but cannot act on a '
@@ -85,17 +109,21 @@ class PrivacyNoticeScreen extends StatelessWidget {
               'so it receives phone numbers and the message. LiveKit carries the sound of '
               'calls inside the app and records none of it. OpenStreetMap services find an '
               'address you search for and work out travel times from two points on a map.',
-          'Some of these services run outside Kenya.',
+          'Some of these services run outside Kenya, so medical details are never put in a '
+              'text or a notification.',
         ]),
         _Section('How long it is kept', <String>[
           retentionSentence(facts),
+          speechSentence(facts),
+          'Medical details are deleted when the agreement to keep them is withdrawn.',
           'Accounts are kept while they are in use. A closed account is kept, without being '
               'able to sign in, because it is named in emergencies that have to stay readable.',
         ]),
         const _Section('Your choices', <String>[
           'Change your name, email or phone number on your account page.',
           'See what was agreed and withdraw it on the Privacy and consent page. Location, '
-              'contact sharing and volunteer help can be agreed to again later.',
+              'contact sharing, volunteer help, medical details and speaking after the press '
+              'can be agreed to again later.',
           'Ask for a copy of what is held about you, or for it to be deleted, through the '
               'contact below. You can also complain to the Office of the Data Protection '
               'Commissioner.',
@@ -155,10 +183,11 @@ String _contactLine(LegalFacts? facts) {
         : 'No contact has been set for this server yet. Ask the person who set MzaziCare up '
               'for you.';
   }
-  return <String?>[contact.name, contact.email, contact.address]
-      .whereType<String>()
-      .where((String part) => part.trim().isNotEmpty)
-      .join('\n');
+  return <String?>[
+    contact.name,
+    contact.email,
+    contact.address,
+  ].whereType<String>().where((String part) => part.trim().isNotEmpty).join('\n');
 }
 
 class _Section {

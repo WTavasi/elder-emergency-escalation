@@ -106,7 +106,11 @@ export function retentionSentence(policy: DataPolicy | null | undefined): string
   if (!policy) {
     return 'Closed emergencies and their audit trails are deleted automatically after the period set on the server. An open emergency is never deleted.';
   }
-  const { enabled, closedEmergencyDays, auditLogDays } = policy.retention;
+  const { enabled, closedEmergencyDays, auditLogDays, speechDays } = policy.retention;
   if (!enabled) return 'Automatic deletion is switched off on this server, so records are kept.';
-  return `Closed emergencies are deleted ${closedEmergencyDays} days after they close, and audit entries after ${auditLogDays} days. An open emergency is never deleted.`;
+  const speech =
+    speechDays === undefined
+      ? ''
+      : ` What an elder said after pressing help goes after ${speechDays} days.`;
+  return `Closed emergencies are deleted ${closedEmergencyDays} days after they close, and audit entries after ${auditLogDays} days.${speech} An open emergency is never deleted.`;
 }

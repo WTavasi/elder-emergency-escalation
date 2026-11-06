@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import {
   CurrentUser,
@@ -37,6 +47,32 @@ export class ElderMedicalController {
   ): Promise<MedicalProfilePage> {
     return this.medical.save(id, user.userId, dto);
   }
+
+  /**
+   * A caregiver saying the elder cannot decide about their medical details and that they
+   * act for them, so the details are shared with those asked during an emergency.
+   */
+  @Roles(Role.CAREGIVER)
+  @Throttle(10, 3600)
+  @Post(':id/medical/guardian')
+  @HttpCode(200)
+  declareGuardian(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MedicalProfilePage> {
+    return this.medical.declareGuardian(id, user.userId);
+  }
+
+  /** The elder, or any caregiver, taking that back. The details stay. */
+  @Roles(Role.ELDER, Role.CAREGIVER)
+  @Throttle(10, 3600)
+  @Delete(':id/medical/guardian')
+  endGuardian(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MedicalProfilePage> {
+    return this.medical.endGuardian(id, user.userId);
+  }
 }
 
 /** The elder's medical details on an alert, for the people asked to help. */
@@ -53,12 +89,12 @@ export class AlertMedicalController {
     return this.medical.forAlert(id, user.userId, user.role);
   }
 
-  /** Who opened them during the alert. Never what they say. */
+  /** Who opened them during the alert, and on whose word they are shared. Never what they say. */
   @Roles(Role.ADMINISTRATOR)
   @Get(':id/medical/views')
-  async views(
+  views(
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<{ views: { by: unknown; at: string }[] }> {
-    return { views: await this.medical.viewsForAlert(id) };
+  ): ReturnType<MedicalProfileService['viewsForAlert']> {
+    return this.medical.viewsForAlert(id);
   }
 }

@@ -33,7 +33,7 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/me/phone/code` | bearer | `{ phone, password }`: a code to the number the account is moving to. No password for an elder. 409 if the number is taken |
 | POST | `/api/v1/auth/me/phone` | bearer | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends every other session |
 | GET | `/api/v1/auth/me/profile` | bearer | `{ memberSince, circles, record, carers, helpByText }`: places in each circle and the response record; an elder gets their carers instead, and `helpByText` (`{ number, word }`, or null) for asking for help by SMS |
-| GET | `/api/v1/legal` | none | `{ privacyVersion, termsVersion, retention, contact }` for the privacy notice and terms. `contact` is null until `DATA_CONTACT_*` is set |
+| GET | `/api/v1/legal` | none | `{ privacyVersion, termsVersion, retention, contact }` for the privacy notice and terms. `retention` holds `enabled`, `closedEmergencyDays`, `auditLogDays` and `speechDays`. `contact` is null until `DATA_CONTACT_*` is set |
 | PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
 | DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
 
@@ -355,8 +355,10 @@ says the person came back rather than losing that a stay ever happened.
 | --- | --- | --- | --- |
 | GET | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | The details, the consent, the choices the form offers, who changed what and who looked. A caregiver's look is recorded |
 | PUT | `/api/v1/elders/:id/medical` | the elder, caregiver in that chain | Replace the details. 409 until `MEDICAL_PROFILE` consent is given. A caregiver's change texts the elder |
+| POST | `/api/v1/elders/:id/medical/guardian` | caregiver in that chain | Say the elder can't decide for themselves and that you act for them, so those asked during an alert see the details. 409 without `MEDICAL_PROFILE` consent, or once the elder agreed for themselves. Texts the elder and the other caregivers |
+| DELETE | `/api/v1/elders/:id/medical/guardian` | the elder, caregiver in that chain | Take that back. The details stay with the caregivers. Texts everybody else |
 | GET | `/api/v1/alerts/:id/medical` | the elder, care chain, a responder asked | The details on an alert, read against what is happening. Each look is recorded |
-| GET | `/api/v1/alerts/:id/medical/views` | administrator | Who opened them during this alert, and when. Never what they say |
+| GET | `/api/v1/alerts/:id/medical/views` | administrator | `views`: who opened them during this alert, and when. `sharing`: on whose word they are shared (`byElder`, or `guardian` with who and when), or null. Never what they say |
 
 The details are one object, every part optional: `dateOfBirth` (`YYYY-MM-DD`),
 `bloodType` (`A+` to `O-`), `flags` (ticks such as `BLOOD_THINNERS`, `HOME_OXYGEN`,
@@ -365,7 +367,8 @@ The details are one object, every part optional: `dateOfBirth` (`YYYY-MM-DD`),
 `hospital` and `notes`. A PUT replaces the whole object; a missing part is cleared.
 
 On an alert, `status` says whether they are shown: `shown`; `none` (nothing saved);
-`not-shared` (the elder has not agreed for themselves); `not-asked` (this person has not
+`not-shared` (the elder has not agreed for themselves, and no caregiver has said they
+decide for them); `not-asked` (this person has not
 been asked to help yet); `closed` (the alert is over); `off` (`MEDICAL_DATA_KEY` is not
 set). Caregivers see them on any of the elder's alerts. Family and responders see them
 only while the alert is open and only once they were sent it. Volunteers and
@@ -373,7 +376,10 @@ administrators get 403. With them come `highlights` (each tick, with `why` it ma
 the reported type), `serious` (the history makes this emergency more serious) and
 `askFor` (the service to ask because of it).
 
-Withdrawing `MEDICAL_PROFILE` consent, or `DATA_PROCESSING`, deletes the details and the
+The page's `consent` is `{ active, byElder, guardian }`, where `guardian` is
+`{ by, at }` or null. A guardian's word is kept as its own `MEDICAL_PROFILE` consent row,
+granted by the caregiver with the relationship `guardian`, so ending it withdraws only that
+row. Withdrawing `MEDICAL_PROFILE` consent, or `DATA_PROCESSING`, deletes the details and the
 record of changes. The record of looks stays until `RETENTION_AUDIT_LOG_DAYS`.
 
 **Withdrawn consent** is honoured everywhere data leaves the server, outside an

@@ -23,12 +23,26 @@ const List<Map<String, String>> _flags = <Map<String, String>>[
 Map<String, dynamic> _page({
   bool consent = true,
   bool byElder = true,
+  bool guardian = false,
   Map<String, dynamic>? details,
 }) => <String, dynamic>{
   'elderId': 'elder-1',
   'elderName': 'Grace Wanjiru',
   'enabled': true,
-  'consent': <String, dynamic>{'active': consent, 'byElder': byElder},
+  'consent': <String, dynamic>{
+    'active': consent,
+    'byElder': byElder,
+    'guardian': guardian
+        ? <String, dynamic>{
+            'by': <String, dynamic>{
+              'id': 'caregiver-1',
+              'name': 'Mary Otieno',
+              'role': 'CAREGIVER',
+            },
+            'at': '2026-11-05T10:00:00.000Z',
+          }
+        : null,
+  },
   'details': details,
   'age': details == null ? null : 80,
   'updatedAt': details == null ? null : '2026-11-05T08:00:00.000Z',
@@ -88,6 +102,64 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Aisha Wanjiru'), findsOneWidget);
       expect(find.textContaining('during an emergency'), findsOneWidget);
+    });
+
+    testWidgets('lets a caregiver decide for an elder who cannot, and stop', (
+      WidgetTester tester,
+    ) async {
+      final List<String> asked = <String>[];
+      bool deciding = false;
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
+        asked.add('${request.method} ${request.url.path}');
+        if (request.url.path.endsWith('/medical/guardian')) {
+          deciding = request.method == 'POST';
+        }
+        return <http.Response>[json(_page(byElder: false, guardian: deciding, details: _grace))];
+      });
+      await tester.binding.setSurfaceSize(const Size(800, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        _app(MedicalIdScreen(api: t.api, elderId: 'elder-1', forElder: false)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Caregivers only'), findsOneWidget);
+
+      await tester.tap(find.text('Decide for Grace'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining("Only if Grace can't decide this for themselves"), findsOneWidget);
+      await tester.tap(find.text('I act for them'));
+      await tester.pumpAndSettle();
+
+      expect(asked, contains('POST /api/v1/elders/elder-1/medical/guardian'));
+      expect(find.text('Only when we ask them to help Grace'), findsOneWidget);
+      expect(find.textContaining("Mary Otieno said Grace can't decide this"), findsOneWidget);
+
+      await tester.tap(find.text('Stop deciding for Grace'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Stop deciding'));
+      await tester.pumpAndSettle();
+
+      expect(asked, contains('DELETE /api/v1/elders/elder-1/medical/guardian'));
+      expect(find.text('Caregivers only'), findsOneWidget);
+    });
+
+    testWidgets('lets the elder decide for themselves instead', (WidgetTester tester) async {
+      final ({ApiClient api, List<Exchange> calls}) t = buildApi(
+        (http.Request request, int _) => <http.Response>[
+          json(_page(byElder: false, guardian: true, details: _grace)),
+        ],
+      );
+      await tester.binding.setSurfaceSize(const Size(800, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        _app(MedicalIdScreen(api: t.api, elderId: 'elder-1', forElder: true)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Mary Otieno decides this for you'), findsOneWidget);
+      expect(find.text('Decide this myself'), findsOneWidget);
     });
 
     testWidgets('keeps nothing until somebody agrees, then opens the form', (

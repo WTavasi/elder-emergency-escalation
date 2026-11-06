@@ -8,7 +8,8 @@ on a phone holds it.
 ## Scope
 
 **Owns:** keeping the details sealed, who may see and change them, recording every look
-and change, and reading the ticks against what is happening on an alert.
+and change, a caregiver's word that they decide for an elder who cannot, and reading the
+ticks against what is happening on an alert.
 
 **Does not own:** the `MEDICAL_PROFILE` consent itself (`elder-service`, which also
 deletes the details on withdrawal), or the retention sweep (`retention-service`).
@@ -19,8 +20,10 @@ deletes the details on withdrawal), or the retention sweep (`retention-service`)
 | --- | --- | --- | --- |
 | GET | `/elders/:id/medical` | the elder, caregivers | The details, consent, choices, changes and looks |
 | PUT | `/elders/:id/medical` | the elder, caregivers | Replace the details. 30 an hour |
+| POST | `/elders/:id/medical/guardian` | caregivers | Decide for an elder who cannot, so the details are shared on an alert. 10 an hour |
+| DELETE | `/elders/:id/medical/guardian` | the elder, caregivers | Take that back. The details stay. 10 an hour |
 | GET | `/alerts/:id/medical` | the elder, care chain, responders asked | The details on an alert, with what they mean for it |
-| GET | `/alerts/:id/medical/views` | administrator | Who opened them during the alert |
+| GET | `/alerts/:id/medical/views` | administrator | Who opened them during the alert, and on whose word they are shared |
 
 ## Settings
 

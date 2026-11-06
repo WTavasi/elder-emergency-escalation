@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConsentType, Role, type EmergencyType, type ResponderService } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { accountMessages } from '../../notification-service/services/notification-content';
@@ -32,12 +33,7 @@ export interface MedicalProfilePage {
   elderName: string;
   /** Whether this server can keep medical details at all. */
   enabled: boolean;
-  consent: {
-    /** Agreed by somebody and not withdrawn: details may be kept. */
-    active: boolean;
-    /** The elder agreed themselves: details are shown to those asked about an alert. */
-    byElder: boolean;
-  };
+  consent: MedicalConsent;
   details: MedicalDetails | null;
   age: number | null;
   updatedAt: string | null;
@@ -57,6 +53,19 @@ export interface MedicalProfilePage {
  * closed (the alert is over); not-asked (this person has not been asked to help yet);
  * off (this server keeps no medical details).
  */
+/** Whether the details may be kept, and on whose word they are shared. */
+export interface MedicalConsent {
+  /** Agreed by somebody and not withdrawn: details may be kept. */
+  active: boolean;
+  /** The elder agreed themselves: details are shown to those asked about an alert. */
+  byElder: boolean;
+  /**
+   * A caregiver said the elder cannot decide for themselves and that they act for them,
+   * which shares the details as the elder's own agreement would. Null when nobody has.
+   */
+  guardian: { by: Person; at: string } | null;
+}
+
 export type AlertMedicalStatus = 'shown' | 'none' | 'not-shared' | 'closed' | 'not-asked' | 'off';
 
 export interface AlertMedical {
@@ -73,6 +82,13 @@ export interface AlertMedical {
 }
 
 const PERSON = { select: { id: true, name: true, role: true } } as const;
+
+/**
+ * The relationship recorded on a MEDICAL_PROFILE consent given by a caregiver who says
+ * they decide for the elder because the elder cannot. Its own record beside the consent
+ * to keep the details, so it can be withdrawn without deleting them.
+ */
+export const GUARDIAN = 'guardian';
 
 const EMPTY: MedicalDetails = {
   dateOfBirth: null,
@@ -99,7 +115,10 @@ const EMPTY: MedicalDetails = {
  *   as for every consent given on their behalf.
  * - The elder and their caregivers see and change them at any time. Family and
  *   emergency responders see them only on an open alert they were asked about, and only
- *   once the elder has agreed for themselves. Volunteers and administrators never do.
+ *   once the elder has agreed for themselves, or, where the elder cannot decide, a
+ *   caregiver has said so and that they act for them (s.32 of the Act). That declaration
+ *   is recorded with its maker and time, texted to the elder and the other caregivers,
+ *   and can be withdrawn by any of them. Volunteers and administrators never see them.
  * - Every opening by somebody other than the elder is recorded, and the elder sees who.
  *   Every change is recorded by part, and the elder is told by text of changes made by
  *   somebody else.
@@ -252,7 +271,7 @@ export class MedicalProfileService {
       if (!OPEN_STATES.includes(event.state)) return result('closed');
       if (!asked) return result('not-asked');
       const consent = await this.consentOf(event.elderlyId);
-      if (!consent.byElder) return result('not-shared');
+      if (!consent.byElder && !consent.guardian) return result('not-shared');
     }
 
     const profile = await this.prisma.medicalProfile.findUnique({
@@ -277,14 +296,114 @@ export class MedicalProfileService {
     };
   }
 
-  /** Who opened the details for one alert, for an administrator. Never the details. */
-  async viewsForAlert(eventId: string): Promise<{ by: Person; at: string }[]> {
-    const views = await this.prisma.medicalProfileView.findMany({
-      where: { eventId },
-      orderBy: { viewedAt: 'asc' },
-      include: { viewer: PERSON },
+  /**
+   * A caregiver saying the elder cannot decide about their medical details for themselves,
+   * and that they act for them. From then the details are shown to the people asked about
+   * an open alert, as the elder's own agreement would show them.
+   *
+   * Only a caregiver in the chain, only once the details may be kept, and not when the
+   * elder has agreed for themselves. Recorded as its own consent row, granted by the
+   * caregiver, with their name and the time; the elder and the other caregivers are texted.
+   */
+  async declareGuardian(elderId: string, actorId: string): Promise<MedicalProfilePage> {
+    const elder = await this.requireElder(elderId);
+    const relation = await this.relationTo(elderId, actorId);
+    if (relation !== 'caregiver') {
+      throw new ForbiddenException('Only a caregiver can say this.');
+    }
+    const consent = await this.consentOf(elderId);
+    if (!consent.active) {
+      throw new ConflictException('Agree to keeping medical details first.');
+    }
+    if (consent.byElder) {
+      throw new ConflictException('They have already agreed for themselves.');
+    }
+    if (consent.guardian) return this.page(elder);
+
+    await this.prisma.consentRecord.create({
+      data: {
+        subjectId: elderId,
+        grantedById: actorId,
+        type: ConsentType.MEDICAL_PROFILE,
+        granted: true,
+        policyVersion: PRIVACY_POLICY_VERSION,
+        grantorRelationship: GUARDIAN,
+      },
     });
-    return views.map((view) => ({ by: view.viewer, at: view.viewedAt.toISOString() }));
+    this.logger.log(`Caregiver ${actorId} decides for elder ${elderId} on medical details`);
+
+    const actor = await this.nameOf(actorId);
+    await this.sms.send(elder.phone, accountMessages.medicalGuardian(actor, elder.name, true));
+    for (const phone of await this.otherCaregivers(elderId, actorId)) {
+      await this.sms.send(phone, accountMessages.medicalGuardian(actor, elder.name, false));
+    }
+
+    return this.page(elder);
+  }
+
+  /**
+   * Taking that back, by the elder or any caregiver. The details stay, and stay with the
+   * caregivers; they stop being shown to anybody else. Everybody else is texted.
+   */
+  async endGuardian(elderId: string, actorId: string): Promise<MedicalProfilePage> {
+    const elder = await this.requireElder(elderId);
+    const relation = await this.relationTo(elderId, actorId);
+    if (relation === 'none') {
+      throw new ForbiddenException('Only they and their caregivers can change this.');
+    }
+
+    const ended = await this.prisma.consentRecord.updateMany({
+      where: {
+        subjectId: elderId,
+        type: ConsentType.MEDICAL_PROFILE,
+        grantorRelationship: GUARDIAN,
+        withdrawnAt: null,
+      },
+      data: { withdrawnAt: new Date() },
+    });
+
+    if (ended.count > 0) {
+      this.logger.log(`Medical guardian for elder ${elderId} ended by ${relation}`);
+      const byElder = relation === 'elder';
+      const text = accountMessages.medicalGuardianEnded(
+        await this.nameOf(actorId),
+        elder.name,
+        byElder,
+      );
+      const phones = await this.otherCaregivers(elderId, actorId);
+      if (!byElder) phones.push(elder.phone);
+      for (const phone of phones) await this.sms.send(phone, text);
+    }
+
+    return this.page(elder);
+  }
+
+  /**
+   * Who opened the details for one alert, and on whose word they are shared, for an
+   * administrator. Never the details.
+   */
+  async viewsForAlert(eventId: string): Promise<{
+    views: { by: Person; at: string }[];
+    sharing: { byElder: boolean; guardian: MedicalConsent['guardian'] } | null;
+  }> {
+    const event = await this.prisma.emergencyEvent.findUnique({
+      where: { id: eventId },
+      select: { elderlyId: true },
+    });
+    if (!event) throw new NotFoundException("We couldn't find this emergency.");
+
+    const [views, consent] = await Promise.all([
+      this.prisma.medicalProfileView.findMany({
+        where: { eventId },
+        orderBy: { viewedAt: 'asc' },
+        include: { viewer: PERSON },
+      }),
+      this.consentOf(event.elderlyId),
+    ]);
+    return {
+      views: views.map((view) => ({ by: view.viewer, at: view.viewedAt.toISOString() })),
+      sharing: consent.active ? { byElder: consent.byElder, guardian: consent.guardian } : null,
+    };
   }
 
   private async page(elder: { id: string; name: string }): Promise<MedicalProfilePage> {
@@ -338,15 +457,38 @@ export class MedicalProfileService {
     };
   }
 
-  private async consentOf(elderId: string): Promise<{ active: boolean; byElder: boolean }> {
+  private async consentOf(elderId: string): Promise<MedicalConsent> {
     const rows = await this.prisma.consentRecord.findMany({
       where: { subjectId: elderId, type: ConsentType.MEDICAL_PROFILE, withdrawnAt: null },
-      select: { grantedById: true },
+      orderBy: { grantedAt: 'asc' },
+      select: { grantedById: true, grantorRelationship: true, grantedAt: true, grantedBy: PERSON },
     });
+    const guardian = rows.find((row) => row.grantorRelationship === GUARDIAN);
     return {
       active: rows.length > 0,
       byElder: rows.some((row) => row.grantedById === elderId),
+      guardian: guardian ? { by: guardian.grantedBy, at: guardian.grantedAt.toISOString() } : null,
     };
+  }
+
+  private async nameOf(userId: string): Promise<string> {
+    const person = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    return person?.name ?? 'Someone';
+  }
+
+  /** The phones of the elder's caregivers, but not the one who acted. */
+  private async otherCaregivers(elderId: string, actorId: string): Promise<string[]> {
+    const caregivers = await this.prisma.careAssignment.findMany({
+      where: { elderlyId: elderId, responder: { role: Role.CAREGIVER, deactivatedAt: null } },
+      select: { responder: { select: { id: true, phone: true } } },
+    });
+    return caregivers
+      .map((assignment) => assignment.responder)
+      .filter((person) => person.id !== actorId)
+      .map((person) => person.phone);
   }
 
   private async requireElder(elderId: string) {
