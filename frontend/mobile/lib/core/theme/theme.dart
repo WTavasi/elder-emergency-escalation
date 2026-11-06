@@ -137,8 +137,14 @@ abstract final class MzaziTheme {
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(foregroundColor: ink).merge(base.iconButtonTheme.style),
       ),
+      // On yellow a grey shape would look stained, so the smaller buttons are outlined in
+      // ink, as the second buttons are.
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: ink).merge(base.textButtonTheme.style),
+        style: TextButton.styleFrom(
+          foregroundColor: ink,
+          backgroundColor: Colors.transparent,
+          side: const BorderSide(color: ink, width: MzaziStroke.focus),
+        ).merge(base.textButtonTheme.style),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -414,15 +420,19 @@ abstract final class MzaziTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.button)),
         ),
       ),
-      // A plain button: the words alone, in the brand red, as Apple tints its plain
-      // buttons. No underline, which on a phone marks a link inside a sentence.
+      // A smaller action: Apple's grey button at the size of its words, ink on the sunk
+      // grey. It used to be the words alone in red, which read as a link, not something to
+      // press; every action now has a shape of its own.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: Size(target, target),
-          foregroundColor: emergency,
+          foregroundColor: text,
+          backgroundColor: surfaceSunk,
           disabledForegroundColor: textSoft,
+          disabledBackgroundColor: surfaceSunk,
           textStyle: textTheme.labelLarge,
-          padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s8),
+          padding: const EdgeInsets.symmetric(horizontal: MzaziSpace.s16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(MzaziRadius.button)),
         ),
       ),
       // Apple's segmented control: a grey track with the chosen segment lifted out.

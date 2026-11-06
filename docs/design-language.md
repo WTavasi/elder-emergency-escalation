@@ -10,9 +10,9 @@ control, on an event in `TRIGGERED` or `ESCALATED` state, and on a destructive
 confirmation. Never on navigation, headers, empty states, charts or brand bars.
 
 Two exceptions are allowed and both are under review. The screens before sign-in carry
-MzaziCare's red, because no emergency can be on screen yet. And the filled buttons and
-text links of the app and the console take the red, as an Apple app's controls take its
-tint, which puts red on actions such as signing in and saving. No new use of either may be
+MzaziCare's red, because no emergency can be on screen yet. And the filled buttons of the
+app and the console take the red, as an Apple app's controls take its tint, which puts red
+on actions such as signing in and saving. Text buttons are grey. No new use of either may be
 added while the review is open.
 
 Yellow means "you can still act on this". The caution yellow appears on the elder's
@@ -67,10 +67,17 @@ also carries a glyph and a word.
 
 ## Layout, in the app
 
-Swiss and utilitarian: the type and the spacing do the work boxes used to.
+Apple's inset grouped lists, as Settings and Health set them out.
 
-- **No cards.** Lists run edge to edge, one row per item, divided by hairlines. Sections
-  start with a small-capitals label over a hairline (`SectionLabel`). Messages are an
+- **Rounded groups on a grey page.** Rows sit in white groups with rounded corners, inset
+  by the page margin (`SettingsSection`, `GroupCard`, `GroupSurface`), one row per item,
+  divided by hairlines that start where the words do. A group opens with a small-capitals
+  label above it (`SectionLabel`), with no rule: the group's edge says where it is. Each
+  row is its own stop for a screen reader.
+- **Most important first, the rest one tap away.** The first groups on a screen hold what
+  a person needs to act, open, never behind a row that expands. Context (the full trail,
+  the whole chain, every word an elder said, the full medical record) is a row with a
+  chevron that opens a page of its own. Messages are an
   icon and the words beside it, not a filled box: an error mark in the text-safe red, an
   information mark in ink.
 - **No side stripes.** A coloured border down the left or right edge of a row, a
@@ -138,9 +145,9 @@ Swiss and utilitarian: the type and the spacing do the work boxes used to.
   48 points in the standard size and 72 in Elder mode, set in the theme so a new screen
   cannot forget. Full-width buttons are solid with 12-point corners and 50 points tall, 72
   in Elder mode (`MzaziSizes.control`); the secondary one is ink on the sunk grey with no
-  outline. Text buttons are MzaziCare red without an underline, as an iPhone app's links
-  take its tint. Red buttons and links in the app are under review, because red is meant
-  to mean an emergency.
+  outline. Text buttons are a smaller grey pill, ink on the sunk grey, so every button
+  looks like something to press; on the yellow countdown they are an ink outline. Red
+  filled buttons in the app are under review, because red is meant to mean an emergency.
 - **The alert trail is numbered.** What has happened on an emergency is a column of
   numbered circles joined by a line, the latest filled in, as the console draws the chain.
 - **A swipe covers its words.** As the knob of a swipe-to-confirm moves, the track fills
@@ -186,8 +193,9 @@ somebody looking across many records at once.
   on hover.
 - **Controls are 36 points where a mouse is used** and the full touch target where a
   finger is, chosen by the browser's own pointer media query.
-- **Filled buttons and links are MzaziCare red**, under review as the app's are (see the
-  governing rule); other buttons are ink on the sunk grey with no outline. A worsening
+- **Filled buttons are MzaziCare red**, under review as the app's are (see the governing
+  rule); other buttons, quiet ones and actions set in text included, are ink on the sunk
+  grey with no outline, so each looks pressable. A worsening
   trend on the reporting screen is the one other place the warning red appears, and
   always with an arrow and a signed figure beside it.
 - **The parts the browser draws carry the design too.** Text selection takes the

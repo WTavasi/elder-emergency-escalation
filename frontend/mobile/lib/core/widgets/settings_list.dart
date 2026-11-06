@@ -6,14 +6,110 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 import '../theme/theme.dart';
 import 'section_label.dart';
 
-/// The parts of a person's own page, as an iPhone's Settings lays one out: sections of
-/// rows that run edge to edge on the surface colour, the page colour showing between
-/// them, each section under a small-capitals label. A row is an icon, a few words, and
-/// what it does at the end: a chevron to go further, a switch, a value to choose from,
-/// or a disclosure that opens the row in place.
+/// The parts of a page, as Apple's Health and Settings lay one out: rounded groups on the
+/// surface colour, inset from the screen's edges with the page colour around them, each
+/// under a small-capitals label. A row is an icon, a few words, and what it does at the
+/// end: a chevron to go further, a switch, a value to choose from, or a disclosure that
+/// opens the row in place. Hairlines divide rows inside a group.
 ///
-/// No cards and no shadows: tone and hairlines separate the parts. Every size comes from
-/// the theme, so Elder mode makes the whole page larger at once.
+/// No shadows: tone, the rounded edge and hairlines separate the parts. Every size comes
+/// from the theme, so Elder mode makes the whole page larger at once.
+
+/// How far a group's content sits inside its rounded edge.
+const double groupInset = MzaziSpace.s16;
+
+/// A rounded group on the surface colour: the shape every section of a page takes. Inset
+/// from the screen's edges unless [inset] is false, for a parent that already is.
+class GroupSurface extends StatelessWidget {
+  const GroupSurface({required this.child, this.inset = true, this.colour, super.key});
+
+  final Widget child;
+  final bool inset;
+
+  /// A tint in place of the surface, for the one group a page needs noticed.
+  final Color? colour;
+
+  @override
+  Widget build(BuildContext context) {
+    // A Material rather than a plain coloured box, so a row's ripple is drawn on the
+    // group, not hidden under it.
+    final Widget group = Material(
+      color: colour ?? Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(MzaziRadius.group),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+    if (!inset) return group;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: MzaziLayout.margin(context)),
+      child: group,
+    );
+  }
+}
+
+/// A group of free content rather than rows: words, a map, a button. The label above it
+/// and the small print under it line up with the content inside.
+class GroupCard extends StatelessWidget {
+  const GroupCard({
+    required this.children,
+    this.title,
+    this.footer,
+    this.inset = true,
+    this.colour,
+    this.top = MzaziSpace.s24,
+    super.key,
+  });
+
+  final String? title;
+  final List<Widget> children;
+  final String? footer;
+  final bool inset;
+  final Color? colour;
+
+  /// The room above the group, the space between sections.
+  final double top;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final double side = inset ? MzaziLayout.margin(context) : 0;
+    return Padding(
+      padding: EdgeInsets.only(top: top),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (title case final String label)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: side + groupInset),
+              child: SectionLabel(label),
+            ),
+          GroupSurface(
+            inset: inset,
+            colour: colour,
+            child: Padding(
+              padding: const EdgeInsets.all(groupInset),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  // Each part its own thing to a screen reader; spacing and rules are not.
+                  for (final Widget child in children)
+                    child is SizedBox || child is Divider
+                        ? child
+                        : Semantics(container: true, child: child),
+                ],
+              ),
+            ),
+          ),
+          if (footer case final String note)
+            Padding(
+              padding: EdgeInsets.fromLTRB(side + groupInset, MzaziSpace.s8, side + groupInset, 0),
+              child: Text(note, style: theme.textTheme.bodySmall),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 /// One person at the top of their page: their initials, their name, and a line under it.
 class ProfileHeader extends StatelessWidget {
@@ -52,7 +148,6 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool dark = theme.brightness == Brightness.dark;
-    final double margin = MzaziLayout.margin(context);
     // The selection blue with ink on it, a pair the contrast gate already checks: calm,
     // personal without being decoration, and never the emergency red.
     final Color wash = dark ? MzaziColorsDark.selection : MzaziColorsLight.selection;
@@ -60,7 +155,7 @@ class ProfileHeader extends StatelessWidget {
     final double size = (theme.textTheme.titleLarge?.fontSize ?? 22) * 2.6;
 
     final Widget body = Padding(
-      padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s16, margin, MzaziSpace.s16),
+      padding: const EdgeInsets.all(groupInset),
       child: Row(
         children: <Widget>[
           ExcludeSemantics(
@@ -92,27 +187,44 @@ class ProfileHeader extends StatelessWidget {
       ),
     );
 
-    if (onTap == null) return body;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(onTap: onTap, child: body),
+    // Its own rounded group at the top of the page, as a contact card or Health's
+    // profile is.
+    return Padding(
+      padding: const EdgeInsets.only(top: MzaziSpace.s16),
+      child: GroupSurface(
+        child: onTap == null
+            ? body
+            : Material(
+                type: MaterialType.transparency,
+                child: InkWell(onTap: onTap, child: body),
+              ),
+      ),
     );
   }
 }
 
-/// One section: a label, rows on the surface colour divided by hairlines, and an
-/// optional line of small print under it.
+/// One section: a label, rows in a rounded group divided by hairlines, and an optional
+/// line of small print under it.
 class SettingsSection extends StatelessWidget {
-  const SettingsSection({required this.children, this.title, this.footer, super.key});
+  const SettingsSection({
+    required this.children,
+    this.title,
+    this.footer,
+    this.inset = true,
+    super.key,
+  });
 
   final String? title;
   final List<Widget> children;
   final String? footer;
 
+  /// False inside a parent that already keeps the screen's margin.
+  final bool inset;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double margin = MzaziLayout.margin(context);
+    final double side = (inset ? MzaziLayout.margin(context) : 0) + groupInset;
     final List<Widget> rows = children.where((Widget w) => w is! SizedBox).toList();
 
     return Padding(
@@ -122,24 +234,25 @@ class SettingsSection extends StatelessWidget {
         children: <Widget>[
           if (title case final String label)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin),
+              padding: EdgeInsets.symmetric(horizontal: side),
               child: SectionLabel(label),
             ),
-          ColoredBox(
-            color: theme.colorScheme.surface,
+          GroupSurface(
+            inset: inset,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 for (final (int index, Widget row) in rows.indexed) ...<Widget>[
-                  if (index > 0) Divider(height: 1, indent: margin + _iconColumn(context)),
-                  row,
+                  if (index > 0) Divider(height: 1, indent: groupInset + _iconColumn(context)),
+                  // Each row its own stop for a screen reader, not one merged group.
+                  Semantics(container: true, child: row),
                 ],
               ],
             ),
           ),
           if (footer case final String note)
             Padding(
-              padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s8, margin, 0),
+              padding: EdgeInsets.fromLTRB(side, MzaziSpace.s8, side, 0),
               child: Text(note, style: theme.textTheme.bodySmall),
             ),
         ],
@@ -176,16 +289,15 @@ class _RowBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double margin = MzaziLayout.margin(context);
     final double iconSize = (theme.textTheme.bodyLarge?.fontSize ?? 17) * 1.4;
 
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: MzaziSizes.of(context).target),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          margin,
+        padding: const EdgeInsets.fromLTRB(
+          groupInset,
           MzaziSpace.s12,
-          margin - MzaziSpace.s4,
+          groupInset - MzaziSpace.s4,
           MzaziSpace.s12,
         ),
         child: Row(
@@ -336,14 +448,18 @@ class SettingsFact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double margin = MzaziLayout.margin(context);
     final double iconSize = (theme.textTheme.bodyLarge?.fontSize ?? 17) * 1.4;
 
     return MergeSemantics(
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: MzaziSizes.of(context).target),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s12, margin, MzaziSpace.s12),
+          padding: const EdgeInsets.fromLTRB(
+            groupInset,
+            MzaziSpace.s12,
+            groupInset,
+            MzaziSpace.s12,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -476,8 +592,8 @@ class _SettingsExpandableState extends State<SettingsExpandable> {
           child: _open
               ? Padding(
                   padding: EdgeInsetsDirectional.only(
-                    start: MzaziLayout.margin(context) + _iconColumn(context),
-                    end: MzaziLayout.margin(context),
+                    start: groupInset + _iconColumn(context),
+                    end: groupInset,
                     bottom: MzaziSpace.s12,
                   ),
                   child: Column(

@@ -1290,3 +1290,34 @@ somebody who is.
 5". A bare "saa mbili" is left alone, because it is eight o'clock as well as two hours.
 The time is kept on the alert and shown to the elder when the person coming is not sharing
 their way there; a shared way there, measured by road, wins over what was said.
+
+## Rounded groups, the important part first, and buttons that look pressable
+
+The caregiver's page for an emergency had grown to a dozen sections, several of them rows
+that expanded in place, so what to do next was below the fold and mixed with history.
+
+**Rounded groups on a grey page.** Rows now sit in white groups with rounded corners,
+inset by the page margin, as Settings and Health set them out, in place of lists running
+edge to edge under a label and a rule. A group's edge says where a section starts and
+ends, which a rule under a label did less clearly. Each row stays its own stop for a
+screen reader.
+
+**What to act on first, the rest one tap away.** The emergency page opens with its state
+(who is being asked, who is coming), then a warning when the elder's health makes it more
+serious, then what is happening now (the way, the services, the volunteer, talking to
+the elder), then the latest thing the elder said, then where they are, then the medical
+summary. The full trail, the whole chain and everything the elder said are rows that open
+a page of their own, as the full medical record already did. Nothing a caregiver needs to
+act on is behind a row that expands.
+
+**Buttons look like buttons.** Text buttons were red words, which read as part of a
+sentence and added red that does not mean an emergency. They are now a smaller grey pill,
+ink on the sunk grey, in the app and in the console's quiet buttons and in-text actions.
+On the yellow countdown, where grey would not show, they are an ink outline. The red
+filled button stays under review, as before; red links leave that review because there
+are none.
+
+The same layout was carried to the elder's page (a contact card: call, where they are,
+details, who is asked, the check-in, care and privacy), the people list, the alerts list
+(with a segmented control for open and past alerts), the consent pages and the
+volunteer's nearby list.

@@ -224,6 +224,7 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await controller.refresh();
     await tester.pumpAndSettle();
+    await _openTrail(tester);
 
     expect(find.text('Grace Wanjiru asked for help, by text'), findsOneWidget);
 
@@ -242,6 +243,7 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await controller.refresh();
     await tester.pumpAndSettle();
+    await _openTrail(tester);
 
     // Three steps worth showing in the fixture: asked, sent, moved on. Scoring is left out.
     final double one = tester.getCenter(find.text('1').first).dy;
@@ -290,7 +292,7 @@ void main() {
     await controller.refresh();
     await tester.pumpAndSettle();
 
-    expect(find.text('EMERGENCY SERVICES'), findsOneWidget);
+    expect(find.text('NOW'), findsOneWidget);
     expect(find.text('Kilimani Police Station'), findsOneWidget);
     expect(find.text("Can't come."), findsOneWidget);
     expect(
@@ -310,6 +312,7 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await controller.refresh();
     await tester.pumpAndSettle();
+    await _openTrail(tester);
 
     expect(find.text('Grace Wanjiru asked for help'), findsOneWidget);
     expect(find.text('at the start'), findsOneWidget);
@@ -375,6 +378,7 @@ void main() {
     await tester.pumpWidget(_wrap(controller, AlertSummary.fromJson(summaryBody())));
     await controller.refresh();
     await tester.pumpAndSettle();
+    await _openTrail(tester);
 
     expect(find.text('Grace Wanjiru said: fire, by text'), findsOneWidget);
     expect(find.text('Fire service asked at once'), findsOneWidget);
@@ -978,6 +982,8 @@ void main() {
       // Peter is on the map beside Grace, and the map opens full screen.
       final Finder map = find.byType(EmergencyMap);
       await tester.scrollUntilVisible(map, 200, scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(map);
+      await tester.pumpAndSettle();
       expect(
         tester.widget<EmergencyMap>(map).travellers.map((MapTraveller who) => who.label),
         <String>['Peter'],
@@ -1196,4 +1202,13 @@ void main() {
       controller.dispose();
     });
   });
+}
+
+/// The trail is on its own page now: opens it from the alert.
+Future<void> _openTrail(WidgetTester tester) async {
+  final Finder row = find.text('What happened');
+  await tester.ensureVisible(row);
+  await tester.pumpAndSettle();
+  await tester.tap(row);
+  await tester.pumpAndSettle();
 }

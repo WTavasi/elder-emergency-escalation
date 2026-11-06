@@ -9,7 +9,7 @@ import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
@@ -208,27 +208,26 @@ class _ElderScreenState extends State<ElderScreen> {
     final ThemeData theme = Theme.of(context);
     final ElderDetail? elder = _elder;
     final ChainView? chain = _chain;
+    final String first = widget.elderName.split(' ').first;
+    final bool dark = theme.brightness == Brightness.dark;
+    final Color amber = dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg;
+    final double margin = MzaziLayout.margin(context);
 
     return Scaffold(
       appBar: AppBar(),
       body: RefreshIndicator(
         onRefresh: _load,
+        // As a contact card: who and how to reach them first, then where they are and
+        // who is asked, then what is set up for them, each a group of rows.
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            MzaziLayout.margin(context),
-            0,
-            MzaziLayout.margin(context),
-            MzaziSpace.s32,
-          ),
+          padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
-            Semantics(
-              header: true,
-              child: Text(widget.elderName, style: theme.textTheme.headlineLarge),
-            ),
-            if (_error != null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s16),
-              Notice(message: _error!, isError: true),
-            ],
+            PageTitle(widget.elderName),
+            if (_error != null)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                child: Notice(message: _error!, isError: true),
+              ),
             if (elder == null || chain == null)
               _error == null
                   ? const Padding(
@@ -237,162 +236,146 @@ class _ElderScreenState extends State<ElderScreen> {
                     )
                   : const SizedBox.shrink()
             else ...<Widget>[
-              if (elder.phone case final String phone) ...<Widget>[
-                Text(
-                  phone,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontFeatures: MzaziTheme.figures,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: MzaziSpace.s16),
-                SizedBox(
-                  width: double.infinity,
-                  child: CallButton(name: elder.name, phone: phone),
-                ),
-              ] else
-                const _Fact(
-                  'Their number is hidden at their request. Helpers see it in an emergency.',
-                ),
-              const SizedBox(height: MzaziSpace.s32),
-              const SectionLabel('Where they are'),
-              _Fact(
-                elder.place.withheld
-                    ? 'Hidden at their request'
-                    : elder.place.isAtHome
-                    ? 'At home'
-                    : 'Staying at ${elder.place.label ?? 'a recorded place'}',
-              ),
-              // Anybody in the chain may say where she is, so this is not behind canEdit.
-              if (elder.place.withheld)
-                const SizedBox.shrink()
-              else if (elder.place.isAtHome)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : () => unawaited(_recordStay()),
-                  icon: const Icon(Icons.luggage_outlined),
-                  label: const Text("They're away from home"),
-                )
-              else
-                OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => unawaited(_act(() => widget.api.clearPlace(widget.elderId))),
-                  icon: const Icon(Icons.home_outlined),
-                  label: const Text('Mark as back home'),
-                ),
-              const SizedBox(height: MzaziSpace.s32),
-              // The value first and the change beside the label, the way a settings page
-              // on either platform puts an editable fact.
-              SectionLabel(
-                'Home',
-                trailing: elder.canEdit && !elder.withheld.contains('location')
-                    ? TextButton(
-                        onPressed: _busy ? null : () => unawaited(_changeHome()),
-                        child: const Text('Change home'),
-                      )
-                    : null,
-              ),
-              _Fact(
-                elder.withheld.contains('location')
-                    ? 'Hidden at their request'
-                    : elder.home?.label ?? 'No home address yet',
-              ),
-              const SizedBox(height: MzaziSpace.s16),
-              SectionLabel(
-                'How much help they need',
-                trailing: elder.canEdit
-                    ? TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => unawaited(_changeCareLevel(elder.careLevel)),
-                        child: const Text('Change'),
-                      )
-                    : null,
-              ),
-              _Fact(elder.careLevel?.label ?? 'Not sure'),
-              const SizedBox(height: MzaziSpace.s16),
-              const SectionLabel('Who we ask, in order'),
-              const SizedBox(height: MzaziSpace.s12),
-              Text(
-                'Last, the emergency responder near them. Police, fire or an ambulance are '
-                'asked too when what is happening needs them.',
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: MzaziSpace.s8),
-              for (final ChainPlace place in chain.places) ...<Widget>[
-                _ChainRow(
-                  place: place,
-                  label: _placeLabel(
-                    place,
-                    together: chain.places.where((ChainPlace p) => p.tier == place.tier).length,
-                  ),
-                  onRemove: place.removable && !_busy ? () => unawaited(_remove(place)) : null,
-                ),
-                const Divider(),
-              ],
-              if (chain.canEdit) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _busy ? null : () => unawaited(_addFamily()),
-                    icon: const Icon(Icons.person_add_alt_1_outlined),
-                    label: const Text('Add a family member'),
-                  ),
-                ),
-              ],
-              const SizedBox(height: MzaziSpace.s32),
-              const SectionLabel('Emergency services near them'),
-              NearbyServices(api: widget.api, elderId: widget.elderId, plain: true),
-              // Caregivers only. Family see these on an alert they were asked about.
-              if (elder.canEdit) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s32),
-                const SectionLabel('Medical details'),
-                const _Fact('What helpers should know in an emergency.'),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => openScreen(
-                      context,
-                      MedicalIdScreen(api: widget.api, elderId: widget.elderId, forElder: false),
+              SettingsSection(
+                children: <Widget>[
+                  if (elder.phone case final String phone)
+                    SettingsRow(
+                      icon: Icons.phone,
+                      iconColour: amber,
+                      chevron: false,
+                      title: 'Call $first',
+                      subtitle: phone,
+                      onTap: () =>
+                          unawaited(CallButton.dial(context, name: elder.name, phone: phone)),
+                    )
+                  else
+                    const SettingsRow(
+                      icon: Icons.phone_disabled_outlined,
+                      title: 'Number hidden at their request',
+                      subtitle: 'Helpers see it in an emergency',
+                      chevron: false,
                     ),
-                    icon: const Icon(Icons.medical_information_outlined),
-                    label: const Text('Medical details'),
-                  ),
-                ),
-              ],
-              const SizedBox(height: MzaziSpace.s32),
-              const SectionLabel('Privacy'),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _busy ? null : () => unawaited(_openConsent()),
-                  icon: const Icon(Icons.privacy_tip_outlined),
-                  label: const Text('Privacy and consent'),
-                ),
+                ],
               ),
-              // Only the caregiver: signing the phone in is signing in as the elder.
-              if (elder.canEdit) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s32),
-                const SectionLabel('Their phone'),
-                const _Fact(
-                  'New phone or signed out? Sign them in with a code. No password needed.',
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _busy ? null : () => unawaited(_signInTheirPhone()),
-                    icon: const Icon(Icons.phonelink_lock_outlined),
-                    label: Text('Sign in ${widget.elderName.split(' ').first}\'s phone'),
+              SettingsSection(
+                title: 'Where they are',
+                children: <Widget>[
+                  SettingsRow(
+                    icon: elder.place.isAtHome ? Icons.home_outlined : Icons.luggage_outlined,
+                    chevron: false,
+                    title: elder.place.withheld
+                        ? 'Hidden at their request'
+                        : elder.place.isAtHome
+                        ? 'At home'
+                        : 'Staying at ${elder.place.label ?? 'a recorded place'}',
                   ),
-                ),
-              ],
-              const SizedBox(height: MzaziSpace.s32),
-              CheckInSettings(
-                key: ValueKey<int>(_loads),
-                api: widget.api,
-                elderId: widget.elderId,
-                elderName: widget.elderName,
+                  // Anybody in the chain may say where they are, so not behind canEdit.
+                  if (!elder.place.withheld)
+                    SettingsRow(
+                      icon: elder.place.isAtHome ? Icons.luggage_outlined : Icons.home_outlined,
+                      title: elder.place.isAtHome ? "They're away from home" : 'Mark as back home',
+                      onTap: _busy
+                          ? null
+                          : elder.place.isAtHome
+                          ? () => unawaited(_recordStay())
+                          : () => unawaited(_act(() => widget.api.clearPlace(widget.elderId))),
+                    ),
+                ],
+              ),
+              SettingsSection(
+                title: 'Details',
+                children: <Widget>[
+                  SettingsRow(
+                    icon: Icons.home_work_outlined,
+                    title: 'Home',
+                    subtitle: elder.withheld.contains('location')
+                        ? 'Hidden at their request'
+                        : elder.home?.label ?? 'No home address yet',
+                    onTap: elder.canEdit && !elder.withheld.contains('location') && !_busy
+                        ? () => unawaited(_changeHome())
+                        : null,
+                  ),
+                  SettingsRow(
+                    icon: Icons.accessibility_new,
+                    title: 'Help they need',
+                    value: elder.careLevel?.label ?? 'Not sure',
+                    onTap: elder.canEdit && !_busy
+                        ? () => unawaited(_changeCareLevel(elder.careLevel))
+                        : null,
+                  ),
+                ],
+              ),
+              SettingsSection(
+                title: 'Who we ask, in order',
+                footer:
+                    'Last, the emergency responder near them. Police, fire or an ambulance are '
+                    'asked too when what is happening needs them.',
+                children: <Widget>[
+                  for (final ChainPlace place in chain.places)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: groupInset),
+                      child: _ChainRow(
+                        place: place,
+                        label: _placeLabel(
+                          place,
+                          together: chain.places
+                              .where((ChainPlace p) => p.tier == place.tier)
+                              .length,
+                        ),
+                        onRemove: place.removable && !_busy
+                            ? () => unawaited(_remove(place))
+                            : null,
+                      ),
+                    ),
+                  if (chain.canEdit)
+                    SettingsRow(
+                      icon: Icons.person_add_alt_1_outlined,
+                      title: 'Add a family member',
+                      onTap: _busy ? null : () => unawaited(_addFamily()),
+                    ),
+                ],
+              ),
+              GroupCard(
+                title: 'Daily check-in',
+                children: <Widget>[
+                  CheckInSettings(
+                    key: ValueKey<int>(_loads),
+                    api: widget.api,
+                    elderId: widget.elderId,
+                    elderName: widget.elderName,
+                    heading: false,
+                  ),
+                ],
+              ),
+              SettingsSection(
+                title: 'Care and privacy',
+                children: <Widget>[
+                  // Caregivers only. Family see these on an alert they were asked about.
+                  if (elder.canEdit)
+                    SettingsRow(
+                      icon: Icons.medical_information_outlined,
+                      title: 'Medical details',
+                      subtitle: 'What helpers should know in an emergency',
+                      onTap: () => openScreen(
+                        context,
+                        MedicalIdScreen(api: widget.api, elderId: widget.elderId, forElder: false),
+                      ),
+                    ),
+                  NearbyServices(api: widget.api, elderId: widget.elderId),
+                  SettingsRow(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy and consent',
+                    onTap: _busy ? null : () => unawaited(_openConsent()),
+                  ),
+                  // Only the caregiver: signing the phone in is signing in as the elder.
+                  if (elder.canEdit)
+                    SettingsRow(
+                      icon: Icons.phonelink_lock_outlined,
+                      title: "Sign in $first's phone",
+                      subtitle: 'New phone or signed out? Use a code, no password.',
+                      onTap: _busy ? null : () => unawaited(_signInTheirPhone()),
+                    ),
+                ],
               ),
             ],
           ],
@@ -413,19 +396,6 @@ class _ElderScreenState extends State<ElderScreen> {
     };
     return together > 1 && role.isNotEmpty ? '$role · asked together' : role;
   }
-}
-
-/// One fact under a section label, at reading size.
-class _Fact extends StatelessWidget {
-  const _Fact(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
-    child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
-  );
 }
 
 /// One place in the chain: the rank as a large figure, then who, then what they are and

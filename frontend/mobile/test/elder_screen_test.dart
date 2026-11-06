@@ -227,7 +227,7 @@ void main() {
   ) async {
     await pump(tester, withheld: true);
 
-    expect(find.textContaining('Their number is hidden at their request'), findsOneWidget);
+    expect(find.text('Number hidden at their request'), findsOneWidget);
     expect(find.byIcon(Icons.phone), findsNothing);
     expect(find.text('Hidden at their request'), findsNWidgets(2));
     expect(find.text('Change home'), findsNothing);

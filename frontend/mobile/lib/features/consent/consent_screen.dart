@@ -8,7 +8,7 @@ import '../../core/api/models.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/settings_list.dart';
 import '../legal/legal_screens.dart';
 
 /// Who is reading: the elder about themselves, or somebody in their care circle.
@@ -396,79 +396,83 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget _page(BuildContext context, ConsentView view) {
     final ThemeData theme = Theme.of(context);
     final String? error = _error;
-    final double target = MzaziSizes.of(context).target;
+    final double margin = MzaziLayout.margin(context);
 
+    // One rounded group per consent: what it means, where it stands, and the one thing to
+    // do about it, as a button that looks like one.
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        MzaziLayout.margin(context),
-        MzaziSpace.s8,
-        MzaziLayout.margin(context),
-        MzaziSpace.s32,
-      ),
+      padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
       children: <Widget>[
-        if (error != null) ...<Widget>[
-          Notice(message: error, isError: true),
-          const SizedBox(height: MzaziSpace.s16),
-        ],
-        if (view.items.isEmpty) Text('Nothing agreed yet.', style: theme.textTheme.bodyLarge),
-        for (final ConsentItem item in view.items) ...<Widget>[
-          SectionLabel(_title(item.kind)),
-          Text(_meaning(item.kind), style: theme.textTheme.bodyLarge),
-          const SizedBox(height: MzaziSpace.s8),
-          Text(
-            _status(item),
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        if (error != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s8, margin, 0),
+            child: Notice(message: error, isError: true),
           ),
-          // Help from volunteers is never given at registration, so it is agreed to here;
-          // location and contact sharing can be agreed to again once withdrawn.
-          if (!item.active &&
-              view.canWithdraw &&
-              item.kind != ConsentKind.dataProcessing) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: target),
-                child: FilledButton.tonal(
-                  onPressed: _busy ? null : () => unawaited(_give(item)),
-                  child: Text(_isElder ? 'Agree' : 'Agree for $_name'),
+        if (view.items.isEmpty)
+          Padding(
+            padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s8, margin, 0),
+            child: Text('Nothing agreed yet.', style: theme.textTheme.bodyLarge),
+          ),
+        for (final ConsentItem item in view.items)
+          GroupCard(
+            title: _title(item.kind),
+            top: MzaziSpace.s16,
+            children: <Widget>[
+              Text(_meaning(item.kind), style: theme.textTheme.bodyLarge),
+              const SizedBox(height: MzaziSpace.s8),
+              Text(
+                _status(item),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
-          ],
-          if (item.active && view.canWithdraw) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: target),
-                child: OutlinedButton(
+              // Help from volunteers is never given at registration, so it is agreed to
+              // here; location and contact sharing can be agreed to again once withdrawn.
+              if (!item.active &&
+                  view.canWithdraw &&
+                  item.kind != ConsentKind.dataProcessing) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => unawaited(_give(item)),
+                  icon: const Icon(Icons.check),
+                  label: Text(_isElder ? 'Agree' : 'Agree for $_name'),
+                ),
+              ],
+              if (item.active && view.canWithdraw) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s12),
+                OutlinedButton(
                   onPressed: _busy ? null : () => unawaited(_withdraw(item)),
                   child: Text(_stopLabel(item.kind)),
                 ),
-              ),
-            ),
-          ],
-          const SizedBox(height: MzaziSpace.s24),
-        ],
-        Text(
-          _isElder
-              ? 'In an emergency, helpers always see what they need to reach you, even if you '
-                    'turn sharing off.'
-              : 'In an emergency, helpers always see what they need to reach $_name, even if '
-                    'sharing is off.',
-          style: theme.textTheme.bodyMedium,
-        ),
-        if (!view.canWithdraw) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s12),
-          Text(
-            'Only $_name or their caregiver can change these.',
-            style: theme.textTheme.bodyMedium,
+              ],
+            ],
           ),
-        ],
-        const SizedBox(height: MzaziSpace.s16),
-        // The whole notice, with what is kept, who sees it and for how long.
-        const LegalLinks(),
+        Padding(
+          padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s24, margin, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                _isElder
+                    ? 'In an emergency, helpers always see what they need to reach you, even if '
+                          'you turn sharing off.'
+                    : 'In an emergency, helpers always see what they need to reach $_name, '
+                          'even if sharing is off.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              if (!view.canWithdraw) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s12),
+                Text(
+                  'Only $_name or their caregiver can change these.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+              const SizedBox(height: MzaziSpace.s16),
+              // The whole notice, with what is kept, who sees it and for how long.
+              const LegalLinks(),
+            ],
+          ),
+        ),
       ],
     );
   }

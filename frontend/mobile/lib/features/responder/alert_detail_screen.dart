@@ -15,7 +15,8 @@ import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/emergency_type_icon.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
-import '../../core/widgets/section_label.dart';
+import '../../core/widgets/page_title.dart';
+import '../../core/widgets/settings_list.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
 import '../medical/medical_words.dart';
 import '../voice/call_screen.dart';
@@ -80,12 +81,51 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
     );
   }
 
+  /// "6 steps", counting what the trail shows.
+  static String _steps(List<TimelineEntry> timeline) {
+    final int count = timeline.where(_WhatHappened._isWorthShowing).length;
+    return count == 1 ? '1 step' : '$count steps';
+  }
+
+  /// Opens a page of context over this one, kept up to date while it is open.
+  void _openPage(BuildContext context, String title, Widget Function() build) {
+    final AlertDetailController controller = context.read<AlertDetailController>();
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext _) => Scaffold(
+            appBar: AppBar(),
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (BuildContext _, Widget? _) => ListView(
+                padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
+                children: <Widget>[PageTitle(title), build()],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final AlertDetailController controller = context.watch<AlertDetailController>();
     final AlertDetail? detail = controller.detail;
     final AlertSummary alert = detail?.summary ?? widget.fallback;
     final ThemeData theme = Theme.of(context);
+    final AlertMedical? medical = controller.medical;
+    final String first = firstNameOf(alert.elderName);
+    final EmergencyMapData? map = _mapOf(controller, alert);
+    final List<SpeechHeard> said = <SpeechHeard>[
+      for (final SpeechHeard heard in detail?.speech ?? const <SpeechHeard>[])
+        if (heard.transcript.isNotEmpty) heard,
+    ];
+    final List<ChainMember> chain = detail?.chain ?? const <ChainMember>[];
+    final double margin = MzaziLayout.margin(context);
+
+    Widget notice(Widget child) =>
+        Padding(padding: EdgeInsets.fromLTRB(margin, MzaziSpace.s16, margin, 0), child: child);
 
     return Scaffold(
       // A back arrow and nothing else. The name is set large in the page instead, where
@@ -93,108 +133,125 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       appBar: AppBar(),
       body: RefreshIndicator(
         onRefresh: controller.refresh,
+        // Most important first, all of it in view: who and how it stands, what makes it
+        // worse, who is coming, what they said, where. What gives context rather than
+        // decides anything (the medical record, the trail, the chain) is a tap away, on
+        // pages of its own, rather than folded into this one.
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            MzaziLayout.margin(context),
-            0,
-            MzaziLayout.margin(context),
-            MzaziSpace.s32,
-          ),
+          padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
-            _Header(alert: alert),
-            if (detail != null && detail.speech.isNotEmpty)
-              _Said(speech: detail.speech, elderName: alert.elderName),
-            // Right under the name: whether this is one to hand on at once is the first
-            // thing a helper decides, and the history can decide it.
-            if (controller.medical case final AlertMedical medical)
-              _Medical(controller: controller, medical: medical, elderName: alert.elderName),
-            _OnTheWay(
-              controller: controller,
-              alert: alert,
-              journeys: detail?.journeys ?? const <Journey>[],
-              volunteerName: detail?.volunteer?.name,
-            ),
-            if (detail?.volunteer case final VolunteerOnAlert volunteer) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              _Volunteer(
-                volunteer: volunteer,
-                elderFirst: alert.elderName.split(' ').first,
-                open: alert.state.isOpen,
+            _Header(alert: alert, chain: chain),
+            if (controller.actionError case final String error)
+              notice(Notice(message: error, isError: true)),
+            if (controller.confirmation case final String done) notice(Notice(message: done)),
+            if (medical != null && medical.status == AlertMedicalStatus.shown && medical.serious)
+              _MedicalWarning(controller: controller, medical: medical, first: first),
+            if (alert.state.isOpen)
+              _Now(
+                controller: controller,
+                alert: alert,
+                detail: detail,
                 canOpen: widget.canOpen,
-                openLink: widget.open,
+                open: widget.open,
               ),
-            ],
-            if (detail != null && detail.stations.isNotEmpty) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              _Stations(stations: detail.stations),
-            ],
-            if (controller.canTalk) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              _Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy),
-            ] else if (controller.talkIsOff) ...<Widget>[
-              // Said plainly, so nobody looks for a button that is not there. Phoning
-              // is right above.
-              const SizedBox(height: MzaziSpace.s24),
-              const Notice(message: "Calls through the app aren't available right now."),
-            ],
-            if (alert.addressLabel != null || alert.hasPlace) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              const SectionLabel('Where'),
-              const SizedBox(height: MzaziSpace.s12),
-              if (alert.addressLabel != null)
-                Text(alert.addressLabel!, style: theme.textTheme.bodyLarge),
-              if (_mapOf(controller, alert) case final EmergencyMapData map) ...<Widget>[
-                const SizedBox(height: MzaziSpace.s12),
-                EmergencyMap(
-                  destination: map.destination,
-                  destinationLabel: map.destinationLabel,
-                  travellers: map.travellers,
-                  needsSomebody: map.needsSomebody,
-                  onOpen: () => _openMap(context, controller, alert),
-                ),
-                const SizedBox(height: MzaziSpace.s12),
-                SizedBox(
-                  width: double.infinity,
-                  child: DirectionsButton(
-                    latitude: alert.latitude!,
-                    longitude: alert.longitude!,
-                    addressLabel: alert.addressLabel,
-                    open: widget.open,
+            if (said.isNotEmpty) _Said(heard: said.last, first: first),
+            if (alert.addressLabel != null || map != null)
+              GroupCard(
+                title: 'Where',
+                children: <Widget>[
+                  if (alert.addressLabel != null)
+                    Text(alert.addressLabel!, style: theme.textTheme.bodyLarge),
+                  if (map != null) ...<Widget>[
+                    const SizedBox(height: MzaziSpace.s12),
+                    EmergencyMap(
+                      destination: map.destination,
+                      destinationLabel: map.destinationLabel,
+                      travellers: map.travellers,
+                      needsSomebody: map.needsSomebody,
+                      onOpen: () => _openMap(context, controller, alert),
+                    ),
+                    const SizedBox(height: MzaziSpace.s12),
+                    DirectionsButton(
+                      latitude: alert.latitude!,
+                      longitude: alert.longitude!,
+                      addressLabel: alert.addressLabel,
+                      open: widget.open,
+                    ),
+                  ],
+                ],
+              ),
+            if (medical != null)
+              _MedicalSummary(
+                medical: medical,
+                first: first,
+                onAll: () => _openPage(
+                  context,
+                  'Medical details',
+                  () => _MedicalRecord(
+                    medical: controller.medical ?? medical,
+                    elderName: alert.elderName,
                   ),
                 ),
-              ],
-            ],
-            if (controller.actionError != null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              Notice(message: controller.actionError!, isError: true),
-            ],
-            if (controller.confirmation != null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              Notice(message: controller.confirmation!),
-            ],
-            if (!alert.state.isOpen) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s24),
-              Text('Emergency closed. Nothing more to do.', style: theme.textTheme.bodyLarge),
-            ],
-            const SizedBox(height: MzaziSpace.s32),
+              ),
             if (detail == null && controller.isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (detail != null) ...<Widget>[
-              _WhatHappened(entries: detail.timeline, chain: detail.chain),
-              const SizedBox(height: MzaziSpace.s32),
-              // No rank is "asked now" once it is over.
-              _Chain(
-                members: detail.chain,
-                currentTier: alert.state.isOpen ? alert.currentTier : 0,
+              const Padding(
+                padding: EdgeInsets.all(MzaziSpace.s32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (detail != null)
+              SettingsSection(
+                title: 'More',
+                children: <Widget>[
+                  SettingsRow(
+                    icon: Icons.timeline,
+                    title: 'What happened',
+                    value: _steps(detail.timeline),
+                    onTap: () => _openPage(
+                      context,
+                      'What happened',
+                      () => _WhatHappened(
+                        entries: controller.detail?.timeline ?? detail.timeline,
+                        chain: controller.detail?.chain ?? chain,
+                      ),
+                    ),
+                  ),
+                  SettingsRow(
+                    icon: Icons.groups_outlined,
+                    title: "Who we're asking",
+                    value: '${chain.length} ${chain.length == 1 ? 'person' : 'people'}',
+                    onTap: () => _openPage(context, "Who we're asking", () {
+                      final AlertSummary now = controller.detail?.summary ?? alert;
+                      return _Chain(
+                        members: controller.detail?.chain ?? chain,
+                        currentTier: now.state.isOpen ? now.currentTier : 0,
+                      );
+                    }),
+                  ),
+                  if (said.length > 1)
+                    SettingsRow(
+                      icon: Icons.record_voice_over_outlined,
+                      title: 'Everything $first said',
+                      value: '${said.length}',
+                      onTap: () => _openPage(
+                        context,
+                        'What $first said',
+                        () => Column(
+                          children: <Widget>[
+                            for (final SpeechHeard heard in said.reversed)
+                              _Said(heard: heard, first: first, titled: false),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-            if (controller.loadError != null) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s16),
-              Text(
-                "Couldn't refresh this. Pull down to try again.",
-                style: theme.textTheme.bodySmall,
+            if (controller.loadError != null)
+              notice(
+                Text(
+                  "Couldn't refresh this. Pull down to try again.",
+                  style: theme.textTheme.bodySmall,
+                ),
               ),
-            ],
           ],
         ),
       ),
@@ -254,83 +311,110 @@ class _ActionBar extends StatelessWidget {
   }
 }
 
-/// Who, then the state and the band on one line, then what has happened so far.
-///
-/// It used to be a bordered box with a coloured strip down one side. The name at
-/// headline size does the work the box was doing: there is no doubt which emergency
-/// this screen is about, or what matters most on it.
+/// Who, large, as the page's title; then a group with how it stands: the state and the
+/// band, what is happening, how long ago, who is being asked now by name, and who is
+/// coming.
 class _Header extends StatelessWidget {
-  const _Header({required this.alert});
+  const _Header({required this.alert, required this.chain});
 
   final AlertSummary alert;
+  final List<ChainMember> chain;
+
+  /// "Asking Aisha Otieno and Brian Wanjiru", the people at the rank being asked now.
+  String? _asking() {
+    if (!alert.state.isOpen || alert.isAnswered) return null;
+    final List<String> names = <String>[
+      for (final ChainMember member in chain)
+        if (member.priorityOrder == alert.currentTier) member.name,
+    ];
+    if (names.isEmpty) return 'Asking group ${alert.currentTier}';
+    if (names.length == 1) return 'Asking ${names.single}';
+    return 'Asking ${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final String first = firstNameOf(alert.elderName);
+    final String? asking = _asking();
+    final TextStyle? soft = theme.textTheme.bodyLarge?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Semantics(header: true, child: Text(alert.elderName, style: theme.textTheme.headlineLarge)),
-        const SizedBox(height: MzaziSpace.s12),
-        Wrap(
-          spacing: MzaziSpace.s16,
-          runSpacing: MzaziSpace.s8,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        PageTitle(alert.elderName),
+        GroupCard(
+          top: 0,
           children: <Widget>[
-            StatePill(state: alert.state),
-            SeverityMark(severity: alert.severity),
-          ],
-        ),
-        if (alert.fromMissedCheckIn) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s12),
-          // Said first, because it changes what to do: nobody pressed for help, and a
-          // call settles most of these in a minute.
-          Text(
-            'Call ${alert.elderName.split(' ').first} first. They missed a daily check-in. '
-            'No one pressed for help.',
-            style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
-          ),
-        ],
-        if (alert.reportedType case final EmergencyType type) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s12),
-          Row(
-            children: <Widget>[
-              Icon(emergencyTypeIcon(type)),
-              const SizedBox(width: MzaziSpace.s8),
-              Expanded(
-                child: Text(
-                  '${alert.elderName.split(' ').first} says: ${type.label}',
-                  style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
-                ),
+            Wrap(
+              spacing: MzaziSpace.s16,
+              runSpacing: MzaziSpace.s8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                StatePill(state: alert.state),
+                SeverityMark(severity: alert.severity),
+              ],
+            ),
+            if (alert.fromMissedCheckIn) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s12),
+              // Said first, because it changes what to do: nobody pressed for help, and a
+              // call settles most of these in a minute.
+              Text(
+                'Call $first first. They missed a daily check-in. No one pressed for help.',
+                style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
               ),
             ],
-          ),
-        ],
-        const SizedBox(height: MzaziSpace.s12),
-        Text(
-          'Raised ${elapsedSince(alert.triggeredAt)}. Asking group ${alert.currentTier}.',
-          style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        if (alert.ownerName != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s4),
-          Text(
-            alert.arrivedAt != null
-                ? '${alert.ownerName} arrived ${elapsedSince(alert.arrivedAt!)}.'
-                : '${alert.ownerName} is on the way.',
-            style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
-          ),
-        ],
-        if (alert.outcome != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s4),
-          Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
-          if (alert.outcomeNote != null) ...<Widget>[
-            const SizedBox(height: MzaziSpace.s4),
-            // What the person who closed it actually wrote. For an "other" outcome this
-            // is the only record of what happened, so it is shown rather than filed away.
-            Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
+            if (alert.reportedType case final EmergencyType type) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s12),
+              Row(
+                children: <Widget>[
+                  Icon(emergencyTypeIcon(type)),
+                  const SizedBox(width: MzaziSpace.s8),
+                  Expanded(
+                    child: Text(
+                      '$first says: ${type.label}',
+                      style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const Divider(height: MzaziSpace.s24),
+            Text(
+              asking == null
+                  ? 'Raised ${elapsedSince(alert.triggeredAt)}.'
+                  : 'Raised ${elapsedSince(alert.triggeredAt)}. $asking.',
+              style: soft,
+            ),
+            if (alert.ownerName != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text(
+                alert.arrivedAt != null
+                    ? '${alert.ownerName} arrived ${elapsedSince(alert.arrivedAt!)}.'
+                    : '${alert.ownerName} is on the way.',
+                style: theme.textTheme.bodyLarge?.weighted(MzaziWeight.strong),
+              ),
+            ] else if (alert.state.isOpen) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text('No one has said they are coming yet.', style: theme.textTheme.bodyLarge),
+            ],
+            if (alert.outcome != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text('Closed: ${_outcomeWord(alert.outcome!)}', style: theme.textTheme.bodyLarge),
+              if (alert.outcomeNote != null) ...<Widget>[
+                const SizedBox(height: MzaziSpace.s4),
+                // What the person who closed it actually wrote. For an "other" outcome
+                // this is the only record of what happened, so it is shown.
+                Text('"${alert.outcomeNote}"', style: theme.textTheme.bodyMedium),
+              ],
+            ] else if (!alert.state.isOpen) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s4),
+              Text('Emergency closed. Nothing more to do.', style: theme.textTheme.bodyLarge),
+            ],
           ],
-        ],
+        ),
       ],
     );
   }
@@ -824,11 +908,9 @@ class _WhatHappened extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final List<TimelineEntry> shown = entries.where(_isWorthShowing).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return GroupCard(
+      top: 0,
       children: <Widget>[
-        const SectionLabel('What happened'),
-        const SizedBox(height: MzaziSpace.s16),
         if (shown.isEmpty)
           Text('Nothing recorded yet.', style: theme.textTheme.bodyMedium)
         else
@@ -995,138 +1077,35 @@ class _Chain extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return GroupCard(
+      top: 0,
       children: <Widget>[
-        const SectionLabel("Who we're asking"),
         if (members.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: MzaziSpace.s16),
-            child: Text('No one is set up to help yet.', style: theme.textTheme.bodyMedium),
-          )
+          Text('No one is set up to help yet.', style: theme.textTheme.bodyMedium)
         else
-          for (final ChainMember member in members) ...<Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: <Widget>[
-                  SizedBox(
-                    width: MzaziSpace.s32,
-                    child: Text(
-                      '${member.priorityOrder}',
-                      style: theme.textTheme.titleLarge?.figures,
-                      semanticsLabel: 'Group ${member.priorityOrder}',
-                    ),
-                  ),
-                  Expanded(child: Text(member.name, style: theme.textTheme.bodyLarge)),
-                  if (member.priorityOrder == currentTier)
-                    Text(
-                      'Asking now',
-                      style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
-                    ),
-                ],
-              ),
-            ),
-            const Divider(),
-          ],
-      ],
-    );
-  }
-}
-
-/// Community volunteers asked about this emergency, and the one going.
-///
-/// Said as going beside the chain, never as having taken it on: the buttons below are
-/// still the circle's to press, whoever else is on the way.
-class _Volunteer extends StatelessWidget {
-  const _Volunteer({
-    required this.volunteer,
-    required this.elderFirst,
-    required this.open,
-    this.canOpen,
-    this.openLink,
-  });
-
-  final VolunteerOnAlert volunteer;
-  final String elderFirst;
-  final bool open;
-  final CanOpen? canOpen;
-  final Open? openLink;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final String? name = volunteer.name;
-    final String? phone = volunteer.phone;
-    final int? metres = volunteer.distanceMetres;
-
-    final String line = volunteer.going && name != null
-        ? volunteer.hasArrived
-              ? '$name, a checked volunteer, is with $elderFirst.'
-              : '$name, a checked volunteer${metres == null ? '' : ' ${howFarAway(metres, byRoad: volunteer.byRoad)}'}, is on the way.'
-        : volunteer.asked == 0
-        ? 'No volunteers free nearby.'
-        : open
-        ? 'Asked ${volunteer.asked} ${volunteer.asked == 1 ? 'volunteer' : 'volunteers'} nearby. No answer yet.'
-        : 'Asked ${volunteer.asked} ${volunteer.asked == 1 ? 'volunteer' : 'volunteers'} nearby.';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const SectionLabel('Community volunteers'),
-        const SizedBox(height: MzaziSpace.s12),
-        Text(line, style: theme.textTheme.bodyLarge),
-        if (open && volunteer.going && name != null && phone != null) ...<Widget>[
-          const SizedBox(height: MzaziSpace.s12),
-          SizedBox(
-            width: double.infinity,
-            child: CallButton(
-              name: name.split(' ').first,
-              phone: phone,
-              canOpen: canOpen,
-              open: openLink,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// The emergency services asked, as a list: each station, whether it is asked, cannot
-/// come or is coming, and roughly how far it is.
-///
-/// The time is the station's own distance by road. The unit may be out on a call
-/// somewhere else, so it is said as an estimate and as "from the station".
-class _Stations extends StatelessWidget {
-  const _Stations({required this.stations});
-
-  final List<StationOnAlert> stations;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const SectionLabel('Emergency services'),
-        const SizedBox(height: MzaziSpace.s4),
-        for (final (int index, StationOnAlert station) in stations.indexed) ...<Widget>[
-          if (index > 0) const Divider(),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          for (final (int index, ChainMember member) in members.indexed) ...<Widget>[
+            if (index > 0) const Divider(height: MzaziSpace.s24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: <Widget>[
-                Text(station.name, style: theme.textTheme.titleMedium),
-                const SizedBox(height: MzaziSpace.s4),
-                Text(stationLine(station), style: theme.textTheme.bodyMedium),
+                SizedBox(
+                  width: MzaziSpace.s32,
+                  child: Text(
+                    '${member.priorityOrder}',
+                    style: theme.textTheme.titleLarge?.figures,
+                    semanticsLabel: 'Group ${member.priorityOrder}',
+                  ),
+                ),
+                Expanded(child: Text(member.name, style: theme.textTheme.bodyLarge)),
+                if (member.priorityOrder == currentTier)
+                  Text(
+                    'Asking now',
+                    style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error),
+                  ),
               ],
             ),
-          ),
-        ],
+          ],
       ],
     );
   }
@@ -1144,73 +1123,6 @@ String stationLine(StationOnAlert station) {
   final String away = timeAway(eta);
   final String how = station.byRoad ? ' by road' : '';
   return '$status ${away[0].toUpperCase()}${away.substring(1)} away$how, from the station.';
-}
-
-/// Who is on their way, and how long until they arrive.
-///
-/// For the person who took it on: sharing their own way there. For everybody else in
-/// the circle: each person on their way and the time left, the one who took it on and
-/// the volunteer alike. Where they are is on the map, under Where. Nothing once nobody
-/// is on their way.
-class _OnTheWay extends StatelessWidget {
-  const _OnTheWay({
-    required this.controller,
-    required this.alert,
-    this.journeys = const <Journey>[],
-    this.volunteerName,
-  });
-
-  final AlertDetailController controller;
-  final AlertSummary alert;
-  final List<Journey> journeys;
-  final String? volunteerName;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!alert.state.isOpen) return const SizedBox.shrink();
-
-    final List<Widget> children = <Widget>[];
-    final WayThere? way = controller.wayThere;
-    if (controller.isMine && alert.arrivedAt == null && way != null) {
-      Journey? mine;
-      for (final Journey journey in journeys) {
-        if (journey.traveller == Traveller.owner) mine = journey;
-      }
-      children.add(
-        ShareWayPanel(
-          way: way,
-          eventId: alert.eventId,
-          elderFirst: alert.elderName.split(' ').first,
-          journey: mine,
-        ),
-      );
-    }
-
-    for (final Journey journey in journeys) {
-      // Their own way there is in the panel above.
-      if (controller.isMine && journey.traveller == Traveller.owner) continue;
-      final String? name = journey.traveller == Traveller.owner ? alert.ownerName : volunteerName;
-      if (name == null) continue;
-      if (children.isNotEmpty) children.add(const SizedBox(height: MzaziSpace.s16));
-      children.add(_Travelling(name: name.split(' ').first, journey: journey));
-    }
-
-    if (children.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: MzaziSpace.s24),
-      child: Semantics(
-        liveRegion: true,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            const SectionLabel('On the way'),
-            const SizedBox(height: MzaziSpace.s12),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// One person on their way: "Peter is about 9 minutes away", and how that was measured.
@@ -1396,123 +1308,191 @@ class _Step extends StatelessWidget {
   }
 }
 
-/// What the elder said after pressing help, in their own words and, when they spoke
-/// another language, in English under it. Newest first: the latest is what is true now.
-class _Said extends StatelessWidget {
-  const _Said({required this.speech, required this.elderName});
+/// Who is coming and who has been asked: each person on their way and how long, the
+/// emergency services and the volunteers asked, one line each, and talking to the elder.
+/// For the person who took it on, sharing their own way there comes first.
+class _Now extends StatelessWidget {
+  const _Now({
+    required this.controller,
+    required this.alert,
+    required this.detail,
+    this.canOpen,
+    this.open,
+  });
 
-  final List<SpeechHeard> speech;
-  final String elderName;
+  final AlertDetailController controller;
+  final AlertSummary alert;
+  final AlertDetail? detail;
+  final CanOpen? canOpen;
+  final Open? open;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<SpeechHeard> said = speech
-        .where((SpeechHeard s) => s.transcript.isNotEmpty)
-        .toList()
-        .reversed
-        .toList();
-    if (said.isEmpty) return const SizedBox.shrink();
+    final String first = firstNameOf(alert.elderName);
+    final List<Widget> parts = <Widget>[];
+    void add(Widget part) {
+      if (parts.isNotEmpty) parts.add(const Divider(height: MzaziSpace.s24));
+      parts.add(part);
+    }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: MzaziSpace.s24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          SectionLabel('What ${firstNameOf(elderName)} said'),
-          for (final (int index, SpeechHeard heard) in said.indexed) ...<Widget>[
-            if (index > 0)
-              const Divider(height: MzaziSpace.s24)
-            else
-              const SizedBox(height: MzaziSpace.s8),
-            Text('\u201c${heard.transcript}\u201d', style: theme.textTheme.bodyLarge),
-            if (heard.english case final String english) ...<Widget>[
-              const SizedBox(height: MzaziSpace.s4),
-              Text('In English: $english', style: theme.textTheme.bodyMedium),
+    final List<Journey> journeys = detail?.journeys ?? const <Journey>[];
+    final WayThere? way = controller.wayThere;
+    if (controller.isMine && alert.arrivedAt == null && way != null) {
+      Journey? mine;
+      for (final Journey journey in journeys) {
+        if (journey.traveller == Traveller.owner) mine = journey;
+      }
+      add(ShareWayPanel(way: way, eventId: alert.eventId, elderFirst: first, journey: mine));
+    }
+    for (final Journey journey in journeys) {
+      // Their own way there is in the panel above.
+      if (controller.isMine && journey.traveller == Traveller.owner) continue;
+      final String? name = journey.traveller == Traveller.owner
+          ? alert.ownerName
+          : detail?.volunteer?.name;
+      if (name == null) continue;
+      add(_Travelling(name: firstNameOf(name), journey: journey));
+    }
+
+    for (final StationOnAlert station in detail?.stations ?? const <StationOnAlert>[]) {
+      add(
+        _Line(
+          icon: station.service == null ? Icons.emergency : serviceIcon(station.service!),
+          title: station.name,
+          detail: stationLine(station),
+        ),
+      );
+    }
+
+    final VolunteerOnAlert? volunteer = detail?.volunteer;
+    if (volunteer != null) {
+      final String? name = volunteer.name;
+      final String? phone = volunteer.phone;
+      final int? metres = volunteer.distanceMetres;
+      final String line = volunteer.going && name != null
+          ? volunteer.hasArrived
+                ? '$name, a checked volunteer, is with $first.'
+                : '$name, a checked volunteer${metres == null ? '' : ' ${howFarAway(metres, byRoad: volunteer.byRoad)}'}, is on the way.'
+          : volunteer.asked == 0
+          ? 'No volunteers free nearby.'
+          : 'Asked ${volunteer.asked} ${volunteer.asked == 1 ? 'volunteer' : 'volunteers'} nearby. No answer yet.';
+      add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _Line(icon: Icons.volunteer_activism_outlined, title: 'Volunteers', detail: line),
+            if (volunteer.going && name != null && phone != null) ...<Widget>[
+              const SizedBox(height: MzaziSpace.s12),
+              CallButton(name: firstNameOf(name), phone: phone, canOpen: canOpen, open: open),
             ],
-            const SizedBox(height: MzaziSpace.s4),
-            Text(
-              heard.heardType == null
-                  ? _time(heard.at)
-                  : '${_time(heard.at)} · Heard: ${heard.heardType!.label.toLowerCase()}',
-              style: theme.textTheme.bodySmall,
-            ),
           ],
-        ],
-      ),
+        ),
+      );
+    }
+
+    if (controller.canTalk) {
+      add(_Talk(controller: controller, alert: alert, startedBy: detail?.voice.startedBy));
+    } else if (controller.talkIsOff) {
+      // Said plainly, so nobody looks for a button that is not there.
+      add(
+        Text("Calls through the app aren't available right now.", style: theme.textTheme.bodySmall),
+      );
+    }
+
+    if (parts.isEmpty) return const SizedBox.shrink();
+    return Semantics(
+      liveRegion: true,
+      child: GroupCard(title: 'Now', children: parts),
     );
   }
-
-  static String _time(DateTime at) => '${at.hour}:${at.minute.toString().padLeft(2, '0')}';
 }
 
-/// The elder's medical details on the alert: anything that makes this emergency more
-/// serious first, with why, and the service to ask because of it; then the facts an
-/// ambulance asks for; the rest folded away. Never in red: it informs, and the one button
-/// it may offer is the amber of calling somebody in.
-class _Medical extends StatefulWidget {
-  const _Medical({required this.controller, required this.medical, required this.elderName});
+/// One thing in a group: an icon, its name, and a line about it.
+class _Line extends StatelessWidget {
+  const _Line({required this.icon, required this.title, required this.detail});
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon),
+        const SizedBox(width: MzaziSpace.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: theme.textTheme.titleMedium),
+              const SizedBox(height: MzaziSpace.s4),
+              Text(detail, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the elder said after pressing help, in their own words and, when they spoke
+/// another language, in English under it. The latest on the page; every one on a page
+/// of its own.
+class _Said extends StatelessWidget {
+  const _Said({required this.heard, required this.first, this.titled = true});
+
+  final SpeechHeard heard;
+  final String first;
+  final bool titled;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String time = '${heard.at.hour}:${heard.at.minute.toString().padLeft(2, '0')}';
+    return GroupCard(
+      title: titled ? 'What $first said' : null,
+      top: titled ? MzaziSpace.s24 : MzaziSpace.s12,
+      children: <Widget>[
+        Text('\u201c${heard.transcript}\u201d', style: theme.textTheme.bodyLarge),
+        if (heard.english case final String english) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s4),
+          Text('In English: $english', style: theme.textTheme.bodyMedium),
+        ],
+        const SizedBox(height: MzaziSpace.s4),
+        Text(
+          heard.heardType == null ? time : '$time · Heard: ${heard.heardType!.label.toLowerCase()}',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+/// When the elder's history makes this emergency more serious than it looks: said near
+/// the top, on the amber of an emergency waiting on a person, with why and the service to
+/// ask. Never red: it informs, and a helper decides.
+class _MedicalWarning extends StatelessWidget {
+  const _MedicalWarning({required this.controller, required this.medical, required this.first});
 
   final AlertDetailController controller;
   final AlertMedical medical;
-  final String elderName;
-
-  @override
-  State<_Medical> createState() => _MedicalState();
-}
-
-class _MedicalState extends State<_Medical> {
-  bool _all = false;
-
-  String get _first => firstNameOf(widget.elderName);
+  final String first;
 
   @override
   Widget build(BuildContext context) {
-    final AlertMedical medical = widget.medical;
-    final ThemeData theme = Theme.of(context);
-    final String? line = switch (medical.status) {
-      AlertMedicalStatus.none => 'No medical details saved.',
-      AlertMedicalStatus.notShared => "$_first hasn't agreed to share medical details.",
-      AlertMedicalStatus.notAsked => "You'll see medical details once we ask you to help.",
-      _ => null,
-    };
-    if (medical.status != AlertMedicalStatus.shown && line == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: MzaziSpace.s24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          const SectionLabel('Medical details'),
-          const SizedBox(height: MzaziSpace.s8),
-          if (line != null)
-            Text(line, style: theme.textTheme.bodyLarge)
-          else
-            ..._shown(context, medical, medical.details ?? MedicalDetails.empty),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _shown(BuildContext context, AlertMedical medical, MedicalDetails details) {
     final ThemeData theme = Theme.of(context);
     final bool dark = theme.brightness == Brightness.dark;
+    final Color wash = dark ? MzaziColorsDark.callBg : MzaziColorsLight.callBg;
     final Color amber = dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg;
-    final List<MedicalHighlight> why = medical.highlights
-        .where((MedicalHighlight h) => h.why != null)
-        .toList();
-    final List<String> also = medical.highlights
-        .where((MedicalHighlight h) => h.why == null)
-        .map((MedicalHighlight h) => h.label)
-        .toList();
-    final String? facts = ageAndBlood(medical.age, details.bloodType);
-    final ResponderService? askFor = widget.controller.medicalAskFor;
-    final bool busy = widget.controller.isWorking;
+    final ResponderService? askFor = controller.medicalAskFor;
 
-    return <Widget>[
-      if (medical.serious) ...<Widget>[
+    return GroupCard(
+      colour: wash,
+      children: <Widget>[
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -1520,106 +1500,198 @@ class _MedicalState extends State<_Medical> {
             const SizedBox(width: MzaziSpace.s8),
             Expanded(
               child: Text(
-                "$_first's health makes this more serious.",
+                "$first's health makes this more serious.",
                 style: theme.textTheme.titleMedium,
               ),
             ),
           ],
         ),
-        const SizedBox(height: MzaziSpace.s8),
-      ],
-      if (facts != null) Text(facts, style: theme.textTheme.bodyLarge?.figures),
-      for (final MedicalHighlight item in why) ...<Widget>[
-        const Divider(height: MzaziSpace.s24),
-        Text(item.label, style: theme.textTheme.titleMedium),
-        const SizedBox(height: MzaziSpace.s4),
-        Text(item.why!, style: theme.textTheme.bodyMedium),
-      ],
-      if (also.isNotEmpty) ...<Widget>[
-        const Divider(height: MzaziSpace.s24),
-        Text('Also: ${also.join(', ')}.', style: theme.textTheme.bodyMedium),
-      ],
-      if (details.allergies case final String allergies) ...<Widget>[
-        const Divider(height: MzaziSpace.s24),
-        Text('Allergies', style: theme.textTheme.titleMedium),
-        const SizedBox(height: MzaziSpace.s4),
-        Text(allergies, style: theme.textTheme.bodyMedium),
-      ],
-      if (askFor != null) ...<Widget>[
-        const SizedBox(height: MzaziSpace.s16),
-        FilledButton.icon(
-          style: CallStyle.strong(context),
-          onPressed: busy ? null : () => unawaited(widget.controller.requestResponder(askFor)),
-          icon: Icon(serviceIcon(askFor)),
-          label: Text(askFor.ask),
-        ),
-      ],
-      if (_hasMore(details)) ...<Widget>[
-        const SizedBox(height: MzaziSpace.s8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            // In ink: the brand red is kept for what needs a person.
-            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.onSurface),
-            onPressed: () => setState(() => _all = !_all),
-            icon: AnimatedRotation(
-              turns: _all ? 0.25 : 0,
-              duration: MzaziMotion.quick,
-              child: const Icon(Icons.chevron_right),
-            ),
-            label: Text(_all ? 'Fewer medical details' : 'All medical details'),
-          ),
-        ),
-        if (_all) ..._more(context, details),
-      ],
-      const SizedBox(height: MzaziSpace.s8),
-      Text('$_first can see that you looked.', style: theme.textTheme.bodySmall),
-    ];
-  }
-
-  static bool _hasMore(MedicalDetails d) =>
-      d.medications != null ||
-      d.conditions != null ||
-      d.languages != null ||
-      d.doctorName != null ||
-      d.doctorPhone != null ||
-      d.hospital != null ||
-      d.notes != null;
-
-  List<Widget> _more(BuildContext context, MedicalDetails details) {
-    final ThemeData theme = Theme.of(context);
-    Widget fact(String label, String value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: MzaziSpace.s8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 2),
-          Text(value, style: theme.textTheme.bodyLarge),
+        for (final MedicalHighlight item in medical.highlights.where(
+          (MedicalHighlight h) => h.serious,
+        )) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s12),
+          Text(item.label, style: theme.textTheme.titleSmall),
+          if (item.why case final String why) Text(why, style: theme.textTheme.bodyMedium),
         ],
-      ),
-    );
-
-    return <Widget>[
-      if (details.medications case final String text) fact('Medicines', text),
-      if (details.conditions case final String text) fact('Other conditions', text),
-      if (details.languages case final String text) fact('Speaks', text),
-      if (details.doctorName case final String text) fact('Doctor', text),
-      if (details.hospital case final String text) fact('Their hospital', text),
-      if (details.notes case final String text) fact('Notes', text),
-      if (details.doctorPhone case final String phone) ...<Widget>[
-        const SizedBox(height: MzaziSpace.s8),
-        // Named in full: "Call Dr." is what a first name makes of a title.
-        OutlinedButton.icon(
-          style: CallStyle.soft(context),
-          onPressed: () => unawaited(
-            CallButton.dial(context, name: details.doctorName ?? 'their doctor', phone: phone),
+        if (askFor != null) ...<Widget>[
+          const SizedBox(height: MzaziSpace.s16),
+          FilledButton.icon(
+            style: CallStyle.strong(context),
+            onPressed: controller.isWorking
+                ? null
+                : () => unawaited(controller.requestResponder(askFor)),
+            icon: Icon(serviceIcon(askFor)),
+            label: Text(askFor.ask),
           ),
-          icon: const Icon(Icons.phone),
-          label: Text('Call ${details.doctorName ?? 'their doctor'}'),
+        ],
+      ],
+    );
+  }
+}
+
+/// The medical details, briefly: age and blood type, what else matters for this
+/// emergency, allergies; the whole record a tap away. Or why there is none to show.
+class _MedicalSummary extends StatelessWidget {
+  const _MedicalSummary({required this.medical, required this.first, required this.onAll});
+
+  final AlertMedical medical;
+  final String first;
+  final VoidCallback onAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String? line = switch (medical.status) {
+      AlertMedicalStatus.none => 'No medical details saved.',
+      AlertMedicalStatus.notShared => "$first hasn't agreed to share medical details.",
+      AlertMedicalStatus.notAsked => "You'll see medical details once we ask you to help.",
+      _ => null,
+    };
+    if (medical.status != AlertMedicalStatus.shown) {
+      if (line == null) return const SizedBox.shrink();
+      return GroupCard(
+        title: 'Medical details',
+        children: <Widget>[Text(line, style: theme.textTheme.bodyLarge)],
+      );
+    }
+
+    final MedicalDetails details = medical.details ?? MedicalDetails.empty;
+    final String? facts = ageAndBlood(medical.age, details.bloodType);
+    // The serious ones are in the warning above.
+    final List<MedicalHighlight> why = medical.highlights
+        .where((MedicalHighlight h) => h.why != null && !h.serious)
+        .toList();
+    final List<String> also = medical.highlights
+        .where((MedicalHighlight h) => h.why == null)
+        .map((MedicalHighlight h) => h.label)
+        .toList();
+    final List<Widget> parts = <Widget>[
+      if (facts != null) Text(facts, style: theme.textTheme.bodyLarge?.figures),
+      for (final MedicalHighlight item in why)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(item.label, style: theme.textTheme.titleSmall),
+            Text(item.why!, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      if (also.isNotEmpty) Text('Also: ${also.join(', ')}.', style: theme.textTheme.bodyMedium),
+      if (details.allergies case final String allergies)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('Allergies', style: theme.textTheme.titleSmall),
+            Text(allergies, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+    ];
+
+    return GroupCard(
+      title: 'Medical details',
+      footer: '$first can see that you looked.',
+      children: <Widget>[
+        for (final (int index, Widget part) in parts.indexed) ...<Widget>[
+          if (index > 0) const Divider(height: MzaziSpace.s24),
+          part,
+        ],
+        if (parts.isNotEmpty) const SizedBox(height: MzaziSpace.s16),
+        OutlinedButton.icon(
+          onPressed: onAll,
+          icon: const Icon(Icons.medical_information_outlined),
+          label: const Text('All medical details'),
         ),
       ],
-    ];
+    );
+  }
+}
+
+/// The whole medical record, on its own page: what each tick means here, medicines and
+/// allergies, their doctor to call, and anything else to know.
+class _MedicalRecord extends StatelessWidget {
+  const _MedicalRecord({required this.medical, required this.elderName});
+
+  final AlertMedical medical;
+  final String elderName;
+
+  @override
+  Widget build(BuildContext context) {
+    final MedicalDetails details = medical.details ?? MedicalDetails.empty;
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color amber = dark ? MzaziColorsDark.callFg : MzaziColorsLight.callFg;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        ProfileHeader(
+          name: elderName,
+          subtitle: ageAndBlood(medical.age, details.bloodType) ?? 'Age and blood type not added',
+        ),
+        if (medical.highlights.isNotEmpty || details.conditions != null)
+          SettingsSection(
+            title: 'Conditions and needs',
+            children: <Widget>[
+              for (final MedicalHighlight item in medical.highlights)
+                SettingsRow(
+                  icon: medicalFlagIcon(item.flag),
+                  title: item.label,
+                  subtitle: item.why,
+                  chevron: false,
+                ),
+              if (details.conditions case final String text)
+                SettingsFact(icon: Icons.notes, label: 'Other conditions', value: text),
+            ],
+          ),
+        if (details.medications != null || details.allergies != null)
+          SettingsSection(
+            title: 'Medicines and allergies',
+            children: <Widget>[
+              if (details.medications case final String text)
+                SettingsFact(icon: Icons.medication_outlined, label: 'Medicines', value: text),
+              if (details.allergies case final String text)
+                SettingsFact(icon: Icons.error_outline, label: 'Allergies', value: text),
+            ],
+          ),
+        if (details.doctorName != null || details.doctorPhone != null || details.hospital != null)
+          SettingsSection(
+            title: 'Doctor',
+            children: <Widget>[
+              if (details.doctorName case final String name)
+                SettingsFact(icon: Icons.person_outline, label: 'Doctor', value: name),
+              if (details.doctorPhone case final String phone)
+                SettingsRow(
+                  icon: Icons.phone,
+                  iconColour: amber,
+                  chevron: false,
+                  title: 'Call ${details.doctorName ?? 'their doctor'}',
+                  subtitle: phone,
+                  onTap: () => unawaited(
+                    CallButton.dial(
+                      context,
+                      name: details.doctorName ?? 'their doctor',
+                      phone: phone,
+                    ),
+                  ),
+                ),
+              if (details.hospital case final String hospital)
+                SettingsFact(
+                  icon: Icons.local_hospital_outlined,
+                  label: 'Their hospital',
+                  value: hospital,
+                ),
+            ],
+          ),
+        if (details.languages != null || details.notes != null)
+          SettingsSection(
+            title: 'Good to know',
+            footer: '${firstNameOf(elderName)} can see that you looked.',
+            children: <Widget>[
+              if (details.languages case final String text)
+                SettingsFact(icon: Icons.translate, label: 'Speaks', value: text),
+              if (details.notes case final String text)
+                SettingsFact(icon: Icons.info_outline, label: 'Notes', value: text),
+            ],
+          ),
+      ],
+    );
   }
 }
 
