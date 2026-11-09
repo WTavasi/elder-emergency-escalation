@@ -1,0 +1,352 @@
+{
+  "id": "TC-07",
+  "title": "Submit a supported inbound SMS response",
+  "startedAt": "2026-11-09T15:10:00.904Z",
+  "steps": [
+    {
+      "at": "2026-11-09T15:10:00.972Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 23,
+        "response": {
+          "id": "3db41bc1-d4f5-47da-bb9d-d9bee5dc38a9",
+          "elderlyId": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 0,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 0,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:00.950Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:00.973Z",
+      "text": "Peter replies by text, in Swahili: \"Nakuja dakika kumi\" (I'm coming, ten minutes)."
+    },
+    {
+      "at": "2026-11-09T15:10:00.993Z",
+      "text": "POST /sms/inbound?token=<secret>",
+      "data": {
+        "request": {
+          "from": "+254700000021",
+          "text": "Nakuja dakika kumi",
+          "to": "12345",
+          "date": "2026-11-09T15:10:00.973Z",
+          "id": "systest-1"
+        },
+        "status": 200,
+        "ms": 20,
+        "response": {
+          "received": true
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:01.006Z",
+      "text": "POST /alerts/3db41bc1-d4f5-47da-bb9d-d9bee5dc38a9/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "System test clean-up."
+        },
+        "status": 200,
+        "ms": 9,
+        "response": {
+          "id": "3db41bc1-d4f5-47da-bb9d-d9bee5dc38a9",
+          "elderlyId": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+          "acknowledgedBy": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "RESOLVED",
+          "currentTier": 1,
+          "outcome": "HANDLED_AT_HOME",
+          "outcomeNote": "System test clean-up.",
+          "severity": "STANDARD",
+          "severityScore": 0,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 0,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:00.950Z",
+          "acknowledgedAt": "2026-11-09T15:10:00.983Z",
+          "ownerExpectedAt": "2026-11-09T15:20:00.983Z",
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T15:10:01.000Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "The inbound SMS endpoint is configured (SMS_INBOUND_TOKEN set)",
+      "passed": true,
+      "observed": "set"
+    },
+    {
+      "description": "Peter was asked about Hannah's alert",
+      "passed": true,
+      "observed": 1
+    },
+    {
+      "description": "The gateway call was accepted: 200",
+      "passed": true,
+      "observed": 200
+    },
+    {
+      "description": "The reply was read as \"coming\": the alert is acknowledged by Peter",
+      "passed": true,
+      "observed": "ACKNOWLEDGED"
+    },
+    {
+      "description": "The audit entry says it came by SMS",
+      "passed": true,
+      "observed": {
+        "via": "sms",
+        "tier": 1,
+        "etaMinutes": 10,
+        "locationCaptured": false,
+        "secondsFromTrigger": 0
+      }
+    },
+    {
+      "description": "The ten minutes were understood",
+      "passed": true,
+      "observed": {
+        "via": "sms",
+        "tier": 1,
+        "etaMinutes": 10,
+        "locationCaptured": false,
+        "secondsFromTrigger": 0
+      }
+    }
+  ],
+  "snapshots": {
+    "notifications": [
+      {
+        "recipientId": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+        "channel": "PUSH",
+        "status": "QUEUED",
+        "tier": 1,
+        "createdAt": "2026-11-09T15:10:00.964Z",
+        "sentAt": null,
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": null,
+        "failureReason": null
+      }
+    ],
+    "event": {
+      "id": "3db41bc1-d4f5-47da-bb9d-d9bee5dc38a9",
+      "state": "ACKNOWLEDGED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 0,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 0,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 0,
+            "detail": "independent",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "18:10 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T15:10:00.950Z",
+      "acknowledgedAt": "2026-11-09T15:10:00.983Z",
+      "acknowledgedBy": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+      "resolvedAt": null,
+      "currentTierDeadlineAt": null,
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "acknowledgedEntry": {
+      "action": "ACKNOWLEDGED",
+      "previousState": "NOTIFIED",
+      "newState": "ACKNOWLEDGED",
+      "actorId": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+      "detail": {
+        "via": "sms",
+        "tier": 1,
+        "etaMinutes": 10,
+        "locationCaptured": false,
+        "secondsFromTrigger": 0
+      },
+      "occurredAt": "2026-11-09T15:10:00.983Z"
+    }
+  },
+  "finishedAt": "2026-11-09T15:10:01.006Z",
+  "verdict": "Pass"
+}

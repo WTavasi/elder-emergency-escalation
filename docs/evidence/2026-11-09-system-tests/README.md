@@ -1,5 +1,8 @@
 # System tests TC-01 to TC-12: results and evidence
 
+> Superseded by the rerun in `../2026-11-09-system-tests-rerun/`, made after the policy editor
+> was built, in which all twelve pass. This run is kept as the record of TC-10 failing before it.
+
 Run on 9 November 2026, 13:46 to 13:48 UTC (16:46 to 16:48 in Nairobi), against commit
 `bfac3d2`. Eleven tests passed and one failed (TC-10, because the administrator editor for
 rules and weights is not built).

@@ -811,55 +811,282 @@ async function tests() {
   });
 
   await run('TC-10', 'Modify an authorised system configuration', async (r) => {
+    // The requirement: an administrator's change is validated, saved and made available to
+    // the process that uses it. Every change goes through the API as the console makes it.
     const admin = await signIn('admin');
-    r.step(
-      'Looking for an administrator interface to change the escalation rules or severity weights (issue #60, FR-15).',
+    const adminId = await idOf('admin');
+    const before = await call(r, 'GET', '/admin/policy', { token: admin });
+    r.check('The administrator can read the policy: 200', before.status === 200, before.status);
+    const elevated1 = before.body.escalationRules.find(
+      (x) => x.severity === 'ELEVATED' && x.tier === 1,
     );
-    const candidates = [
-      ['GET', '/admin/escalation-rules'],
-      ['PUT', '/admin/escalation-rules'],
-      ['GET', '/admin/severity-factors'],
-      ['PATCH', '/admin/severity-factors/care_level'],
-      ['GET', '/dashboard/policy'],
-    ];
-    const found = {};
-    for (const [method, path] of candidates) {
-      const res = await call(r, method, path, {
+    const standard1 = before.body.escalationRules.find(
+      (x) => x.severity === 'STANDARD' && x.tier === 1,
+    );
+    const careLevel = before.body.severityFactors.find((f) => f.key === 'care_level');
+    const bands = before.body.bands;
+    r.snapshot('policyBefore', {
+      standardTier1: standard1,
+      careLevel,
+      bands,
+      maxScore: before.body.maxScore,
+    });
+    const changesBefore = await prisma.policyChange.count();
+
+    // 1. Validated: changes that would break the system are refused, and nothing is saved.
+    const refused = {
+      'last tier given a time limit': await call(
+        r,
+        'PATCH',
+        '/admin/policy/escalation-rules/STANDARD/3',
+        { token: admin, body: { timeoutSeconds: 60 } },
+      ),
+      'a tier left without a time limit': await call(
+        r,
+        'PATCH',
+        '/admin/policy/escalation-rules/STANDARD/1',
+        { token: admin, body: { timeoutSeconds: null } },
+      ),
+      'a time limit of 5 s, below the 15 s floor': await call(
+        r,
+        'PATCH',
+        '/admin/policy/escalation-rules/STANDARD/1',
+        { token: admin, body: { timeoutSeconds: 5 } },
+      ),
+      'tier 1 asked alongside a tier before it': await call(
+        r,
+        'PATCH',
+        '/admin/policy/escalation-rules/STANDARD/1',
+        { token: admin, body: { dispatchMode: 'PARALLEL' } },
+      ),
+      'High starting above Critical': await call(r, 'PUT', '/admin/policy/bands', {
         token: admin,
-        body: method === 'GET' ? undefined : { weight: 31 },
-      });
-      found[`${method} ${path}`] = res.status;
-    }
-    r.snapshot('endpointStatuses', found);
+        body: { elevatedFrom: 70, criticalFrom: 40 },
+      }),
+      'Critical above the highest possible score': await call(r, 'PUT', '/admin/policy/bands', {
+        token: admin,
+        body: { elevatedFrom: 35, criticalFrom: 101 },
+      }),
+      'a weight of 150': await call(r, 'PATCH', '/admin/policy/severity-factors/care_level', {
+        token: admin,
+        body: { weight: 150 },
+      }),
+      'a factor this version cannot measure': await call(
+        r,
+        'PATCH',
+        '/admin/policy/severity-factors/phase_of_the_moon',
+        { token: admin, body: { weight: 5 } },
+      ),
+    };
+    const refusedStatuses = Object.fromEntries(
+      Object.entries(refused).map(([k, v]) => [
+        k,
+        `${v.status} ${Array.isArray(v.body?.message) ? v.body.message.join('; ') : (v.body?.message ?? '')}`,
+      ]),
+    );
+    r.snapshot('refusedChanges', refusedStatuses);
     r.check(
-      'An administrator can change the escalation rules or severity weights through the system',
-      Object.entries(found).some(([k, s]) => !k.startsWith('GET') && s >= 200 && s < 300),
-      found,
+      'Every invalid change is refused with a reason (400 or 404)',
+      Object.values(refused).every((x) => x.status === 400 || x.status === 404),
+      refusedStatuses,
     );
-    // Supporting observation: the weights are data the scoring process reads on every alert.
-    r.step(
-      'Supporting observation only: does the scoring process read the stored weights live? Changed care_level 30 → 31 directly in the database, raised an alert, then put it back.',
+    const caregiver = await call(r, 'PATCH', '/admin/policy/escalation-rules/STANDARD/1', {
+      token: await signIn('mary'),
+      body: { timeoutSeconds: 15 },
+    });
+    const anonymous = await call(r, 'GET', '/admin/policy');
+    r.check(
+      'Only an administrator may change it: a caregiver gets 403, nobody signed in 401',
+      caregiver.status === 403 && anonymous.status === 401,
+      { caregiver: caregiver.status, anonymous: anonymous.status },
     );
-    await prisma.severityFactor.update({ where: { key: 'care_level' }, data: { weight: 31 } });
-    let observed;
-    try {
-      const created = await raise(r, 'grace', {}).catch(() => null);
-      // Grace already has an open alert, so use the first elder free at this point.
-      const alt = created?.status === 201 ? created : await raise(r, 'esther', {});
-      const row = await eventRow(alt.id);
-      observed = row.severityFactors?.factors?.find((f) => f.key === 'care_level');
-      r.snapshot('liveWeightObservation', observed);
-      const elder = created?.status === 201 ? 'grace' : 'esther';
-      const by = elder === 'grace' ? 'mary' : 'mary';
-      // Withdrawn by the elder inside the cancel window, as a mistaken press would be.
-      await call(r, 'POST', `/alerts/${alt.id}/cancel`, { token: await signIn(elder), body: {} });
-      void by;
-    } finally {
-      await prisma.severityFactor.update({ where: { key: 'care_level' }, data: { weight: 30 } });
-    }
+    const unchanged = await prisma.escalationRule.findFirst({
+      where: { severity: 'STANDARD', tierOrder: 1 },
+    });
+    r.check(
+      'Nothing was saved by the refused changes',
+      (await prisma.policyChange.count()) === changesBefore &&
+        unchanged.timeoutSeconds === standard1.timeoutSeconds &&
+        unchanged.dispatchMode === standard1.dispatchMode,
+      {
+        changesRecorded: (await prisma.policyChange.count()) - changesBefore,
+        standardTier1Timeout: unchanged.timeoutSeconds,
+      },
+    );
+
+    // 2. Saved: a valid change to each kind of setting, recorded with who and what it was.
+    const NEW_TIMEOUT = 15;
+    const NEW_WEIGHT = 50;
+    const NEW_BANDS = { elevatedFrom: 25, criticalFrom: 60 };
+    const rule = await call(r, 'PATCH', '/admin/policy/escalation-rules/STANDARD/1', {
+      token: admin,
+      body: { timeoutSeconds: NEW_TIMEOUT },
+    });
+    // High too: an alert promoted to High part way through keeps the same window.
+    const ruleHigh = await call(r, 'PATCH', '/admin/policy/escalation-rules/ELEVATED/1', {
+      token: admin,
+      body: { timeoutSeconds: NEW_TIMEOUT },
+    });
+    const weight = await call(r, 'PATCH', '/admin/policy/severity-factors/care_level', {
+      token: admin,
+      body: { weight: NEW_WEIGHT },
+    });
+    const band = await call(r, 'PUT', '/admin/policy/bands', { token: admin, body: NEW_BANDS });
+    r.check(
+      'Each valid change is accepted: 200, and the answer shows the new value',
+      rule.status === 200 &&
+        ruleHigh.status === 200 &&
+        weight.status === 200 &&
+        band.status === 200 &&
+        band.body.escalationRules.find((x) => x.severity === 'STANDARD' && x.tier === 1)
+          .timeoutSeconds === NEW_TIMEOUT &&
+        band.body.severityFactors.find((f) => f.key === 'care_level').weight === NEW_WEIGHT &&
+        band.body.bands.elevatedFrom === NEW_BANDS.elevatedFrom,
+      { standard: rule.status, high: ruleHigh.status, weight: weight.status, bands: band.status },
+    );
+    const stored = {
+      rule: await prisma.escalationRule.findFirst({
+        where: { severity: 'STANDARD', tierOrder: 1 },
+        select: { timeoutSeconds: true, updatedAt: true },
+      }),
+      factor: await prisma.severityFactor.findUnique({
+        where: { key: 'care_level' },
+        select: { weight: true, updatedAt: true },
+      }),
+      settings: await prisma.policySetting.findMany({
+        select: { key: true, value: true, updatedById: true },
+      }),
+    };
+    r.snapshot('storedAfterChange', stored);
+    r.check(
+      'The new values are stored in PostgreSQL',
+      stored.rule.timeoutSeconds === NEW_TIMEOUT &&
+        stored.factor.weight === NEW_WEIGHT &&
+        stored.settings.find((x) => x.key === 'severity_elevated_from')?.value ===
+          NEW_BANDS.elevatedFrom,
+      stored,
+    );
+    const log = await prisma.policyChange.findMany({
+      where: { changedAt: { gte: new Date(Date.now() - 60_000) } },
+      orderBy: { changedAt: 'asc' },
+      select: {
+        changedById: true,
+        area: true,
+        target: true,
+        before: true,
+        after: true,
+        changedAt: true,
+      },
+    });
+    r.snapshot('changeRecord', log);
+    r.check(
+      'Each change is recorded with the administrator, what it was and what it became',
+      log.length === 4 && log.every((c) => c.changedById === adminId && c.before && c.after),
+      log.map(
+        (c) => `${c.area} ${c.target}: ${JSON.stringify(c.before)} -> ${JSON.stringify(c.after)}`,
+      ),
+    );
+    const shown = (await call(r, 'GET', '/admin/policy', { token: admin })).body.changes.slice(
+      0,
+      3,
+    );
+    r.check(
+      "The console can show the change history with the administrator's name",
+      shown.every((c) => c.by?.name === 'Asha Njeri'),
+      shown.map((c) => `${c.target} by ${c.by?.name}`),
+    );
+
+    // 3. Made available: the escalation process uses the new time limit for the next alert.
+    const hannah = await raise(r, 'hannah', {});
+    const dispatched = await waitFor(async () => {
+      const audit = await auditRows(hannah.id);
+      return audit.find((a) => a.action === 'TIER_DISPATCHED') ?? null;
+    }, 10_000);
+    const atTier1 = await eventRow(hannah.id);
+    const givenMs = atTier1.currentTierDeadlineAt - new Date(dispatched.occurredAt);
+    r.snapshot('hannahAtTier1', {
+      severity: atTier1.severity,
+      deadline: atTier1.currentTierDeadlineAt,
+      dispatchedAt: dispatched.occurredAt,
+      givenMs,
+      ruleInAudit: dispatched.detail,
+    });
+    r.check(
+      `The next STANDARD alert gives tier 1 the new ${NEW_TIMEOUT} s (it was ${standard1.timeoutSeconds} s)`,
+      atTier1.severity === 'STANDARD' && Math.abs(givenMs - NEW_TIMEOUT * 1000) <= 1000,
+      `${atTier1.severity}, ${givenMs} ms`,
+    );
+    const climbed = await waitFor(
+      async () => {
+        const row = await eventRow(hannah.id);
+        return row.currentTier >= 2 ? row : null;
+      },
+      (NEW_TIMEOUT + 20) * 1000,
+    );
+    const escalatedEntry = (await auditRows(hannah.id)).find((a) => a.action === 'ESCALATED');
+    const afterMs = escalatedEntry
+      ? new Date(escalatedEntry.occurredAt) - new Date(dispatched.occurredAt)
+      : null;
+    r.snapshot('hannahEscalated', {
+      tier: climbed?.currentTier,
+      escalatedAt: escalatedEntry?.occurredAt,
+      msAfterDispatch: afterMs,
+    });
+    r.check(
+      'With nobody answering, it moved to tier 2 when the new time limit ran out',
+      Boolean(climbed) && afterMs >= NEW_TIMEOUT * 1000 && afterMs <= NEW_TIMEOUT * 1000 + 2000,
+      `${afterMs} ms after tier 1 was asked`,
+    );
+    await closeOut(r, hannah.id, 'peter');
+
+    // 4. Made available: the scoring process uses the new weight and bands for the next alert.
+    const joseph = await raise(r, 'joseph', {});
+    const scored = await eventRow(joseph.id);
+    const care = scored.severityFactors?.factors?.find((f) => f.key === 'care_level');
+    r.snapshot('josephScored', {
+      score: scored.severityScore,
+      band: scored.severity,
+      factors: scored.severityFactors?.factors,
+    });
+    r.check(
+      `The next alert is scored with the new weight: care level ${NEW_WEIGHT} × 0.5 (assisted) = ${NEW_WEIGHT / 2}`,
+      care?.weight === NEW_WEIGHT && care?.contribution === NEW_WEIGHT / 2,
+      care,
+    );
+    r.check(
+      `and banded with the new thresholds: ${scored.severityScore} is High from ${NEW_BANDS.elevatedFrom} (under the old ${bands.elevatedFrom} it would have been Standard)`,
+      scored.severity === 'ELEVATED' &&
+        scored.severityScore >= NEW_BANDS.elevatedFrom &&
+        scored.severityScore < bands.elevatedFrom,
+      `${scored.severityScore}, ${scored.severity}`,
+    );
+    await call(r, 'POST', `/alerts/${joseph.id}/cancel`, {
+      token: await signIn('joseph'),
+      body: {},
+    });
+
+    // Put everything back as it was, through the same API, so the rest of the run is unchanged.
+    const restored = [
+      await call(r, 'PATCH', '/admin/policy/escalation-rules/STANDARD/1', {
+        token: admin,
+        body: { timeoutSeconds: standard1.timeoutSeconds },
+      }),
+      await call(r, 'PATCH', '/admin/policy/escalation-rules/ELEVATED/1', {
+        token: admin,
+        body: { timeoutSeconds: elevated1.timeoutSeconds },
+      }),
+      await call(r, 'PATCH', '/admin/policy/severity-factors/care_level', {
+        token: admin,
+        body: { weight: careLevel.weight },
+      }),
+      await call(r, 'PUT', '/admin/policy/bands', {
+        token: admin,
+        body: { elevatedFrom: bands.elevatedFrom, criticalFrom: bands.criticalFrom },
+      }),
+    ];
     r.snapshot(
-      'supportingNote',
-      `A database edit took effect on the next alert (care_level weight read as ${observed?.weight}), so the scoring process does read the stored policy. That bypasses validation and is not an administrator function, so it does not meet the requirement.`,
+      'restored',
+      restored.map((x) => x.status),
     );
   });
 

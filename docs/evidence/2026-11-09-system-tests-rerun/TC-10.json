@@ -1,0 +1,2891 @@
+{
+  "id": "TC-10",
+  "title": "Modify an authorised system configuration",
+  "startedAt": "2026-11-09T15:10:03.373Z",
+  "steps": [
+    {
+      "at": "2026-11-09T15:10:03.380Z",
+      "text": "GET /admin/policy",
+      "data": {
+        "request": null,
+        "status": 200,
+        "ms": 5,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.424Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 35,
+            "criticalFrom": 60,
+            "fromConfiguration": true,
+            "setAt": null,
+            "setBy": null
+          },
+          "maxScore": 100,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.386Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/3",
+      "data": {
+        "request": {
+          "timeoutSeconds": 60
+        },
+        "status": 400,
+        "ms": 4,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "The last tier is the end of the chain, so it has no time limit.",
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/3",
+          "timestamp": "2026-11-09T15:10:03.385Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.389Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": null
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Every tier but the last needs a time limit, or the alert would stop climbing.",
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/1",
+          "timestamp": "2026-11-09T15:10:03.389Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.393Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 5
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": ["The time limit must be at least 15 seconds."],
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/1",
+          "timestamp": "2026-11-09T15:10:03.392Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.396Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "dispatchMode": "PARALLEL"
+        },
+        "status": 400,
+        "ms": 4,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "Tier 1 is asked first, so it cannot be asked alongside a tier before it.",
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/1",
+          "timestamp": "2026-11-09T15:10:03.396Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.399Z",
+      "text": "PUT /admin/policy/bands",
+      "data": {
+        "request": {
+          "elevatedFrom": 70,
+          "criticalFrom": 40
+        },
+        "status": 400,
+        "ms": 2,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": "High must start below Critical.",
+          "path": "/api/v1/admin/policy/bands",
+          "timestamp": "2026-11-09T15:10:03.398Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.402Z",
+      "text": "PUT /admin/policy/bands",
+      "data": {
+        "request": {
+          "elevatedFrom": 35,
+          "criticalFrom": 101
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": ["Critical must start at 100 or less."],
+          "path": "/api/v1/admin/policy/bands",
+          "timestamp": "2026-11-09T15:10:03.401Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.405Z",
+      "text": "PATCH /admin/policy/severity-factors/care_level",
+      "data": {
+        "request": {
+          "weight": 150
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": ["The weight must be at most 100."],
+          "path": "/api/v1/admin/policy/severity-factors/care_level",
+          "timestamp": "2026-11-09T15:10:03.404Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.408Z",
+      "text": "PATCH /admin/policy/severity-factors/phase_of_the_moon",
+      "data": {
+        "request": {
+          "weight": 5
+        },
+        "status": 404,
+        "ms": 3,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "There is no severity factor called \"phase_of_the_moon\".",
+          "path": "/api/v1/admin/policy/severity-factors/phase_of_the_moon",
+          "timestamp": "2026-11-09T15:10:03.408Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.410Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 15
+        },
+        "status": 403,
+        "ms": 2,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "Your account can't do this.",
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/1",
+          "timestamp": "2026-11-09T15:10:03.409Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.411Z",
+      "text": "GET /admin/policy",
+      "data": {
+        "request": null,
+        "status": 401,
+        "ms": 1,
+        "response": {
+          "statusCode": 401,
+          "error": "Unauthorized",
+          "message": "Please sign in again.",
+          "path": "/api/v1/admin/policy",
+          "timestamp": "2026-11-09T15:10:03.410Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.423Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 15
+        },
+        "status": 200,
+        "ms": 10,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.424Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 35,
+            "criticalFrom": 60,
+            "fromConfiguration": true,
+            "setAt": null,
+            "setBy": null
+          },
+          "maxScore": 100,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.431Z",
+      "text": "PATCH /admin/policy/escalation-rules/ELEVATED/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 15
+        },
+        "status": 200,
+        "ms": 8,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.424Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 35,
+            "criticalFrom": 60,
+            "fromConfiguration": true,
+            "setAt": null,
+            "setBy": null
+          },
+          "maxScore": 100,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.440Z",
+      "text": "PATCH /admin/policy/severity-factors/care_level",
+      "data": {
+        "request": {
+          "weight": 50
+        },
+        "status": 200,
+        "ms": 9,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 50,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:10:03.436Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 35,
+            "criticalFrom": 60,
+            "fromConfiguration": true,
+            "setAt": null,
+            "setBy": null
+          },
+          "maxScore": 120,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "8e7e6502-75fb-4578-81d8-a9fdcd102f5b",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 30,
+                "enabled": true
+              },
+              "after": {
+                "weight": 50,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:03.436Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.449Z",
+      "text": "PUT /admin/policy/bands",
+      "data": {
+        "request": {
+          "elevatedFrom": 25,
+          "criticalFrom": 60
+        },
+        "status": 200,
+        "ms": 9,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 50,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:10:03.436Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 25,
+            "criticalFrom": 60,
+            "fromConfiguration": false,
+            "setAt": "2026-11-09T15:10:03.445Z",
+            "setBy": {
+              "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+              "name": "Asha Njeri"
+            }
+          },
+          "maxScore": 120,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "99a30a4e-00a7-44e9-afd9-bb222d2df04a",
+              "area": "severity_band",
+              "target": "bands",
+              "before": {
+                "criticalFrom": 60,
+                "elevatedFrom": 35
+              },
+              "after": {
+                "criticalFrom": 60,
+                "elevatedFrom": 25
+              },
+              "at": "2026-11-09T15:10:03.445Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "8e7e6502-75fb-4578-81d8-a9fdcd102f5b",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 30,
+                "enabled": true
+              },
+              "after": {
+                "weight": 50,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:03.436Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.457Z",
+      "text": "GET /admin/policy",
+      "data": {
+        "request": null,
+        "status": 200,
+        "ms": 3,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 50,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:10:03.436Z"
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 25,
+            "criticalFrom": 60,
+            "fromConfiguration": false,
+            "setAt": "2026-11-09T15:10:03.445Z",
+            "setBy": {
+              "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+              "name": "Asha Njeri"
+            }
+          },
+          "maxScore": 120,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "99a30a4e-00a7-44e9-afd9-bb222d2df04a",
+              "area": "severity_band",
+              "target": "bands",
+              "before": {
+                "criticalFrom": 60,
+                "elevatedFrom": 35
+              },
+              "after": {
+                "criticalFrom": 60,
+                "elevatedFrom": 25
+              },
+              "at": "2026-11-09T15:10:03.445Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "8e7e6502-75fb-4578-81d8-a9fdcd102f5b",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 30,
+                "enabled": true
+              },
+              "after": {
+                "weight": 50,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:03.436Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.482Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 24,
+        "response": {
+          "id": "51068075-8eb5-4bd1-99b4-cc0f0fdc5104",
+          "elderlyId": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 5,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 5,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 50,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:03.459Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.416Z",
+      "text": "POST /alerts/51068075-8eb5-4bd1-99b4-cc0f0fdc5104/acknowledge",
+      "data": {
+        "request": {},
+        "status": 200,
+        "ms": 19,
+        "response": {
+          "id": "51068075-8eb5-4bd1-99b4-cc0f0fdc5104",
+          "elderlyId": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+          "acknowledgedBy": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "ACKNOWLEDGED",
+          "currentTier": 2,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 35,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 35,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 50,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 1,
+                "detail": "cancel window passed without a response",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": "2026-11-09T15:10:13.549Z",
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:03.459Z",
+          "acknowledgedAt": "2026-11-09T15:10:19.403Z",
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.428Z",
+      "text": "POST /alerts/51068075-8eb5-4bd1-99b4-cc0f0fdc5104/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "System test clean-up."
+        },
+        "status": 200,
+        "ms": 12,
+        "response": {
+          "id": "51068075-8eb5-4bd1-99b4-cc0f0fdc5104",
+          "elderlyId": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+          "acknowledgedBy": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "RESOLVED",
+          "currentTier": 2,
+          "outcome": "HANDLED_AT_HOME",
+          "outcomeNote": "System test clean-up.",
+          "severity": "ELEVATED",
+          "severityScore": 35,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 35,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 50,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 1,
+                "detail": "cancel window passed without a response",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": "2026-11-09T15:10:13.549Z",
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:03.459Z",
+          "acknowledgedAt": "2026-11-09T15:10:19.403Z",
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T15:10:19.421Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.450Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 23,
+        "response": {
+          "id": "75738446-7008-4815-8f07-4208a407463a",
+          "elderlyId": "ef2c62f8-886d-47e1-a663-94a0be623e10",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 30,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 30,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0.5,
+                "detail": "assisted",
+                "weight": 50,
+                "contribution": 25
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:19.429Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.466Z",
+      "text": "POST /alerts/75738446-7008-4815-8f07-4208a407463a/cancel",
+      "data": {
+        "request": {},
+        "status": 200,
+        "ms": 14,
+        "response": {
+          "id": "75738446-7008-4815-8f07-4208a407463a",
+          "elderlyId": "ef2c62f8-886d-47e1-a663-94a0be623e10",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "CANCELLED",
+          "currentTier": 1,
+          "outcome": "CANCELLED_BY_ELDER",
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 30,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 30,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0.5,
+                "detail": "assisted",
+                "weight": 50,
+                "contribution": 25
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "18:10 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T15:10:19.429Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T15:10:19.456Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.469Z",
+      "text": "PATCH /admin/policy/escalation-rules/STANDARD/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 10
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": ["The time limit must be at least 15 seconds."],
+          "path": "/api/v1/admin/policy/escalation-rules/STANDARD/1",
+          "timestamp": "2026-11-09T15:10:19.468Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.472Z",
+      "text": "PATCH /admin/policy/escalation-rules/ELEVATED/1",
+      "data": {
+        "request": {
+          "timeoutSeconds": 10
+        },
+        "status": 400,
+        "ms": 3,
+        "response": {
+          "statusCode": 400,
+          "error": "Bad Request",
+          "message": ["The time limit must be at least 15 seconds."],
+          "path": "/api/v1/admin/policy/escalation-rules/ELEVATED/1",
+          "timestamp": "2026-11-09T15:10:19.471Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.480Z",
+      "text": "PATCH /admin/policy/severity-factors/care_level",
+      "data": {
+        "request": {
+          "weight": 30
+        },
+        "status": 200,
+        "ms": 8,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:10:19.476Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 25,
+            "criticalFrom": 60,
+            "fromConfiguration": false,
+            "setAt": "2026-11-09T15:10:03.445Z",
+            "setBy": {
+              "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+              "name": "Asha Njeri"
+            }
+          },
+          "maxScore": 100,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "2205a7f4-205d-4520-a2a8-891b610249c5",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 50,
+                "enabled": true
+              },
+              "after": {
+                "weight": 30,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:19.476Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "99a30a4e-00a7-44e9-afd9-bb222d2df04a",
+              "area": "severity_band",
+              "target": "bands",
+              "before": {
+                "criticalFrom": 60,
+                "elevatedFrom": 35
+              },
+              "after": {
+                "criticalFrom": 60,
+                "elevatedFrom": 25
+              },
+              "at": "2026-11-09T15:10:03.445Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "8e7e6502-75fb-4578-81d8-a9fdcd102f5b",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 30,
+                "enabled": true
+              },
+              "after": {
+                "weight": 50,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:03.436Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:19.488Z",
+      "text": "PUT /admin/policy/bands",
+      "data": {
+        "request": {
+          "elevatedFrom": 35,
+          "criticalFrom": 60
+        },
+        "status": 200,
+        "ms": 8,
+        "response": {
+          "escalationRules": [
+            {
+              "severity": "STANDARD",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.417Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "STANDARD",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.410Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 15,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:10:03.427Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "ELEVATED",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.413Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 1,
+              "responderRole": "CAREGIVER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 2,
+              "responderRole": "FAMILY_MEMBER",
+              "timeoutSeconds": 10,
+              "dispatchMode": "PARALLEL",
+              "smsFallbackImmediate": true,
+              "last": false,
+              "updatedAt": "2026-11-09T15:09:21.709Z"
+            },
+            {
+              "severity": "CRITICAL",
+              "tier": 3,
+              "responderRole": "EMERGENCY_RESPONDER",
+              "timeoutSeconds": null,
+              "dispatchMode": "SEQUENTIAL",
+              "smsFallbackImmediate": false,
+              "last": true,
+              "updatedAt": "2026-11-09T15:09:12.417Z"
+            }
+          ],
+          "severityFactors": [
+            {
+              "key": "no_cancel_in_grace_window",
+              "label": "Grace window elapsed without a cancel",
+              "description": "Scores full when the 10 second cancel window passes untouched, which suggests the person cannot reach their phone. Evaluated at grace-window expiry, not at trigger.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.426Z"
+            },
+            {
+              "key": "care_level",
+              "label": "Declared care level of the elder",
+              "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+              "weight": 30,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:10:19.476Z"
+            },
+            {
+              "key": "time_of_day",
+              "label": "Alert raised at night",
+              "description": "Scores full between 22:00 and 06:00 in the elder timezone, when nobody is likely to be nearby.",
+              "weight": 20,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.427Z"
+            },
+            {
+              "key": "away_from_home",
+              "label": "Alert raised away from the registered home",
+              "description": "Scores full beyond 250 metres from the registered home address, where there is no key holder and the surroundings are unknown.",
+              "weight": 15,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.428Z"
+            },
+            {
+              "key": "recent_activity",
+              "label": "Recent or unresolved prior alert",
+              "description": "Scores full when another alert was raised in the last 6 hours or a prior event is still open.",
+              "weight": 5,
+              "enabled": true,
+              "measured": true,
+              "updatedAt": "2026-11-09T15:09:12.430Z"
+            }
+          ],
+          "bands": {
+            "elevatedFrom": 35,
+            "criticalFrom": 60,
+            "fromConfiguration": false,
+            "setAt": "2026-11-09T15:10:19.484Z",
+            "setBy": {
+              "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+              "name": "Asha Njeri"
+            }
+          },
+          "maxScore": 100,
+          "limits": {
+            "timeoutSeconds": {
+              "min": 15,
+              "max": 3600
+            },
+            "weight": {
+              "min": 0,
+              "max": 100
+            },
+            "threshold": {
+              "min": 1,
+              "max": 100
+            }
+          },
+          "changes": [
+            {
+              "id": "80455240-abd6-4ad5-9bf5-36f5250cbeae",
+              "area": "severity_band",
+              "target": "bands",
+              "before": {
+                "criticalFrom": 60,
+                "elevatedFrom": 25
+              },
+              "after": {
+                "criticalFrom": 60,
+                "elevatedFrom": 35
+              },
+              "at": "2026-11-09T15:10:19.484Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "2205a7f4-205d-4520-a2a8-891b610249c5",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 50,
+                "enabled": true
+              },
+              "after": {
+                "weight": 30,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:19.476Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "99a30a4e-00a7-44e9-afd9-bb222d2df04a",
+              "area": "severity_band",
+              "target": "bands",
+              "before": {
+                "criticalFrom": 60,
+                "elevatedFrom": 35
+              },
+              "after": {
+                "criticalFrom": 60,
+                "elevatedFrom": 25
+              },
+              "at": "2026-11-09T15:10:03.445Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "8e7e6502-75fb-4578-81d8-a9fdcd102f5b",
+              "area": "severity_factor",
+              "target": "care_level",
+              "before": {
+                "weight": 30,
+                "enabled": true
+              },
+              "after": {
+                "weight": 50,
+                "enabled": true
+              },
+              "at": "2026-11-09T15:10:03.436Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "cd3da256-71a8-4c88-8fce-19f8d2255fe9",
+              "area": "escalation_rule",
+              "target": "ELEVATED tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.427Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            },
+            {
+              "id": "d05e805b-f7ba-4e92-b251-11f838880ddb",
+              "area": "escalation_rule",
+              "target": "STANDARD tier 1",
+              "before": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 10,
+                "smsFallbackImmediate": false
+              },
+              "after": {
+                "dispatchMode": "SEQUENTIAL",
+                "timeoutSeconds": 15,
+                "smsFallbackImmediate": false
+              },
+              "at": "2026-11-09T15:10:03.417Z",
+              "by": {
+                "id": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+                "name": "Asha Njeri"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "The administrator can read the policy: 200",
+      "passed": true,
+      "observed": 200
+    },
+    {
+      "description": "Every invalid change is refused with a reason (400 or 404)",
+      "passed": true,
+      "observed": {
+        "last tier given a time limit": "400 The last tier is the end of the chain, so it has no time limit.",
+        "a tier left without a time limit": "400 Every tier but the last needs a time limit, or the alert would stop climbing.",
+        "a time limit of 5 s, below the 15 s floor": "400 The time limit must be at least 15 seconds.",
+        "tier 1 asked alongside a tier before it": "400 Tier 1 is asked first, so it cannot be asked alongside a tier before it.",
+        "High starting above Critical": "400 High must start below Critical.",
+        "Critical above the highest possible score": "400 Critical must start at 100 or less.",
+        "a weight of 150": "400 The weight must be at most 100.",
+        "a factor this version cannot measure": "404 There is no severity factor called \"phase_of_the_moon\"."
+      }
+    },
+    {
+      "description": "Only an administrator may change it: a caregiver gets 403, nobody signed in 401",
+      "passed": true,
+      "observed": {
+        "caregiver": 403,
+        "anonymous": 401
+      }
+    },
+    {
+      "description": "Nothing was saved by the refused changes",
+      "passed": true,
+      "observed": {
+        "changesRecorded": 0,
+        "standardTier1Timeout": 10
+      }
+    },
+    {
+      "description": "Each valid change is accepted: 200, and the answer shows the new value",
+      "passed": true,
+      "observed": {
+        "standard": 200,
+        "high": 200,
+        "weight": 200,
+        "bands": 200
+      }
+    },
+    {
+      "description": "The new values are stored in PostgreSQL",
+      "passed": true,
+      "observed": {
+        "rule": {
+          "timeoutSeconds": 15,
+          "updatedAt": "2026-11-09T15:10:03.417Z"
+        },
+        "factor": {
+          "weight": 50,
+          "updatedAt": "2026-11-09T15:10:03.436Z"
+        },
+        "settings": [
+          {
+            "key": "severity_elevated_from",
+            "value": 25,
+            "updatedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2"
+          },
+          {
+            "key": "severity_critical_from",
+            "value": 60,
+            "updatedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2"
+          }
+        ]
+      }
+    },
+    {
+      "description": "Each change is recorded with the administrator, what it was and what it became",
+      "passed": true,
+      "observed": [
+        "escalation_rule STANDARD tier 1: {\"dispatchMode\":\"SEQUENTIAL\",\"timeoutSeconds\":10,\"smsFallbackImmediate\":false} -> {\"dispatchMode\":\"SEQUENTIAL\",\"timeoutSeconds\":15,\"smsFallbackImmediate\":false}",
+        "escalation_rule ELEVATED tier 1: {\"dispatchMode\":\"SEQUENTIAL\",\"timeoutSeconds\":10,\"smsFallbackImmediate\":false} -> {\"dispatchMode\":\"SEQUENTIAL\",\"timeoutSeconds\":15,\"smsFallbackImmediate\":false}",
+        "severity_factor care_level: {\"weight\":30,\"enabled\":true} -> {\"weight\":50,\"enabled\":true}",
+        "severity_band bands: {\"criticalFrom\":60,\"elevatedFrom\":35} -> {\"criticalFrom\":60,\"elevatedFrom\":25}"
+      ]
+    },
+    {
+      "description": "The console can show the change history with the administrator's name",
+      "passed": true,
+      "observed": [
+        "bands by Asha Njeri",
+        "care_level by Asha Njeri",
+        "ELEVATED tier 1 by Asha Njeri"
+      ]
+    },
+    {
+      "description": "The next STANDARD alert gives tier 1 the new 15 s (it was 10 s)",
+      "passed": true,
+      "observed": "STANDARD, 15000 ms"
+    },
+    {
+      "description": "With nobody answering, it moved to tier 2 when the new time limit ran out",
+      "passed": true,
+      "observed": "15795 ms after tier 1 was asked"
+    },
+    {
+      "description": "The next alert is scored with the new weight: care level 50 × 0.5 (assisted) = 25",
+      "passed": true,
+      "observed": {
+        "key": "care_level",
+        "label": "Declared care level of the elder",
+        "value": 0.5,
+        "detail": "assisted",
+        "weight": 50,
+        "contribution": 25
+      }
+    },
+    {
+      "description": "and banded with the new thresholds: 30 is High from 25 (under the old 35 it would have been Standard)",
+      "passed": true,
+      "observed": "30, ELEVATED"
+    }
+  ],
+  "snapshots": {
+    "policyBefore": {
+      "standardTier1": {
+        "severity": "STANDARD",
+        "tier": 1,
+        "responderRole": "CAREGIVER",
+        "timeoutSeconds": 10,
+        "dispatchMode": "SEQUENTIAL",
+        "smsFallbackImmediate": false,
+        "last": false,
+        "updatedAt": "2026-11-09T15:09:21.709Z"
+      },
+      "careLevel": {
+        "key": "care_level",
+        "label": "Declared care level of the elder",
+        "description": "INDEPENDENT scores 0, ASSISTED scores half, HIGH_DEPENDENCY scores full. The strongest single predictor of whether an unattended incident becomes serious.",
+        "weight": 30,
+        "enabled": true,
+        "measured": true,
+        "updatedAt": "2026-11-09T15:09:12.424Z"
+      },
+      "bands": {
+        "elevatedFrom": 35,
+        "criticalFrom": 60,
+        "fromConfiguration": true,
+        "setAt": null,
+        "setBy": null
+      },
+      "maxScore": 100
+    },
+    "refusedChanges": {
+      "last tier given a time limit": "400 The last tier is the end of the chain, so it has no time limit.",
+      "a tier left without a time limit": "400 Every tier but the last needs a time limit, or the alert would stop climbing.",
+      "a time limit of 5 s, below the 15 s floor": "400 The time limit must be at least 15 seconds.",
+      "tier 1 asked alongside a tier before it": "400 Tier 1 is asked first, so it cannot be asked alongside a tier before it.",
+      "High starting above Critical": "400 High must start below Critical.",
+      "Critical above the highest possible score": "400 Critical must start at 100 or less.",
+      "a weight of 150": "400 The weight must be at most 100.",
+      "a factor this version cannot measure": "404 There is no severity factor called \"phase_of_the_moon\"."
+    },
+    "storedAfterChange": {
+      "rule": {
+        "timeoutSeconds": 15,
+        "updatedAt": "2026-11-09T15:10:03.417Z"
+      },
+      "factor": {
+        "weight": 50,
+        "updatedAt": "2026-11-09T15:10:03.436Z"
+      },
+      "settings": [
+        {
+          "key": "severity_elevated_from",
+          "value": 25,
+          "updatedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2"
+        },
+        {
+          "key": "severity_critical_from",
+          "value": 60,
+          "updatedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2"
+        }
+      ]
+    },
+    "changeRecord": [
+      {
+        "changedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+        "area": "escalation_rule",
+        "target": "STANDARD tier 1",
+        "before": {
+          "dispatchMode": "SEQUENTIAL",
+          "timeoutSeconds": 10,
+          "smsFallbackImmediate": false
+        },
+        "after": {
+          "dispatchMode": "SEQUENTIAL",
+          "timeoutSeconds": 15,
+          "smsFallbackImmediate": false
+        },
+        "changedAt": "2026-11-09T15:10:03.417Z"
+      },
+      {
+        "changedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+        "area": "escalation_rule",
+        "target": "ELEVATED tier 1",
+        "before": {
+          "dispatchMode": "SEQUENTIAL",
+          "timeoutSeconds": 10,
+          "smsFallbackImmediate": false
+        },
+        "after": {
+          "dispatchMode": "SEQUENTIAL",
+          "timeoutSeconds": 15,
+          "smsFallbackImmediate": false
+        },
+        "changedAt": "2026-11-09T15:10:03.427Z"
+      },
+      {
+        "changedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+        "area": "severity_factor",
+        "target": "care_level",
+        "before": {
+          "weight": 30,
+          "enabled": true
+        },
+        "after": {
+          "weight": 50,
+          "enabled": true
+        },
+        "changedAt": "2026-11-09T15:10:03.436Z"
+      },
+      {
+        "changedById": "12c14ad2-f1b9-423a-97ea-92882d92cec2",
+        "area": "severity_band",
+        "target": "bands",
+        "before": {
+          "criticalFrom": 60,
+          "elevatedFrom": 35
+        },
+        "after": {
+          "criticalFrom": 60,
+          "elevatedFrom": 25
+        },
+        "changedAt": "2026-11-09T15:10:03.445Z"
+      }
+    ],
+    "hannahAtTier1": {
+      "severity": "STANDARD",
+      "deadline": "2026-11-09T15:10:18.474Z",
+      "dispatchedAt": "2026-11-09T15:10:03.474Z",
+      "givenMs": 15000,
+      "ruleInAudit": {
+        "tier": 1,
+        "reason": "initial",
+        "channels": ["PUSH"],
+        "recipients": 1,
+        "responderRole": "CAREGIVER",
+        "timeoutSeconds": 15
+      }
+    },
+    "hannahEscalated": {
+      "tier": 2,
+      "escalatedAt": "2026-11-09T15:10:19.269Z",
+      "msAfterDispatch": 15795
+    },
+    "josephScored": {
+      "score": 30,
+      "band": "ELEVATED",
+      "factors": [
+        {
+          "key": "care_level",
+          "label": "Declared care level of the elder",
+          "value": 0.5,
+          "detail": "assisted",
+          "weight": 50,
+          "contribution": 25
+        },
+        {
+          "key": "no_cancel_in_grace_window",
+          "label": "Grace window elapsed without a cancel",
+          "value": 0,
+          "detail": "cancel window still open",
+          "weight": 30,
+          "contribution": 0
+        },
+        {
+          "key": "time_of_day",
+          "label": "Alert raised at night",
+          "value": 0,
+          "detail": "18:10 local, daytime",
+          "weight": 20,
+          "contribution": 0
+        },
+        {
+          "key": "away_from_home",
+          "label": "Alert raised away from the registered home",
+          "value": 0,
+          "detail": "0 m from the registered home",
+          "weight": 15,
+          "contribution": 0
+        },
+        {
+          "key": "recent_activity",
+          "label": "Recent or unresolved prior alert",
+          "value": 1,
+          "detail": "1 recent or open prior alert(s)",
+          "weight": 5,
+          "contribution": 5
+        }
+      ]
+    },
+    "restored": [400, 400, 200, 200]
+  },
+  "finishedAt": "2026-11-09T15:10:19.488Z",
+  "verdict": "Pass"
+}
