@@ -1,0 +1,27 @@
+PASS test/escalation.integration.spec.ts (30.337 s)
+    ✓ dispatches tier one immediately and arms its acknowledgement window (85 ms)
+    ✓ asks the fire service shortly after the elder reports a fire, beside the family (126 ms)
+    ✓ asks the nearest police station first, and the next at once when it cannot come (153 ms)
+    ✓ escalates to tier two on its own when nobody acknowledges (2088 ms)
+    ✓ stops climbing once someone acknowledges (4044 ms)
+    ✓ falls back to SMS when the recipient has no registered device (135 ms)
+    ✓ tells the caregiver when the elder cancels, so they can call to check (43 ms)
+    ✓ stops climbing once the elder cancels inside the grace window (4036 ms)
+    ✓ scores severity again once the cancel window closes without a cancel (10157 ms)
+    ✓ passes over a deactivated chain member and goes straight to the next rank (40 ms)
+    ✓ asks every family member at the family rank together (2124 ms)
+PASS test/check-ins.integration.spec.ts
+    ✓ asks nothing until the elder agrees to a set-up somebody else made (49 ms)
+    ✓ asks when it falls due, once, however many times the clock runs (156 ms)
+    ✓ reminds once, half way through (16 ms)
+    ✓ raises a standard alert of its own kind when nobody answers (42 ms)
+    ✓ withdraws the alert when the elder answers late and nobody has taken it on (26 ms)
+    ✓ turning it off needs nobody’s agreement (10 ms)
+PASS test/community.integration.spec.ts
+    ✓ asks only the available volunteers whose area covers the alert, once (36 ms)
+    ✓ gives the emergency to exactly one of two volunteers accepting at once (47 ms)
+    ✓ asks the other again when the one going withdraws (36 ms)
+    ✓ takes who and where back once the emergency is over (20 ms)
+Test Suites: 3 passed, 3 total
+Tests:       21 passed, 21 total
+Time:        32.037 s

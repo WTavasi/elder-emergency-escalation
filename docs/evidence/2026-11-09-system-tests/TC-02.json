@@ -1,0 +1,833 @@
+{
+  "id": "TC-02",
+  "title": "Create an emergency with configured severity factors",
+  "startedAt": "2026-11-09T13:46:28.640Z",
+  "steps": [
+    {
+      "at": "2026-11-09T13:46:28.725Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 28,
+        "response": {
+          "id": "17ff5718-e585-4184-821c-e90dcc96d956",
+          "elderlyId": "193c2906-4d28-445e-8469-4248d6d5797d",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.2833",
+          "alertLongitude": "36.7833",
+          "alertAddressLabel": "Kileleshwa, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 30,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 30,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 1,
+                "detail": "high dependency",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:46 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:46:28.701Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:46:28.801Z",
+      "text": "PUT /elders/4ba32558-6a22-42b5-948c-b6c44874151a/place",
+      "data": {
+        "request": {
+          "latitude": -1.2715,
+          "longitude": 36.792,
+          "label": "Staying with his sister in Lavington"
+        },
+        "status": 200,
+        "ms": 13,
+        "response": {
+          "elderId": "4ba32558-6a22-42b5-948c-b6c44874151a",
+          "isAtHome": false,
+          "latitude": -1.2715,
+          "longitude": 36.792,
+          "label": "Staying with his sister in Lavington",
+          "setAt": "2026-11-09T13:46:28.795Z",
+          "withheld": false
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:46:28.885Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 31,
+        "response": {
+          "id": "307c87f9-6a4f-4f7a-a942-13d0d4b56170",
+          "elderlyId": "4ba32558-6a22-42b5-948c-b6c44874151a",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.2715",
+          "alertLongitude": "36.792",
+          "alertAddressLabel": "Staying with his sister in Lavington",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 15,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 15,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:46 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 1,
+                "detail": "2002 m from the registered home",
+                "weight": 15,
+                "contribution": 15
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:46:28.858Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:46:39.065Z",
+      "text": "POST /alerts/307c87f9-6a4f-4f7a-a942-13d0d4b56170/acknowledge",
+      "data": {
+        "request": {},
+        "status": 200,
+        "ms": 23,
+        "response": {
+          "id": "307c87f9-6a4f-4f7a-a942-13d0d4b56170",
+          "elderlyId": "4ba32558-6a22-42b5-948c-b6c44874151a",
+          "acknowledgedBy": "4a46b062-a3cd-4d39-9d77-cfdd076b56ad",
+          "alertLatitude": "-1.2715",
+          "alertLongitude": "36.792",
+          "alertAddressLabel": "Staying with his sister in Lavington",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "ACKNOWLEDGED",
+          "currentTier": 2,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 45,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 45,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 1,
+                "detail": "cancel window passed without a response",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:46 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 1,
+                "detail": "2002 m from the registered home",
+                "weight": 15,
+                "contribution": 15
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": "2026-11-09T13:46:38.886Z",
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:46:28.858Z",
+          "acknowledgedAt": "2026-11-09T13:46:39.051Z",
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:46:39.081Z",
+      "text": "POST /alerts/307c87f9-6a4f-4f7a-a942-13d0d4b56170/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "System test clean-up."
+        },
+        "status": 200,
+        "ms": 15,
+        "response": {
+          "id": "307c87f9-6a4f-4f7a-a942-13d0d4b56170",
+          "elderlyId": "4ba32558-6a22-42b5-948c-b6c44874151a",
+          "acknowledgedBy": "4a46b062-a3cd-4d39-9d77-cfdd076b56ad",
+          "alertLatitude": "-1.2715",
+          "alertLongitude": "36.792",
+          "alertAddressLabel": "Staying with his sister in Lavington",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "RESOLVED",
+          "currentTier": 2,
+          "outcome": "HANDLED_AT_HOME",
+          "outcomeNote": "System test clean-up.",
+          "severity": "ELEVATED",
+          "severityScore": 45,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 45,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 1,
+                "detail": "cancel window passed without a response",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:46 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 1,
+                "detail": "2002 m from the registered home",
+                "weight": 15,
+                "contribution": 15
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": "2026-11-09T13:46:38.886Z",
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:46:28.858Z",
+          "acknowledgedAt": "2026-11-09T13:46:39.051Z",
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T13:46:39.073Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:46:39.092Z",
+      "text": "DELETE /elders/4ba32558-6a22-42b5-948c-b6c44874151a/place",
+      "data": {
+        "request": null,
+        "status": 200,
+        "ms": 11,
+        "response": {
+          "elderId": "4ba32558-6a22-42b5-948c-b6c44874151a",
+          "isAtHome": true,
+          "latitude": null,
+          "longitude": null,
+          "label": null,
+          "setAt": "2026-11-09T13:46:39.086Z",
+          "withheld": false
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "Caroline recorded Ali's stay away from home",
+      "passed": true,
+      "observed": 200
+    },
+    {
+      "description": "Grace's score at creation follows the rules: care level 30 × 1 = 30, STANDARD",
+      "passed": true,
+      "observed": "30, STANDARD"
+    },
+    {
+      "description": "Ali's score at creation follows the rules: away from home 15 × 1 = 15, STANDARD",
+      "passed": true,
+      "observed": "15, STANDARD"
+    },
+    {
+      "description": "Each recorded score equals the sum of its recorded factor contributions",
+      "passed": true,
+      "observed": {
+        "grace": 30,
+        "ali": 15
+      }
+    },
+    {
+      "description": "Grace after the window: 30 + 30 = 60, CRITICAL (from 60)",
+      "passed": true,
+      "observed": "60, CRITICAL"
+    },
+    {
+      "description": "Ali after the window: 15 + 30 = 45, ELEVATED (35 to 59)",
+      "passed": true,
+      "observed": "45, ELEVATED"
+    },
+    {
+      "description": "The evaluation is recorded in the audit trail",
+      "passed": true,
+      "observed": 2
+    }
+  ],
+  "snapshots": {
+    "configuredFactors": [
+      {
+        "key": "care_level",
+        "weight": 30
+      },
+      {
+        "key": "no_cancel_in_grace_window",
+        "weight": 30
+      },
+      {
+        "key": "time_of_day",
+        "weight": 20
+      },
+      {
+        "key": "away_from_home",
+        "weight": 15
+      },
+      {
+        "key": "recent_activity",
+        "weight": 5
+      }
+    ],
+    "aliHome": {
+      "homeLatitude": "-1.2895",
+      "homeLongitude": "36.792"
+    },
+    "alertIds": {
+      "grace": "17ff5718-e585-4184-821c-e90dcc96d956",
+      "ali": "307c87f9-6a4f-4f7a-a942-13d0d4b56170"
+    },
+    "graceAtCreate": {
+      "id": "17ff5718-e585-4184-821c-e90dcc96d956",
+      "state": "NOTIFIED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 30,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 30,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:46 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:46:28.701Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:46:38.716Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "aliAtCreate": {
+      "id": "307c87f9-6a4f-4f7a-a942-13d0d4b56170",
+      "state": "NOTIFIED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 15,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 15,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 0,
+            "detail": "independent",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:46 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 1,
+            "detail": "2002 m from the registered home",
+            "weight": 15,
+            "contribution": 15
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:46:28.858Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:46:38.874Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "graceAfterWindow": {
+      "id": "17ff5718-e585-4184-821c-e90dcc96d956",
+      "state": "NOTIFIED",
+      "currentTier": 2,
+      "severity": "CRITICAL",
+      "severityScore": 60,
+      "severityFactors": {
+        "band": "CRITICAL",
+        "score": 60,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:46 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:46:28.701Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:46:48.809Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "aliAfterWindow": {
+      "id": "307c87f9-6a4f-4f7a-a942-13d0d4b56170",
+      "state": "ESCALATED",
+      "currentTier": 2,
+      "severity": "ELEVATED",
+      "severityScore": 45,
+      "severityFactors": {
+        "band": "ELEVATED",
+        "score": 45,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 0,
+            "detail": "independent",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:46 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 1,
+            "detail": "2002 m from the registered home",
+            "weight": 15,
+            "contribution": 15
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:46:28.858Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:46:48.996Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "graceSeverityAudit": [
+      {
+        "action": "SEVERITY_EVALUATED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "band": "STANDARD",
+          "score": 30,
+          "factors": [
+            {
+              "key": "care_level",
+              "value": 1,
+              "detail": "high dependency",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "value": 0,
+              "detail": "cancel window still open",
+              "weight": 30,
+              "contribution": 0
+            },
+            {
+              "key": "time_of_day",
+              "value": 0,
+              "detail": "16:46 local, daytime",
+              "weight": 20,
+              "contribution": 0
+            },
+            {
+              "key": "away_from_home",
+              "value": 0,
+              "detail": "0 m from the registered home",
+              "weight": 15,
+              "contribution": 0
+            },
+            {
+              "key": "recent_activity",
+              "value": 0,
+              "detail": "0 recent or open prior alert(s)",
+              "weight": 5,
+              "contribution": 0
+            }
+          ]
+        },
+        "occurredAt": "2026-11-09T13:46:28.701Z"
+      },
+      {
+        "action": "SEVERITY_EVALUATED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "band": "CRITICAL",
+          "score": 60,
+          "stage": "cancel_window_closed",
+          "factors": [
+            {
+              "key": "care_level",
+              "value": 1,
+              "detail": "high dependency",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "no_cancel_in_grace_window",
+              "value": 1,
+              "detail": "cancel window passed without a response",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "time_of_day",
+              "value": 0,
+              "detail": "16:46 local, daytime",
+              "weight": 20,
+              "contribution": 0
+            },
+            {
+              "key": "away_from_home",
+              "value": 0,
+              "detail": "0 m from the registered home",
+              "weight": 15,
+              "contribution": 0
+            },
+            {
+              "key": "recent_activity",
+              "value": 0,
+              "detail": "0 recent or open prior alert(s)",
+              "weight": 5,
+              "contribution": 0
+            }
+          ],
+          "severityAfter": "CRITICAL",
+          "severityBefore": "STANDARD"
+        },
+        "occurredAt": "2026-11-09T13:46:38.787Z"
+      }
+    ]
+  },
+  "finishedAt": "2026-11-09T13:46:39.092Z",
+  "verdict": "Pass"
+}

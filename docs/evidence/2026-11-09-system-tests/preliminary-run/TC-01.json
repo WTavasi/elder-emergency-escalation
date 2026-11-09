@@ -1,0 +1,348 @@
+{
+  "id": "TC-01",
+  "title": "Initiate an emergency through the mobile application",
+  "startedAt": "2026-11-09T13:43:18.712Z",
+  "steps": [
+    {
+      "at": "2026-11-09T13:43:18.855Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 67,
+        "response": {
+          "id": "ea4515a9-d8ab-4af8-bcf1-d8023f77bc35",
+          "elderlyId": "4f897924-b6a3-473f-921b-9132583fec2c",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.268",
+          "alertLongitude": "36.811",
+          "alertAddressLabel": "Westlands, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 0,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 0,
+            "factors": [
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 0,
+                "detail": "independent",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:43 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:43:18.796Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "The elder has an active care relationship",
+      "passed": true,
+      "observed": 4
+    },
+    {
+      "description": "POST /alerts answered 201 Created",
+      "passed": true,
+      "observed": 201
+    },
+    {
+      "description": "An emergency record exists in PostgreSQL",
+      "passed": true,
+      "observed": "NOTIFIED"
+    },
+    {
+      "description": "It starts in the TRIGGERED state at tier 1",
+      "passed": false,
+      "observed": "NOTIFIED, tier 1"
+    },
+    {
+      "description": "EVENT_CREATED is in the audit trail",
+      "passed": true,
+      "observed": ["EVENT_CREATED", "SEVERITY_EVALUATED", "TIER_DISPATCHED"]
+    },
+    {
+      "description": "The initial response began: tier 1 was dispatched after the cancel window",
+      "passed": true,
+      "observed": "2026-11-09T13:43:18.836Z"
+    }
+  ],
+  "snapshots": {
+    "careRelationships": [
+      {
+        "name": "Peter Mwangi",
+        "role": "CAREGIVER"
+      },
+      {
+        "name": "David Kimani",
+        "role": "FAMILY_MEMBER"
+      },
+      {
+        "name": "Wanjiku Kimani",
+        "role": "FAMILY_MEMBER"
+      },
+      {
+        "name": "Westlands Response Unit",
+        "role": "EMERGENCY_RESPONDER"
+      }
+    ],
+    "eventAfterCreate": {
+      "id": "ea4515a9-d8ab-4af8-bcf1-d8023f77bc35",
+      "state": "NOTIFIED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 0,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 0,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 0,
+            "detail": "independent",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:18.796Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:43:28.836Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "auditTrail": [
+      {
+        "action": "EVENT_CREATED",
+        "previousState": null,
+        "newState": "TRIGGERED",
+        "actorId": "4f897924-b6a3-473f-921b-9132583fec2c",
+        "detail": {
+          "trigger": "PANIC"
+        },
+        "occurredAt": "2026-11-09T13:43:18.796Z"
+      },
+      {
+        "action": "SEVERITY_EVALUATED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "band": "STANDARD",
+          "score": 0,
+          "factors": [
+            {
+              "key": "no_cancel_in_grace_window",
+              "value": 0,
+              "detail": "cancel window still open",
+              "weight": 30,
+              "contribution": 0
+            },
+            {
+              "key": "care_level",
+              "value": 0,
+              "detail": "independent",
+              "weight": 30,
+              "contribution": 0
+            },
+            {
+              "key": "time_of_day",
+              "value": 0,
+              "detail": "16:43 local, daytime",
+              "weight": 20,
+              "contribution": 0
+            },
+            {
+              "key": "away_from_home",
+              "value": 0,
+              "detail": "0 m from the registered home",
+              "weight": 15,
+              "contribution": 0
+            },
+            {
+              "key": "recent_activity",
+              "value": 0,
+              "detail": "0 recent or open prior alert(s)",
+              "weight": 5,
+              "contribution": 0
+            }
+          ]
+        },
+        "occurredAt": "2026-11-09T13:43:18.796Z"
+      },
+      {
+        "action": "TIER_DISPATCHED",
+        "previousState": "TRIGGERED",
+        "newState": "NOTIFIED",
+        "actorId": null,
+        "detail": {
+          "tier": 1,
+          "reason": "initial",
+          "channels": ["PUSH"],
+          "recipients": 1,
+          "responderRole": "CAREGIVER",
+          "timeoutSeconds": 10
+        },
+        "occurredAt": "2026-11-09T13:43:18.836Z"
+      }
+    ],
+    "eventAfterDispatch": {
+      "id": "ea4515a9-d8ab-4af8-bcf1-d8023f77bc35",
+      "state": "NOTIFIED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 0,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 0,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 0,
+            "detail": "independent",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:18.796Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:43:28.836Z",
+      "trigger": "PANIC",
+      "outcome": null
+    }
+  },
+  "finishedAt": "2026-11-09T13:43:18.862Z",
+  "verdict": "Fail"
+}

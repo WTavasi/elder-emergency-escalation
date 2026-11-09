@@ -1,0 +1,299 @@
+{
+  "id": "TC-11",
+  "title": "Resolve an active emergency",
+  "startedAt": "2026-11-09T13:44:30.808Z",
+  "steps": [
+    {
+      "at": "2026-11-09T13:44:30.820Z",
+      "text": "POST /alerts/2f6bc150-b5bc-4aef-b9a3-3b781eeb784b/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "Found Grace on the floor of the kitchen, unhurt. Helped her up."
+        },
+        "status": 200,
+        "ms": 10,
+        "response": {
+          "id": "2f6bc150-b5bc-4aef-b9a3-3b781eeb784b",
+          "elderlyId": "352c361b-1dfa-475f-b7c4-11e338e83a17",
+          "acknowledgedBy": "2aadda04-b450-4e51-a373-0ef398f562cd",
+          "alertLatitude": "-1.2833",
+          "alertLongitude": "36.7833",
+          "alertAddressLabel": "Kileleshwa, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "RESOLVED",
+          "currentTier": 3,
+          "outcome": "HANDLED_AT_HOME",
+          "outcomeNote": "Found Grace on the floor of the kitchen, unhurt. Helped her up.",
+          "severity": "CRITICAL",
+          "severityScore": 60,
+          "severityFactors": {
+            "band": "CRITICAL",
+            "score": 60,
+            "factors": [
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 1,
+                "detail": "cancel window passed without a response",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 1,
+                "detail": "high dependency",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:43 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": "2026-11-09T13:43:29.006Z",
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:43:18.924Z",
+          "acknowledgedAt": "2026-11-09T13:44:29.196Z",
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T13:44:30.813Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:44:30.826Z",
+      "text": "POST /alerts/2f6bc150-b5bc-4aef-b9a3-3b781eeb784b/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "Again."
+        },
+        "status": 409,
+        "ms": 4,
+        "response": {
+          "statusCode": 409,
+          "error": "Conflict",
+          "message": "This emergency is already closed.",
+          "path": "/api/v1/alerts/2f6bc150-b5bc-4aef-b9a3-3b781eeb784b/resolve",
+          "timestamp": "2026-11-09T13:44:30.825Z"
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "Grace's alert is open and owned by Mary",
+      "passed": true,
+      "observed": "ACKNOWLEDGED"
+    },
+    {
+      "description": "POST /alerts/:id/resolve answered 200",
+      "passed": true,
+      "observed": 200
+    },
+    {
+      "description": "The state is RESOLVED with a resolution time and outcome",
+      "passed": true,
+      "observed": "RESOLVED, HANDLED_AT_HOME, 2026-11-09T13:44:30.813Z"
+    },
+    {
+      "description": "A RESOLVED audit entry records who, the state change and the outcome",
+      "passed": true,
+      "observed": {
+        "action": "RESOLVED",
+        "previousState": "ACKNOWLEDGED",
+        "newState": "RESOLVED",
+        "actorId": "2aadda04-b450-4e51-a373-0ef398f562cd",
+        "detail": {
+          "note": "Found Grace on the floor of the kitchen, unhurt. Helped her up.",
+          "outcome": "HANDLED_AT_HOME",
+          "reportedType": null,
+          "confirmedType": null,
+          "secondsFromTrigger": 72
+        },
+        "occurredAt": "2026-11-09T13:44:30.813Z"
+      }
+    },
+    {
+      "description": "Resolving it a second time is refused",
+      "passed": true,
+      "observed": 409
+    }
+  ],
+  "snapshots": {
+    "before": {
+      "id": "2f6bc150-b5bc-4aef-b9a3-3b781eeb784b",
+      "state": "ACKNOWLEDGED",
+      "currentTier": 3,
+      "severity": "CRITICAL",
+      "severityScore": 60,
+      "severityFactors": {
+        "band": "CRITICAL",
+        "score": 60,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:18.924Z",
+      "acknowledgedAt": "2026-11-09T13:44:29.196Z",
+      "acknowledgedBy": "2aadda04-b450-4e51-a373-0ef398f562cd",
+      "resolvedAt": null,
+      "currentTierDeadlineAt": null,
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "after": {
+      "id": "2f6bc150-b5bc-4aef-b9a3-3b781eeb784b",
+      "state": "RESOLVED",
+      "currentTier": 3,
+      "severity": "CRITICAL",
+      "severityScore": 60,
+      "severityFactors": {
+        "band": "CRITICAL",
+        "score": 60,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:18.924Z",
+      "acknowledgedAt": "2026-11-09T13:44:29.196Z",
+      "acknowledgedBy": "2aadda04-b450-4e51-a373-0ef398f562cd",
+      "resolvedAt": "2026-11-09T13:44:30.813Z",
+      "currentTierDeadlineAt": null,
+      "trigger": "PANIC",
+      "outcome": "HANDLED_AT_HOME"
+    },
+    "resolvedAuditEntry": {
+      "action": "RESOLVED",
+      "previousState": "ACKNOWLEDGED",
+      "newState": "RESOLVED",
+      "actorId": "2aadda04-b450-4e51-a373-0ef398f562cd",
+      "detail": {
+        "note": "Found Grace on the floor of the kitchen, unhurt. Helped her up.",
+        "outcome": "HANDLED_AT_HOME",
+        "reportedType": null,
+        "confirmedType": null,
+        "secondsFromTrigger": 72
+      },
+      "occurredAt": "2026-11-09T13:44:30.813Z"
+    }
+  },
+  "finishedAt": "2026-11-09T13:44:30.826Z",
+  "verdict": "Pass"
+}
