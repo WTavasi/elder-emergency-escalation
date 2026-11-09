@@ -149,7 +149,7 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
   logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
-    return this.auth.logout(user.userId);
+    return this.auth.logout(user.userId, user.sessionId);
   }
 
   @Get('me')
@@ -169,7 +169,7 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: PushTokenDto,
   ): Promise<void> {
-    return this.auth.registerPushToken(user.userId, dto.token);
+    return this.auth.registerPushToken(user.userId, dto.token, user.sessionId);
   }
 
   /** The choices this person has made about how they help. Defaults until they change one. */
@@ -195,7 +195,7 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete('me/push-token')
   clearPushToken(@CurrentUser() user: AuthenticatedUser): Promise<void> {
-    return this.auth.clearPushToken(user.userId);
+    return this.auth.clearPushToken(user.userId, user.sessionId);
   }
 
   /** Where this person stands, what they have done, and for an elder, who comes. */
@@ -223,7 +223,7 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePhoneDto,
   ): Promise<AuthResult> {
-    return this.auth.changePhone(user.userId, dto);
+    return this.auth.changePhone(user.userId, dto, user.sessionId);
   }
 
   /** The signed-in person changing their own name or email. */
@@ -246,6 +246,6 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePasswordDto,
   ): Promise<AuthResult> {
-    return this.auth.changePassword(user.userId, dto);
+    return this.auth.changePassword(user.userId, dto, user.sessionId);
   }
 }

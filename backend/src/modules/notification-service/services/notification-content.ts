@@ -328,6 +328,28 @@ export const accountMessages = {
     );
   },
 
+  /** Moved to another rank in an elder's chain: asked first, or after those asked first. */
+  movedInChain(moverName: string, elderName: string, first: boolean): string {
+    const elder = firstName(elderName);
+    return first
+      ? capSms(
+          `${firstName(moverName)} changed ${elder}'s MzaziCare contacts. You're now asked first if ${elder} needs help.`,
+          `You're now asked first if ${elder} needs help, in MzaziCare.`,
+        )
+      : capSms(
+          `${firstName(moverName)} changed ${elder}'s MzaziCare contacts. You're now asked if those asked first don't answer.`,
+          `You're now asked for ${elder} if those asked first don't answer, in MzaziCare.`,
+        );
+  },
+
+  /** To the elder: the order their contacts are asked in has changed. */
+  chainReordered(moverName: string): string {
+    return capSms(
+      `${firstName(moverName)} changed the order MzaziCare asks your contacts in. Open MzaziCare to see it.`,
+      `${firstName(moverName)} changed the order MzaziCare asks your contacts in.`,
+    );
+  },
+
   /** Added to an elder's chain, with no account yet. */
   invitedToChain(inviterName: string, elderName: string): string {
     return capSms(

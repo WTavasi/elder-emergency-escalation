@@ -14,6 +14,7 @@ const SECTIONS: { to: string; label: string; icon: IconName }[] = [
   { to: '/reporting', label: 'Reporting', icon: 'reporting' },
   { to: '/users', label: 'Users', icon: 'people' },
   { to: '/volunteers', label: 'Volunteers', icon: 'personAdd' },
+  { to: '/policy', label: 'Escalation policy', icon: 'tune' },
 ];
 
 const HIDDEN_KEY = 'mzazicare.sidebar.hidden';

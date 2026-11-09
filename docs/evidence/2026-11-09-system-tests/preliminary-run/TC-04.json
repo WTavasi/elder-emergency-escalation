@@ -1,0 +1,570 @@
+{
+  "id": "TC-04",
+  "title": "Acknowledge an emergency before the escalation deadline",
+  "startedAt": "2026-11-09T13:43:39.484Z",
+  "steps": [
+    {
+      "at": "2026-11-09T13:43:39.562Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 33,
+        "response": {
+          "id": "e4ad6187-238a-4cd2-a8b8-4431df38dd7c",
+          "elderlyId": "f7d5193c-d44d-427a-be23-ea1e288e97ed",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.2795",
+          "alertLongitude": "36.77",
+          "alertAddressLabel": "Lavington, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "STANDARD",
+          "severityScore": 30,
+          "severityFactors": {
+            "band": "STANDARD",
+            "score": 30,
+            "factors": [
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 1,
+                "detail": "high dependency",
+                "weight": 30,
+                "contribution": 30
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:43 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 0,
+                "detail": "0 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 0
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:43:39.531Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:43:39.618Z",
+      "text": "POST /alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/acknowledge",
+      "data": {
+        "request": {},
+        "status": 403,
+        "ms": 6,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "You're not part of this emergency.",
+          "path": "/api/v1/alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/acknowledge",
+          "timestamp": "2026-11-09T13:43:39.617Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:43:39.618Z",
+      "text": "Waiting 18 s, past the old deadline, to see that nothing climbs."
+    },
+    {
+      "at": "2026-11-09T13:43:57.648Z",
+      "text": "POST /alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/acknowledge",
+      "data": {
+        "request": {},
+        "status": 403,
+        "ms": 8,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "You're not part of this emergency.",
+          "path": "/api/v1/alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/acknowledge",
+          "timestamp": "2026-11-09T13:43:57.647Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:43:57.656Z",
+      "text": "POST /alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/resolve",
+      "data": {
+        "request": {
+          "outcome": "HANDLED_AT_HOME",
+          "note": "System test clean-up."
+        },
+        "status": 403,
+        "ms": 8,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "You're not part of this emergency.",
+          "path": "/api/v1/alerts/e4ad6187-238a-4cd2-a8b8-4431df38dd7c/resolve",
+          "timestamp": "2026-11-09T13:43:57.655Z"
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "Peter (tier 1 caregiver) acknowledged: 200",
+      "passed": false,
+      "observed": 403
+    },
+    {
+      "description": "Acknowledged before the deadline",
+      "passed": true,
+      "observed": "acknowledged 2026-11-09T13:43:39.618Z, deadline 2026-11-09T13:43:49.551Z"
+    },
+    {
+      "description": "The acknowledgement is recorded on the emergency",
+      "passed": false,
+      "observed": "NOTIFIED, by null"
+    },
+    {
+      "description": "It stayed at tier 1",
+      "passed": false,
+      "observed": 2
+    },
+    {
+      "description": "Nobody at tier 2 was notified",
+      "passed": false,
+      "observed": [1, 1, 2, 2, 2, 2]
+    },
+    {
+      "description": "ACKNOWLEDGED is in the audit trail and ESCALATED is not",
+      "passed": false,
+      "observed": [
+        "SEVERITY_EVALUATED",
+        "EVENT_CREATED",
+        "TIER_DISPATCHED",
+        "NOTIFICATION_FAILED",
+        "SEVERITY_EVALUATED",
+        "TIER_DISPATCHED",
+        "NOTIFICATION_FAILED",
+        "NOTIFICATION_FAILED"
+      ]
+    }
+  ],
+  "snapshots": {
+    "atTier1": {
+      "id": "e4ad6187-238a-4cd2-a8b8-4431df38dd7c",
+      "state": "NOTIFIED",
+      "currentTier": 1,
+      "severity": "STANDARD",
+      "severityScore": 30,
+      "severityFactors": {
+        "band": "STANDARD",
+        "score": 30,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 0,
+            "detail": "cancel window still open",
+            "weight": 30,
+            "contribution": 0
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:39.531Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:43:49.551Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "afterOldDeadline": {
+      "id": "e4ad6187-238a-4cd2-a8b8-4431df38dd7c",
+      "state": "NOTIFIED",
+      "currentTier": 2,
+      "severity": "CRITICAL",
+      "severityScore": 60,
+      "severityFactors": {
+        "band": "CRITICAL",
+        "score": 60,
+        "factors": [
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "16:43 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T13:43:39.531Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "currentTierDeadlineAt": "2026-11-09T13:43:59.594Z",
+      "trigger": "PANIC",
+      "outcome": null
+    },
+    "notifications": [
+      {
+        "recipientId": "2aadda04-b450-4e51-a373-0ef398f562cd",
+        "channel": "PUSH",
+        "status": "FAILED",
+        "tier": 1,
+        "createdAt": "2026-11-09T13:43:39.551Z",
+        "sentAt": null,
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": null,
+        "failureReason": "no registered device"
+      },
+      {
+        "recipientId": "2aadda04-b450-4e51-a373-0ef398f562cd",
+        "channel": "SMS",
+        "status": "SENT",
+        "tier": 1,
+        "createdAt": "2026-11-09T13:43:39.611Z",
+        "sentAt": "2026-11-09T13:43:39.618Z",
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": "logging-1794231819618",
+        "failureReason": null
+      },
+      {
+        "recipientId": "09bb9660-4eea-4177-9eef-5c8d5663daff",
+        "channel": "PUSH",
+        "status": "FAILED",
+        "tier": 2,
+        "createdAt": "2026-11-09T13:43:49.594Z",
+        "sentAt": null,
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": null,
+        "failureReason": "no registered device"
+      },
+      {
+        "recipientId": "09bb9660-4eea-4177-9eef-5c8d5663daff",
+        "channel": "SMS",
+        "status": "SENT",
+        "tier": 2,
+        "createdAt": "2026-11-09T13:43:49.594Z",
+        "sentAt": "2026-11-09T13:43:49.612Z",
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": "logging-1794231829612",
+        "failureReason": null
+      },
+      {
+        "recipientId": "bb8cbc6d-2a26-41a8-8ba1-cb1f4c1b3f01",
+        "channel": "PUSH",
+        "status": "FAILED",
+        "tier": 2,
+        "createdAt": "2026-11-09T13:43:49.594Z",
+        "sentAt": null,
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": null,
+        "failureReason": "no registered device"
+      },
+      {
+        "recipientId": "bb8cbc6d-2a26-41a8-8ba1-cb1f4c1b3f01",
+        "channel": "SMS",
+        "status": "SENT",
+        "tier": 2,
+        "createdAt": "2026-11-09T13:43:49.594Z",
+        "sentAt": "2026-11-09T13:43:49.624Z",
+        "deliveredAt": null,
+        "acknowledgedAt": null,
+        "providerMessageId": "logging-1794231829624",
+        "failureReason": null
+      }
+    ],
+    "auditTrail": [
+      {
+        "action": "SEVERITY_EVALUATED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "band": "STANDARD",
+          "score": 30,
+          "factors": [
+            {
+              "key": "no_cancel_in_grace_window",
+              "value": 0,
+              "detail": "cancel window still open",
+              "weight": 30,
+              "contribution": 0
+            },
+            {
+              "key": "care_level",
+              "value": 1,
+              "detail": "high dependency",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "time_of_day",
+              "value": 0,
+              "detail": "16:43 local, daytime",
+              "weight": 20,
+              "contribution": 0
+            },
+            {
+              "key": "away_from_home",
+              "value": 0,
+              "detail": "0 m from the registered home",
+              "weight": 15,
+              "contribution": 0
+            },
+            {
+              "key": "recent_activity",
+              "value": 0,
+              "detail": "0 recent or open prior alert(s)",
+              "weight": 5,
+              "contribution": 0
+            }
+          ]
+        },
+        "occurredAt": "2026-11-09T13:43:39.531Z"
+      },
+      {
+        "action": "EVENT_CREATED",
+        "previousState": null,
+        "newState": "TRIGGERED",
+        "actorId": "f7d5193c-d44d-427a-be23-ea1e288e97ed",
+        "detail": {
+          "trigger": "PANIC"
+        },
+        "occurredAt": "2026-11-09T13:43:39.531Z"
+      },
+      {
+        "action": "TIER_DISPATCHED",
+        "previousState": "TRIGGERED",
+        "newState": "NOTIFIED",
+        "actorId": null,
+        "detail": {
+          "tier": 1,
+          "reason": "initial",
+          "channels": ["PUSH"],
+          "recipients": 1,
+          "responderRole": "CAREGIVER",
+          "timeoutSeconds": 10
+        },
+        "occurredAt": "2026-11-09T13:43:39.551Z"
+      },
+      {
+        "action": "NOTIFICATION_FAILED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "reason": "no registered device",
+          "channel": "PUSH",
+          "notificationId": "808fe54e-ca09-44c7-8dfc-d931c919da40"
+        },
+        "occurredAt": "2026-11-09T13:43:39.568Z"
+      },
+      {
+        "action": "SEVERITY_EVALUATED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "band": "CRITICAL",
+          "score": 60,
+          "stage": "cancel_window_closed",
+          "factors": [
+            {
+              "key": "no_cancel_in_grace_window",
+              "value": 1,
+              "detail": "cancel window passed without a response",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "care_level",
+              "value": 1,
+              "detail": "high dependency",
+              "weight": 30,
+              "contribution": 30
+            },
+            {
+              "key": "time_of_day",
+              "value": 0,
+              "detail": "16:43 local, daytime",
+              "weight": 20,
+              "contribution": 0
+            },
+            {
+              "key": "away_from_home",
+              "value": 0,
+              "detail": "0 m from the registered home",
+              "weight": 15,
+              "contribution": 0
+            },
+            {
+              "key": "recent_activity",
+              "value": 0,
+              "detail": "0 recent or open prior alert(s)",
+              "weight": 5,
+              "contribution": 0
+            }
+          ],
+          "severityAfter": "CRITICAL",
+          "severityBefore": "STANDARD"
+        },
+        "occurredAt": "2026-11-09T13:43:49.575Z"
+      },
+      {
+        "action": "TIER_DISPATCHED",
+        "previousState": "NOTIFIED",
+        "newState": "NOTIFIED",
+        "actorId": null,
+        "detail": {
+          "tier": 2,
+          "reason": "severity",
+          "channels": ["PUSH", "SMS"],
+          "recipients": 2,
+          "responderRole": "FAMILY_MEMBER",
+          "timeoutSeconds": 10
+        },
+        "occurredAt": "2026-11-09T13:43:49.594Z"
+      },
+      {
+        "action": "NOTIFICATION_FAILED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "reason": "no registered device",
+          "channel": "PUSH",
+          "notificationId": "be6f9e6d-32ee-41e3-b431-be2db1304a74"
+        },
+        "occurredAt": "2026-11-09T13:43:49.607Z"
+      },
+      {
+        "action": "NOTIFICATION_FAILED",
+        "previousState": null,
+        "newState": null,
+        "actorId": null,
+        "detail": {
+          "reason": "no registered device",
+          "channel": "PUSH",
+          "notificationId": "116e8663-c2b8-4fd2-95e0-4edd64f8b4ba"
+        },
+        "occurredAt": "2026-11-09T13:43:49.619Z"
+      }
+    ]
+  },
+  "finishedAt": "2026-11-09T13:43:57.656Z",
+  "verdict": "Fail"
+}

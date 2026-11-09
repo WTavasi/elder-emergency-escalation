@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { AlertTrigger, CheckInStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { PUSH_TARGETS_SELECT, pushTokensOf } from '../../../shared/utils/push-targets';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { AlertsService } from '../../emergency-service/services/alerts.service';
 import { nudgeAfterMinutes } from './check-in-rhythm';
@@ -102,7 +103,7 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
             id: true,
             name: true,
             phone: true,
-            pushToken: true,
+            ...PUSH_TARGETS_SELECT,
             timezone: true,
             deactivatedAt: true,
           },
@@ -156,7 +157,12 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
           }
           throw error;
         }
-        await this.messenger.ask(elder, checkInId, false, now);
+        await this.messenger.ask(
+          { ...elder, pushTokens: pushTokensOf(elder) },
+          checkInId,
+          false,
+          now,
+        );
         asked += 1;
       }
     }
@@ -172,7 +178,9 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
         remindAt: { lte: now },
         deadlineAt: { gt: now },
       },
-      include: { elder: { select: { name: true, phone: true, pushToken: true, timezone: true } } },
+      include: {
+        elder: { select: { name: true, phone: true, timezone: true, ...PUSH_TARGETS_SELECT } },
+      },
     });
 
     let reminded = 0;
@@ -182,7 +190,12 @@ export class CheckInClockService implements OnModuleInit, OnModuleDestroy {
         data: { remindedAt: now },
       });
       if (claimed.count !== 1) continue;
-      await this.messenger.ask(checkIn.elder, checkIn.id, true, now);
+      await this.messenger.ask(
+        { ...checkIn.elder, pushTokens: pushTokensOf(checkIn.elder) },
+        checkIn.id,
+        true,
+        now,
+      );
       reminded += 1;
     }
     return reminded;

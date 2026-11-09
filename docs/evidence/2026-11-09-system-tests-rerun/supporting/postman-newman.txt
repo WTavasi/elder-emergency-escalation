@@ -1,0 +1,367 @@
+newman
+
+MzaziCare API
+
+❏ 0. Is it running
+↳ Health
+  GET http://localhost:3000/health [200 OK, 736B, 36ms]
+  ✓  answers 200
+  ✓  database and Redis are both up
+
+↳ Which sign-in methods are offered
+  GET http://localhost:3000/api/v1/auth/providers [200 OK, 625B, 5ms]
+  ✓  answers 200
+  ✓  says whether Google is set up
+
+❏ 1. Sign in
+↳ Elder (Grace)
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.48kB, 71ms]
+  ✓  answers 200
+  ✓  signed in as ELDER
+
+↳ Caregiver (Mary, tier 1)
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.43kB, 67ms]
+  ✓  answers 200
+  ✓  signed in as CAREGIVER
+
+↳ Family member (tier 2)
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.44kB, 58ms]
+  ✓  answers 200
+  ✓  signed in as FAMILY_MEMBER
+
+↳ Emergency responder (tier 3)
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.45kB, 48ms]
+  ✓  answers 200
+  ✓  signed in as EMERGENCY_RESPONDER
+
+↳ Administrator
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.44kB, 47ms]
+  ✓  answers 200
+  ✓  signed in as ADMINISTRATOR
+
+↳ Administrator, by email instead
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.44kB, 46ms]
+  ✓  answers 200
+  ✓  the same account
+
+↳ Who am I (caregiver)
+  GET http://localhost:3000/api/v1/auth/me [200 OK, 760B, 8ms]
+  ✓  answers 200
+
+↳ Refresh the caregiver's token
+  POST http://localhost:3000/api/v1/auth/refresh [200 OK, 1.43kB, 11ms]
+  ✓  answers 200
+  ✓  the refresh token changed
+
+❏ 2. An emergency, start to finish
+↳ Elder raises an alert
+  POST http://localhost:3000/api/v1/alerts [201 Created, 2.28kB, 45ms]
+  ✓  answers 201
+  ✓  has an id
+  ✓  the first tier was told
+
+↳ Caregiver lists open alerts
+  GET http://localhost:3000/api/v1/alerts?open=true [200 OK, 1.36kB, 19ms]
+  ✓  answers 200
+  ✓  the new alert is in the list
+
+↳ Caregiver opens it
+  GET http://localhost:3000/api/v1/alerts/3f078c10-5c97-4ea5-b7a6-4b8083c91210 [200 OK, 5.02kB, 28ms]
+  ✓  answers 200
+  ✓  carries the chain and the trail
+
+↳ Caregiver takes it on
+  POST http://localhost:3000/api/v1/alerts/3f078c10-5c97-4ea5-b7a6-4b8083c91210/acknowledge [200 OK, 2.33kB, 18ms]
+  ✓  answers 200
+
+↳ Caregiver closes it
+  POST http://localhost:3000/api/v1/alerts/3f078c10-5c97-4ea5-b7a6-4b8083c91210/resolve [200 OK, 2.36kB, 13ms]
+  ✓  answers 200
+
+↳ The record afterwards
+  GET http://localhost:3000/api/v1/alerts/3f078c10-5c97-4ea5-b7a6-4b8083c91210 [200 OK, 5.95kB, 12ms]
+  ✓  answers 200
+  ✓  closed
+
+❏ 3. Declining moves it on
+↳ Elder raises an alert
+  POST http://localhost:3000/api/v1/alerts [201 Created, 2.28kB, 25ms]
+  ✓  answers 201
+  ✓  has an id
+
+↳ Caregiver declines
+  POST http://localhost:3000/api/v1/alerts/9fb56e36-9a96-4f9d-aed4-fa08ca93eb24/decline [200 OK, 2.29kB, 34ms]
+  ✓  answers 200
+
+↳ It reached tier two
+  GET http://localhost:3000/api/v1/alerts/9fb56e36-9a96-4f9d-aed4-fa08ca93eb24 [200 OK, 7.66kB, 21ms]
+  ✓  answers 200
+  ✓  now at tier two
+
+↳ Family member takes it on
+  POST http://localhost:3000/api/v1/alerts/9fb56e36-9a96-4f9d-aed4-fa08ca93eb24/acknowledge [200 OK, 2.33kB, 20ms]
+  ✓  answers 200
+
+↳ Family member calls in a responder
+  POST http://localhost:3000/api/v1/alerts/9fb56e36-9a96-4f9d-aed4-fa08ca93eb24/request-responder [202 Accepted, 527B, 32ms]
+  ✓  answers 202
+
+↳ Family member closes it
+  POST http://localhost:3000/api/v1/alerts/9fb56e36-9a96-4f9d-aed4-fa08ca93eb24/resolve [200 OK, 2.44kB, 11ms]
+  ✓  answers 200
+
+❏ 4. Withdrawing and reopening
+↳ Elder raises an alert
+  POST http://localhost:3000/api/v1/alerts [201 Created, 2.28kB, 27ms]
+  ✓  answers 201
+  ✓  has an id
+
+↳ Elder withdraws it
+  POST http://localhost:3000/api/v1/alerts/dfde107f-ee12-4c4f-853f-7c73662da842/cancel [200 OK, 2.31kB, 13ms]
+  ✓  answers 200
+
+↳ Caregiver reopens it
+  POST http://localhost:3000/api/v1/alerts/dfde107f-ee12-4c4f-853f-7c73662da842/reopen [200 OK, 2.31kB, 41ms]
+  ✓  answers 200
+
+↳ Caregiver takes it on
+  POST http://localhost:3000/api/v1/alerts/dfde107f-ee12-4c4f-853f-7c73662da842/acknowledge [200 OK, 2.37kB, 15ms]
+  ✓  answers 200
+
+↳ Caregiver closes it with a note
+  POST http://localhost:3000/api/v1/alerts/dfde107f-ee12-4c4f-853f-7c73662da842/resolve [200 OK, 2.43kB, 12ms]
+  ✓  answers 200
+
+❏ 7. Where an elder is staying
+↳ Where is she
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/place [200 OK, 754B, 9ms]
+  ✓  answers 200
+
+↳ She is staying elsewhere
+  PUT http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/place [200 OK, 815B, 11ms]
+  ✓  answers 200
+  ✓  away from home
+
+↳ She is back home
+  DELETE http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/place [200 OK, 776B, 9ms]
+  ✓  answers 200
+  ✓  home
+
+❏ 8. Reporting
+↳ Overview, last 30 days
+  GET http://localhost:3000/api/v1/dashboard/overview?days=30 [200 OK, 3.46kB, 9ms]
+  ✓  answers 200
+
+↳ Closed alerts this month
+  GET http://localhost:3000/api/v1/alerts?state=RESOLVED,CANCELLED&limit=20 [200 OK, 3.25kB, 6ms]
+  ✓  answers 200
+
+❏ 8d. Accounts (administrator)
+↳ Every account, first page
+  GET http://localhost:3000/api/v1/admin/users?page=1&pageSize=25 [200 OK, 8.78kB, 7ms]
+  ✓  answers 200
+  ✓  has a total
+
+↳ Search for Mary
+  GET http://localhost:3000/api/v1/admin/users?q=mary [200 OK, 939B, 6ms]
+  ✓  answers 200
+  ✓  finds her
+
+↳ Find the responder from an earlier run
+  GET http://localhost:3000/api/v1/admin/users?q=+254712345600 [200 OK, 656B, 5ms]
+  ✓  answers 200
+
+↳ Add a responder
+  POST http://localhost:3000/api/v1/admin/users [201 Created, 971B, 54ms]
+  ✓  made, or there already
+
+↳ Deactivate them
+  POST http://localhost:3000/api/v1/admin/users/deactivate [200 OK, 623B, 10ms]
+  ✓  answers 200
+  ✓  one changed
+
+↳ They cannot sign in now
+  POST http://localhost:3000/api/v1/auth/login [401 Unauthorized, 792B, 50ms]
+  ✓  answers 401
+  ✓  says why
+
+↳ Reactivate them
+  POST http://localhost:3000/api/v1/admin/users/reactivate [200 OK, 623B, 6ms]
+  ✓  answers 200
+
+↳ History, page 2, searching a name
+  GET http://localhost:3000/api/v1/alerts?q=grace&limit=5&offset=5 [200 OK, 629B, 7ms]
+  ✓  answers 200
+  ✓  the total is in a header
+
+❏ 9. Things that must be refused
+↳ No token
+  GET http://localhost:3000/api/v1/alerts [401 Unauthorized, 760B, 1ms]
+  ✓  answers 401
+
+↳ Wrong password
+  POST http://localhost:3000/api/v1/auth/login [401 Unauthorized, 774B, 43ms]
+  ✓  answers 401
+
+↳ Unknown phone, same message
+  POST http://localhost:3000/api/v1/auth/login [401 Unauthorized, 774B, 5ms]
+  ✓  answers 401
+  ✓  cannot tell an unknown number from a wrong password
+
+↳ A code for a registered number still answers 202
+  POST http://localhost:3000/api/v1/auth/verify-phone [202 Accepted, 527B, 5ms]
+  ✓  answers 202
+
+↳ Elder raises an alert, for the next check
+  POST http://localhost:3000/api/v1/alerts [201 Created, 2.28kB, 26ms]
+  ✓  answers 201
+  ✓  has an id
+
+↳ Administrator cannot take on an emergency
+  POST http://localhost:3000/api/v1/alerts/4104a237-cffd-4ac2-bc53-e7d91d9794e9/acknowledge [403 Forbidden, 816B, 5ms]
+  ✓  answers 403
+
+↳ Tidy up: caregiver takes it on
+  POST http://localhost:3000/api/v1/alerts/4104a237-cffd-4ac2-bc53-e7d91d9794e9/acknowledge [200 OK, 2.33kB, 14ms]
+  ✓  answers 200
+
+↳ Tidy up: caregiver closes it
+  POST http://localhost:3000/api/v1/alerts/4104a237-cffd-4ac2-bc53-e7d91d9794e9/resolve [200 OK, 2.36kB, 11ms]
+  ✓  answers 200
+
+↳ Caregiver cannot see reporting
+  GET http://localhost:3000/api/v1/dashboard/overview [403 Forbidden, 772B, 2ms]
+  ✓  answers 403
+
+↳ Elder cannot move herself
+  PUT http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/place [403 Forbidden, 803B, 3ms]
+  ✓  answers 403
+
+↳ A wrong current password is a 400, not a 401
+  POST http://localhost:3000/api/v1/auth/change-password [400 Bad Request, 782B, 45ms]
+  ✓  answers 400
+
+↳ A caregiver cannot list accounts
+  GET http://localhost:3000/api/v1/admin/users [403 Forbidden, 765B, 2ms]
+  ✓  answers 403
+
+↳ Nobody deactivates their own account
+  POST http://localhost:3000/api/v1/admin/users/deactivate [400 Bad Request, 791B, 3ms]
+  ✓  answers 400
+
+↳ A reset with a code nobody sent
+  POST http://localhost:3000/api/v1/auth/reset-password [400 Bad Request, 803B, 3ms]
+  ✓  answers 400
+
+↳ Google with a made-up token
+  POST http://localhost:3000/api/v1/auth/google [404 Not Found, 779B, 3ms]
+  ✓  refused: 401, or 404 when Google is not set up
+
+↳ Phone in the wrong format
+  POST http://localhost:3000/api/v1/auth/verify-phone [400 Bad Request, 792B, 5ms]
+  ✓  answers 400
+
+↳ An extra field is rejected
+  POST http://localhost:3000/api/v1/alerts [400 Bad Request, 773B, 3ms]
+  ✓  answers 400
+
+❏ 10. Later additions: medical, order, policy
+↳ The privacy notice's facts, with how long speech is kept
+  GET http://localhost:3000/api/v1/legal [200 OK, 774B, 2ms]
+  ✓  answers 200
+  ✓  says how long speech is kept
+
+↳ Open alerts, who to go to first (responder)
+  POST http://localhost:3000/api/v1/alerts/ranked [200 OK, 644B, 8ms]
+  ✓  answers 200
+  ✓  a ranked list
+
+↳ Emergency services near the elder
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/services [200 OK, 1.32kB, 7ms]
+  ✓  answers 200
+
+↳ The elder's check-ins and rhythm
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/check-ins [200 OK, 669B, 7ms]
+  ✓  answers 200
+
+↳ Medical details, for a caregiver
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/medical [200 OK, 2.72kB, 14ms]
+  ✓  answers 200
+  ✓  says on whose word they are shared
+
+↳ A caregiver deciding for an elder who cannot
+  POST http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/medical/guardian [409 Conflict, 825B, 7ms]
+  ✓  answers 200, or 409 once the elder agreed
+
+↳ The elder deciding for themselves again
+  DELETE http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/medical/guardian [200 OK, 2.72kB, 9ms]
+  ✓  answers 200
+
+↳ What the elder said after pressing help (the elder)
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/speech [200 OK, 648B, 16ms]
+  ✓  answers 200
+
+↳ The chain, to reorder
+  GET http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/chain [200 OK, 1.47kB, 9ms]
+  ✓  answers 200
+  ✓  a caregiver may reorder
+
+↳ Who is asked first, saved at once (the same order)
+  PUT http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/chain/order [200 OK, 1.47kB, 17ms]
+  ✓  answers 200
+  ✓  answers with the chain
+
+↳ Nobody can be left out of the order
+  PUT http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/chain/order [400 Bad Request, 837B, 9ms]
+  ✓  answers 400
+
+↳ Family cannot reorder
+  PUT http://localhost:3000/api/v1/elders/6e55ebcf-890d-4c79-8826-13fdc03d7bf0/chain/order [403 Forbidden, 809B, 2ms]
+  ✓  answers 403
+
+↳ The escalation policy (administrator)
+  GET http://localhost:3000/api/v1/admin/policy [200 OK, 4.12kB, 4ms]
+  ✓  answers 200
+  ✓  nine rules, three bands of three tiers
+  ✓  the bands and the highest score
+
+↳ A tier's time limit, unchanged, records nothing
+  PATCH http://localhost:3000/api/v1/admin/policy/escalation-rules/STANDARD/1 [200 OK, 4.12kB, 7ms]
+  ✓  answers 200
+
+↳ The last tier never gets a time limit
+  PATCH http://localhost:3000/api/v1/admin/policy/escalation-rules/STANDARD/3 [400 Bad Request, 834B, 5ms]
+  ✓  answers 400
+  ✓  says why
+
+↳ A time limit outside the allowed range
+  PATCH http://localhost:3000/api/v1/admin/policy/escalation-rules/STANDARD/1 [400 Bad Request, 816B, 3ms]
+  ✓  answers 400
+
+↳ High must start below Critical
+  PUT http://localhost:3000/api/v1/admin/policy/bands [400 Bad Request, 780B, 3ms]
+  ✓  answers 400
+
+↳ A caregiver cannot see or change the policy
+  GET http://localhost:3000/api/v1/admin/policy [403 Forbidden, 766B, 2ms]
+  ✓  answers 403
+
+┌─────────────────────────┬──────────────────┬──────────────────┐
+│                         │         executed │           failed │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              iterations │                1 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│                requests │               75 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│            test-scripts │               75 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│      prerequest-scripts │                0 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              assertions │              109 │                0 │
+├─────────────────────────┴──────────────────┴──────────────────┤
+│ total run duration: 2.3s                                      │
+├───────────────────────────────────────────────────────────────┤
+│ total data received: 81.81kB (approx)                         │
+├───────────────────────────────────────────────────────────────┤
+│ average response time: 17ms [min: 1ms, max: 71ms, s.d.: 17ms] │
+└───────────────────────────────────────────────────────────────┘

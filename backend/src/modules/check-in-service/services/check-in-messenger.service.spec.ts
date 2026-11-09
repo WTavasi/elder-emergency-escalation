@@ -7,7 +7,7 @@ import { CheckInMessenger } from './check-in-messenger.service';
 const GRACE = {
   name: 'Grace Wanjiru',
   phone: '+254700000010',
-  pushToken: 'token-1',
+  pushTokens: ['token-1'],
   timezone: 'Africa/Nairobi',
 };
 // Nine in the morning in Nairobi.
@@ -58,25 +58,25 @@ describe('CheckInMessenger', () => {
 
   it('texts an elder with no push address, which for a basic phone is every time', async () => {
     const t = build();
-    await t.messenger.ask({ ...GRACE, pushToken: null }, 'check-in-1', false, MORNING);
+    await t.messenger.ask({ ...GRACE, pushTokens: [] }, 'check-in-1', false, MORNING);
     expect(t.push.send).not.toHaveBeenCalled();
     expect(t.sms.send).toHaveBeenCalledWith(GRACE.phone, expect.any(String));
   });
 
   it('asks for a reply of 1 only when replies can be received', async () => {
     const withReplies = build({ replies: true });
-    await withReplies.messenger.ask({ ...GRACE, pushToken: null }, 'c', false, MORNING);
+    await withReplies.messenger.ask({ ...GRACE, pushTokens: [] }, 'c', false, MORNING);
     expect(withReplies.text()).toContain('Reply 1 if you are');
 
     const without = build();
-    await without.messenger.ask({ ...GRACE, pushToken: null }, 'c', false, MORNING);
+    await without.messenger.ask({ ...GRACE, pushTokens: [] }, 'c', false, MORNING);
     expect(without.text()).not.toContain('Reply 1');
     expect(without.text()).toContain('Open MzaziCare');
   });
 
   it('says so when it is the reminder, and stays inside one text', async () => {
     const t = build({ replies: true });
-    await t.messenger.ask({ ...GRACE, pushToken: null }, 'c', true, MORNING);
+    await t.messenger.ask({ ...GRACE, pushTokens: [] }, 'c', true, MORNING);
     expect(t.text()).toContain("we're waiting to hear from you");
     expect(t.text().length).toBeLessThanOrEqual(SMS_LIMIT);
   });
@@ -84,7 +84,7 @@ describe('CheckInMessenger', () => {
   it('reports when the elder could not be reached at all', async () => {
     const t = build();
     t.sms.send.mockResolvedValue(false);
-    await expect(t.messenger.ask({ ...GRACE, pushToken: null }, 'c', false, MORNING)).resolves.toBe(
+    await expect(t.messenger.ask({ ...GRACE, pushTokens: [] }, 'c', false, MORNING)).resolves.toBe(
       'none',
     );
   });

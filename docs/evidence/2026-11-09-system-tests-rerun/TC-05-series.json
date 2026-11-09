@@ -1,0 +1,274 @@
+{
+  "test": "TC-05 series",
+  "at": "2026-11-09T15:10:58.973Z",
+  "trials": 20,
+  "consistent": 20,
+  "acceptedBy": {
+    "mary": 10,
+    "lucy": 7,
+    "kevin": 3
+  },
+  "verdict": "Pass",
+  "trialsDetail": [
+    {
+      "trial": 1,
+      "eventId": "ef21847c-c8d3-4f41-89fb-6b468ece2828",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 2,
+      "eventId": "dca1bb87-c2de-4a61-97e2-fa98beb12c52",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 3,
+      "eventId": "fb39b243-f388-46e8-8e00-1faabdb1c1b4",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 4,
+      "eventId": "13ed8d3e-c684-4198-ac53-73dfd40fccb8",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 5,
+      "eventId": "47975768-027c-4987-81be-f4c4647a9abb",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 6,
+      "eventId": "8fe23d91-bcf8-46fe-a2c4-c1cc99cd5615",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 7,
+      "eventId": "093aac74-0ac9-4014-9eac-f24dd1a1428e",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 8,
+      "eventId": "49c674fd-2874-4a34-af16-a1e21107edc4",
+      "statuses": {
+        "mary": 409,
+        "lucy": 409,
+        "kevin": 200
+      },
+      "accepted": "kevin",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 9,
+      "eventId": "b323c932-d3d2-4bb0-89c0-d300e22ef0d2",
+      "statuses": {
+        "mary": 409,
+        "lucy": 409,
+        "kevin": 200
+      },
+      "accepted": "kevin",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 10,
+      "eventId": "4d1ead4f-992b-444d-ab10-d6e3414946b0",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 11,
+      "eventId": "400f1f5a-1fe1-4d11-a337-02dd7273371f",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 12,
+      "eventId": "b9f4d114-68cb-473b-b0f5-34f459b12bd9",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 13,
+      "eventId": "16940b6b-0688-4818-b0ad-2f2f8da4186d",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 14,
+      "eventId": "3a2ce688-472e-46ee-bd5f-9428b3919e3e",
+      "statuses": {
+        "mary": 409,
+        "lucy": 409,
+        "kevin": 200
+      },
+      "accepted": "kevin",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 15,
+      "eventId": "1f61de80-9e4e-4b5e-963f-8034ac7b0978",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 16,
+      "eventId": "675398e8-8c39-4051-a288-fc1602b1dd3c",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 17,
+      "eventId": "e09a8b28-8213-43f0-9745-4c64ecd65fb8",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 18,
+      "eventId": "429c644e-3e68-4ae2-804e-d6596e59533a",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 19,
+      "eventId": "0564eb50-c51e-40b4-9e6d-0b09d53bc467",
+      "statuses": {
+        "mary": 409,
+        "lucy": 200,
+        "kevin": 409
+      },
+      "accepted": "lucy",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    },
+    {
+      "trial": 20,
+      "eventId": "963ea37c-6ac4-41bb-b56a-058df546fc8f",
+      "statuses": {
+        "mary": 200,
+        "lucy": 409,
+        "kevin": 409
+      },
+      "accepted": "mary",
+      "acknowledgedEntries": 1,
+      "state": "ACKNOWLEDGED",
+      "consistent": true
+    }
+  ]
+}

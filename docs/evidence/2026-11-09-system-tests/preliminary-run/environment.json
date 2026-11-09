@@ -1,0 +1,152 @@
+{
+  "startedAt": "2026-11-09T13:43:18.621Z",
+  "api": "http://localhost:3100/api/v1",
+  "node": "v22.22.0",
+  "testDeadlineSeconds": 10,
+  "health": {
+    "status": "ok",
+    "uptimeSeconds": 8,
+    "checks": {
+      "postgres": {
+        "status": "up",
+        "latencyMs": 1
+      },
+      "redis": {
+        "status": "up",
+        "latencyMs": 1
+      }
+    }
+  },
+  "originalEscalationRules": [
+    {
+      "severity": "STANDARD",
+      "tier": 1,
+      "role": "CAREGIVER",
+      "timeoutSeconds": 120
+    },
+    {
+      "severity": "STANDARD",
+      "tier": 2,
+      "role": "FAMILY_MEMBER",
+      "timeoutSeconds": 180
+    },
+    {
+      "severity": "STANDARD",
+      "tier": 3,
+      "role": "EMERGENCY_RESPONDER",
+      "timeoutSeconds": null
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 1,
+      "role": "CAREGIVER",
+      "timeoutSeconds": 60
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 2,
+      "role": "FAMILY_MEMBER",
+      "timeoutSeconds": 120
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 3,
+      "role": "EMERGENCY_RESPONDER",
+      "timeoutSeconds": null
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 1,
+      "role": "CAREGIVER",
+      "timeoutSeconds": 60
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 2,
+      "role": "FAMILY_MEMBER",
+      "timeoutSeconds": 60
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 3,
+      "role": "EMERGENCY_RESPONDER",
+      "timeoutSeconds": null
+    }
+  ],
+  "testEscalationRules": [
+    {
+      "severity": "STANDARD",
+      "tier": 1,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "STANDARD",
+      "tier": 2,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "STANDARD",
+      "tier": 3,
+      "timeoutSeconds": null
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 1,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 2,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "ELEVATED",
+      "tier": 3,
+      "timeoutSeconds": null
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 1,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 2,
+      "timeoutSeconds": 10
+    },
+    {
+      "severity": "CRITICAL",
+      "tier": 3,
+      "timeoutSeconds": null
+    }
+  ],
+  "severityFactors": [
+    {
+      "key": "no_cancel_in_grace_window",
+      "weight": 30,
+      "enabled": true
+    },
+    {
+      "key": "care_level",
+      "weight": 30,
+      "enabled": true
+    },
+    {
+      "key": "time_of_day",
+      "weight": 20,
+      "enabled": true
+    },
+    {
+      "key": "away_from_home",
+      "weight": 15,
+      "enabled": true
+    },
+    {
+      "key": "recent_activity",
+      "weight": 5,
+      "enabled": true
+    }
+  ],
+  "finishedAt": "2026-11-09T13:44:41.061Z",
+  "rulesRestored": true
+}

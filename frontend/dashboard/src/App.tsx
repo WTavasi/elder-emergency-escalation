@@ -5,6 +5,7 @@ import { Layout } from './shared/components/Layout';
 import { Board } from './features/board/Board';
 import { EventDetail } from './features/event-detail/EventDetail';
 import { History } from './features/history/History';
+import { Policy } from './features/policy/Policy';
 import { Reporting } from './features/reporting/Reporting';
 import { Users } from './features/users/Users';
 import { Volunteers } from './features/volunteers/Volunteers';
@@ -53,6 +54,7 @@ export function App() {
           <Route path="reporting" element={<Reporting />} />
           <Route path="users" element={<Users />} />
           <Route path="volunteers" element={<Volunteers />} />
+          <Route path="policy" element={<Policy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

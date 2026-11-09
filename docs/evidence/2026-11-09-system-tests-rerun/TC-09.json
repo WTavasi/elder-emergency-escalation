@@ -1,0 +1,288 @@
+{
+  "id": "TC-09",
+  "title": "Access an emergency without a care relationship or role",
+  "startedAt": "2026-11-09T15:10:03.338Z",
+  "steps": [
+    {
+      "at": "2026-11-09T15:10:03.349Z",
+      "text": "GET /alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+      "data": {
+        "request": null,
+        "status": 404,
+        "ms": 6,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "We couldn't find this emergency.",
+          "path": "/api/v1/alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+          "timestamp": "2026-11-09T15:10:03.348Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.356Z",
+      "text": "POST /alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab/resolve",
+      "data": {
+        "request": {
+          "outcome": "FALSE_ALARM",
+          "note": "x"
+        },
+        "status": 403,
+        "ms": 6,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "You're not part of this emergency.",
+          "path": "/api/v1/alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab/resolve",
+          "timestamp": "2026-11-09T15:10:03.355Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.360Z",
+      "text": "GET /alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab/medical",
+      "data": {
+        "request": null,
+        "status": 404,
+        "ms": 5,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "We couldn't find this emergency.",
+          "path": "/api/v1/alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab/medical",
+          "timestamp": "2026-11-09T15:10:03.360Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.368Z",
+      "text": "GET /alerts",
+      "data": {
+        "request": null,
+        "status": 200,
+        "ms": 7,
+        "response": [
+          {
+            "eventId": "3db41bc1-d4f5-47da-bb9d-d9bee5dc38a9",
+            "state": "RESOLVED",
+            "severity": "STANDARD",
+            "severityScore": 0,
+            "currentTier": 1,
+            "outcome": "HANDLED_AT_HOME",
+            "outcomeNote": "System test clean-up.",
+            "elder": {
+              "id": "df103d2f-3d0f-451a-87cf-f780418a48fc",
+              "name": "Hannah Kimani",
+              "phone": "+254700000013",
+              "addressLabel": "Westlands, Nairobi"
+            },
+            "acknowledgedBy": {
+              "id": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+              "name": "Peter Mwangi",
+              "role": "CAREGIVER"
+            },
+            "latitude": -1.268,
+            "longitude": 36.811,
+            "addressLabel": "Westlands, Nairobi",
+            "withheld": [],
+            "triggeredAt": "2026-11-09T15:10:00.950Z",
+            "trigger": "PANIC",
+            "acknowledgedAt": "2026-11-09T15:10:00.983Z",
+            "ownerExpectedAt": "2026-11-09T15:20:00.983Z",
+            "arrivedAt": null,
+            "resolvedAt": "2026-11-09T15:10:01.000Z",
+            "deadlineAt": null,
+            "responderRequestedAt": null,
+            "reportedType": null,
+            "confirmedType": null,
+            "serviceRequested": null,
+            "serviceRequestedAt": null,
+            "responseSeconds": 0
+          },
+          {
+            "eventId": "e244ddd1-56d8-4e41-b1b8-c14e34184246",
+            "state": "RESOLVED",
+            "severity": "ELEVATED",
+            "severityScore": 45,
+            "currentTier": 1,
+            "outcome": "HANDLED_AT_HOME",
+            "outcomeNote": "System test clean-up.",
+            "elder": {
+              "id": "ef2c62f8-886d-47e1-a663-94a0be623e10",
+              "name": "Joseph Kimani",
+              "phone": "+254700000011",
+              "addressLabel": "Westlands, Nairobi"
+            },
+            "acknowledgedBy": {
+              "id": "b2f4859c-8ff8-450f-b5fc-833c248160f6",
+              "name": "Peter Mwangi",
+              "role": "CAREGIVER"
+            },
+            "latitude": -1.268,
+            "longitude": 36.811,
+            "addressLabel": "Westlands, Nairobi",
+            "withheld": [],
+            "triggeredAt": "2026-11-09T15:09:42.529Z",
+            "trigger": "PANIC",
+            "acknowledgedAt": "2026-11-09T15:09:42.609Z",
+            "ownerExpectedAt": null,
+            "arrivedAt": null,
+            "resolvedAt": "2026-11-09T15:10:00.647Z",
+            "deadlineAt": null,
+            "responderRequestedAt": null,
+            "reportedType": null,
+            "confirmedType": null,
+            "serviceRequested": null,
+            "serviceRequestedAt": null,
+            "responseSeconds": 0
+          }
+        ]
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.369Z",
+      "text": "GET /admin/users",
+      "data": {
+        "request": null,
+        "status": 403,
+        "ms": 2,
+        "response": {
+          "statusCode": 403,
+          "error": "Forbidden",
+          "message": "Your account can't do this.",
+          "path": "/api/v1/admin/users",
+          "timestamp": "2026-11-09T15:10:03.369Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T15:10:03.371Z",
+      "text": "GET /alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+      "data": {
+        "request": null,
+        "status": 401,
+        "ms": 1,
+        "response": {
+          "statusCode": 401,
+          "error": "Unauthorized",
+          "message": "Please sign in again.",
+          "path": "/api/v1/alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+          "timestamp": "2026-11-09T15:10:03.370Z"
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "Peter reading Grace's alert is refused (404, so the id confirms nothing)",
+      "passed": true,
+      "observed": 404
+    },
+    {
+      "description": "Nothing about Grace is in the answer",
+      "passed": true,
+      "observed": {
+        "statusCode": 404,
+        "error": "Not Found",
+        "message": "We couldn't find this emergency.",
+        "path": "/api/v1/alerts/f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+        "timestamp": "2026-11-09T15:10:03.348Z"
+      }
+    },
+    {
+      "description": "Peter closing it is refused",
+      "passed": true,
+      "observed": 403
+    },
+    {
+      "description": "Peter reading Grace's medical details on it is refused",
+      "passed": true,
+      "observed": 404
+    },
+    {
+      "description": "Grace's alert is not in Peter's list",
+      "passed": true,
+      "observed": 2
+    },
+    {
+      "description": "A caregiver is refused the administrator's user list (403)",
+      "passed": true,
+      "observed": 403
+    },
+    {
+      "description": "Without signing in: 401",
+      "passed": true,
+      "observed": 401
+    },
+    {
+      "description": "The emergency was not changed by the refused attempts",
+      "passed": true,
+      "observed": "ACKNOWLEDGED"
+    }
+  ],
+  "snapshots": {
+    "peterRelationshipToGrace": null,
+    "eventAfterAttempts": {
+      "id": "f670fe4b-ee81-4a74-aa64-15caded1a7ab",
+      "state": "ACKNOWLEDGED",
+      "currentTier": 3,
+      "severity": "CRITICAL",
+      "severityScore": 60,
+      "severityFactors": {
+        "band": "CRITICAL",
+        "score": 60,
+        "factors": [
+          {
+            "key": "care_level",
+            "label": "Declared care level of the elder",
+            "value": 1,
+            "detail": "high dependency",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "no_cancel_in_grace_window",
+            "label": "Grace window elapsed without a cancel",
+            "value": 1,
+            "detail": "cancel window passed without a response",
+            "weight": 30,
+            "contribution": 30
+          },
+          {
+            "key": "time_of_day",
+            "label": "Alert raised at night",
+            "value": 0,
+            "detail": "18:09 local, daytime",
+            "weight": 20,
+            "contribution": 0
+          },
+          {
+            "key": "away_from_home",
+            "label": "Alert raised away from the registered home",
+            "value": 0,
+            "detail": "0 m from the registered home",
+            "weight": 15,
+            "contribution": 0
+          },
+          {
+            "key": "recent_activity",
+            "label": "Recent or unresolved prior alert",
+            "value": 0,
+            "detail": "0 recent or open prior alert(s)",
+            "weight": 5,
+            "contribution": 0
+          }
+        ]
+      },
+      "triggeredAt": "2026-11-09T15:09:21.914Z",
+      "acknowledgedAt": "2026-11-09T15:10:01.824Z",
+      "acknowledgedBy": "e44d491c-b164-4f84-bd3a-8f7e164fdc07",
+      "resolvedAt": null,
+      "currentTierDeadlineAt": null,
+      "trigger": "PANIC",
+      "outcome": null
+    }
+  },
+  "finishedAt": "2026-11-09T15:10:03.372Z",
+  "verdict": "Pass"
+}

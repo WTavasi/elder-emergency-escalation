@@ -417,3 +417,79 @@ export interface Session {
   accessToken: string;
   refreshToken: string;
 }
+
+/** The escalation policy an administrator edits: rules, severity weights and bands. */
+export type DispatchMode = 'SEQUENTIAL' | 'PARALLEL';
+
+export interface PolicyRule {
+  severity: Severity;
+  tier: number;
+  responderRole: Role;
+  timeoutSeconds: number | null;
+  dispatchMode: DispatchMode;
+  smsFallbackImmediate: boolean;
+  /** The end of the chain: no time limit. */
+  last: boolean;
+  updatedAt: string;
+}
+
+export interface PolicyFactor {
+  key: string;
+  label: string;
+  description: string | null;
+  weight: number;
+  enabled: boolean;
+  measured: boolean;
+  updatedAt: string;
+}
+
+export interface PolicyChange {
+  id: string;
+  area: 'escalation_rule' | 'severity_factor' | 'severity_band' | string;
+  target: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
+  at: string;
+  by: { id: string; name: string } | null;
+}
+
+export interface Policy {
+  escalationRules: PolicyRule[];
+  severityFactors: PolicyFactor[];
+  bands: {
+    elevatedFrom: number;
+    criticalFrom: number;
+    fromConfiguration: boolean;
+    setAt: string | null;
+    setBy: { id: string; name: string } | null;
+  };
+  maxScore: number;
+  limits: {
+    timeoutSeconds: { min: number; max: number };
+    weight: { min: number; max: number };
+    threshold: { min: number; max: number };
+  };
+  changes: PolicyChange[];
+}
+
+/** One place in an elder's chain, as the chain endpoint returns it. */
+export interface ChainEntry {
+  id: string;
+  tier: number;
+  name: string;
+  phone: string;
+  role: Role | null;
+  status: 'member' | 'invited';
+  removable: boolean;
+  movable: boolean;
+}
+
+/** An elder's chain: who is asked, at which rank. */
+export interface ChainView {
+  elderId: string;
+  elderName: string;
+  canEdit: boolean;
+  canReorder: boolean;
+  personTiers: number[];
+  entries: ChainEntry[];
+}

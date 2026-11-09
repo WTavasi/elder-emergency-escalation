@@ -304,6 +304,8 @@ export class UserAdminService {
       where: { id: { in: unique }, deactivatedAt: null },
       data: { deactivatedAt: new Date(), refreshTokenHash: null, pushToken: null },
     });
+    // Every phone they were signed in on, and its push address, goes too.
+    await this.prisma.userDevice.deleteMany({ where: { userId: { in: unique } } });
     await this.revocations.revoke(unique);
     this.realtime.disconnectUsers(unique);
     this.logger.log(`${actorId} deactivated ${result.count} account(s)`);

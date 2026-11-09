@@ -18,6 +18,7 @@ import { useFindShortcut } from '../../shared/hooks/useFindShortcut';
 import { useLoader } from '../../shared/hooks/useLoader';
 import { downloadCsv, stamp, toCsv, type CsvColumn } from '../../shared/utils/csv';
 import { SERVICE_LABEL } from '../../shared/utils/format';
+import { ChainOrder } from './ChainOrder';
 import { UserForm } from './UserForm';
 
 const PAGE_SIZE = 25;
@@ -58,7 +59,10 @@ const COLUMNS: CsvColumn<UserRow>[] = [
 ];
 
 type Pending =
-  { kind: 'form'; user: UserRow | null } | { kind: 'deactivate'; users: UserRow[] } | null;
+  | { kind: 'form'; user: UserRow | null }
+  | { kind: 'deactivate'; users: UserRow[] }
+  | { kind: 'chain'; elder: UserRow }
+  | null;
 
 /**
  * Every account, and the administrator's controls over them. FR-10.
@@ -412,6 +416,14 @@ export function Users() {
                             label: 'Edit',
                             onSelect: () => setPending({ kind: 'form', user: row }),
                           },
+                          ...(row.role === 'ELDER' && row.chainSize > 1
+                            ? [
+                                {
+                                  label: 'Who is asked first',
+                                  onSelect: () => setPending({ kind: 'chain', elder: row }),
+                                },
+                              ]
+                            : []),
                           row.deactivatedAt
                             ? { label: 'Reactivate', onSelect: () => reactivate([row]) }
                             : {
@@ -446,6 +458,18 @@ export function Users() {
       {pending?.kind === 'form' ? (
         <UserForm
           user={pending.user}
+          onClose={() => setPending(null)}
+          onSaved={(saved) => {
+            setPending(null);
+            setMessage(saved);
+            reload();
+          }}
+        />
+      ) : null}
+
+      {pending?.kind === 'chain' ? (
+        <ChainOrder
+          elder={pending.elder}
           onClose={() => setPending(null)}
           onSaved={(saved) => {
             setPending(null);

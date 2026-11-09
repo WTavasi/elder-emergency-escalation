@@ -1,0 +1,86 @@
+[
+  {
+    "id": "TC-01",
+    "title": "Initiate an emergency through the mobile application",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:18.712Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-01.json"
+  },
+  {
+    "id": "TC-02",
+    "title": "Create an emergency with configured severity factors",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:18.863Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-02.json"
+  },
+  {
+    "id": "TC-03",
+    "title": "Allow an acknowledgement deadline to expire",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:29.237Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-03.json"
+  },
+  {
+    "id": "TC-04",
+    "title": "Acknowledge an emergency before the escalation deadline",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:39.484Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-04.json"
+  },
+  {
+    "id": "TC-05",
+    "title": "Submit simultaneous acknowledgement attempts",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:57.656Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-05.json"
+  },
+  {
+    "id": "TC-06",
+    "title": "Process an emergency notification",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:57.841Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-06.json"
+  },
+  {
+    "id": "TC-07",
+    "title": "Submit a supported inbound SMS response",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:43:57.956Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-07.json"
+  },
+  {
+    "id": "TC-08",
+    "title": "Change the status of an active emergency",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:44:28.375Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-08.json"
+  },
+  {
+    "id": "TC-09",
+    "title": "Access an emergency without a care relationship or role",
+    "verdict": "Pass",
+    "startedAt": "2026-11-09T13:44:30.716Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-09.json"
+  },
+  {
+    "id": "TC-10",
+    "title": "Modify an authorised system configuration",
+    "verdict": "Fail",
+    "startedAt": "2026-11-09T13:44:30.756Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-10.json"
+  },
+  {
+    "id": "TC-11",
+    "title": "Resolve an active emergency",
+    "verdict": "Pass",
+    "startedAt": "2026-11-09T13:44:30.808Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-11.json"
+  },
+  {
+    "id": "TC-12",
+    "title": "Complete a controlled emergency lifecycle",
+    "verdict": "Pass",
+    "startedAt": "2026-11-09T13:44:30.826Z",
+    "file": "docs/evidence/2026-11-09-system-tests/TC-12.json"
+  }
+]

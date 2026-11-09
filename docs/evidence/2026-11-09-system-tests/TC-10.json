@@ -1,0 +1,317 @@
+{
+  "id": "TC-10",
+  "title": "Modify an authorised system configuration",
+  "startedAt": "2026-11-09T13:47:10.333Z",
+  "steps": [
+    {
+      "at": "2026-11-09T13:47:10.333Z",
+      "text": "Looking for an administrator interface to change the escalation rules or severity weights (issue #60, FR-15)."
+    },
+    {
+      "at": "2026-11-09T13:47:10.335Z",
+      "text": "GET /admin/escalation-rules",
+      "data": {
+        "request": null,
+        "status": 404,
+        "ms": 1,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "Cannot GET /api/v1/admin/escalation-rules",
+          "path": "/api/v1/admin/escalation-rules",
+          "timestamp": "2026-11-09T13:47:10.334Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.337Z",
+      "text": "PUT /admin/escalation-rules",
+      "data": {
+        "request": {
+          "weight": 31
+        },
+        "status": 404,
+        "ms": 2,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "Cannot PUT /api/v1/admin/escalation-rules",
+          "path": "/api/v1/admin/escalation-rules",
+          "timestamp": "2026-11-09T13:47:10.336Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.338Z",
+      "text": "GET /admin/severity-factors",
+      "data": {
+        "request": null,
+        "status": 404,
+        "ms": 1,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "Cannot GET /api/v1/admin/severity-factors",
+          "path": "/api/v1/admin/severity-factors",
+          "timestamp": "2026-11-09T13:47:10.337Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.340Z",
+      "text": "PATCH /admin/severity-factors/care_level",
+      "data": {
+        "request": {
+          "weight": 31
+        },
+        "status": 404,
+        "ms": 2,
+        "response": {
+          "statusCode": 404,
+          "error": "Not Found",
+          "message": "Cannot PATCH /api/v1/admin/severity-factors/care_level",
+          "path": "/api/v1/admin/severity-factors/care_level",
+          "timestamp": "2026-11-09T13:47:10.339Z"
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.342Z",
+      "text": "GET /dashboard/policy",
+      "data": {
+        "request": null,
+        "status": 200,
+        "ms": 2,
+        "response": {
+          "retention": {
+            "enabled": true,
+            "closedEmergencyDays": 365,
+            "auditLogDays": 365,
+            "speechDays": 30
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.342Z",
+      "text": "Supporting observation only: does the scoring process read the stored weights live? Changed care_level 30 → 31 directly in the database, raised an alert, then put it back."
+    },
+    {
+      "at": "2026-11-09T13:47:10.372Z",
+      "text": "POST /alerts",
+      "data": {
+        "request": {},
+        "status": 201,
+        "ms": 27,
+        "response": {
+          "id": "5bec83e7-350a-4d50-adf3-04d021fdbf56",
+          "elderlyId": "193c2906-4d28-445e-8469-4248d6d5797d",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.2833",
+          "alertLongitude": "36.7833",
+          "alertAddressLabel": "Kileleshwa, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "TRIGGERED",
+          "currentTier": 1,
+          "outcome": null,
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 36,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 36,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 1,
+                "detail": "high dependency",
+                "weight": 31,
+                "contribution": 31
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:47 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:47:10.347Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": null,
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    },
+    {
+      "at": "2026-11-09T13:47:10.391Z",
+      "text": "POST /alerts/5bec83e7-350a-4d50-adf3-04d021fdbf56/cancel",
+      "data": {
+        "request": {},
+        "status": 200,
+        "ms": 17,
+        "response": {
+          "id": "5bec83e7-350a-4d50-adf3-04d021fdbf56",
+          "elderlyId": "193c2906-4d28-445e-8469-4248d6d5797d",
+          "acknowledgedBy": null,
+          "alertLatitude": "-1.2833",
+          "alertLongitude": "36.7833",
+          "alertAddressLabel": "Kileleshwa, Nairobi",
+          "responderLatitude": null,
+          "responderLongitude": null,
+          "state": "CANCELLED",
+          "currentTier": 1,
+          "outcome": "CANCELLED_BY_ELDER",
+          "outcomeNote": null,
+          "severity": "ELEVATED",
+          "severityScore": 36,
+          "severityFactors": {
+            "band": "ELEVATED",
+            "score": 36,
+            "factors": [
+              {
+                "key": "care_level",
+                "label": "Declared care level of the elder",
+                "value": 1,
+                "detail": "high dependency",
+                "weight": 31,
+                "contribution": 31
+              },
+              {
+                "key": "no_cancel_in_grace_window",
+                "label": "Grace window elapsed without a cancel",
+                "value": 0,
+                "detail": "cancel window still open",
+                "weight": 30,
+                "contribution": 0
+              },
+              {
+                "key": "time_of_day",
+                "label": "Alert raised at night",
+                "value": 0,
+                "detail": "16:47 local, daytime",
+                "weight": 20,
+                "contribution": 0
+              },
+              {
+                "key": "away_from_home",
+                "label": "Alert raised away from the registered home",
+                "value": 0,
+                "detail": "0 m from the registered home",
+                "weight": 15,
+                "contribution": 0
+              },
+              {
+                "key": "recent_activity",
+                "label": "Recent or unresolved prior alert",
+                "value": 1,
+                "detail": "1 recent or open prior alert(s)",
+                "weight": 5,
+                "contribution": 5
+              }
+            ]
+          },
+          "severityReviewedAt": null,
+          "currentTierDeadlineAt": null,
+          "responderRequestedAt": null,
+          "reportedType": null,
+          "reportedTypeAt": null,
+          "reportedTypeVia": null,
+          "confirmedType": null,
+          "serviceRequested": null,
+          "serviceRequestedAt": null,
+          "stationDeadlineAt": null,
+          "serviceDueAt": null,
+          "triggeredAt": "2026-11-09T13:47:10.347Z",
+          "acknowledgedAt": null,
+          "ownerExpectedAt": null,
+          "arrivedAt": null,
+          "resolvedAt": "2026-11-09T13:47:10.377Z",
+          "trigger": "PANIC",
+          "volunteersAskedAt": null,
+          "volunteerId": null,
+          "volunteerAcceptedAt": null,
+          "volunteerArrivedAt": null
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "description": "An administrator can change the escalation rules or severity weights through the system",
+      "passed": false,
+      "observed": {
+        "GET /admin/escalation-rules": 404,
+        "PUT /admin/escalation-rules": 404,
+        "GET /admin/severity-factors": 404,
+        "PATCH /admin/severity-factors/care_level": 404,
+        "GET /dashboard/policy": 200
+      }
+    }
+  ],
+  "snapshots": {
+    "endpointStatuses": {
+      "GET /admin/escalation-rules": 404,
+      "PUT /admin/escalation-rules": 404,
+      "GET /admin/severity-factors": 404,
+      "PATCH /admin/severity-factors/care_level": 404,
+      "GET /dashboard/policy": 200
+    },
+    "liveWeightObservation": {
+      "key": "care_level",
+      "label": "Declared care level of the elder",
+      "value": 1,
+      "detail": "high dependency",
+      "weight": 31,
+      "contribution": 31
+    },
+    "supportingNote": "A database edit took effect on the next alert (care_level weight read as 31), so the scoring process does read the stored policy. That bypasses validation and is not an administrator function, so it does not meet the requirement."
+  },
+  "finishedAt": "2026-11-09T13:47:10.393Z",
+  "verdict": "Fail"
+}

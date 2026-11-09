@@ -34,10 +34,13 @@ Map<String, dynamic> chainBody({
   bool canEdit = true,
   bool withFamily = true,
   bool twoFamily = false,
+  bool aishaFirst = false,
 }) => <String, dynamic>{
   'elderId': 'elder-1',
   'elderName': 'Grace Wanjiru',
   'canEdit': canEdit,
+  'canReorder': canEdit,
+  'personTiers': <int>[1, 2],
   'entries': <Map<String, dynamic>>[
     <String, dynamic>{
       'id': 'assignment-1',
@@ -47,16 +50,18 @@ Map<String, dynamic> chainBody({
       'role': 'CAREGIVER',
       'status': 'member',
       'removable': false,
+      'movable': canEdit,
     },
     if (withFamily)
       <String, dynamic>{
         'id': 'assignment-2',
-        'tier': 2,
+        'tier': aishaFirst ? 1 : 2,
         'name': 'Aisha Otieno',
         'phone': '+254700000030',
         'role': 'FAMILY_MEMBER',
         'status': 'member',
         'removable': canEdit,
+        'movable': canEdit,
       },
     if (twoFamily)
       <String, dynamic>{
@@ -67,9 +72,12 @@ Map<String, dynamic> chainBody({
         'role': 'FAMILY_MEMBER',
         'status': 'member',
         'removable': canEdit,
+        'movable': canEdit,
       },
   ],
 };
+
+String? sentOrder;
 
 void main() {
   Future<List<Exchange>> pump(
@@ -80,8 +88,14 @@ void main() {
     bool twoFamily = false,
   }) async {
     bool removed = false;
+    bool reordered = false;
     final ({ApiClient api, List<Exchange> calls}) t = buildApi((http.Request request, int _) {
       final String path = request.url.path;
+      if (request.method == 'PUT' && path.endsWith('/chain/order')) {
+        sentOrder = request.body;
+        reordered = true;
+        return <http.Response>[json(chainBody(aishaFirst: true))];
+      }
       if (request.method == 'DELETE' && path.contains('/chain/')) {
         removed = true;
         return <http.Response>[json(chainBody(withFamily: false))];
@@ -93,7 +107,14 @@ void main() {
       }
       if (path.endsWith('/chain')) {
         return <http.Response>[
-          json(chainBody(canEdit: canEdit, withFamily: !removed, twoFamily: twoFamily)),
+          json(
+            chainBody(
+              canEdit: canEdit,
+              withFamily: !removed,
+              twoFamily: twoFamily,
+              aishaFirst: reordered,
+            ),
+          ),
         ];
       }
       return <http.Response>[json(elderBody(canEdit: canEdit, atHome: atHome, withheld: withheld))];
@@ -209,6 +230,41 @@ void main() {
       isTrue,
     );
     expect(find.text('Aisha Otieno'), findsNothing);
+  });
+
+  testWidgets('a caregiver can move family up to be asked first, saved at once', (
+    WidgetTester tester,
+  ) async {
+    sentOrder = null;
+    await pump(tester);
+
+    await tester.tap(find.text('Change who is asked first'));
+    await tester.pumpAndSettle();
+    expect(find.text('Who is asked first'), findsOneWidget);
+    expect(find.text('ASKED FIRST'), findsOneWidget);
+    expect(find.text('ASKED NEXT'), findsOneWidget);
+
+    // Nothing to save until something moves.
+    expect(
+      tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save order')).onPressed,
+      isNull,
+    );
+    await tester.tap(find.bySemanticsLabel('Ask first: Aisha Otieno'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save order'));
+    await tester.pumpAndSettle();
+
+    expect(sentOrder, contains('"id":"assignment-2","tier":1'));
+    expect(sentOrder, contains('"id":"assignment-1","tier":1'));
+    // Back on her page, Aisha is now in group 1 beside Mary.
+    expect(find.text('Who is asked first'), findsNothing);
+    expect(find.text('1'), findsNWidgets(2));
+    expect(find.text('2'), findsNothing);
+  });
+
+  testWidgets('a family member is not offered it', (WidgetTester tester) async {
+    await pump(tester, canEdit: false);
+    expect(find.text('Change who is asked first'), findsNothing);
   });
 
   testWidgets('keeping them sends nothing', (WidgetTester tester) async {

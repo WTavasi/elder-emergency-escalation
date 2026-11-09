@@ -45,6 +45,7 @@ function build() {
       update: jest.fn().mockResolvedValue(row()),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    userDevice: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
     emergencyEvent: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const passwords = { hash: jest.fn((plain: string) => `hashed:${plain}`) };

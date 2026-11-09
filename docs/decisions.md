@@ -1353,3 +1353,62 @@ open emergencies nearest first, never kept; and the weekly note on check-in answ
 "No health records are held" became "no health records are fetched from anywhere", which
 stays true. Consents keep the version they were given under; the new version applies to
 those given from now.
+
+## The policy editor, who is asked first, and several phones per account
+
+Built on 9 November 2026 to close what was left that does not need a deployment: the
+rule and weight editor (issue #60, FR-15), reordering contacts, and the native code that
+CI never compiled.
+
+**An editor for the escalation policy, for administrators.** The rules each severity
+escalates by (each tier's time limit, whether it is asked with the tier before, whether it
+is texted at once), the weights behind a severity score, and the scores at which High and
+Critical start. The rules and weights were already data the escalation and scoring read for
+every alert; the band thresholds were environment variables and are now settings in
+`policy_settings`, with the environment values still used until an administrator sets
+them. Every change is checked against what keeps the system working, and refused with a
+reason otherwise:
+
+- a time limit from 15 seconds to an hour, so a slip cannot make a tier vanish or wait all
+  day;
+- the last tier has no limit, and every other tier has one, or an alert would stop
+  climbing;
+- tier 1 is never asked "with the tier before", because there is none;
+- High starts below Critical, and Critical no higher than the weights can add up to, so
+  the top band stays reachable; a weight change that would put it out of reach is refused;
+- a factor this version cannot measure cannot be weighted, because it would change nothing.
+
+Each accepted change is saved with a row in `policy_changes`: who, when, the values before
+and after. The console shows that list. A change applies from the next alert (weights,
+bands) or the next tier asked (rules); an alert already waiting keeps its deadline, because
+moving a deadline under somebody who has just been asked would be unfair to them and hard
+to explain afterwards.
+
+**Who is asked first.** Contacts are asked by rank, everybody at a rank together, and the
+rank was fixed by role: caregivers first, family next. A caregiver in the circle, or an
+administrator, can now put each person at either rank, so a daughter next door can be asked
+with the caregiver rather than after. The whole order is sent and saved at once, so a chain
+is never half changed; it is refused while an emergency is open, because that emergency is
+already working down the old order; somebody with an account must be asked first; and
+emergency services stay last, as the rules say. Everybody moved, and the elder, is told by
+text. Family members cannot reorder, as they cannot add or remove people.
+
+**Several phones per account.** One refresh token and one push address per account meant
+a second phone signing in signed the first out within the quarter hour, and only one phone
+rang. Each signed-in phone now has its own session in `user_devices`, with its own refresh
+token and push address. An alert goes to every phone the person is signed in on, and is
+delivered if any of them takes it; an address the push service no longer knows is
+forgotten. Signing out ends only that phone. A replayed refresh token, a new password or a
+new number still ends every session. Sessions from before the change keep working and move
+to a device of their own, push address included, at their next refresh, so nobody is
+signed out by the upgrade.
+
+**Native code compiled in CI.** A separate workflow builds the Android APK (Kotlin: the
+widget, the quick settings tile, the shortcuts) and the iOS app without signing (Swift:
+the App Intents and Siri phrases), whenever the app changes. Its own workflow, because a
+macOS runner costs about ten times a Linux one. Its first runs on GitHub are what prove it:
+neither platform can be built in the environment this was written in.
+
+**Also:** coverage on each CI run's summary page (#83), the dependency audit with its
+before, after and accepted risks (`docs/evidence/2026-11-09-dependency-audit`), and the
+later endpoints in the Postman collection.

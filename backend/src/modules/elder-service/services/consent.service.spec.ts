@@ -52,6 +52,7 @@ const buildPrisma = (rows = onHerBehalf) => {
     emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
     medicalProfile: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     medicalProfileChange: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+    userDevice: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     $transaction: jest.fn(),
   };
   mock.$transaction.mockImplementation((fn: (tx: typeof mock) => unknown) => fn(mock));

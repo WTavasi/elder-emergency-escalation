@@ -311,6 +311,9 @@ model User {
   medicalChangesMade  MedicalProfileChange[] @relation("medicalChangeBy")
   medicalViews        MedicalProfileView[]   @relation("medicalViewElder")
   medicalViewsMade    MedicalProfileView[]   @relation("medicalViewBy")
+  policySettingsSet   PolicySetting[]        @relation("policySettingBy")
+  devices             UserDevice[]
+  policyChangesMade   PolicyChange[]         @relation("policyChangeBy")
 
   @@index([role])
   @@map("users")
@@ -529,6 +532,70 @@ model SeverityFactor {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("severity_factors")
+}
+
+// ---------------------------------------------------------------------------
+// user_devices. EXTENSION. One row per phone or browser signed in to an account: its own
+// refresh token, so several can be signed in at once, and its own push address, so an
+// alert reaches every phone the person carries. Signing out removes the row, and with
+// it that phone's push address. Accounts signed in before this table existed keep
+// users.refresh_token_hash and users.push_token until their next refresh moves them here.
+// ---------------------------------------------------------------------------
+
+model UserDevice {
+  id               String   @id @default(uuid()) @map("device_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  /// SHA-256 of this device's current refresh token, rotated on every refresh.
+  refreshTokenHash String   @map("refresh_token_hash") @db.VarChar(64)
+  /// The push address, unique: a phone that changes hands stops getting the old account's alerts.
+  pushToken        String?  @unique @map("push_token") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_devices")
+}
+
+// ---------------------------------------------------------------------------
+// policy_settings. EXTENSION. Single numbers of the escalation policy an administrator
+// can change, such as the scores at which a band starts. A missing row means the value
+// from configuration (SEVERITY_ELEVATED_FROM and SEVERITY_CRITICAL_FROM) still holds.
+// ---------------------------------------------------------------------------
+
+model PolicySetting {
+  key         String   @id @db.VarChar(48)
+  value       Int
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedById String?  @map("updated_by_id") @db.Uuid
+
+  updatedBy User? @relation("policySettingBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("policy_settings")
+}
+
+// ---------------------------------------------------------------------------
+// policy_changes. EXTENSION. Every change an administrator makes to the escalation
+// rules, the severity weights or the bands: who, when, what it was and what it became.
+// Never edited or deleted, so the policy any past alert ran under can be worked out.
+// ---------------------------------------------------------------------------
+
+model PolicyChange {
+  id          String   @id @default(uuid()) @map("change_id") @db.Uuid
+  changedById String?  @map("changed_by_id") @db.Uuid
+  /// escalation_rule, severity_factor or severity_band.
+  area        String   @db.VarChar(32)
+  /// What was changed, in words: "CRITICAL tier 2", "care_level", "bands".
+  target      String   @db.VarChar(80)
+  before      Json?
+  after       Json
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  changedBy User? @relation("policyChangeBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([changedAt])
+  @@map("policy_changes")
 }
 
 // ---------------------------------------------------------------------------

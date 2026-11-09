@@ -19,6 +19,7 @@ import { Roles } from '../../../shared/decorators/roles.decorator';
 import { Throttle } from '../../../shared/middleware/rate-limit.guard';
 import { AddChainMemberDto } from '../validation/add-chain-member.dto';
 import { AddressSearchDto } from '../validation/address-search.dto';
+import { ReorderChainDto } from '../validation/reorder-chain.dto';
 import { CreateElderDto } from '../validation/create-elder.dto';
 import { UpdateElderDto } from '../validation/update-elder.dto';
 import { AddressSearchService, type AddressSearchResult } from '../services/address-search.service';
@@ -174,6 +175,18 @@ export class EldersController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ChainView> {
     return this.chains.removeEntry(id, entryId, user.userId, user.role);
+  }
+
+  /** Who is asked first: every person in the circle at a rank, all at once. */
+  @Roles(Role.CAREGIVER, Role.ADMINISTRATOR)
+  @Throttle(30, 3600)
+  @Put(':id/chain/order')
+  reorderChain(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ReorderChainDto,
+  ): Promise<ChainView> {
+    return this.chains.reorder(id, user.userId, user.role, dto);
   }
 
   /** Adds a family member by phone, now or when that number signs up. */

@@ -45,6 +45,8 @@ const buildPrisma = (stored: unknown = notification()) => {
       update: jest.fn().mockResolvedValue({}),
     },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
+    userDevice: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    user: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
   };
   return { prisma: prisma as unknown as PrismaService, raw: prisma };
 };
@@ -114,6 +116,47 @@ describe('NotificationsProcessor', () => {
       }),
     );
     expect(notifications.raw.enqueue).toHaveBeenCalledWith(['notification-sms']);
+  });
+
+  it('sends to every phone they are signed in on, and forgets a phone that is gone', async () => {
+    const { prisma, raw } = buildPrisma(
+      notification({
+        recipient: {
+          phone: '+254700000020',
+          pushToken: null,
+          devices: [{ pushToken: 'old-phone' }, { pushToken: 'new-phone' }],
+        },
+      }),
+    );
+    const providers = buildProviders();
+    providers.raw.push.send.mockImplementation(({ token }: { token: string }) =>
+      Promise.resolve(
+        token === 'new-phone'
+          ? { delivered: true, providerMessageId: 'msg-1' }
+          : { delivered: false, error: 'not registered' },
+      ),
+    );
+
+    await new NotificationsProcessor(
+      prisma,
+      buildNotifications().service,
+      providers.push,
+      providers.sms,
+    ).process(job());
+
+    expect(providers.raw.push.send).toHaveBeenCalledTimes(2);
+    expect(raw.notification.update).toHaveBeenCalledWith({
+      where: { id: 'notification-1' },
+      data: expect.objectContaining({
+        status: NotificationStatus.SENT,
+        providerMessageId: 'msg-1',
+      }),
+    });
+    expect(raw.userDevice.updateMany).toHaveBeenCalledWith({
+      where: { pushToken: { in: ['old-phone'] } },
+      data: { pushToken: null },
+    });
+    expect(raw.notification.create).not.toHaveBeenCalled();
   });
 
   it('retries a transient failure instead of falling back straight away', async () => {

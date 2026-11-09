@@ -28,9 +28,13 @@ const home = { latitude: -1.2833, longitude: 36.7833 };
 
 const buildService = (
   factors: Array<{ key: string; label: string; weight: number }> = POLICY,
+  settings: Array<{ key: string; value: number }> = [],
 ): { service: SeverityService; findMany: jest.Mock } => {
   const findMany = jest.fn().mockResolvedValue(factors);
-  const prisma = { severityFactor: { findMany } } as unknown as PrismaService;
+  const prisma = {
+    severityFactor: { findMany },
+    policySetting: { findMany: jest.fn().mockResolvedValue(settings) },
+  } as unknown as PrismaService;
   return { service: new SeverityService(prisma, config), findMany };
 };
 
@@ -157,6 +161,24 @@ describe('SeverityService', () => {
       expect(await band(35)).toBe(Severity.ELEVATED);
       expect(await band(59)).toBe(Severity.ELEVATED);
       expect(await band(60)).toBe(Severity.CRITICAL);
+    });
+
+    it('uses the thresholds an administrator set, over the configured ones', async () => {
+      const band = async (weight: number): Promise<Severity> => {
+        const { service } = buildService(
+          [{ key: 'care_level', label: 'Care level', weight }],
+          [
+            { key: 'severity_elevated_from', value: 20 },
+            { key: 'severity_critical_from', value: 50 },
+          ],
+        );
+        const assessment = await service.evaluate(calm({ careLevel: CareLevel.HIGH_DEPENDENCY }));
+        return assessment.band;
+      };
+
+      expect(await band(19)).toBe(Severity.STANDARD);
+      expect(await band(20)).toBe(Severity.ELEVATED);
+      expect(await band(50)).toBe(Severity.CRITICAL);
     });
   });
 

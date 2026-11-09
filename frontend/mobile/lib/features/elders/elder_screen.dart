@@ -16,6 +16,7 @@ import '../consent/consent_screen.dart';
 import '../medical/medical_id_screen.dart';
 import '../profile/nearby_services.dart';
 import '../responder/widgets/call_button.dart';
+import 'chain_order_screen.dart';
 import 'widgets/address_picker.dart';
 import 'widgets/pairing_sheet.dart';
 
@@ -203,6 +204,15 @@ class _ElderScreenState extends State<ElderScreen> {
     if (updated != null && mounted) setState(() => _chain = updated);
   }
 
+  Future<void> _reorder(ChainView chain) async {
+    final ChainView? updated = await Navigator.of(context).push<ChainView>(
+      MaterialPageRoute<ChainView>(
+        builder: (_) => ChainOrderScreen(api: widget.api, chain: chain),
+      ),
+    );
+    if (updated != null && mounted) setState(() => _chain = updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -332,6 +342,13 @@ class _ElderScreenState extends State<ElderScreen> {
                       icon: Icons.person_add_alt_1_outlined,
                       title: 'Add a family member',
                       onTap: _busy ? null : () => unawaited(_addFamily()),
+                    ),
+                  if (chain.canReorder &&
+                      chain.places.where((ChainPlace place) => place.movable).length > 1)
+                    SettingsRow(
+                      icon: Icons.swap_vert,
+                      title: 'Change who is asked first',
+                      onTap: _busy ? null : () => unawaited(_reorder(chain)),
                     ),
                 ],
               ),

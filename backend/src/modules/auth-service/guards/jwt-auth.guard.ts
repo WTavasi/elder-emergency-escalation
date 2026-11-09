@@ -46,7 +46,11 @@ export class JwtAuthGuard implements CanActivate {
     if (await this.revocations.isRevoked(payload.sub)) {
       throw new UnauthorizedException(DEACTIVATED);
     }
-    request.user = { userId: payload.sub, role: payload.role };
+    request.user = {
+      userId: payload.sub,
+      role: payload.role,
+      ...(payload.sid ? { sessionId: payload.sid } : {}),
+    };
     return true;
   }
 }

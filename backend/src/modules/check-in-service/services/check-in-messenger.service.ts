@@ -5,6 +5,7 @@ import {
   PUSH_PROVIDER,
   type PushProvider,
 } from '../../notification-service/providers/push.provider';
+import { sendToEvery } from '../../notification-service/providers/push-fanout';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import { capSms } from '../../notification-service/services/notification-content';
 import { partOfDay } from './check-in-times';
@@ -12,7 +13,8 @@ import { partOfDay } from './check-in-times';
 export interface CheckInRecipient {
   name: string;
   phone: string;
-  pushToken: string | null;
+  /** Every phone they are signed in on. */
+  pushTokens: string[];
   timezone: string;
 }
 
@@ -50,10 +52,9 @@ export class CheckInMessenger {
       ? "We're waiting to hear from you. Open MzaziCare and tap I'm OK."
       : 'Are you OK? Open MzaziCare to tell your family.';
 
-    if (elder.pushToken) {
+    if (elder.pushTokens.length > 0) {
       try {
-        const result = await this.push.send({
-          token: elder.pushToken,
+        const result = await sendToEvery(this.push, elder.pushTokens, {
           title,
           body,
           // No personal data: it travels through a third party. The app asks the API.
