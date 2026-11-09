@@ -219,7 +219,8 @@ npx newman run docs/postman/MzaziCare.postman_collection.json \
   --folder "7. Where an elder is staying" \
   --folder "8. Reporting" \
   --folder "8d. Accounts (administrator)" \
-  --folder "9. Things that must be refused"
+  --folder "9. Things that must be refused" \
+  --folder "10. Later additions: medical, order, policy"
 ```
 
 The first time, `npx` asks to install Newman; answer `y`. Folders 5 and 6 are left out

@@ -75,6 +75,11 @@ jobs:
       - name: Unit tests with coverage
         run: npm run test:cov -w @mzazicare/api
 
+      # The figures on the run's own summary page, so nobody has to download the report.
+      - name: Coverage on the summary page
+        if: always()
+        run: node scripts/coverage-summary.mjs "API" backend/coverage/coverage-summary.json
+
       - name: Build
         run: npm run build -w @mzazicare/api
 
@@ -103,8 +108,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Unit tests
-        run: npm run test -w @mzazicare/dashboard
+      - name: Unit tests with coverage
+        run: npm run test:cov -w @mzazicare/dashboard
+
+      - name: Coverage on the summary page
+        if: always()
+        run: node scripts/coverage-summary.mjs "Console" frontend/dashboard/coverage/coverage-summary.json
 
       - name: Production build
         run: npm run build -w @mzazicare/dashboard

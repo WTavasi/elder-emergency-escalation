@@ -1,0 +1,655 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@eslint/config-array": {
+      "name": "@eslint/config-array",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["minimatch"],
+      "effects": [],
+      "range": ">=0.23.0",
+      "nodes": ["node_modules/@eslint/config-array"],
+      "fixAvailable": true
+    },
+    "@eslint/js": {
+      "name": "@eslint/js",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["eslint"],
+      "effects": [],
+      "range": ">=10.0.1",
+      "nodes": ["node_modules/@eslint/js"],
+      "fixAvailable": {
+        "name": "@eslint/js",
+        "version": "9.39.5",
+        "isSemVerMajor": true
+      }
+    },
+    "@google-cloud/firestore": {
+      "name": "@google-cloud/firestore",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["google-gax"],
+      "effects": ["firebase-admin"],
+      "range": "7.5.0-pre.0 || 7.6.0 - 7.11.6",
+      "nodes": ["node_modules/@google-cloud/firestore"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@google-cloud/storage": {
+      "name": "@google-cloud/storage",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["retry-request", "teeny-request"],
+      "effects": ["firebase-admin"],
+      "range": "2.2.0 - 2.5.0 || 5.19.0 - 8.0.0",
+      "nodes": ["node_modules/@google-cloud/storage"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@jest/core": {
+      "name": "@jest/core",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["jest-config"],
+      "effects": ["jest"],
+      "range": ">=25.2.0-alpha.86",
+      "nodes": ["node_modules/@jest/core"],
+      "fixAvailable": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@nestjs/cli": {
+      "name": "@nestjs/cli",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["fork-ts-checker-webpack-plugin", "glob"],
+      "effects": [],
+      "range": ">=7.3.0-next.1",
+      "nodes": ["backend/node_modules/@nestjs/cli"],
+      "fixAvailable": {
+        "name": "@nestjs/cli",
+        "version": "12.0.12",
+        "isSemVerMajor": true
+      }
+    },
+    "@prisma/config": {
+      "name": "@prisma/config",
+      "severity": "high",
+      "isDirect": false,
+      "via": ["deepmerge-ts"],
+      "effects": ["prisma"],
+      "range": "6.13.0-dev.1 - 7.10.0 || 8.1.0-dev.1 - 8.1.0-dev.4",
+      "nodes": ["node_modules/@prisma/config"],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "7.10.1",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/eslint-plugin": {
+      "name": "@typescript-eslint/eslint-plugin",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@typescript-eslint/parser",
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils"
+      ],
+      "effects": ["typescript-eslint"],
+      "range": ">=6.16.0",
+      "nodes": ["node_modules/@typescript-eslint/eslint-plugin"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/parser": {
+      "name": "@typescript-eslint/parser",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["@typescript-eslint/typescript-estree"],
+      "effects": ["@typescript-eslint/eslint-plugin", "typescript-eslint"],
+      "range": ">=6.16.0",
+      "nodes": ["node_modules/@typescript-eslint/parser"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/type-utils": {
+      "name": "@typescript-eslint/type-utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["@typescript-eslint/typescript-estree", "@typescript-eslint/utils"],
+      "effects": ["@typescript-eslint/eslint-plugin"],
+      "range": ">=6.16.0",
+      "nodes": ["node_modules/@typescript-eslint/type-utils"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/typescript-estree": {
+      "name": "@typescript-eslint/typescript-estree",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["minimatch"],
+      "effects": [
+        "@typescript-eslint/parser",
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils",
+        "typescript-eslint"
+      ],
+      "range": ">=6.16.0",
+      "nodes": ["node_modules/@typescript-eslint/typescript-estree"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/utils": {
+      "name": "@typescript-eslint/utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["@typescript-eslint/typescript-estree"],
+      "effects": ["typescript-eslint"],
+      "range": ">=6.16.0",
+      "nodes": ["node_modules/@typescript-eslint/utils"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@vitest/mocker": {
+      "name": "@vitest/mocker",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1242766,
+          "name": "@vitest/mocker",
+          "dependency": "@vitest/mocker",
+          "title": "Vitest: Code injection via unauthenticated manual mock registration",
+          "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8",
+          "severity": "moderate",
+          "cwe": ["CWE-94", "CWE-116", "CWE-306"],
+          "cvss": {
+            "score": 4.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": ">=5.0.0-beta.1 <5.0.3"
+        },
+        {
+          "source": 1242768,
+          "name": "@vitest/mocker",
+          "dependency": "@vitest/mocker",
+          "title": "Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+          "url": "https://github.com/advisories/GHSA-xp26-3454-mjgp",
+          "severity": "moderate",
+          "cwe": ["CWE-22"],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+          },
+          "range": ">=5.0.0-rc.2 <5.0.3"
+        }
+      ],
+      "effects": ["vitest"],
+      "range": "5.0.0-beta.1 - 5.0.2",
+      "nodes": ["node_modules/@vitest/mocker"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "5.1.0",
+        "isSemVerMajor": false
+      }
+    },
+    "create-jest": {
+      "name": "create-jest",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["jest-config"],
+      "effects": ["jest-cli"],
+      "range": ">=29.7.0",
+      "nodes": ["node_modules/create-jest"],
+      "fixAvailable": true
+    },
+    "deepmerge": {
+      "name": "deepmerge",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243505,
+          "name": "deepmerge",
+          "dependency": "deepmerge",
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "cwe": ["CWE-1321"],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=4.2.0 <=4.3.1"
+        }
+      ],
+      "effects": ["fork-ts-checker-webpack-plugin", "jest-config"],
+      "range": ">=4.2.0",
+      "nodes": ["node_modules/deepmerge"],
+      "fixAvailable": {
+        "name": "@nestjs/cli",
+        "version": "12.0.12",
+        "isSemVerMajor": true
+      }
+    },
+    "deepmerge-ts": {
+      "name": "deepmerge-ts",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1145093,
+          "name": "deepmerge-ts",
+          "dependency": "deepmerge-ts",
+          "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+          "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+          "severity": "high",
+          "cwe": ["CWE-674"],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<8.0.0"
+        }
+      ],
+      "effects": ["@prisma/config"],
+      "range": "<8.0.0",
+      "nodes": ["node_modules/deepmerge-ts"],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "7.10.1",
+        "isSemVerMajor": true
+      }
+    },
+    "eslint": {
+      "name": "eslint",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["@eslint/config-array", "minimatch"],
+      "effects": ["@eslint/js"],
+      "range": ">=10.0.0-alpha.0",
+      "nodes": ["node_modules/eslint"],
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "9.39.5",
+        "isSemVerMajor": true
+      }
+    },
+    "fast-uri": {
+      "name": "fast-uri",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243098,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to URI scheme spoofing via percent-encoded scheme decoding",
+          "url": "https://github.com/advisories/GHSA-w74x-v6f9-j3xg",
+          "severity": "moderate",
+          "cwe": ["CWE-172", "CWE-180"],
+          "cvss": {
+            "score": 6.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": ">=3.0.0 <3.1.9"
+        },
+        {
+          "source": 1243101,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to improper path equivalence in relative reference normalization",
+          "url": "https://github.com/advisories/GHSA-xhq7-xmqj-769h",
+          "severity": "low",
+          "cwe": ["CWE-41"],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=3.0.0 <3.1.9"
+        },
+        {
+          "source": 1243104,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to host confusion via unchecked WHATWG host canonicalization",
+          "url": "https://github.com/advisories/GHSA-wjr9-j795-jxcr",
+          "severity": "moderate",
+          "cwe": ["CWE-20", "CWE-436"],
+          "cvss": {
+            "score": 4.8,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": ">=3.1.3 <3.1.9"
+        },
+        {
+          "source": 1243107,
+          "name": "fast-uri",
+          "dependency": "fast-uri",
+          "title": "fast-uri vulnerable to scheme injection via an unescaped first-segment colon in suffix references",
+          "url": "https://github.com/advisories/GHSA-333x-w4r6-6crp",
+          "severity": "low",
+          "cwe": ["CWE-41", "CWE-116"],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=3.0.0 <3.1.9"
+        }
+      ],
+      "effects": [],
+      "range": "3.0.0 - 3.1.8",
+      "nodes": ["node_modules/fast-uri"],
+      "fixAvailable": true
+    },
+    "firebase-admin": {
+      "name": "firebase-admin",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["@google-cloud/firestore", "@google-cloud/storage"],
+      "effects": [],
+      "range": "7.0.0 - 8.2.0 || 11.0.0 - 14.3.0",
+      "nodes": ["node_modules/firebase-admin"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "fork-ts-checker-webpack-plugin": {
+      "name": "fork-ts-checker-webpack-plugin",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["deepmerge"],
+      "effects": ["@nestjs/cli"],
+      "range": ">=5.0.0-alpha.1",
+      "nodes": ["node_modules/fork-ts-checker-webpack-plugin"],
+      "fixAvailable": {
+        "name": "@nestjs/cli",
+        "version": "12.0.12",
+        "isSemVerMajor": true
+      }
+    },
+    "gaxios": {
+      "name": "gaxios",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["uuid"],
+      "effects": [],
+      "range": "6.4.0 - 6.7.1",
+      "nodes": ["node_modules/gaxios"],
+      "fixAvailable": true
+    },
+    "glob": {
+      "name": "glob",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1244013,
+          "name": "glob",
+          "dependency": "glob",
+          "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+          "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+          "severity": "moderate",
+          "cwe": ["CWE-400"],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=9.0.0 <=14.0.1"
+        },
+        "minimatch"
+      ],
+      "effects": ["@nestjs/cli"],
+      "range": "9.0.0 - 14.0.1",
+      "nodes": ["node_modules/glob"],
+      "fixAvailable": {
+        "name": "@nestjs/cli",
+        "version": "12.0.12",
+        "isSemVerMajor": true
+      }
+    },
+    "google-gax": {
+      "name": "google-gax",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["retry-request", "uuid"],
+      "effects": ["@google-cloud/firestore"],
+      "range": "4.0.5-experimental - 4.6.1",
+      "nodes": ["node_modules/google-gax"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "jest": {
+      "name": "jest",
+      "severity": "low",
+      "isDirect": true,
+      "via": ["@jest/core", "jest-cli"],
+      "effects": ["ts-jest"],
+      "range": ">=25.2.0-alpha.86",
+      "nodes": ["node_modules/jest"],
+      "fixAvailable": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    "jest-cli": {
+      "name": "jest-cli",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["@jest/core", "create-jest", "jest-config"],
+      "effects": [],
+      "range": ">=25.2.0-alpha.86",
+      "nodes": ["node_modules/jest-cli"],
+      "fixAvailable": true
+    },
+    "jest-config": {
+      "name": "jest-config",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["deepmerge"],
+      "effects": ["@jest/core", "create-jest", "jest-cli"],
+      "range": ">=25.2.0-alpha.86",
+      "nodes": ["node_modules/jest-config"],
+      "fixAvailable": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    "minimatch": {
+      "name": "minimatch",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1244623,
+          "name": "minimatch",
+          "dependency": "minimatch",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "cwe": ["CWE-405"],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=7.0.0 <11.0.1"
+        }
+      ],
+      "effects": ["@eslint/config-array", "@typescript-eslint/typescript-estree", "eslint", "glob"],
+      "range": "7.0.0 - 11.0.0",
+      "nodes": ["node_modules/minimatch"],
+      "fixAvailable": {
+        "name": "@nestjs/cli",
+        "version": "12.0.12",
+        "isSemVerMajor": true
+      }
+    },
+    "prisma": {
+      "name": "prisma",
+      "severity": "high",
+      "isDirect": true,
+      "via": ["@prisma/config"],
+      "effects": [],
+      "range": "6.13.0-dev.1 - 7.10.0 || 8.0.0-rc.3 - 8.1.0-dev.4",
+      "nodes": ["node_modules/prisma"],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "7.10.1",
+        "isSemVerMajor": true
+      }
+    },
+    "retry-request": {
+      "name": "retry-request",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["teeny-request"],
+      "effects": ["@google-cloud/storage", "google-gax"],
+      "range": "7.0.0 - 7.0.2",
+      "nodes": ["node_modules/retry-request"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "teeny-request": {
+      "name": "teeny-request",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["uuid"],
+      "effects": ["@google-cloud/storage", "retry-request"],
+      "range": "3.9.1 - 9.0.0",
+      "nodes": ["node_modules/teeny-request"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "ts-jest": {
+      "name": "ts-jest",
+      "severity": "low",
+      "isDirect": true,
+      "via": ["jest"],
+      "effects": [],
+      "range": ">=25.10.0-alpha.1",
+      "nodes": ["node_modules/ts-jest"],
+      "fixAvailable": {
+        "name": "ts-jest",
+        "version": "25.5.1",
+        "isSemVerMajor": true
+      }
+    },
+    "typescript-eslint": {
+      "name": "typescript-eslint",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": ["node_modules/typescript-eslint"],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": ["CWE-787", "CWE-1285"],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": ["gaxios", "google-gax", "teeny-request"],
+      "range": "<11.1.1",
+      "nodes": ["node_modules/uuid"],
+      "fixAvailable": {
+        "name": "firebase-admin",
+        "version": "14.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "vitest": {
+      "name": "vitest",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["@vitest/mocker"],
+      "effects": [],
+      "range": "5.0.0-beta.1 - 5.0.2",
+      "nodes": ["node_modules/vitest"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "5.1.0",
+        "isSemVerMajor": false
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 8,
+      "moderate": 23,
+      "high": 3,
+      "critical": 0,
+      "total": 34
+    },
+    "dependencies": {
+      "prod": 285,
+      "dev": 674,
+      "optional": 110,
+      "peer": 7,
+      "peerOptional": 0,
+      "total": 1038
+    }
+  }
+}

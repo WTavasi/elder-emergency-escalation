@@ -340,3 +340,18 @@ because the only thing that would have caught it was a command somebody had to r
 to type. The mobile job builds the design tokens first, because the app reads them as a
 generated Dart package that is not committed, and pins Flutter to the version the app is
 developed on.
+
+**Coverage on the summary page.** The API and console jobs run their unit tests with
+coverage and write the figures (lines, statements, functions, branches) to the run's
+summary page through `scripts/coverage-summary.mjs`, so nobody has to download a report.
+
+**Native builds.** A second workflow, `.github/workflows/native.yml`, compiles what the
+Flutter checks never touch: the Android APK (the Kotlin behind the widget, the quick
+settings tile and the shortcuts) on Linux, and the iOS app without signing (the Swift App
+Intents and Siri phrases) on macOS. It runs only when `frontend/mobile` or the design
+tokens change, because a macOS runner costs about ten times a Linux one, and can be run by
+hand from the Actions tab. The debug APK is kept for a week as an artifact.
+
+**System tests.** `scripts/system-tests/` runs the twelve system tests (TC-01 to TC-12)
+against a running API, PostgreSQL and Redis, as the app calls them, and writes every
+request, response and database snapshot as evidence. See `docs/evidence/` for the runs.

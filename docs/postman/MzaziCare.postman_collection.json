@@ -5132,7 +5132,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('answers 401', () => pm.response.to.have.status(401));",
-                  "pm.test('says why', () => pm.expect(pm.response.json().message).to.include('deactivated'));"
+                  "pm.test('says why', () => pm.expect(pm.response.json().message).to.include('turned off'));"
                 ]
               }
             }
@@ -6152,6 +6152,706 @@
               "script": {
                 "type": "text/javascript",
                 "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Later additions: medical, order, policy",
+      "description": "Endpoints added after the first collection: medical details and a guardian's word, who is asked first, the escalation policy editor, nearest services, ranked alerts, speech and the privacy notice's facts. Run folder 1 first.",
+      "item": [
+        {
+          "name": "The privacy notice's facts, with how long speech is kept",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/legal",
+              "host": ["{{apiBase}}"],
+              "path": ["legal"]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says how long speech is kept', () => pm.expect(pm.response.json().retention.speechDays).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Open alerts, who to go to first (responder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/ranked",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "ranked"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{responderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a ranked list', () => pm.expect(pm.response.json().alerts).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Emergency services near the elder",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/services",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "services"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The elder's check-ins and rhythm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/check-ins",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "check-ins"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Medical details, for a caregiver",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/medical",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "medical"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('says on whose word they are shared', () => pm.expect(pm.response.json().consent).to.have.property('guardian'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A caregiver deciding for an elder who cannot",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/medical/guardian",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "medical", "guardian"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// 409 when the elder has already agreed for themselves, as the seeded Grace has.",
+                  "pm.test('answers 200, or 409 once the elder agreed', () => pm.expect(pm.response.code).to.be.oneOf([200, 409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The elder deciding for themselves again",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/medical/guardian",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "medical", "guardian"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "What the elder said after pressing help (the elder)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/speech",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "speech"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The chain, to reorder",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/chain",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "chain"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const view = pm.response.json();",
+                  "pm.test('a caregiver may reorder', () => pm.expect(view.canReorder).to.eql(true));",
+                  "const order = view.entries.filter((e) => e.movable).map((e) => ({ id: e.id, tier: e.tier }));",
+                  "pm.environment.set('chainOrder', JSON.stringify({ entries: order }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who is asked first, saved at once (the same order)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/chain/order",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "chain", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{chainOrder}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers with the chain', () => pm.expect(pm.response.json().entries).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nobody can be left out of the order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/chain/order",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "chain", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entries\": [\n    {\n      \"id\": \"00000000-0000-4000-8000-000000000000\",\n      \"tier\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family cannot reorder",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/chain/order",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "chain", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{chainOrder}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The escalation policy (administrator)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const policy = pm.response.json();",
+                  "pm.test('nine rules, three bands of three tiers', () => pm.expect(policy.escalationRules.length).to.eql(9));",
+                  "pm.test('the bands and the highest score', () => { pm.expect(policy.bands.criticalFrom).to.be.a('number'); pm.expect(policy.maxScore).to.be.a('number'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A tier's time limit, unchanged, records nothing",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy/escalation-rules/STANDARD/1",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy", "escalation-rules", "STANDARD", "1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeoutSeconds\": 120\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The last tier never gets a time limit",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy/escalation-rules/STANDARD/3",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy", "escalation-rules", "STANDARD", "3"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeoutSeconds\": 60\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 400', () => pm.response.to.have.status(400));",
+                  "pm.test('says why', () => pm.expect(pm.response.json().message).to.include('end of the chain'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A time limit outside the allowed range",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy/escalation-rules/STANDARD/1",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy", "escalation-rules", "STANDARD", "1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeoutSeconds\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "High must start below Critical",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy/bands",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy", "bands"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatedFrom\": 60,\n  \"criticalFrom\": 35\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A caregiver cannot see or change the policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/admin/policy",
+              "host": ["{{apiBase}}"],
+              "path": ["admin", "policy"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
               }
             }
           ]
