@@ -364,6 +364,23 @@ class ApiClient {
     await _send('DELETE', '/elders/$elderId/place');
   }
 
+  /// Who is asked first: every person in the circle at a group, saved at once. The elder
+  /// and everybody moved are told by text.
+  Future<ChainView> reorderChain(String elderId, Map<String, int> tiers) async {
+    return ChainView.fromJson(
+      await _send(
+        'PUT',
+        '/elders/$elderId/chain/order',
+        body: <String, dynamic>{
+          'entries': <Map<String, dynamic>>[
+            for (final MapEntry<String, int> entry in tiers.entries)
+              <String, dynamic>{'id': entry.key, 'tier': entry.value},
+          ],
+        },
+      ),
+    );
+  }
+
   /// Takes a person, or a held place, out of an elder's chain.
   Future<ChainView> removeFromChain(String elderId, String entryId) async {
     return ChainView.fromJson(await _send('DELETE', '/elders/$elderId/chain/$entryId'));

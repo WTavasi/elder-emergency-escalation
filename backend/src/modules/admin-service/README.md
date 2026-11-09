@@ -1,7 +1,8 @@
 # admin-service
 
 Accounts, for the administrator: every one listed, staff accounts created, and any
-account deactivated or brought back. FR-10.
+account deactivated or brought back. FR-10. And the escalation policy: the rules, the
+severity weights and the bands. FR-15.
 
 **Mounted at:** `/api/v1/admin`
 
@@ -9,7 +10,8 @@ account deactivated or brought back. FR-10.
 
 **Owns:** listing and searching every account, creating emergency responders and
 administrators, editing an account's name, email and a responder's area, and
-deactivating and reactivating accounts.
+deactivating and reactivating accounts; checking, saving and recording changes to the
+escalation rules, severity weights and band thresholds.
 
 **Does not own:** signing anybody in or up (`auth-service`), an elder's chain
 (`elder-service`).
@@ -23,6 +25,10 @@ deactivating and reactivating accounts.
 | PATCH | `/users/:id` | administrator | Name, email, and a responder's area |
 | POST | `/users/deactivate` | administrator | `{ ids }`. Refused for your own account, anybody handling an open emergency, and the last administrator |
 | POST | `/users/reactivate` | administrator | `{ ids }` |
+| GET | `/policy` | administrator | The rules, weights, bands, allowed ranges and the last 50 changes |
+| PATCH | `/policy/escalation-rules/:severity/:tier` | administrator | A tier's time limit, how it is asked, whether it is texted at once. 60 an hour |
+| PATCH | `/policy/severity-factors/:key` | administrator | A weight, or whether it counts. 60 an hour |
+| PUT | `/policy/bands` | administrator | Where High and Critical start. 60 an hour |
 
 ## Deactivating, not deleting
 

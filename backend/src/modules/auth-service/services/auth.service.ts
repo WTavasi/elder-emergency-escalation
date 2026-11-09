@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConsentType, Prisma, Role, type User } from '@prisma/client';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
 import { claimInvitations } from '../../../shared/utils/chain';
@@ -161,8 +161,28 @@ export class AuthService {
     // Deactivating clears the fingerprint as well, so this is belt and braces, but it
     // lets the app say why rather than only that the session ended.
     if (user?.deactivatedAt) throw new UnauthorizedException(DEACTIVATED);
+    if (!user) throw new UnauthorizedException('Your session ended. Please sign in again.');
 
-    if (!user?.refreshTokenHash) {
+    // A device's own session: checked and rotated on its row, leaving the person's other
+    // phones signed in.
+    if (payload.sid) {
+      const device = await this.prisma.userDevice.findFirst({
+        where: { id: payload.sid, userId: user.id },
+      });
+      if (!device) throw new UnauthorizedException('Your session ended. Please sign in again.');
+      if (device.refreshTokenHash !== AuthService.fingerprint(refreshToken)) {
+        await this.endAllSessions(user.id);
+        this.logger.warn(
+          `Refresh token replay for ${redactPhone(user.phone)}; all sessions revoked`,
+        );
+        throw new UnauthorizedException('Your session ended. Please sign in again.');
+      }
+      return this.issue(user, { sessionId: device.id });
+    }
+
+    // Signed in before devices existed: checked against the account, then moved to a
+    // device of its own, push address and all.
+    if (!user.refreshTokenHash) {
       throw new UnauthorizedException('Your session ended. Please sign in again.');
     }
 
@@ -175,14 +195,19 @@ export class AuthService {
       throw new UnauthorizedException('Your session ended. Please sign in again.');
     }
 
-    return this.issue(user);
+    return this.issue(user, { adoptLegacy: true });
   }
 
   /**
    * Signing out also stops this phone being sent anybody's emergencies: a phone left
    * signed out on a table must not keep receiving alerts for the account that left it.
    */
-  async logout(userId: string): Promise<void> {
+  async logout(userId: string, sessionId?: string): Promise<void> {
+    if (sessionId) {
+      // Only this phone: the person's other phones stay signed in and keep their alerts.
+      await this.prisma.userDevice.deleteMany({ where: { id: sessionId, userId } });
+      return;
+    }
     const now = new Date();
     await this.prisma.user.update({
       where: { id: userId },
@@ -196,18 +221,32 @@ export class AuthService {
   }
 
   /**
-   * Where push notifications for this account go. One device per account, matching the
-   * one-session model, so the newest registration wins. A token already held by another
-   * account means the phone changed hands, and the previous account loses it: alerts for
-   * one person must never arrive on somebody else's phone.
+   * Where push notifications for this phone go. Each signed-in phone has its own, so an
+   * alert reaches every phone the person carries. A token already held by another
+   * device or account means the phone changed hands, and the previous holder loses it:
+   * alerts for one person must never arrive on somebody else's phone.
    */
-  async registerPushToken(userId: string, token: string): Promise<void> {
+  async registerPushToken(userId: string, token: string, sessionId?: string): Promise<void> {
     const now = new Date();
     await this.prisma.$transaction(async (tx) => {
+      await tx.userDevice.updateMany({
+        where: { pushToken: token, ...(sessionId ? { id: { not: sessionId } } : {}) },
+        data: { pushToken: null },
+      });
       await tx.user.updateMany({
-        where: { pushToken: token, id: { not: userId } },
+        where: { pushToken: token, ...(sessionId ? {} : { id: { not: userId } }) },
         data: { pushToken: null, pushTokenUpdatedAt: now },
       });
+      if (sessionId) {
+        const updated = await tx.userDevice.updateMany({
+          where: { id: sessionId, userId },
+          data: { pushToken: token, lastSeenAt: now },
+        });
+        if (updated.count === 0) {
+          throw new UnauthorizedException('Your session ended. Please sign in again.');
+        }
+        return;
+      }
       await tx.user.update({
         where: { id: userId },
         data: { pushToken: token, pushTokenUpdatedAt: now },
@@ -215,11 +254,40 @@ export class AuthService {
     });
   }
 
-  async clearPushToken(userId: string): Promise<void> {
+  async clearPushToken(userId: string, sessionId?: string): Promise<void> {
+    if (sessionId) {
+      await this.prisma.userDevice.updateMany({
+        where: { id: sessionId, userId },
+        data: { pushToken: null },
+      });
+      return;
+    }
     await this.prisma.user.update({
       where: { id: userId },
       data: { pushToken: null, pushTokenUpdatedAt: new Date() },
     });
+  }
+
+  /**
+   * Every phone signed out at once: after a replayed refresh token, and when a password
+   * or number changes. Their push addresses go with them.
+   */
+  private async endAllSessions(userId: string, except?: string): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.userDevice.deleteMany({
+        where: { userId, ...(except ? { id: { not: except } } : {}) },
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          refreshTokenHash: null,
+          refreshTokenUpdatedAt: now,
+          pushToken: null,
+          pushTokenUpdatedAt: now,
+        },
+      }),
+    ]);
   }
 
   /**
@@ -256,7 +324,11 @@ export class AuthService {
    * other device holding the old password's session is signed out at its next refresh.
    * Their access tokens still work until they expire, at most one access lifetime.
    */
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<AuthResult> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    sessionId?: string,
+  ): Promise<AuthResult> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('This account no longer exists.');
 
@@ -272,7 +344,7 @@ export class AuthService {
       data: { passwordHash: this.passwords.hash(dto.newPassword) },
     });
     this.logger.log(`Password changed for ${redactPhone(user.phone)}; other sessions end`);
-    return this.issue(updated);
+    return this.issue(updated, { sessionId, endOthers: true });
   }
 
   /**
@@ -303,7 +375,7 @@ export class AuthService {
       data: { passwordHash: this.passwords.hash(dto.newPassword) },
     });
     this.logger.log(`Password reset by code for ${redactPhone(user.phone)}; other sessions end`);
-    return this.issue(updated);
+    return this.issue(updated, { endOthers: true });
   }
 
   /**
@@ -367,7 +439,7 @@ export class AuthService {
    * old number is told by text, so a change its holder did not make is noticed. Places
    * in a chain that were waiting for the new number are taken, as at sign-up.
    */
-  async changePhone(userId: string, dto: ChangePhoneDto): Promise<AuthResult> {
+  async changePhone(userId: string, dto: ChangePhoneDto, sessionId?: string): Promise<AuthResult> {
     await this.verification.consume(dto.phone, dto.code, 'change');
 
     const before = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -396,7 +468,7 @@ export class AuthService {
       `Number changed from ${redactPhone(before.phone)} to ${redactPhone(dto.phone)}; other sessions end`,
     );
     await this.sms.send(before.phone, accountMessages.numberChanged());
-    return this.issue(updated);
+    return this.issue(updated, { sessionId, endOthers: true });
   }
 
   /**
@@ -431,19 +503,53 @@ export class AuthService {
     return AuthService.summarise(user);
   }
 
-  private async issue(user: User): Promise<AuthResult> {
+  /**
+   * Signs a phone in: a session of its own, so the person's other phones stay signed in.
+   *
+   * [sessionId] keeps the phone's existing session, rotating its refresh token.
+   * [endOthers] signs every other phone out, for a new password or number. [adoptLegacy]
+   * moves a session from before devices existed onto a device, with its push address.
+   */
+  private async issue(
+    user: User,
+    options: { sessionId?: string; endOthers?: boolean; adoptLegacy?: boolean } = {},
+  ): Promise<AuthResult> {
+    const sid = options.sessionId ?? randomUUID();
     const [accessToken, refresh] = await Promise.all([
-      this.tokens.signAccess(user.id, user.role),
-      this.tokens.signRefresh(user.id, user.role),
+      this.tokens.signAccess(user.id, user.role, sid),
+      this.tokens.signRefresh(user.id, user.role, sid),
     ]);
+    const fingerprint = AuthService.fingerprint(refresh.token);
+    const now = new Date();
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        refreshTokenHash: AuthService.fingerprint(refresh.token),
-        refreshTokenUpdatedAt: new Date(),
-      },
-    });
+    if (options.endOthers) await this.endAllSessions(user.id, sid);
+
+    const legacyPush = options.adoptLegacy ? user.pushToken : null;
+    await this.prisma.$transaction([
+      ...(options.adoptLegacy
+        ? [
+            this.prisma.user.update({
+              where: { id: user.id },
+              data: {
+                refreshTokenHash: null,
+                refreshTokenUpdatedAt: now,
+                pushToken: null,
+                pushTokenUpdatedAt: now,
+              },
+            }),
+          ]
+        : []),
+      this.prisma.userDevice.upsert({
+        where: { id: sid },
+        create: {
+          id: sid,
+          userId: user.id,
+          refreshTokenHash: fingerprint,
+          ...(legacyPush ? { pushToken: legacyPush } : {}),
+        },
+        update: { refreshTokenHash: fingerprint, lastSeenAt: now },
+      }),
+    ]);
 
     return { user: AuthService.summarise(user), accessToken, refreshToken: refresh.token };
   }

@@ -25,12 +25,14 @@ function build() {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
       delete: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
     },
     chainInvitation: {
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
       delete: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
     },
     emergencyEvent: { count: jest.fn().mockResolvedValue(0) },
     consentRecord: { createMany: jest.fn().mockResolvedValue({ count: 3 }) },
@@ -38,10 +40,13 @@ function build() {
       findFirst: jest.fn((args: { where: { responderRole: Role } }) =>
         Promise.resolve({ tierOrder: args.where.responderRole === Role.CAREGIVER ? 1 : 2 }),
       ),
+      findMany: jest.fn().mockResolvedValue([{ tierOrder: 1 }, { tierOrder: 2 }]),
     },
     $transaction: jest.fn(),
   };
-  prisma.$transaction.mockImplementation((work: (tx: typeof prisma) => unknown) => work(prisma));
+  prisma.$transaction.mockImplementation((work: unknown) =>
+    Array.isArray(work) ? Promise.all(work) : (work as (tx: typeof prisma) => unknown)(prisma),
+  );
 
   const verification = { consume: jest.fn().mockResolvedValue(undefined) };
   const sms = { send: jest.fn().mockResolvedValue(true) };
@@ -322,6 +327,136 @@ describe('ChainService', () => {
       await expect(
         service.removeEntry(ELDER.id, 'x', 'family-1', Role.FAMILY_MEMBER),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('reorder', () => {
+    const person = (id: string, tier: number, role: Role, phone: string) => ({
+      id,
+      priorityOrder: tier,
+      assignedAt: new Date('2026-11-01T00:00:00Z'),
+      responder: { id: `user-${id}`, name: id, phone, role, deactivatedAt: null },
+    });
+    const circle = [
+      person('mary', 1, Role.CAREGIVER, '+254700000020'),
+      person('aisha', 2, Role.FAMILY_MEMBER, '+254700000030'),
+      person('brian', 2, Role.FAMILY_MEMBER, '+254700000032'),
+    ];
+
+    function ready() {
+      const built = build();
+      inChain(built.prisma);
+      built.prisma.careAssignment.findMany.mockResolvedValue(circle);
+      built.prisma.user.findUniqueOrThrow.mockImplementation((args: { where: { id: string } }) =>
+        Promise.resolve(
+          args.where.id === ELDER.id ? { phone: '+254700000010' } : { name: 'Mary Otieno' },
+        ),
+      );
+      return built;
+    }
+
+    it('moves a family member up to be asked with the caregiver, and tells them and the elder', async () => {
+      const { service, prisma, sms } = ready();
+      await service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+        entries: [
+          { id: 'mary', tier: 1 },
+          { id: 'aisha', tier: 1 },
+          { id: 'brian', tier: 2 },
+        ],
+      });
+
+      expect(prisma.careAssignment.update).toHaveBeenCalledTimes(1);
+      expect(prisma.careAssignment.update).toHaveBeenCalledWith({
+        where: { id: 'aisha' },
+        data: { priorityOrder: 1 },
+      });
+      expect(sms.send).toHaveBeenCalledWith(
+        '+254700000030',
+        "Mary changed Grace's MzaziCare contacts. You're now asked first if Grace needs help.",
+      );
+      expect(sms.send).toHaveBeenCalledWith(
+        '+254700000010',
+        'Mary changed the order MzaziCare asks your contacts in. Open MzaziCare to see it.',
+      );
+      expect(sms.send).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets an administrator do it too', async () => {
+      const { service, prisma } = ready();
+      prisma.user.findUnique.mockResolvedValue(ELDER);
+      await service.reorder('elder-1', 'admin-1', Role.ADMINISTRATOR, {
+        entries: [
+          { id: 'mary', tier: 2 },
+          { id: 'aisha', tier: 1 },
+          { id: 'brian', tier: 1 },
+        ],
+      });
+      expect(prisma.careAssignment.update).toHaveBeenCalledTimes(3);
+    });
+
+    it('needs everybody exactly once, at a rank people can hold', async () => {
+      const { service, prisma } = ready();
+      await expect(
+        service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+          entries: [
+            { id: 'mary', tier: 1 },
+            { id: 'aisha', tier: 2 },
+          ],
+        }),
+      ).rejects.toThrow('Send everybody in the circle once');
+      await expect(
+        service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+          entries: [
+            { id: 'mary', tier: 1 },
+            { id: 'aisha', tier: 3 },
+            { id: 'brian', tier: 2 },
+          ],
+        }),
+      ).rejects.toThrow('Emergency services come after');
+      expect(prisma.careAssignment.update).not.toHaveBeenCalled();
+    });
+
+    it('never leaves nobody to ask first', async () => {
+      const { service } = ready();
+      await expect(
+        service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+          entries: [
+            { id: 'mary', tier: 2 },
+            { id: 'aisha', tier: 2 },
+            { id: 'brian', tier: 2 },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('waits while an emergency is open, and is not for family', async () => {
+      const { service, prisma } = ready();
+      prisma.emergencyEvent.count.mockResolvedValue(1);
+      await expect(
+        service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+          entries: [
+            { id: 'mary', tier: 1 },
+            { id: 'aisha', tier: 1 },
+            { id: 'brian', tier: 2 },
+          ],
+        }),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.reorder('elder-1', 'user-aisha', Role.FAMILY_MEMBER, { entries: [] }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('changes and tells nobody when the order is the same', async () => {
+      const { service, prisma, sms } = ready();
+      await service.reorder('elder-1', 'user-mary', Role.CAREGIVER, {
+        entries: [
+          { id: 'mary', tier: 1 },
+          { id: 'aisha', tier: 2 },
+          { id: 'brian', tier: 2 },
+        ],
+      });
+      expect(prisma.careAssignment.update).not.toHaveBeenCalled();
+      expect(sms.send).not.toHaveBeenCalled();
     });
   });
 });

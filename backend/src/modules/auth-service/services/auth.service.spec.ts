@@ -54,6 +54,12 @@ interface PrismaMock {
   chainInvitation: { findMany: jest.Mock; deleteMany: jest.Mock };
   careAssignment: { createMany: jest.Mock };
   escalationRule: { findFirst: jest.Mock };
+  userDevice: {
+    upsert: jest.Mock;
+    findFirst: jest.Mock;
+    deleteMany: jest.Mock;
+    updateMany: jest.Mock;
+  };
   $transaction: jest.Mock;
 }
 
@@ -72,12 +78,26 @@ const buildPrisma = (): PrismaMock => {
     },
     careAssignment: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
     escalationRule: { findFirst: jest.fn().mockResolvedValue(null) },
+    userDevice: {
+      upsert: jest.fn().mockResolvedValue(undefined),
+      findFirst: jest.fn().mockResolvedValue(null),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     $transaction: jest.fn(),
   } as PrismaMock;
   // The transaction runs its callback against the same mock, which is what a real
-  // interactive transaction looks like from inside.
-  prisma.$transaction.mockImplementation((work: (tx: PrismaMock) => unknown) => work(prisma));
+  // interactive transaction looks like from inside; a list of writes is simply run.
+  prisma.$transaction.mockImplementation((work: unknown) =>
+    Array.isArray(work) ? Promise.all(work) : (work as (tx: PrismaMock) => unknown)(prisma),
+  );
   return prisma;
+};
+
+/** The refresh fingerprint last stored for a device session. */
+const savedFingerprint = (prisma: PrismaMock): string => {
+  const upsert = prisma.userDevice.upsert.mock.calls.at(-1)?.[0];
+  return (upsert?.create.refreshTokenHash ?? upsert?.update.refreshTokenHash) as string;
 };
 
 const buildVerification = () => ({
@@ -142,7 +162,7 @@ describe('AuthService', () => {
 
       const result = await buildService(prisma).register({ ...signUp });
 
-      const saved = prisma.user.update.mock.calls[0][0].data.refreshTokenHash as string;
+      const saved = savedFingerprint(prisma);
       expect(saved).toBe(fingerprint(result.refreshToken));
       expect(saved).not.toBe(result.refreshToken);
     });
@@ -282,10 +302,11 @@ describe('AuthService', () => {
 
       const stored = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
       expect(passwords.verify('Another!2026', stored)).toBe(true);
-      // The second update replaces the refresh-token fingerprint, which is what signs
-      // every other device out at its next refresh.
-      const saved = prisma.user.update.mock.calls[1][0].data.refreshTokenHash as string;
-      expect(saved).toBe(fingerprint(result.refreshToken));
+      // Every other phone is signed out, and this one gets a fresh session.
+      expect(prisma.userDevice.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', id: { not: expect.any(String) } },
+      });
+      expect(savedFingerprint(prisma)).toBe(fingerprint(result.refreshToken));
     });
 
     it('refuses the same password again', async () => {
@@ -414,11 +435,9 @@ describe('AuthService', () => {
       expect(verification.consume).toHaveBeenCalledWith('+254700000020', '123456', 'reset');
       const stored = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
       expect(passwords.verify('Brand-new-2026', stored)).toBe(true);
-      // A new refresh fingerprint is what ends the sessions held with the old password.
-      const rotated = prisma.user.update.mock.calls.find(
-        (call: [{ data: Record<string, unknown> }]) => 'refreshTokenHash' in call[0].data,
-      );
-      expect(rotated?.[0].data.refreshTokenHash).toBe(fingerprint(result.refreshToken));
+      // Every session held with the old password ends.
+      expect(prisma.userDevice.deleteMany).toHaveBeenCalled();
+      expect(savedFingerprint(prisma)).toBe(fingerprint(result.refreshToken));
     });
 
     it('changes nothing when the code is wrong', async () => {
@@ -570,10 +589,8 @@ describe('AuthService', () => {
       });
       expect(sms.send).toHaveBeenCalledWith('+254700000020', accountMessages.numberChanged());
       expect(result.user.phone).toBe('+254700000099');
-      const rotated = prisma.user.update.mock.calls.find(
-        (call: [{ data: Record<string, unknown> }]) => 'refreshTokenHash' in call[0].data,
-      );
-      expect(rotated?.[0].data.refreshTokenHash).toBe(fingerprint(result.refreshToken));
+      expect(prisma.userDevice.deleteMany).toHaveBeenCalled();
+      expect(savedFingerprint(prisma)).toBe(fingerprint(result.refreshToken));
     });
 
     it('changes nothing when the code is wrong', async () => {
@@ -645,17 +662,68 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('rotates the stored fingerprint on every use', async () => {
+    it("rotates this phone's fingerprint on every use, leaving other phones alone", async () => {
       const prisma = buildPrisma();
       const service = buildService(prisma);
-      const { token } = await tokens.signRefresh('user-1');
-      prisma.user.findUnique.mockResolvedValue(buildUser({ refreshTokenHash: fingerprint(token) }));
+      const { token } = await tokens.signRefresh('user-1', Role.CAREGIVER, 'device-1');
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      prisma.userDevice.findFirst.mockResolvedValue({
+        id: 'device-1',
+        userId: 'user-1',
+        refreshTokenHash: fingerprint(token),
+      });
 
       const result = await service.refresh(token);
       expect(result.refreshToken).not.toBe(token);
 
-      const saved = prisma.user.update.mock.calls.at(-1)?.[0].data.refreshTokenHash as string;
-      expect(saved).toBe(fingerprint(result.refreshToken));
+      const upsert = prisma.userDevice.upsert.mock.calls.at(-1)?.[0];
+      expect(upsert.where).toEqual({ id: 'device-1' });
+      expect(upsert.update.refreshTokenHash).toBe(fingerprint(result.refreshToken));
+      expect(prisma.userDevice.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('signs every phone out when a phone replays a spent token', async () => {
+      const prisma = buildPrisma();
+      const { token } = await tokens.signRefresh('user-1', Role.CAREGIVER, 'device-1');
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+      prisma.userDevice.findFirst.mockResolvedValue({
+        id: 'device-1',
+        userId: 'user-1',
+        refreshTokenHash: fingerprint('some-older-token'),
+      });
+
+      await expect(buildService(prisma).refresh(token)).rejects.toThrow(UnauthorizedException);
+      expect(prisma.userDevice.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+    });
+
+    it('refuses a phone that was signed out', async () => {
+      const prisma = buildPrisma();
+      const { token } = await tokens.signRefresh('user-1', Role.CAREGIVER, 'device-gone');
+      prisma.user.findUnique.mockResolvedValue(buildUser());
+
+      await expect(buildService(prisma).refresh(token)).rejects.toThrow(
+        'Your session ended. Please sign in again.',
+      );
+    });
+
+    it('moves a session from before devices onto a device of its own, push address and all', async () => {
+      const prisma = buildPrisma();
+      const service = buildService(prisma);
+      const { token } = await tokens.signRefresh('user-1');
+      prisma.user.findUnique.mockResolvedValue(
+        buildUser({ refreshTokenHash: fingerprint(token), pushToken: 'fcm-old-phone-token' }),
+      );
+
+      const result = await service.refresh(token);
+
+      expect(savedFingerprint(prisma)).toBe(fingerprint(result.refreshToken));
+      expect(prisma.userDevice.upsert.mock.calls.at(-1)?.[0].create.pushToken).toBe(
+        'fcm-old-phone-token',
+      );
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({ refreshTokenHash: null, pushToken: null }),
+      });
     });
 
     it('revokes every session when a token is replayed', async () => {
@@ -691,6 +759,15 @@ describe('AuthService', () => {
   });
 
   describe('logout', () => {
+    it('signs out only this phone, taking its push address with it', async () => {
+      const prisma = buildPrisma();
+      await buildService(prisma).logout('user-1', 'device-1');
+      expect(prisma.userDevice.deleteMany).toHaveBeenCalledWith({
+        where: { id: 'device-1', userId: 'user-1' },
+      });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
     it('clears the stored fingerprint, and stops this phone receiving alerts', async () => {
       const prisma = buildPrisma();
       await buildService(prisma).logout('user-1');
@@ -702,6 +779,24 @@ describe('AuthService', () => {
   });
 
   describe('push tokens', () => {
+    it("puts the address on this phone's session, and off any other phone that had it", async () => {
+      const prisma = buildPrisma();
+      await buildService(prisma).registerPushToken(
+        'user-1',
+        'fcm-token-abcdefghijklmnop',
+        'device-1',
+      );
+
+      expect(prisma.userDevice.updateMany).toHaveBeenCalledWith({
+        where: { pushToken: 'fcm-token-abcdefghijklmnop', id: { not: 'device-1' } },
+        data: { pushToken: null },
+      });
+      expect(prisma.userDevice.updateMany).toHaveBeenCalledWith({
+        where: { id: 'device-1', userId: 'user-1' },
+        data: expect.objectContaining({ pushToken: 'fcm-token-abcdefghijklmnop' }),
+      });
+    });
+
     it('registers this phone, and takes the token off any account that had it before', async () => {
       const prisma = buildPrisma();
       await buildService(prisma).registerPushToken('user-1', 'fcm-token-abcdefghijklmnop');

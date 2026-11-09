@@ -4,12 +4,20 @@ import {
   PUSH_PROVIDER,
   type PushProvider,
 } from '../../notification-service/providers/push.provider';
+import { pushTokensOf } from '../../../shared/utils/push-targets';
+import { sendToEvery } from '../../notification-service/providers/push-fanout';
 import { DirectSmsService } from '../../notification-service/services/direct-sms.service';
 import type { VolunteerMessage } from './volunteer-content';
 
+/**
+ * A person to reach: their number, and their push addresses, either already gathered or as
+ * the database returns them (PUSH_TARGETS_SELECT).
+ */
 export interface Reachable {
   phone: string;
-  pushToken: string | null;
+  pushTokens?: string[];
+  pushToken?: string | null;
+  devices?: { pushToken: string | null }[];
 }
 
 /**
@@ -29,10 +37,10 @@ export class VolunteerMessenger {
   ) {}
 
   async send(person: Reachable, message: VolunteerMessage): Promise<'push' | 'sms' | 'none'> {
-    if (person.pushToken) {
+    const tokens = person.pushTokens ?? pushTokensOf(person);
+    if (tokens.length > 0) {
       try {
-        const result = await this.push.send({
-          token: person.pushToken,
+        const result = await sendToEvery(this.push, tokens, {
           title: message.title,
           body: message.body,
           data: message.data,

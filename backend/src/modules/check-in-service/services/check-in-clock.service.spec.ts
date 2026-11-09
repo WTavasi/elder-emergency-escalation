@@ -6,6 +6,7 @@ import type { Rhythm } from './check-in-rhythm';
 import type { CheckInRhythmService } from './check-in-rhythm.service';
 import type { CheckInsService } from './check-ins.service';
 import { CheckInClockService } from './check-in-clock.service';
+import { pushTokensOf } from '../../../shared/utils/push-targets';
 import type { CheckInMessenger } from './check-in-messenger.service';
 
 const GRACE = {
@@ -87,7 +88,12 @@ describe('CheckInClockService', () => {
         remindAt: minutesAfterNine(15),
         deadlineAt: minutesAfterNine(30),
       });
-      expect(t.messenger.ask).toHaveBeenCalledWith(GRACE, 'check-in-1', false, now);
+      expect(t.messenger.ask).toHaveBeenCalledWith(
+        { ...GRACE, pushTokens: [] },
+        'check-in-1',
+        false,
+        now,
+      );
     });
 
     it('reminds sooner when silence is unusual for this elder, never later than half way', async () => {
@@ -192,7 +198,12 @@ describe('CheckInClockService', () => {
         status: CheckInStatus.PENDING,
         remindedAt: null,
       });
-      expect(t.messenger.ask).toHaveBeenCalledWith(LATE.elder, 'check-in-1', true, now);
+      expect(t.messenger.ask).toHaveBeenCalledWith(
+        { ...LATE.elder, pushTokens: pushTokensOf(LATE.elder) },
+        'check-in-1',
+        true,
+        now,
+      );
     });
 
     it('does not remind twice when another instance already did', async () => {

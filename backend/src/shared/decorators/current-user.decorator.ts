@@ -4,6 +4,8 @@ import type { Role } from '@prisma/client';
 export interface AuthenticatedUser {
   userId: string;
   role: Role;
+  /** The device session signed in, so signing out ends only this phone. */
+  sessionId?: string;
 }
 
 export const CurrentUser = createParamDecorator(

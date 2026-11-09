@@ -984,6 +984,7 @@ class ChainPlace {
     required this.phone,
     required this.isInvited,
     this.removable = false,
+    this.movable = false,
     this.role,
   });
 
@@ -998,6 +999,10 @@ class ChainPlace {
   /// Whether the signed-in caregiver may take this place out of the chain.
   final bool removable;
 
+  /// Whether it can be moved between the groups asked first and next. Emergency
+  /// services cannot: they are always asked last.
+  final bool movable;
+
   factory ChainPlace.fromJson(Map<String, dynamic> json) {
     final Object? role = json['role'];
     return ChainPlace(
@@ -1008,6 +1013,7 @@ class ChainPlace {
       role: role is String ? Role.parse(role) : null,
       isInvited: json['status'] == 'invited',
       removable: json['removable'] as bool? ?? false,
+      movable: json['movable'] as bool? ?? false,
     );
   }
 }
@@ -1018,6 +1024,8 @@ class ChainView {
     required this.elderName,
     required this.canEdit,
     required this.places,
+    this.canReorder = false,
+    this.personTiers = const <int>[1, 2],
   });
 
   final String elderId;
@@ -1025,10 +1033,21 @@ class ChainView {
   final bool canEdit;
   final List<ChainPlace> places;
 
+  /// Whether the signed-in person may change who is asked first.
+  final bool canReorder;
+
+  /// The groups people can be in, asked first to last. Emergency services come after.
+  final List<int> personTiers;
+
   factory ChainView.fromJson(Map<String, dynamic> json) => ChainView(
     elderId: json['elderId'] as String,
     elderName: json['elderName'] as String,
     canEdit: json['canEdit'] as bool? ?? false,
+    canReorder: json['canReorder'] as bool? ?? false,
+    personTiers: (json['personTiers'] as List<dynamic>? ?? const <dynamic>[1, 2])
+        .whereType<num>()
+        .map((num tier) => tier.toInt())
+        .toList(growable: false),
     places: (json['entries'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .map(ChainPlace.fromJson)

@@ -271,6 +271,7 @@ export class ConsentService {
           where: { id: elderId },
           data: { deactivatedAt: now, refreshTokenHash: null, refreshTokenUpdatedAt: now },
         });
+        await tx.userDevice.deleteMany({ where: { userId: elderId } });
       }
       return changed.count;
     });

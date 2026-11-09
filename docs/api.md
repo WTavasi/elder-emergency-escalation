@@ -22,7 +22,7 @@ the REST Client extension and a **Send Request** link appears above each one.
 | GET | `/api/v1/auth/providers` | none | `{ google: { clientId } \| null }`, for the console's sign-in screen |
 | POST | `/api/v1/auth/google` | none | `{ idToken }` from Google's button; administrators only |
 | POST | `/api/v1/auth/refresh` | none | Rotates the refresh token; a replay revokes every session |
-| POST | `/api/v1/auth/logout` | bearer | Ends every session for that user |
+| POST | `/api/v1/auth/logout` | bearer | Signs out this phone only, and forgets its push address. The person's other phones stay signed in |
 | GET | `/api/v1/auth/me` | bearer | The signed-in user |
 | PATCH | `/api/v1/auth/me` | bearer | Change your own name or email (`email: null` removes it) |
 | POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
@@ -34,8 +34,8 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/me/phone` | bearer | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends every other session |
 | GET | `/api/v1/auth/me/profile` | bearer | `{ memberSince, circles, record, carers, helpByText }`: places in each circle and the response record; an elder gets their carers instead, and `helpByText` (`{ number, word }`, or null) for asking for help by SMS |
 | GET | `/api/v1/legal` | none | `{ privacyVersion, termsVersion, retention, contact }` for the privacy notice and terms. `retention` holds `enabled`, `closedEmergencyDays`, `auditLogDays` and `speechDays`. `contact` is null until `DATA_CONTACT_*` is set |
-| PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other account that held it |
-| DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this account's push address; 204. Signing out does the same |
+| PUT | `/api/v1/auth/me/push-token` | bearer | `{ token }`, this phone's FCM address; 204. Moves it from any other phone or account that held it |
+| DELETE | `/api/v1/auth/me/push-token` | bearer | Forgets this phone's push address; 204. Signing out does the same |
 
 **An elder stays signed in.** Access tokens last the same for everyone, but an elder's
 refresh token lasts `JWT_REFRESH_TTL_ELDER` (ten years by default) rather than
@@ -341,6 +341,7 @@ says the person came back rather than losing that a stay ever happened.
 | GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
 | POST | `/api/v1/elders/:id/chain` | caregiver in that chain | Add a family member by phone |
 | DELETE | `/api/v1/elders/:id/chain/:entryId` | caregiver in that chain | Remove a family member, or withdraw a held place |
+| PUT | `/api/v1/elders/:id/chain/order` | caregiver in that chain, administrator | `{ entries: [{ id, tier }] }`: who is asked first. Every caregiver, family member and held place exactly once, each at a rank in `personTiers` (1 or 2); somebody with an account at the first. 409 while an emergency is open. Texts the elder and everybody moved |
 | GET | `/api/v1/elders/:id` | care chain | Name, phone, home, care level, where they are now, and whether the caller may edit |
 | PATCH | `/api/v1/elders/:id` | caregiver in that chain | Change their home or care level (`careLevel: null` means not sure) |
 | GET | `/api/v1/elders/:id/consent` | the elder, care chain, administrator | What was agreed, by whom, whether the elder confirmed it, what was withdrawn |
@@ -541,6 +542,7 @@ same length) and `daily` (one point per day, with the days nothing happened incl
 | POST | `/api/v1/admin/users/deactivate` | administrator | `{ ids }` |
 | POST | `/api/v1/admin/users/reactivate` | administrator | `{ ids }` |
 
+
 **Accounts are deactivated, never deleted**, because each is named in emergency history.
 A deactivated account cannot sign in (by password, Google or a reset; the message says so
 only after the password is right), its sessions end at once, including any open live
@@ -550,6 +552,20 @@ administrator. Details: `backend/src/modules/admin-service/README.md`.
 
 This one is restricted by role rather than by care relationship, because it has no
 scope of its own: it reports across everybody. A caregiver is refused.
+
+
+### The escalation policy
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/admin/policy` | administrator | `{ escalationRules, severityFactors, bands, maxScore, limits, changes }`: every severity's tiers, the weights, where High and Critical start (and whether that is still the configured value), the highest score possible, the allowed ranges, and the last 50 changes with who made them |
+| PATCH | `/api/v1/admin/policy/escalation-rules/:severity/:tier` | administrator | `{ timeoutSeconds?, dispatchMode?, smsFallbackImmediate? }`. 15 to 3600 seconds; the last tier has none and every other tier must have one; tier 1 is never `PARALLEL` |
+| PATCH | `/api/v1/admin/policy/severity-factors/:key` | administrator | `{ weight?, enabled? }`. 0 to 100; refused if Critical could then never be reached, or for a factor this version cannot measure |
+| PUT | `/api/v1/admin/policy/bands` | administrator | `{ elevatedFrom, criticalFrom }`. 1 to 100, High below Critical, Critical no higher than the highest possible score |
+
+Every accepted change answers with the whole policy, is recorded in `policy_changes` with
+who made it and the values before and after, and is used from the next alert (weights and
+bands) or the next tier asked (rules). An alert's current deadline is never moved.
 
 ## Live updates
 

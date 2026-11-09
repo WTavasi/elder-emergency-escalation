@@ -8,7 +8,11 @@ import type {
   EventState,
   LegalFacts,
   MedicalLooks,
+  ChainView,
   NewUser,
+  Policy,
+  PolicyFactor,
+  PolicyRule,
   Session,
   Severity,
   SignInProviders,
@@ -341,6 +345,38 @@ export const api = {
       request('/admin/users/reactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
   },
 
+  chains: {
+    get: (elderId: string): Promise<ChainView> => request<ChainView>(`/elders/${elderId}/chain`),
+    reorder: (elderId: string, tiers: Record<string, number>): Promise<ChainView> =>
+      request<ChainView>(`/elders/${elderId}/chain/order`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          entries: Object.entries(tiers).map(([id, tier]) => ({ id, tier })),
+        }),
+      }),
+  },
+  escalationPolicy: {
+    get: (): Promise<Policy> => request<Policy>('/admin/policy'),
+    updateRule: (
+      severity: Severity,
+      tier: number,
+      change: Partial<Pick<PolicyRule, 'timeoutSeconds' | 'dispatchMode' | 'smsFallbackImmediate'>>,
+    ): Promise<Policy> =>
+      request<Policy>(`/admin/policy/escalation-rules/${severity}/${tier}`, {
+        method: 'PATCH',
+        body: JSON.stringify(change),
+      }),
+    updateFactor: (
+      key: string,
+      change: Partial<Pick<PolicyFactor, 'weight' | 'enabled'>>,
+    ): Promise<Policy> =>
+      request<Policy>(`/admin/policy/severity-factors/${encodeURIComponent(key)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(change),
+      }),
+    updateBands: (bands: { elevatedFrom: number; criticalFrom: number }): Promise<Policy> =>
+      request<Policy>('/admin/policy/bands', { method: 'PUT', body: JSON.stringify(bands) }),
+  },
   volunteers: {
     list: (status?: VolunteerStatus): Promise<VolunteerApplication[]> =>
       request<VolunteerApplication[]>(`/admin/volunteers${status ? `?status=${status}` : ''}`),

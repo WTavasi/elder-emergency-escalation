@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CareLevel, Severity } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { BAND_SETTINGS } from '../../../shared/config/policy-keys';
 import { distanceInMetres } from '../../../shared/utils/geo';
 import { isNight, localParts } from '../../../shared/utils/time';
 import type { FactorOutcome, SeverityAssessment, SeverityContext } from '../models/severity.types';
@@ -12,7 +13,9 @@ import type { FactorOutcome, SeverityAssessment, SeverityContext } from '../mode
  * The system has one input, a panic button, so severity cannot come from what happened.
  * It comes from who the person is and the circumstances of the press. Weights live in
  * the severity_factors table rather than in this file, so an administrator can change
- * the policy without a deployment and the policy can be printed as a table.
+ * the policy without a deployment and the policy can be printed as a table. The scores at
+ * which a band starts are read the same way, from policy_settings, falling back to
+ * SEVERITY_ELEVATED_FROM and SEVERITY_CRITICAL_FROM until an administrator sets them.
  *
  * Deliberately not a learned model: there is no labelled data, and a score that cannot
  * be explained to the person it escalated is not worth having.
@@ -27,10 +30,13 @@ export class SeverityService {
   ) {}
 
   async evaluate(context: SeverityContext): Promise<SeverityAssessment> {
-    const factors = await this.prisma.severityFactor.findMany({
-      where: { enabled: true },
-      orderBy: { weight: 'desc' },
-    });
+    const [factors, thresholds] = await Promise.all([
+      this.prisma.severityFactor.findMany({
+        where: { enabled: true },
+        orderBy: { weight: 'desc' },
+      }),
+      this.thresholds(),
+    ]);
 
     const outcomes: FactorOutcome[] = [];
 
@@ -62,7 +68,7 @@ export class SeverityService {
     }
 
     const score = outcomes.reduce((total, outcome) => total + outcome.contribution, 0);
-    return { score, band: this.band(score), factors: outcomes };
+    return { score, band: this.band(score, thresholds), factors: outcomes };
   }
 
   /**
@@ -75,9 +81,31 @@ export class SeverityService {
     return order.indexOf(first) >= order.indexOf(second) ? first : second;
   }
 
-  private band(score: number): Severity {
-    if (score >= this.config.get<number>('SEVERITY_CRITICAL_FROM', 60)) return Severity.CRITICAL;
-    if (score >= this.config.get<number>('SEVERITY_ELEVATED_FROM', 35)) return Severity.ELEVATED;
+  /**
+   * The scores at which ELEVATED and CRITICAL start: as an administrator set them, else
+   * as configured. Read for every alert, so a change applies from the next one.
+   */
+  async thresholds(): Promise<{ elevatedFrom: number; criticalFrom: number }> {
+    const rows = await this.prisma.policySetting.findMany({
+      where: {
+        key: { in: [BAND_SETTINGS.elevatedFrom.key, BAND_SETTINGS.criticalFrom.key] },
+      },
+    });
+    const valueOf = (setting: (typeof BAND_SETTINGS)[keyof typeof BAND_SETTINGS]): number =>
+      rows.find((row) => row.key === setting.key)?.value ??
+      this.config.get<number>(setting.env, setting.fallback);
+    return {
+      elevatedFrom: valueOf(BAND_SETTINGS.elevatedFrom),
+      criticalFrom: valueOf(BAND_SETTINGS.criticalFrom),
+    };
+  }
+
+  private band(
+    score: number,
+    thresholds: { elevatedFrom: number; criticalFrom: number },
+  ): Severity {
+    if (score >= thresholds.criticalFrom) return Severity.CRITICAL;
+    if (score >= thresholds.elevatedFrom) return Severity.ELEVATED;
     return Severity.STANDARD;
   }
 

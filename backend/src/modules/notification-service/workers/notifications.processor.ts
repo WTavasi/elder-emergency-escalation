@@ -8,6 +8,8 @@ import { composeNotification } from '../services/notification-content';
 import { NOTIFICATIONS_QUEUE, type DeliverJobData } from './notifications.queue';
 import { NotificationsService } from '../services/notifications.service';
 import { PUSH_PROVIDER, type PushProvider } from '../providers/push.provider';
+import { sendToEvery } from '../providers/push-fanout';
+import { PUSH_TARGETS_SELECT, pushTokensOf } from '../../../shared/utils/push-targets';
 import { SMS_PROVIDER, type SmsProvider } from '../providers/sms.provider';
 
 @Processor(NOTIFICATIONS_QUEUE)
@@ -27,7 +29,10 @@ export class NotificationsProcessor extends WorkerHost {
   async process(job: Job<DeliverJobData>): Promise<void> {
     const notification = await this.prisma.notification.findUnique({
       where: { id: job.data.notificationId },
-      include: { event: { include: { elder: true } }, recipient: true },
+      include: {
+        event: { include: { elder: true } },
+        recipient: { include: { devices: PUSH_TARGETS_SELECT.devices } },
+      },
     });
 
     // Gone, or already answered by the person it was sent to. Either way there is
@@ -58,15 +63,18 @@ export class NotificationsProcessor extends WorkerHost {
     const isFinalAttempt = job.attemptsMade + 1 >= attempts;
 
     try {
+      // Every phone they are signed in on. Addresses the push service no longer knows
+      // are forgotten, so they are not tried again.
       const result =
         notification.channel === NotificationChannel.PUSH
-          ? await this.push.send({
-              token: notification.recipient.pushToken ?? '',
+          ? await sendToEvery(this.push, pushTokensOf(notification.recipient), {
               title: content.title,
               body: content.body,
               data: content.data,
             })
           : await this.sms.send({ phone: notification.recipient.phone, text: content.sms });
+      const rejected = 'rejected' in result ? (result.rejected as string[]) : [];
+      if (rejected.length > 0) await this.forget(rejected);
 
       if (result.delivered) {
         await this.prisma.notification.update({
@@ -95,6 +103,19 @@ export class NotificationsProcessor extends WorkerHost {
       await this.recordFailure(notification, reason, attempts);
       await this.fallBackToSms(notification);
     }
+  }
+
+  /** Push addresses the service refused for good: no phone answers at them any more. */
+  private async forget(tokens: string[]): Promise<void> {
+    await this.prisma.userDevice.updateMany({
+      where: { pushToken: { in: tokens } },
+      data: { pushToken: null },
+    });
+    await this.prisma.user.updateMany({
+      where: { pushToken: { in: tokens } },
+      data: { pushToken: null },
+    });
+    this.logger.warn(`Forgot ${tokens.length} push address(es) the service no longer knows`);
   }
 
   /**

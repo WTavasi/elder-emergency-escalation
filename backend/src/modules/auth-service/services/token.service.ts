@@ -9,12 +9,16 @@ export interface AccessPayload {
   sub: string;
   role: Role;
   typ: 'access';
+  /** The device session it belongs to. Absent on tokens issued before devices existed. */
+  sid?: string;
 }
 
 export interface RefreshPayload {
   sub: string;
   jti: string;
   typ: 'refresh';
+  /** The device session it belongs to. Absent on tokens issued before devices existed. */
+  sid?: string;
 }
 
 @Injectable()
@@ -24,8 +28,8 @@ export class TokenService {
     private readonly config: ConfigService,
   ) {}
 
-  signAccess(userId: string, role: Role): Promise<string> {
-    const payload: AccessPayload = { sub: userId, role, typ: 'access' };
+  signAccess(userId: string, role: Role, sid?: string): Promise<string> {
+    const payload: AccessPayload = { sub: userId, role, typ: 'access', ...(sid ? { sid } : {}) };
     return this.jwt.signAsync(payload, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: toSeconds(this.config.getOrThrow<string>('JWT_ACCESS_TTL')),
@@ -36,9 +40,13 @@ export class TokenService {
    * An elder's refresh token lasts far longer than anybody else's (JWT_REFRESH_TTL_ELDER),
    * so the panic button is never behind a sign-in screen after a quiet month.
    */
-  async signRefresh(userId: string, role?: Role): Promise<{ token: string; jti: string }> {
+  async signRefresh(
+    userId: string,
+    role?: Role,
+    sid?: string,
+  ): Promise<{ token: string; jti: string }> {
     const jti = randomUUID();
-    const payload: RefreshPayload = { sub: userId, jti, typ: 'refresh' };
+    const payload: RefreshPayload = { sub: userId, jti, typ: 'refresh', ...(sid ? { sid } : {}) };
     const lifetime =
       role === Role.ELDER
         ? this.config.get<string>('JWT_REFRESH_TTL_ELDER', '3650d')

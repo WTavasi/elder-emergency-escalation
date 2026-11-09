@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ConsentType, Prisma, Role } from '@prisma/client';
+import { ConsentType, Prisma, Role, Severity } from '@prisma/client';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
@@ -19,6 +19,7 @@ import { DirectSmsService } from '../../notification-service/services/direct-sms
 import { accountMessages } from '../../notification-service/services/notification-content';
 import type { AddChainMemberDto } from '../validation/add-chain-member.dto';
 import type { CreateElderDto } from '../validation/create-elder.dto';
+import type { ReorderChainDto } from '../validation/reorder-chain.dto';
 
 /** One elder the caller looks after, for the caregiver's list. */
 export interface ElderSummary {
@@ -48,12 +49,18 @@ export interface ChainEntry {
   status: 'member' | 'invited';
   /** Whether the caller may take this place out of the chain. */
   removable: boolean;
+  /** Whether this place can be moved between the ranks people are asked at. */
+  movable: boolean;
 }
 
 export interface ChainView {
   elderId: string;
   elderName: string;
   canEdit: boolean;
+  /** Whether the caller may change who is asked first: a caregiver in it, or an administrator. */
+  canReorder: boolean;
+  /** The ranks people can be put at, first asked first. Emergency services come after. */
+  personTiers: number[];
   entries: ChainEntry[];
 }
 
@@ -223,6 +230,8 @@ export class ChainService {
     ]);
 
     const canEdit = role === Role.CAREGIVER;
+    const canReorder = canEdit || role === Role.ADMINISTRATOR;
+    const personTiers = await this.personTiers();
     const entries: ChainEntry[] = [
       ...assignments.map((assignment) => ({
         id: assignment.id,
@@ -235,6 +244,7 @@ export class ChainService {
           canEdit &&
           assignment.responder.id !== userId &&
           ADDABLE_ROLES.includes(assignment.responder.role),
+        movable: canReorder && ADDABLE_ROLES.includes(assignment.responder.role),
       })),
       ...invitations.map((invitation) => ({
         id: invitation.id,
@@ -244,10 +254,137 @@ export class ChainService {
         role: null,
         status: 'invited' as const,
         removable: canEdit,
+        movable: canReorder,
       })),
     ].sort((a, b) => a.tier - b.tier);
 
-    return { elderId, elderName: elder.name, canEdit, entries };
+    return { elderId, elderName: elder.name, canEdit, canReorder, personTiers, entries };
+  }
+
+  /**
+   * Who is asked first: puts each person in the circle at a rank. Everybody at a rank is
+   * asked together, so a neighbour who can be there in two minutes can be asked with the
+   * caregiver rather than after them.
+   *
+   * The whole order is sent at once and saved in one transaction, so a chain is never left
+   * half changed. A caregiver in the circle or an administrator may do it; not during an
+   * open emergency, whose escalation is already working down the old order. Emergency
+   * services are not in it: they are always asked last, by the rules. Everybody moved is
+   * told by text, and so is the elder.
+   */
+  async reorder(
+    elderId: string,
+    userId: string,
+    role: Role,
+    dto: ReorderChainDto,
+  ): Promise<ChainView> {
+    const elder = await this.requireInChain(elderId, userId, role);
+    if (role !== Role.CAREGIVER && role !== Role.ADMINISTRATOR) {
+      throw new ForbiddenException('Only a caregiver can change who is asked first.');
+    }
+
+    const open = await this.prisma.emergencyEvent.count({
+      where: { elderlyId: elderId, state: { in: OPEN_STATES } },
+    });
+    if (open > 0) {
+      throw new ConflictException(
+        `${elder.name} has an emergency open. Change the order once it is closed.`,
+      );
+    }
+
+    const [assignments, invitations, tiers] = await Promise.all([
+      this.prisma.careAssignment.findMany({
+        where: { elderlyId: elderId, responder: { role: { in: ADDABLE_ROLES } } },
+        select: {
+          id: true,
+          priorityOrder: true,
+          responder: { select: { id: true, phone: true, deactivatedAt: true } },
+        },
+      }),
+      this.prisma.chainInvitation.findMany({
+        where: { elderlyId: elderId },
+        select: { id: true, priorityOrder: true },
+      }),
+      this.personTiers(),
+    ]);
+
+    const sent = new Map(dto.entries.map((entry) => [entry.id, entry.tier]));
+    const known = [...assignments.map((a) => a.id), ...invitations.map((i) => i.id)];
+    if (sent.size !== dto.entries.length || sent.size !== known.length) {
+      throw new BadRequestException('Send everybody in the circle once, and nobody else.');
+    }
+    if (known.some((id) => !sent.has(id))) {
+      throw new BadRequestException('Send everybody in the circle once, and nobody else.');
+    }
+    if (dto.entries.some((entry) => !tiers.includes(entry.tier))) {
+      throw new BadRequestException(
+        `Each person must be asked at rank ${tiers.join(' or ')}. Emergency services come after.`,
+      );
+    }
+    const first = Math.min(...tiers);
+    const firstAnswerable = assignments.some(
+      (a) => sent.get(a.id) === first && a.responder.deactivatedAt === null,
+    );
+    if (!firstAnswerable) {
+      throw new BadRequestException(
+        'Somebody with an account has to be asked first, or an alert would reach nobody.',
+      );
+    }
+
+    const movedAssignments = assignments.filter((a) => sent.get(a.id) !== a.priorityOrder);
+    const movedInvitations = invitations.filter((i) => sent.get(i.id) !== i.priorityOrder);
+    if (movedAssignments.length === 0 && movedInvitations.length === 0) {
+      return this.chain(elderId, userId, role);
+    }
+
+    await this.prisma.$transaction([
+      ...movedAssignments.map((a) =>
+        this.prisma.careAssignment.update({
+          where: { id: a.id },
+          data: { priorityOrder: sent.get(a.id)! },
+        }),
+      ),
+      ...movedInvitations.map((i) =>
+        this.prisma.chainInvitation.update({
+          where: { id: i.id },
+          data: { priorityOrder: sent.get(i.id)! },
+        }),
+      ),
+    ]);
+    this.logger.log(
+      `Chain of elder ${elderId} reordered by ${role.toLowerCase()} ${userId}: ` +
+        `${movedAssignments.length + movedInvitations.length} moved`,
+    );
+
+    const mover = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { name: true },
+    });
+    const elderPhone = await this.prisma.user.findUniqueOrThrow({
+      where: { id: elderId },
+      select: { phone: true },
+    });
+    for (const moved of movedAssignments) {
+      if (moved.responder.id === userId || moved.responder.deactivatedAt) continue;
+      await this.sms.send(
+        moved.responder.phone,
+        accountMessages.movedInChain(mover.name, elder.name, sent.get(moved.id) === first),
+      );
+    }
+    await this.sms.send(elderPhone.phone, accountMessages.chainReordered(mover.name));
+
+    return this.chain(elderId, userId, role);
+  }
+
+  /** The ranks people can hold: every tier the standard rules give to someone other than a service. */
+  private async personTiers(): Promise<number[]> {
+    const rules = await this.prisma.escalationRule.findMany({
+      where: { severity: Severity.STANDARD, responderRole: { in: ADDABLE_ROLES } },
+      select: { tierOrder: true },
+      orderBy: { tierOrder: 'asc' },
+    });
+    const tiers = [...new Set(rules.map((rule) => rule.tierOrder))];
+    return tiers.length > 0 ? tiers : [1, 2];
   }
 
   /**

@@ -1903,3 +1903,39 @@ legend {
   align-items: center;
   gap: var(--space-8);
 }
+
+/*
+  The escalation policy editor. Each severity's chain is a small list with its name as a
+  caption; numbers are short fields with their unit beside them; a change saves per row.
+*/
+.policy-table caption {
+  text-align: left;
+  font-weight: var(--font-weight-strong);
+  padding-bottom: var(--space-8);
+}
+.policy-table + .policy-table {
+  margin-top: var(--space-16);
+}
+.policy-table th[scope='row'] {
+  text-align: left;
+  font-weight: var(--font-weight-body);
+}
+.policy-number {
+  width: 6.5em;
+}
+.inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--text-soft);
+}
+.block {
+  display: block;
+}
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
+}

@@ -11,6 +11,7 @@ import {
   type EmergencyEvent,
 } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { PUSH_TARGETS_SELECT, pushTokensOf } from '../../../shared/utils/push-targets';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { RoutingService } from '../../../shared/routing/routing.service';
 import { distanceInMetres } from '../../../shared/utils/geo';
@@ -353,7 +354,7 @@ export class VolunteerCallsService {
 
       const waiting = await this.prisma.volunteerCall.findMany({
         where: { eventId, status: VolunteerCallStatus.ASKED },
-        include: { volunteer: { select: { phone: true, pushToken: true } } },
+        include: { volunteer: { select: { phone: true, ...PUSH_TARGETS_SELECT } } },
       });
       await this.prisma.volunteerCall.updateMany({
         where: { eventId, status: VolunteerCallStatus.ASKED },
@@ -369,7 +370,7 @@ export class VolunteerCallsService {
       if (event.volunteerId) {
         const going = await this.prisma.user.findUnique({
           where: { id: event.volunteerId },
-          select: { phone: true, pushToken: true },
+          select: { phone: true, ...PUSH_TARGETS_SELECT },
         });
         if (going)
           await this.messenger.send(going, volunteerMessages.over(eventId, true, event.elder.name));
@@ -503,7 +504,7 @@ export class VolunteerCallsService {
       select: {
         id: true,
         phone: true,
-        pushToken: true,
+        ...PUSH_TARGETS_SELECT,
         coverageLatitude: true,
         coverageLongitude: true,
         coverageRadiusKm: true,
@@ -524,7 +525,7 @@ export class VolunteerCallsService {
         return {
           id: person.id,
           phone: person.phone,
-          pushToken: person.pushToken,
+          pushTokens: pushTokensOf(person),
           centre,
           straight: distanceInMetres(centre, alert),
           radius: Number(person.coverageRadiusKm) * 1000,
@@ -548,7 +549,7 @@ export class VolunteerCallsService {
         return {
           id: person.id,
           phone: person.phone,
-          pushToken: person.pushToken,
+          pushTokens: person.pushTokens,
           distanceMetres: round10(byRoad ? road.distanceMetres : person.straight),
           byRoad,
           // Ranked on comparable numbers: a road, or the straight line made one.
@@ -626,7 +627,7 @@ export class VolunteerCallsService {
     const [stoodDown, volunteer, event, told] = await Promise.all([
       this.prisma.volunteerCall.findMany({
         where: { eventId, status: VolunteerCallStatus.STOOD_DOWN },
-        include: { volunteer: { select: { phone: true, pushToken: true } } },
+        include: { volunteer: { select: { phone: true, ...PUSH_TARGETS_SELECT } } },
       }),
       this.prisma.user.findUniqueOrThrow({ where: { id: volunteerId }, select: { name: true } }),
       this.prisma.emergencyEvent.findUniqueOrThrow({
@@ -637,7 +638,7 @@ export class VolunteerCallsService {
       this.prisma.notification.findMany({
         where: { eventId },
         distinct: ['recipientId'],
-        select: { recipient: { select: { phone: true, pushToken: true } } },
+        select: { recipient: { select: { phone: true, ...PUSH_TARGETS_SELECT } } },
       }),
     ]);
 
@@ -652,7 +653,7 @@ export class VolunteerCallsService {
   private async askAgain(eventId: string): Promise<void> {
     const waiting = await this.prisma.volunteerCall.findMany({
       where: { eventId, status: VolunteerCallStatus.ASKED },
-      include: { volunteer: { select: { phone: true, pushToken: true } } },
+      include: { volunteer: { select: { phone: true, ...PUSH_TARGETS_SELECT } } },
     });
     for (const call of waiting) {
       await this.messenger.send(call.volunteer, volunteerMessages.stillNeeded(eventId, call));
