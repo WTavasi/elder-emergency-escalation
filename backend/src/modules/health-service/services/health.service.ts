@@ -17,6 +17,13 @@ export interface HealthReport {
   };
 }
 
+/**
+ * How long a dependency may take to answer before it counts as down. A Redis client that
+ * has lost its server queues commands rather than failing them, so without a limit the
+ * health check itself would hang, and whatever is watching it would hear nothing at all.
+ */
+export const PROBE_TIMEOUT_MS = 2_000;
+
 @Injectable()
 export class HealthService {
   constructor(
@@ -37,10 +44,23 @@ export class HealthService {
     };
   }
 
-  private async time(probe: () => Promise<unknown>): Promise<DependencyCheck> {
+  private async time(
+    probe: () => Promise<unknown>,
+    timeoutMs = PROBE_TIMEOUT_MS,
+  ): Promise<DependencyCheck> {
     const started = Date.now();
+    let timer: NodeJS.Timeout | undefined;
     try {
-      await probe();
+      await Promise.race([
+        probe(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            const late = new Error(`no answer within ${timeoutMs} ms`);
+            late.name = 'TimeoutError';
+            reject(late);
+          }, timeoutMs);
+        }),
+      ]);
       return { status: 'up', latencyMs: Date.now() - started };
     } catch (error) {
       return {
@@ -49,6 +69,8 @@ export class HealthService {
         // A connection error can carry the whole URL, credentials included.
         error: error instanceof Error ? error.name : 'unknown error',
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

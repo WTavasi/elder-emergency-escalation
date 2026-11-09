@@ -17,7 +17,7 @@ const SECTIONS: { to: string; label: string; icon: IconName }[] = [
   { to: '/policy', label: 'Escalation policy', icon: 'tune' },
 ];
 
-const HIDDEN_KEY = 'mzazicare.sidebar.hidden';
+const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
 
 /** Where the sidebar becomes a drawer behind a button rather than a column. */
 const NARROW = '(max-width: 860px)';
@@ -31,17 +31,17 @@ function initials(name: string): string {
 }
 
 /** A per-browser convenience, so it lives in localStorage and survives being blocked. */
-function readHidden(): boolean {
+function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(HIDDEN_KEY) === 'true';
+    return localStorage.getItem(COLLAPSED_KEY) === 'true';
   } catch {
     return false;
   }
 }
 
-function writeHidden(hidden: boolean): void {
+function writeCollapsed(collapsed: boolean): void {
   try {
-    localStorage.setItem(HIDDEN_KEY, String(hidden));
+    localStorage.setItem(COLLAPSED_KEY, String(collapsed));
   } catch {
     // Remembered for this page only.
   }
@@ -51,8 +51,9 @@ function writeHidden(hidden: boolean): void {
  * The window every signed-in screen sits in, after a Mac app such as Mail or System
  * Settings: a sidebar of sections on the left, in grey, and the page beside it.
  *
- * The sidebar can be hidden with the button at its top, which then appears in the page's
- * own bar to bring it back; on a phone it is a drawer behind that button instead. Who is
+ * The button at its top collapses the sidebar to a narrow rail of icons, each named on
+ * hover and to a screen reader, with the open count on its icon, and expands it again; on
+ * a phone it is a drawer behind a button in the page's bar instead. Who is
  * signed in sits at its foot, as an account does in System Settings. There is no bar
  * across the top of the window: each page carries its own (see PageHeader), with its
  * title and its actions, so nothing is said twice.
@@ -62,7 +63,8 @@ export function Layout() {
   const openCount = alerts?.length ?? null;
   const location = useLocation();
   const narrow = useMediaQuery(NARROW);
-  const [hidden, setHidden] = useState(readHidden);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const rail = !narrow && collapsed;
   // The drawer is open for the page it was opened on, so moving to another page closes
   // it: a drawer still open after choosing where to go is in the way of where you went.
   const [drawerFor, setDrawerFor] = useState<string | null>(null);
@@ -77,33 +79,30 @@ export function Layout() {
     return () => document.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
-  function hide() {
+  function toggle() {
     if (narrow) {
       setDrawerFor(null);
       return;
     }
-    setHidden(true);
-    writeHidden(true);
+    setCollapsed(!collapsed);
+    writeCollapsed(!collapsed);
   }
 
   const shell = useMemo(
     () => ({
-      sidebarShown: narrow ? drawerOpen : !hidden,
+      // On a computer the sidebar is always there, wide or as a rail, so the page's bar
+      // needs no button for it; on a phone the drawer opens from there.
+      sidebarShown: narrow ? drawerOpen : true,
       showSidebar: () => {
-        if (narrow) {
-          setDrawerFor(location.pathname);
-          return;
-        }
-        setHidden(false);
-        writeHidden(false);
+        if (narrow) setDrawerFor(location.pathname);
       },
     }),
-    [narrow, drawerOpen, hidden, location.pathname],
+    [narrow, drawerOpen, location.pathname],
   );
 
   return (
     <ShellContext.Provider value={shell}>
-      <div className={`shell${!narrow && hidden ? ' shell--sidebar-hidden' : ''}`}>
+      <div className={`shell${rail ? ' shell--rail' : ''}`}>
         <a className="skip-link" href="#main">
           Skip to main content
         </a>
@@ -114,17 +113,29 @@ export function Layout() {
 
         <aside id="sidebar" className={`sidebar${drawerOpen ? ' sidebar--open' : ''}`}>
           <div className="sidebar__top">
-            <Link to="/" className="sidebar__brand">
-              MzaziCare
-            </Link>
+            {rail ? null : (
+              <Link to="/" className="sidebar__brand">
+                MzaziCare
+              </Link>
+            )}
             <button
               type="button"
               className="icon-button button--quiet"
-              onClick={hide}
+              onClick={toggle}
               aria-controls="sidebar"
-              aria-expanded={true}
+              aria-expanded={!rail}
+              title={narrow ? undefined : rail ? 'Expand the sidebar' : 'Collapse the sidebar'}
             >
-              <Icon name="sidebar" label={narrow ? 'Close the sidebar' : 'Hide the sidebar'} />
+              <Icon
+                name="sidebar"
+                label={
+                  narrow
+                    ? 'Close the sidebar'
+                    : rail
+                      ? 'Expand the sidebar'
+                      : 'Collapse the sidebar'
+                }
+              />
             </button>
           </div>
 
@@ -133,7 +144,14 @@ export function Layout() {
             {SECTIONS.map((section) => {
               const count = section.to === '/' ? openCount : null;
               return (
-                <NavLink key={section.to} to={section.to} end={section.to === '/'}>
+                <NavLink
+                  key={section.to}
+                  to={section.to}
+                  end={section.to === '/'}
+                  // On the rail the name is hidden from sight but still read out; the tooltip
+                  // says it to a mouse.
+                  title={rail ? section.label : undefined}
+                >
                   <Icon name={section.icon} size={18} />
                   <span className="nav__text">{section.label}</span>
                   {count ? (
@@ -146,7 +164,7 @@ export function Layout() {
             })}
           </nav>
 
-          <AccountMenu />
+          <AccountMenu rail={rail} />
         </aside>
 
         <main className="main" id="main">
@@ -161,7 +179,7 @@ export function Layout() {
  * Who is signed in, and signing out, at the foot of the sidebar. Sign out sits inside the
  * menu rather than on the page, so it is never pressed on the way to something else.
  */
-function AccountMenu() {
+function AccountMenu({ rail }: { rail: boolean }) {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [privacy, setPrivacy] = useState(false);
@@ -211,16 +229,22 @@ function AccountMenu() {
         className="account__button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={rail ? `${session.user.name}, ${humanise(session.user.role)}` : undefined}
+        title={rail ? session.user.name : undefined}
         onClick={() => setOpen((was) => !was)}
       >
         <span className="account__mark" aria-hidden="true">
           {initials(session.user.name)}
         </span>
-        <span className="account__who">
-          <span className="account__name">{session.user.name}</span>
-          <span className="account__role">{humanise(session.user.role)}</span>
-        </span>
-        <Icon name="unfold" size={18} />
+        {rail ? null : (
+          <>
+            <span className="account__who">
+              <span className="account__name">{session.user.name}</span>
+              <span className="account__role">{humanise(session.user.role)}</span>
+            </span>
+            <Icon name="unfold" size={18} />
+          </>
+        )}
       </button>
       {privacy ? <PrivacyPanel signedIn onClose={() => setPrivacy(false)} /> : null}
     </div>

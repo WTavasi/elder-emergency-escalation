@@ -13,7 +13,7 @@ the REST Client extension and a **Send Request** link appears above each one.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | none | Postgres and Redis checked separately; 503 if either is down |
+| GET | `/health` | none | Postgres and Redis checked separately, each given 2 seconds to answer; 503 if either is down, with the same report as the body so it says which. The console asks it every 30 seconds |
 | POST | `/api/v1/auth/verify-phone` | none | Sends a six-digit sign-up code by SMS. Always 202, sent or not |
 | POST | `/api/v1/auth/register` | none | Sign-up for caregivers, family members and community volunteers, with the code |
 | POST | `/api/v1/auth/login` | none | `{ phone, password }` or `{ email, password }`, returns both tokens |

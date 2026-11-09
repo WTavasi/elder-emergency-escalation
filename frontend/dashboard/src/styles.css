@@ -141,11 +141,65 @@ html {
     --sidebar-row: var(--min-touch-target);
   }
 }
-.shell--sidebar-hidden {
-  grid-template-columns: minmax(0, 1fr);
+/* Collapsed: a narrow rail of icons, as Mail's sidebar can be. Each name is still there for
+   a screen reader, and on hover as a tooltip; the open count sits on its icon. */
+.shell--rail {
+  --sidebar-width: 64px;
 }
-.shell--sidebar-hidden .sidebar {
-  display: none;
+@media (prefers-reduced-motion: no-preference) {
+  .shell {
+    transition: grid-template-columns 0.18s ease;
+  }
+}
+.shell--rail .sidebar {
+  padding-inline: var(--space-12);
+}
+.shell--rail .sidebar__top {
+  justify-content: center;
+  padding-left: 0;
+}
+.shell--rail .nav a {
+  position: relative;
+  justify-content: center;
+  padding: 0;
+}
+.shell--rail .nav__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.shell--rail .nav__count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--text-soft);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: var(--font-weight-strong);
+  line-height: 16px;
+  text-align: center;
+}
+.shell--rail .account__button {
+  justify-content: center;
+  padding: 0;
+}
+/* The rail is short enough not to scroll, so the account menu can open past its edge, over
+   the page, at its usual width. */
+.shell--rail .sidebar {
+  overflow: visible;
+  z-index: 5;
+}
+.shell--rail .menu--up {
+  right: auto;
+  width: max-content;
+  min-width: 200px;
 }
 
 /* The sidebar stays put while the page scrolls, and scrolls itself only in a window too
@@ -1069,7 +1123,7 @@ textarea {
   padding: 0;
 }
 
-/* How fresh the board is, in small grey words, and a refresh button beside them. */
+/* Whether the board is live: a dot and a word, green while live, amber when not. */
 .updated {
   display: inline-flex;
   align-items: center;
@@ -1086,6 +1140,58 @@ textarea {
 .connection--offline {
   color: var(--pill-notified-fg);
   font-weight: 600;
+}
+.connection__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex: none;
+}
+.connection--live {
+  color: var(--text);
+}
+.connection--live .connection__dot {
+  background: var(--pill-resolved-fg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill-resolved-fg) 22%, transparent);
+}
+.connection--offline .connection__dot {
+  background: var(--pill-notified-fg);
+}
+
+/* An emergency that has just appeared on the board slides in and glows for a moment, so
+   the eye goes to it; one that is over simply leaves. Still for anybody who asks for
+   less motion: the glow alone says it. */
+@keyframes row-arrive {
+  from {
+    background: var(--selection);
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  25% {
+    background: var(--selection);
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    background: transparent;
+  }
+}
+@keyframes row-arrive-still {
+  from {
+    background: var(--selection);
+  }
+  to {
+    background: transparent;
+  }
+}
+.row--arrived > td {
+  animation: row-arrive 3s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .row--arrived > td {
+    animation: row-arrive-still 3s ease-out;
+  }
 }
 
 /* A segmented control, as Apple draws one: a grey track, and the chosen segment raised

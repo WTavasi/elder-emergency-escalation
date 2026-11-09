@@ -1,10 +1,19 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../api/client';
 import type { AlertSummary, EmergencySnapshot, Severity } from '../api/types';
 import { useRealtime, type ConnectionState } from '../api/realtime';
 import { useAuth } from './AuthContext';
 import { useLoader } from '../hooks/useLoader';
+import { useServiceHealth, type ServiceHealth } from '../hooks/useServiceHealth';
 
 /** Critical first, then the longest wait, because that is the order to work them in. */
 const RANK: Record<Severity, number> = { CRITICAL: 0, ELEVATED: 1, STANDARD: 2 };
@@ -27,24 +36,34 @@ interface OpenAlertsValue {
   error: string | null;
   loading: boolean;
   connection: ConnectionState;
+  /** Whether the server says its database and Redis are working, and which are not. */
+  health: ServiceHealth;
+  down: string[];
   /** When the board last heard anything, loaded or pushed. Null before the first load. */
   updatedAt: number | null;
+  /** Emergencies that appeared while the board was open, for a moment, to draw the eye. */
+  arrived: ReadonlySet<string>;
   reload: () => void;
 }
 
 const OpenAlertsContext = createContext<OpenAlertsValue | null>(null);
 
+/** How long a newly arrived emergency is marked, matching the row's highlight. */
+const ARRIVED_MS = 3_000;
+
 /**
- * The open board, loaded once and held for the whole console.
+ * The open board, loaded once and held for the whole console, and kept live.
  *
  * The navigation shows how many emergencies are open and the board shows which ones,
- * and both read this. Fetching in the board and reporting the number upwards would
- * mean the count only existed while the board was on screen, and it would make every
- * refresh of the table a second render of the shell around it.
+ * and both read this. Every change arrives over the live connection: a new emergency
+ * appears at once, a closed one goes at once, and anything else is patched in place.
+ * When the connection comes back after dropping, the board is fetched again, because
+ * whatever happened in between was never sent.
  */
 export function OpenAlertsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [arrived, setArrived] = useState<ReadonlySet<string>>(new Set());
 
   const fetcher = useCallback(async () => {
     const alerts = order(await api.alerts({ open: true, limit: 200 }));
@@ -56,57 +75,95 @@ export function OpenAlertsProvider({ children }: { children: ReactNode }) {
     'Could not load open emergencies.',
   );
 
+  // What is on the board now, read when a message arrives. Kept in a ref because the
+  // decision to fetch again has to be made now, and a state updater runs later: deciding
+  // inside one is why a new emergency used to wait for a manual refresh.
+  const present = useRef<AlertSummary[] | null>(null);
+  useEffect(() => {
+    present.current = data;
+  }, [data]);
+
+  // Ids on the board before the latest load, so an emergency that was not there is marked.
+  // Each mark is taken off by its own timer, which a later change to the board must not
+  // cancel, so the timers are only cleared when the console closes.
+  const known = useRef<Set<string> | null>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+  useEffect(() => {
+    if (!data) return;
+    const ids = new Set(data.map((alert) => alert.eventId));
+    const before = known.current;
+    known.current = ids;
+    if (!before) return;
+    const fresh = [...ids].filter((id) => !before.has(id));
+    if (fresh.length === 0) return;
+    setArrived((current) => new Set([...current, ...fresh]));
+    timers.current.push(
+      window.setTimeout(
+        () =>
+          setArrived((current) => {
+            const next = new Set(current);
+            for (const id of fresh) next.delete(id);
+            return next;
+          }),
+        ARRIVED_MS,
+      ),
+    );
+  }, [data]);
+
   /**
    * A snapshot is a change to an emergency, not the whole emergency. A row already on
-   * the board is patched in place. Anything else, a new emergency or one that has just
-   * been taken by somebody, needs fields the snapshot deliberately does not carry, so
-   * the board is reloaded instead.
+   * the board is patched in place, or taken off once it is over. A new emergency, or one
+   * just taken by somebody, needs fields the snapshot deliberately does not carry, so the
+   * board is fetched again at once.
    */
   const apply = useCallback(
     (snapshot: EmergencySnapshot) => {
-      let refetch = false;
       setUpdatedAt(Date.now());
+      const over = snapshot.state === 'RESOLVED' || snapshot.state === 'CANCELLED';
+      const board = present.current;
+      const existing = board?.find((alert) => alert.eventId === snapshot.eventId);
 
-      setData((present) => {
-        if (!present) return present;
-
-        const index = present.findIndex((alert) => alert.eventId === snapshot.eventId);
-        if (index === -1) {
-          refetch = true;
-          return present;
-        }
-
-        if (snapshot.state === 'RESOLVED' || snapshot.state === 'CANCELLED') {
-          return present.filter((alert) => alert.eventId !== snapshot.eventId);
-        }
-
-        const existing = present[index]!;
-        if (snapshot.acknowledgedBy && !existing.acknowledgedBy) {
-          refetch = true;
-          return present;
-        }
-
-        const next = [...present];
-        next[index] = {
-          ...existing,
-          state: snapshot.state,
-          severity: snapshot.severity,
-          currentTier: snapshot.currentTier,
-          deadlineAt: snapshot.deadlineAt,
-        };
-        return order(next);
-      });
-
-      if (refetch) reload();
+      if (!existing) {
+        // Not on the board: a new emergency, unless it is one already over.
+        if (!over) reload();
+        return;
+      }
+      if (over) {
+        setData((rows) => rows?.filter((alert) => alert.eventId !== snapshot.eventId) ?? rows);
+        return;
+      }
+      if (snapshot.acknowledgedBy && !existing.acknowledgedBy) {
+        reload();
+        return;
+      }
+      setData(
+        (rows) =>
+          rows &&
+          order(
+            rows.map((alert) =>
+              alert.eventId === snapshot.eventId
+                ? {
+                    ...alert,
+                    state: snapshot.state,
+                    severity: snapshot.severity,
+                    currentTier: snapshot.currentTier,
+                    deadlineAt: snapshot.deadlineAt,
+                  }
+                : alert,
+            ),
+          ),
+      );
     },
     [setData, reload],
   );
 
-  const connection = useRealtime(session?.accessToken ?? null, apply);
+  const connection = useRealtime(session?.accessToken ?? null, apply, reload);
+  const { health, down } = useServiceHealth();
 
   const value = useMemo(
-    () => ({ alerts: data, error, loading, connection, updatedAt, reload }),
-    [data, error, loading, connection, updatedAt, reload],
+    () => ({ alerts: data, error, loading, connection, health, down, updatedAt, arrived, reload }),
+    [data, error, loading, connection, health, down, updatedAt, arrived, reload],
   );
 
   return <OpenAlertsContext.Provider value={value}>{children}</OpenAlertsContext.Provider>;

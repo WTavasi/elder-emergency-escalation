@@ -188,9 +188,11 @@ somebody looking across many records at once.
 - **What happened is told in sentences.** An emergency's record reads as the app's does,
   "Sent to Aisha Wanjiru and Brian Wanjiru", as numbered steps with the latest filled in.
   The delivery attempts behind it are hidden under a disclosure until asked for.
-- **How fresh the board is, in small words.** "Updated just now" and a refresh button
-  beside it, as Mail says it; times on the live board are "4 min ago", with the exact time
-  on hover.
+- **Whether the board is live, as a dot and a word.** "Live" with a green dot while the
+  connection is up and the server's database and Redis answer; "Service problem: Redis
+  down" or "Offline, reconnecting" in amber when not, never in red. No refresh button: the
+  board changes by itself, a new emergency sliding in with a brief glow and a closed one
+  leaving. Times on the live board are "4 min ago", with the exact time on hover.
 - **Controls are 36 points where a mouse is used** and the full touch target where a
   finger is, chosen by the browser's own pointer media query.
 - **Filled buttons are MzaziCare red**, under review as the app's are (see the governing

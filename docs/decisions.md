@@ -1412,3 +1412,35 @@ neither platform can be built in the environment this was written in.
 **Also:** coverage on each CI run's summary page (#83), the dependency audit with its
 before, after and accepted risks (`docs/evidence/2026-11-09-dependency-audit`), and the
 later endpoints in the Postman collection.
+
+## The console is live again, collapses to a rail, and the app's long pages stop jumping
+
+Changed on 9 November 2026 after using the console and the app.
+
+**The board is live, and says so.** The Mac-style pass had replaced the "Live" dot with
+"Updated just now" and a refresh button, which made a live screen look like one to keep
+refreshing, and it hid a real fault: a new emergency only appeared after a refresh. The
+board decided whether to fetch again inside a React state updater, which React runs later,
+so the decision was always "no". It now reads the board as it stands when the message
+arrives, and a new emergency appears at once (87 ms in a browser), sliding in with a
+brief glow; a closed one leaves at once. The "Live" dot is back. The connection keeps
+retrying by itself after a drop, and the board is fetched again when it returns, because
+what happened in between was never sent. Every 30 seconds the console also asks the
+server's `/health`, so a lost database or Redis shows as "Service problem: Redis down"
+even while the connection stays up.
+
+**`/health` could hang.** With Redis down, its client queues commands rather than failing
+them, so the health check never answered. Each dependency now has 2 seconds, and a 503
+carries the report, so whatever watches it hears which part is down.
+
+**The sidebar collapses to a rail.** Its button now narrows it to the icons, with each
+section's name kept for a screen reader and shown on hover, and the open count on its
+icon, instead of hiding it entirely. The choice is remembered on that browser.
+
+**The app's long pages stop jumping.** A lazily built list guesses the height of the
+sections it has not built from those it has. On Me, where sections differ a lot in height,
+the guess moved as the page scrolled (918, 834, 700, 929 points while the real height was
+700), and when it fell below where the page already was, an iPhone's bounce pulled it back
+up. The pages made of sections (Me, the elder's own Me, an elder's page, an emergency,
+medical details, consent, volunteering) now build every section, which costs nothing at
+their length, so the height is always known. Long lists of similar rows keep the default.

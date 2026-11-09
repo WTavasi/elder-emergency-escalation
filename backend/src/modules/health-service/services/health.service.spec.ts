@@ -1,4 +1,4 @@
-import { HealthService } from './health.service';
+import { HealthService, PROBE_TIMEOUT_MS } from './health.service';
 import type { PrismaService } from '../../../db/prisma.service';
 import type { RedisService } from '../../../shared/redis/redis.service';
 
@@ -42,5 +42,24 @@ describe('HealthService', () => {
     const report = await new HealthService(prisma, redis).check();
     expect(report.checks.postgres.error).toBe('Error');
     expect(JSON.stringify(report)).not.toContain('password');
+  });
+
+  it('reports a dependency that never answers as down, rather than hanging', async () => {
+    jest.useFakeTimers();
+    try {
+      const prisma = { ping: jest.fn().mockResolvedValue(1) } as unknown as PrismaService;
+      // A Redis client without its server queues the command and never settles it.
+      const redis = { ping: jest.fn(() => new Promise(() => {})) } as unknown as RedisService;
+
+      const pending = new HealthService(prisma, redis).check();
+      await jest.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS + 10);
+      const report = await pending;
+
+      expect(report.status).toBe('degraded');
+      expect(report.checks.redis).toMatchObject({ status: 'down', error: 'TimeoutError' });
+      expect(report.checks.postgres.status).toBe('up');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
