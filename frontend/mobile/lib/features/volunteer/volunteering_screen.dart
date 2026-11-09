@@ -10,6 +10,7 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
+import '../../core/widgets/whole_page.dart';
 import '../elders/widgets/address_picker.dart';
 import 'volunteer_controller.dart';
 
@@ -92,6 +93,7 @@ class _VolunteeringScreenState extends State<VolunteeringScreen> {
       body: SafeArea(
         bottom: false,
         child: ListView(
+          scrollCacheExtent: wholePage,
           padding: const EdgeInsets.fromLTRB(0, 0, 0, MzaziSpace.s32),
           children: <Widget>[
             const PageTitle('Volunteering'),

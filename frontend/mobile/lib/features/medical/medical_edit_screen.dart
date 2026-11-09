@@ -12,6 +12,7 @@ import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/section_label.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import 'medical_words.dart';
 
 /// Changing an elder's medical details: ticks for what a helper must know at a glance,
@@ -163,6 +164,7 @@ class _MedicalEditScreenState extends State<MedicalEditScreen> {
         body: SafeArea(
           top: false,
           child: ListView(
+            scrollCacheExtent: wholePage,
             padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
             children: <Widget>[
               const PageTitle('Edit medical details'),

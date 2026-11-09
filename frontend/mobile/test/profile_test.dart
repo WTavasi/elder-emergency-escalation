@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +29,7 @@ void main() {
     WayThere? way,
     Map<String, dynamic>? profile,
     AppearanceController? appearance,
+    Size surface = const Size(800, 2000),
   }) async {
     final List<({String method, String path, Map<String, dynamic>? body})> seen =
         <({String method, String path, Map<String, dynamic>? body})>[];
@@ -66,7 +68,7 @@ void main() {
     final AuthController auth = AuthController(api: t.api, store: SessionStore());
     await auth.signIn(phone: '+254700000020', password: 'Dev!2026');
 
-    await tester.binding.setSurfaceSize(const Size(800, 2000));
+    await tester.binding.setSurfaceSize(surface);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final Widget page = ChangeNotifierProvider<AuthController>.value(
       value: auth,
@@ -200,9 +202,8 @@ void main() {
       ..remove('home');
     final List<({String method, String path, Map<String, dynamic>? body})> seen = await pump(
       tester,
-      (http.Request request) => request.url.path.endsWith('/auth/me/phone')
-          ? json(moved)
-          : http.Response('', 202),
+      (http.Request request) =>
+          request.url.path.endsWith('/auth/me/phone') ? json(moved) : http.Response('', 202),
     );
     await tester.pumpAndSettle();
 
@@ -443,5 +444,94 @@ void main() {
       expect(find.text('Open settings'), findsOneWidget);
       t.way.dispose();
     });
+  });
+
+  testWidgets('scrolls smoothly on a phone, down and back, without jumping back up', (
+    WidgetTester tester,
+  ) async {
+    final AppearanceController appearance = AppearanceController();
+    await pump(
+      tester,
+      (_) => json(<String, dynamic>{}),
+      appearance: appearance,
+      surface: const Size(390, 640),
+      profile: <String, dynamic>{
+        'memberSince': '2026-09-01T08:00:00.000Z',
+        'circles': <Object>[
+          for (int i = 0; i < 4; i++)
+            <String, dynamic>{'elderId': 'e$i', 'elderName': 'Elder $i', 'place': 1},
+        ],
+        'record': <String, dynamic>{
+          'answered': 6,
+          'medianResponseSeconds': 140,
+          'lastAnsweredAt': '2026-11-01T08:00:00.000Z',
+        },
+        'carers': <Object>[],
+      },
+    );
+    await tester.pumpAndSettle();
+
+    final ScrollableState list = tester.state(find.byType(Scrollable).first);
+    double offset() => list.position.pixels;
+
+    // Down in small steps, as a thumb does, then back up, then down again. Each step must
+    // move the page the way the thumb went, never back towards the top.
+    final List<double> seen = <double>[offset()];
+    for (final double step in <double>[
+      ...List<double>.filled(12, -60),
+      ...List<double>.filled(12, 60),
+      ...List<double>.filled(12, -60),
+    ]) {
+      await tester.drag(find.byType(Scrollable).first, Offset(0, step));
+      await tester.pumpAndSettle();
+      final double before = seen.last;
+      final double now = offset();
+      seen.add(now);
+      if (step < 0) {
+        expect(now, greaterThanOrEqualTo(before - 0.5), reason: 'jumped back up: $seen');
+      } else {
+        expect(now, lessThanOrEqualTo(before + 0.5), reason: 'jumped down: $seen');
+      }
+    }
+    expect(seen.last, greaterThan(300), reason: 'reached the lower part of the page: $seen');
+  });
+
+  testWidgets('knows its own height while flung, so the bounce never pulls it back up', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await pump(
+        tester,
+        (_) => json(<String, dynamic>{}),
+        appearance: AppearanceController(),
+        surface: const Size(390, 640),
+        profile: <String, dynamic>{
+          'memberSince': '2026-09-01T08:00:00.000Z',
+          'circles': <Object>[
+            for (int i = 0; i < 4; i++)
+              <String, dynamic>{'elderId': 'e$i', 'elderName': 'Elder $i', 'place': 1},
+          ],
+          'record': <String, dynamic>{'answered': 6, 'medianResponseSeconds': 140},
+          'carers': <Object>[],
+        },
+      );
+      await tester.pumpAndSettle();
+      final ScrollableState list = tester.state(find.byType(Scrollable).first);
+      final double height = list.position.maxScrollExtent;
+
+      // A lazy list guesses the height of what it has not built, and the guess moved as the
+      // page scrolled (918, 834, 700, 929): below where you are, an iPhone's bounce pulls
+      // the page back up. Built whole, the height is the same at every moment.
+      await tester.fling(find.byType(Scrollable).first, const Offset(0, -300), 1500);
+      for (int frame = 0; frame < 40; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(list.position.maxScrollExtent, height, reason: 'frame $frame');
+      }
+      await tester.pumpAndSettle();
+      expect(list.position.pixels, closeTo(height, 1));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

@@ -7,6 +7,7 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 
 /// Who is asked first when an elder presses help: each person in a group, and everybody
 /// in a group asked at the same time. A neighbour who can be there in two minutes can be
@@ -80,6 +81,7 @@ class _ChainOrderScreenState extends State<ChainOrderScreen> {
       body: SafeArea(
         top: false,
         child: ListView(
+          scrollCacheExtent: wholePage,
           padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
             const PageTitle('Who is asked first'),

@@ -14,6 +14,7 @@ import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/fade_swap.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
+import '../../core/widgets/whole_page.dart';
 import '../responder/widgets/call_button.dart';
 import '../responder/widgets/directions_button.dart';
 import 'nearby_screen.dart';
@@ -154,6 +155,7 @@ class _VolunteerCallScreenState extends State<VolunteerCallScreen> {
         child: call == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
+                scrollCacheExtent: wholePage,
                 padding: EdgeInsets.fromLTRB(
                   MzaziLayout.margin(context),
                   0,

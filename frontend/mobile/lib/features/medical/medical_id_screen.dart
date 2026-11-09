@@ -11,6 +11,7 @@ import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import '../responder/widgets/call_button.dart';
 import 'medical_edit_screen.dart';
 import 'medical_words.dart';
@@ -217,6 +218,7 @@ class _MedicalIdScreenState extends State<MedicalIdScreen> {
       body: SafeArea(
         top: false,
         child: ListView(
+          scrollCacheExtent: wholePage,
           padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
             const PageTitle('Medical details'),

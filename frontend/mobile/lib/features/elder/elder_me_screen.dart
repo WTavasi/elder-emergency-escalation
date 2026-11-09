@@ -11,6 +11,7 @@ import '../../core/auth/confirm_sign_out.dart';
 import '../../core/theme/appearance.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
 import '../medical/medical_id_screen.dart';
@@ -73,6 +74,7 @@ class ElderMeScreen extends StatelessWidget {
         child: account == null
             ? const SizedBox.shrink()
             : ListView(
+                scrollCacheExtent: wholePage,
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
                   const PageTitle('Me'),

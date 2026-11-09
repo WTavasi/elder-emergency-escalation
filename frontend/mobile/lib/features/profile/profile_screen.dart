@@ -16,6 +16,7 @@ import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/password_field.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import '../legal/legal_screens.dart';
 import 'change_phone_screen.dart';
 
@@ -41,6 +42,7 @@ class ProfileScreen extends StatelessWidget {
         child: account == null
             ? const SizedBox.shrink()
             : ListView(
+                scrollCacheExtent: wholePage,
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[
                   const PageTitle('Me'),
