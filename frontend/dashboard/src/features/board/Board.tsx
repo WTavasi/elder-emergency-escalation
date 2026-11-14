@@ -2,7 +2,7 @@ import { useOpenAlerts } from '../../shared/state/OpenAlerts';
 import { PageHeader } from '../../shared/components/PageHeader';
 import {
   AlertRow,
-  UpdatedStatus,
+  LiveStatus,
   moveBetweenRows,
   Empty,
   ErrorNotice,
@@ -10,19 +10,28 @@ import {
 } from '../../shared/components/parts';
 
 export function Board() {
-  const { alerts, error, loading, connection, updatedAt, reload } = useOpenAlerts();
+  const { alerts, error, loading, connection, health, down, updatedAt, arrived, reload } =
+    useOpenAlerts();
 
   return (
     <>
       <PageHeader
         title="Open emergencies"
-        actions={<UpdatedStatus state={connection} updatedAt={updatedAt} onRefresh={reload} />}
+        actions={
+          <LiveStatus
+            state={connection}
+            health={health}
+            down={down}
+            updatedAt={updatedAt}
+            onRetry={() => window.location.reload()}
+          />
+        }
       />
 
       {connection === 'offline' ? (
         <div className="notice" role="status">
-          This screen is not receiving live updates, so what you see may be out of date. Use
-          Refresh, or sign in again if the problem continues.
+          This screen has lost its live connection, so what you see may be out of date. It is
+          reconnecting by itself; sign in again if this does not clear.
         </div>
       ) : null}
 
@@ -65,7 +74,12 @@ export function Board() {
               </thead>
               <tbody onKeyDown={moveBetweenRows}>
                 {alerts.map((alert) => (
-                  <AlertRow key={alert.eventId} alert={alert} live />
+                  <AlertRow
+                    key={alert.eventId}
+                    alert={alert}
+                    live
+                    arrived={arrived.has(alert.eventId)}
+                  />
                 ))}
               </tbody>
             </table>

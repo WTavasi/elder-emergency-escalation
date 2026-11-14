@@ -9,6 +9,7 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import '../legal/legal_screens.dart';
 
 /// Who is reading: the elder about themselves, or somebody in their care circle.
@@ -323,6 +324,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     if (error == null) return const Center(child: CircularProgressIndicator());
 
     return ListView(
+      scrollCacheExtent: wholePage,
       padding: EdgeInsets.fromLTRB(
         MzaziLayout.margin(context),
         MzaziSpace.s24,
@@ -343,6 +345,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     final String? error = _error;
 
     return ListView(
+      scrollCacheExtent: wholePage,
       padding: EdgeInsets.fromLTRB(
         MzaziLayout.margin(context),
         MzaziSpace.s24,
@@ -401,6 +404,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     // One rounded group per consent: what it means, where it stands, and the one thing to
     // do about it, as a button that looks like one.
     return ListView(
+      scrollCacheExtent: wholePage,
       padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
       children: <Widget>[
         if (error != null)

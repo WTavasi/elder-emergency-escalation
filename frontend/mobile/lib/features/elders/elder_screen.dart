@@ -11,6 +11,7 @@ import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
+import '../../core/widgets/whole_page.dart';
 import '../check_ins/check_in_settings.dart';
 import '../consent/consent_screen.dart';
 import '../medical/medical_id_screen.dart';
@@ -230,6 +231,7 @@ class _ElderScreenState extends State<ElderScreen> {
         // As a contact card: who and how to reach them first, then where they are and
         // who is asked, then what is set up for them, each a group of rows.
         child: ListView(
+          scrollCacheExtent: wholePage,
           padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
             PageTitle(widget.elderName),

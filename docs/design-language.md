@@ -188,9 +188,11 @@ somebody looking across many records at once.
 - **What happened is told in sentences.** An emergency's record reads as the app's does,
   "Sent to Aisha Wanjiru and Brian Wanjiru", as numbered steps with the latest filled in.
   The delivery attempts behind it are hidden under a disclosure until asked for.
-- **How fresh the board is, in small words.** "Updated just now" and a refresh button
-  beside it, as Mail says it; times on the live board are "4 min ago", with the exact time
-  on hover.
+- **Whether the board is live, as a dot and a word.** "Live" with a green dot while the
+  connection is up and the server's database and Redis answer; "Service problem: Redis
+  down" or "Offline, reconnecting" in amber when not, never in red. No refresh button: the
+  board changes by itself, a new emergency sliding in with a brief glow and a closed one
+  leaving. Times on the live board are "4 min ago", with the exact time on hover.
 - **Controls are 36 points where a mouse is used** and the full touch target where a
   finger is, chosen by the browser's own pointer media query.
 - **Filled buttons are MzaziCare red**, under review as the app's are (see the governing
@@ -341,12 +343,12 @@ principle: the console reads an elder's name and address, so once signed in it m
 third-party request at all. The one exception is
 before sign-in, when Google sign-in is set up: the sign-in page fetches Google's button,
 and the console reloads after signing in so the page that shows anybody's details never
-carries it (`docs/running.md`, Google sign-in on the console).
+carries it ([Google sign-in on the console](running/google-sign-in.md)).
 
 The app bundled its own faces from 30 September to 26 October 2026: Inclusive Sans for the
 elder, Source Sans 3 for everybody else and Atkinson Hyperlegible Mono for figures. The
 console self-hosted Source Sans 3 and Atkinson Hyperlegible Mono until 29 October 2026.
-Why both changed, and what was given up, is in `docs/decisions.md`.
+Why both changed, and what was given up, is in [the decision record](decisions/design.md#the-console-follows-a-mac-app-as-the-app-follows-an-iphone-one).
 
 Until 30 September 2026 this section described a set of fonts that no build ever loaded.
 The tokens named IBM Plex Sans and Archivo, nothing was bundled, and both surfaces fell

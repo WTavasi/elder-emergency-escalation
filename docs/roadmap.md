@@ -33,28 +33,28 @@ communicate.
 **1. Say what is happening.** The elder's waiting screen and HELP texts take a type; each
 type has a severity floor and a service (ambulance, fire, police), asked at once for chest
 pain or breathing, fire and danger, and at the responder step for a fall or feeling
-unwell. Closing confirms what it really was. See decisions.md.
+unwell. Closing confirms what it really was. See [the decision](decisions/escalation.md#saying-what-is-happening-and-asking-the-right-service).
 
 **2. Road travel times and a map.** OSRM's road distances for choosing volunteers and
 road times for every time shown, with the straight line only as a labelled fallback. A
 self-hosted OSRM with Kenya's map (`infra/osrm`). An in-app map (OpenStreetMap tiles)
 showing the elder, everybody on their way and the road each is taking; the volunteer
 going shares their way too. Spoken directions hand off to Google or Apple Maps. Ranking
-emergency responders by road waits for each unit's base address. See decisions.md.
+emergency responders by road waits for each unit's base address. See [the decision](decisions/care-circle.md#road-travel-times-and-a-map-in-the-app).
 
 **3. Who to go to first.** For a caregiver or service with several open alerts, a ranked
 list and map: first what nobody is handling, then by urgency and type, then where this
 person would cut the time until help arrives most compared with whoever is already going.
 Each row says why. Uses the person's location only when they allow it, and never keeps it.
 Responder units are stations with an address, asked one at a time, nearest by road first,
-the next after a decline or three minutes. See decisions.md.
+the next after a decline or three minutes. See [the decision](decisions/escalation.md#stations-nearest-first-and-who-to-go-to-first).
 
 **M. Medical details.** A medical ID for each elder, kept with its own consent: ticks for
 what changes what a helper does (blood thinners, insulin, home oxygen, hard of hearing),
 medicines, allergies, their doctor. Caregivers see and edit them; family and responders
 see them only on an open alert they were asked about, read against what is happening,
 with the service to ask when the history makes it more serious. Every look is recorded
-and the elder sees who. See decisions.md.
+and the elder sees who. See [the decision](decisions/privacy.md#medical-details-under-the-data-protection-act).
 
 **4. Adaptive escalation.** Skipped for now, to come back to. A simulator first, replaying thousands of made-up emergencies
 against the real rules. Then: each responder's reliability by time of day, waits sized to
@@ -69,13 +69,13 @@ launcher shortcuts and the Assistant. After the press, the elder can speak for u
 minute; our own Whisper server writes it down as said and in English, and the English,
 Swahili and Sheng word lists pick the type, which is reported as a tap would be, so the
 service follows after the usual short wait. Its own consent, the recording never kept,
-the words kept 30 days. See decisions.md.
+the words kept 30 days. See [the decision](decisions/elder-experience.md#saying-it-siri-the-widget-and-speaking-after-the-press).
 
 **6. Check-ins.** Built. Every half hour to six hours within a window as well as chosen
 times; the elder agrees and the circle sees when; each elder's rhythm, with an earlier
 reminder when an answer is unusually late for them and a weekly note to caregivers when
-answers drift later or more are missed. See decisions.md.
+answers drift later or more are missed. See [the decision](decisions/elder-experience.md#check-ins-through-the-day-and-each-elders-rhythm).
 
 **7. Replies.** Built. Free text in English, Swahili and Sheng read for its meaning and a
 time ("nakuja dakika kumi"), on our own server; unsure means asking back. The time is
-kept and shown to the elder when nobody shares their way there. See decisions.md.
+kept and shown to the elder when nobody shares their way there. See [the decision](decisions/reaching-people.md#replies-in-their-own-words).

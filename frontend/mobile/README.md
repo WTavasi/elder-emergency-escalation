@@ -269,5 +269,5 @@ alert itself: where the elder is staying, if their care circle has recorded a st
 from home, and otherwise their registered home. The away-from-home severity factor
 therefore scores only when a stay has been recorded. A responder's phone shares where it
 is only when they turn that on, only after taking an emergency on, and only until they
-arrive. Listening for a spoken keyword is noted as future work in `docs/decisions.md`,
-not built.
+arrive. The app does not listen for a wake word of its own: voice goes through Siri and the
+Assistant (`docs/decisions/elder-experience.md`).

@@ -6,6 +6,7 @@ import type { AlertSummary, AlertTrigger, EmergencyType, EventState, Severity } 
 import type { ConnectionState } from '../api/realtime';
 import { useCountdown } from '../hooks/useCountdown';
 import { useNow } from '../hooks/useNow';
+import type { ServiceHealth } from '../hooks/useServiceHealth';
 import {
   formatAgo,
   formatClock,
@@ -100,37 +101,59 @@ export function TriggerTag({ trigger }: { trigger?: AlertTrigger }) {
 }
 
 /**
- * How fresh the board is, as Mail says it at the foot of a mailbox: "Updated just now",
- * and a small button to fetch again. A dropped connection says so in words, in amber, never
- * in the red kept for emergencies.
+ * Whether the board is live: a dot and a word, as the console said it before.
+ *
+ * "Live" with a green dot while the connection is up and the server says its database
+ * and Redis are working; "Connecting" while it starts; amber words when something is
+ * wrong, never the red kept for emergencies. A problem names what is down, and when the
+ * connection is lost the board offers to try again, though it keeps trying by itself.
  */
-export function UpdatedStatus({
+/** The server's dependencies in plain words. */
+const DEPENDENCY: Record<string, string> = { postgres: 'the database', redis: 'Redis' };
+
+export function LiveStatus({
   state,
+  health,
+  down,
   updatedAt,
-  onRefresh,
+  onRetry,
 }: {
   state: ConnectionState;
+  health: ServiceHealth;
+  down: string[];
   updatedAt: number | null;
-  onRefresh: () => void;
+  onRetry: () => void;
 }) {
   const now = useNow();
-  return (
-    <span className="updated">
-      {state === 'offline' ? (
-        <span className="connection connection--offline">
+  const since = updatedAt === null ? '' : `Last update ${formatAgo(updatedAt, now)}`;
+
+  if (state === 'offline') {
+    return (
+      <span className="updated">
+        <span className="connection connection--offline" role="status" title={since}>
           <Icon name="offline" size={16} />
-          Not receiving updates
+          Offline, reconnecting
         </span>
-      ) : (
-        <span className="connection" aria-live="polite">
-          {state === 'connecting' || updatedAt === null
-            ? 'Connecting'
-            : `Updated ${formatAgo(updatedAt, now)}`}
-        </span>
-      )}
-      <button type="button" className="icon-button button--quiet" onClick={onRefresh}>
-        <Icon name="refresh" size={18} label="Refresh" />
-      </button>
+        <button type="button" className="button--quiet" onClick={onRetry}>
+          Try now
+        </button>
+      </span>
+    );
+  }
+  if (state === 'live' && health === 'problem') {
+    return (
+      <span className="connection connection--offline" role="status" title={since}>
+        <span className="connection__dot" aria-hidden="true" />
+        {down.length > 0
+          ? `Service problem: ${down.map((name) => DEPENDENCY[name] ?? name).join(' and ')} down`
+          : 'Service problem'}
+      </span>
+    );
+  }
+  return (
+    <span className={`connection connection--${state}`} role="status" title={since}>
+      <span className="connection__dot" aria-hidden="true" />
+      {state === 'live' ? 'Live' : 'Connecting'}
     </span>
   );
 }
@@ -272,14 +295,23 @@ export function UnansweredDot({ shown }: { shown: boolean }) {
  * row opens the emergency, as a row in an Apple list does, with a chevron to say so; the
  * name is the link, for the keyboard and for opening it in a new tab.
  */
-export function AlertRow({ alert, live }: { alert: AlertSummary; live: boolean }) {
+export function AlertRow({
+  alert,
+  live,
+  arrived = false,
+}: {
+  alert: AlertSummary;
+  live: boolean;
+  /** Just appeared on the board while it was open: drawn in, so the eye goes to it. */
+  arrived?: boolean;
+}) {
   const navigate = useNavigate();
   const to = `/emergencies/${alert.eventId}`;
   const unanswered = OPEN_STATES.includes(alert.state) && !alert.acknowledgedBy;
 
   return (
     <tr
-      className="row-link"
+      className={arrived ? 'row-link row--arrived' : 'row-link'}
       onClick={(clickEvent) => {
         if (!onControl(clickEvent)) void navigate(to);
       }}

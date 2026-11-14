@@ -30,4 +30,4 @@ deletes the details on withdrawal), or the retention sweep (`retention-service`)
 `MEDICAL_DATA_KEY`: 32 random bytes in base64 (`openssl rand -base64 32`). Unset, the
 feature is off. Changing it makes every stored profile unreadable.
 
-See docs/decisions.md, "Medical details, under the Data Protection Act".
+See docs/decisions/privacy.md, "Medical details, under the Data Protection Act".

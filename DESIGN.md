@@ -328,7 +328,8 @@ elder does next (stop, text, call, go back) sits at the bottom, in the reach of 
 Buttons are 50pt tall, 72pt in Elder mode; no touch target is under 48pt (72pt in Elder
 mode), and the console uses 36pt where a mouse is detected. The console is laid out as a Mac
 window: a grey sidebar with the sections, their counts and the account at its foot, which
-can be hidden, and becomes a drawer on a phone; on each page, a bar that holds its actions
+collapses to a narrow rail of icons (each named on hover and to a screen reader, the open
+count on its icon), and becomes a drawer on a phone; on each page, a bar that holds its actions
 and shows the page's name once the large title has scrolled under it. Records are lists:
 a whole row opens what it shows, with a chevron at its end.
 

@@ -1,0 +1,104 @@
+name: Native builds
+
+# Compiles the parts of the app that `flutter analyze` and `flutter test` never touch:
+# the Kotlin (the home-screen widget, the quick settings tile, the launcher shortcuts and
+# the quick-help channel) and the Swift (the Siri phrases and App Intents). A typo there
+# would otherwise only show up on somebody's Mac or phone.
+#
+# Its own workflow, run only when the app changes, because a macOS runner costs about ten
+# times a Linux one.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/mobile/**'
+      - 'frontend/design-tokens/**'
+      - '.github/workflows/native.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/mobile/**'
+      - 'frontend/design-tokens/**'
+      - '.github/workflows/native.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android build (Kotlin compiled)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Generate design tokens
+        run: node frontend/design-tokens/src/build.mjs
+
+      # The Android Gradle plugin needs Java 17, which the app's build files also target.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.4
+          cache: true
+
+      - name: Get packages
+        working-directory: frontend/mobile
+        run: flutter pub get
+
+      # A debug build, signed with the debug key Gradle makes, so no secret is needed.
+      - name: Build the APK
+        working-directory: frontend/mobile
+        run: flutter build apk --debug
+
+      - name: Keep the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mzazicare-debug-apk
+          path: frontend/mobile/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+  ios:
+    name: iOS build (Swift compiled, unsigned)
+    # Xcode 26 and its iOS 26 SDK. The App Intents need Xcode 16 or later, and
+    # connectivity_plus 7.3 (which livekit_client brings in) reads NWPath.isUltraConstrained,
+    # which only the iOS 26 SDK has: on macos-15's Xcode 16 it does not compile.
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Generate design tokens
+        run: node frontend/design-tokens/src/build.mjs
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.4
+          cache: true
+
+      - name: Get packages
+        working-directory: frontend/mobile
+        run: flutter pub get
+
+      # For a device, without signing: everything compiles and links, including the App
+      # Intents metadata Siri reads, but nothing is installable, so no certificate is needed.
+      - name: Build for iOS
+        working-directory: frontend/mobile
+        run: flutter build ios --debug --no-codesign

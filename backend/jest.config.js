@@ -9,5 +9,7 @@ module.exports = {
   testRegex: '.*\\.spec\\.ts$',
   collectCoverageFrom: ['**/*.ts', '!**/*.module.ts', '!main.ts'],
   coverageDirectory: '../coverage',
+  // json-summary is what CI reads to put the figures on the run's summary page.
+  coverageReporters: ['text-summary', 'lcov', 'json-summary'],
   clearMocks: true,
 };

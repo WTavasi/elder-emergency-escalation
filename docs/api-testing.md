@@ -12,7 +12,7 @@ This guide goes in small steps. Do them in order the first time.
 
 ### 1.1 The API has to be running
 
-Follow [running.md](running.md) Guide A, steps 1 to 4: Docker Desktop open, Postgres and
+Follow [the terminal guide](running/terminal.md), steps 1 to 4: Docker Desktop open, Postgres and
 Redis started, then `npm run dev`. Leave that terminal open; you will read sign-up codes
 from it later.
 
@@ -38,7 +38,7 @@ Every seeded account uses the password `Dev!2026`.
 | `+254700000001` | Administrator |
 
 The collection uses these five. The seed makes more elders, families and volunteers
-around them, listed in `docs/running.md` (Step 4). One that shows up here: Brian Wanjiru
+around them, listed in [running the app](running/app.md#step-4-sign-in). One that shows up here: Brian Wanjiru
 is at tier 2 for Grace beside Aisha, so an alert of Grace's that reaches tier 2 is sent to
 both of them.
 
@@ -105,9 +105,9 @@ second way is the better one for a demonstration.
 | --- | --- |
 | **2. An emergency, start to finish** | Grace raises an alert, Mary sees it in her list, opens it, takes it on and closes it |
 | **2b. On the way, and arriving** | Mary turns on sharing, takes Grace's alert on, shares a position about 2 km away (an ETA comes back), Grace sees the time but not the position, the family member sees both, Mary reaches the gate and it becomes ON_SCENE with the arrival time, then she closes it and turns sharing off |
-| **2c. Answering by text** | Grace raises an alert and Mary answers it by text with 1, as the SMS gateway would post it; the alert is hers, marked as answered by text; a second 1 changes nothing; a number nobody has gets no reply; a wrong secret finds nothing. Needs the API started with `SMS_INBOUND_TOKEN=local-text-replies-0123456789` (see [running.md](running.md), Step 9) |
-| **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([running.md](running.md), Step 10); without one the requests check for 503 instead |
-| **2e. Daily check-ins** | Mary sets up a check-in for Grace and it waits for her; only Grace can agree, and does; Mary sees it on with the last answers; Grace says she is all right; four times a day and the console changing it are refused; Grace turns it off herself. To watch one actually asked and missed, see [running.md](running.md), Step 11 |
+| **2c. Answering by text** | Grace raises an alert and Mary answers it by text with 1, as the SMS gateway would post it; the alert is hers, marked as answered by text; a second 1 changes nothing; a number nobody has gets no reply; a wrong secret finds nothing. Needs the API started with `SMS_INBOUND_TOKEN=local-text-replies-0123456789` (see [running.md](running/README.md), Step 9) |
+| **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([running.md](running/README.md), Step 10); without one the requests check for 503 instead |
+| **2e. Daily check-ins** | Mary sets up a check-in for Grace and it waits for her; only Grace can agree, and does; Mary sees it on with the last answers; Grace says she is all right; four times a day and the console changing it are refused; Grace turns it off herself. To watch one actually asked and missed, see [running.md](running/README.md), Step 11 |
 | **2f. Community volunteers** | Daniel, a seeded volunteer near Grace, signs in and is available; Mary agrees to volunteers for Grace and Grace confirms; Grace raises an alert, and twelve seconds later, once it is critical, Daniel is asked and told how far but not who or where; he accepts and is told; Mary still has the alert to take; a volunteer cannot open the alert itself; he arrives; Mary closes it and Daniel's view loses Grace's details; the vetting queue shows Faith waiting. Run `npm run db:seed` once after pulling this change, and re-import the environment for `volunteerPhone` |
 | **2g. Asking for help by text** | Grace has no data, so she texts HELP, as the SMS gateway would post it; Mary has an alert for her; its trail says it came by text and that there was no cancel window; Grace texting "msaada" while it is open, and Mary texting "help", raise nothing more; Mary closes it. Needs the same `SMS_INBOUND_TOKEN` as 2c, and Grace with no alert open when it starts |
 | **3. Declining moves it on** | Mary cannot come, so tier 2 is asked at once; the family member takes it on, calls in a responder and closes it |
@@ -219,7 +219,8 @@ npx newman run docs/postman/MzaziCare.postman_collection.json \
   --folder "7. Where an elder is staying" \
   --folder "8. Reporting" \
   --folder "8d. Accounts (administrator)" \
-  --folder "9. Things that must be refused"
+  --folder "9. Things that must be refused" \
+  --folder "10. Later additions: medical, order, policy"
 ```
 
 The first time, `npx` asks to install Newman; answer `y`. Folders 5 and 6 are left out

@@ -334,7 +334,7 @@ model CareAssignment {
 
   /// EXTENSION. Reserved for declared cover hours, not verified presence. Not read in
   /// this build: the caregiver-cover severity factor was dropped because nothing lets
-  /// a caregiver declare them (docs/decisions.md). Days are 0 for Sunday through 6 for
+  /// a caregiver declare them (docs/decisions/). Days are 0 for Sunday through 6 for
   /// Saturday; minutes are counted from local midnight in the elder's timezone.
   coverDaysOfWeek  Int[] @default([]) @map("cover_days_of_week")
   coverStartMinute Int?  @map("cover_start_minute") @db.SmallInt

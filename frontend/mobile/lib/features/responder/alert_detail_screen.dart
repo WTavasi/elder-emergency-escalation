@@ -18,6 +18,7 @@ import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
 import '../../core/widgets/swipe_to_confirm.dart';
+import '../../core/widgets/whole_page.dart';
 import '../medical/medical_words.dart';
 import '../voice/call_screen.dart';
 import 'alert_detail_controller.dart';
@@ -98,6 +99,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             body: ListenableBuilder(
               listenable: controller,
               builder: (BuildContext _, Widget? _) => ListView(
+                scrollCacheExtent: wholePage,
                 padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
                 children: <Widget>[PageTitle(title), build()],
               ),
@@ -138,6 +140,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
         // decides anything (the medical record, the trail, the chain) is a tap away, on
         // pages of its own, rather than folded into this one.
         child: ListView(
+          scrollCacheExtent: wholePage,
           padding: const EdgeInsets.only(bottom: MzaziSpace.s32),
           children: <Widget>[
             _Header(alert: alert, chain: chain),

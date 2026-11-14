@@ -41,7 +41,7 @@ frontend/mobile/android/key.properties
 # Firebase client configuration. Not a secret in the way a service account is, since it
 # ships inside the built app, but it names the project and its API keys, and this
 # repository keeps every credential out by default rather than by exception. Download
-# them from the Firebase console; docs/running.md says how.
+# them from the Firebase console; docs/running/optional-features.md says how.
 frontend/mobile/android/app/google-services.json
 frontend/mobile/ios/Runner/GoogleService-Info.plist
 frontend/mobile/lib/firebase_options.dart

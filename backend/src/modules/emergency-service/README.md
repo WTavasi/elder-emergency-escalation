@@ -42,7 +42,7 @@ announces it and `consumers/escalation.listener.ts` promotes the emergency. Ever
 dispatch also records a deadline in the database, so a restart cannot lose one, and
 `workers/escalation-sweep.service.ts` reconciles those deadlines on an interval in case
 expiry events never arrive. The full account is in
-[`../../../docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md).
+[`../../../docs/ARCHITECTURE.md`](../../../../docs/architecture.md).
 
 Severity is scored at the press and again, once, when the cancel window closes and
 "did not cancel" can count (`EscalationService.reviewSeverity`, driven by a review key

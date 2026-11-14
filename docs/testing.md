@@ -23,15 +23,15 @@ npm test
 This runs both JavaScript workspaces. Expect roughly:
 
 ```
-Test Suites: 57 passed, 57 total          <- the API
-Tests:       640 passed, 640 total
+Test Suites: 74 passed, 74 total          <- the API
+Tests:       914 passed, 914 total
 
-Test Files  7 passed (7)                  <- the dashboard
-     Tests  44 passed (44)
+Test Files  16 passed (16)                <- the dashboard
+     Tests  94 passed (94)
 ```
 
 The counts move as work lands. What matters is that nothing fails, not that the numbers
-match this page.
+match this page. The totals from the last recorded run are in [results](results.md).
 
 **If every suite refuses to run** and the output is TypeScript errors about properties
 that do not exist, the Prisma client is describing an older schema than the one in the
@@ -67,7 +67,7 @@ All three, in that order, and all three should be clean. `flutter analyze` is co
 to treat a warning as an error, so it either says "No issues found" or it has found
 something real.
 
-Expect about 245 tests across 29 files. They cover the API client's headers and its
+Expect about 390 tests across 37 files. They cover the API client's headers and its
 refresh path, the model parsing including the malformed cases, the elder's alert phases
 and what the elder sees while help is coming (who, how long, never where), sharing live
 location (asked for location only when it is turned on, sends at once, stops on
@@ -221,7 +221,7 @@ same way in both.
 The API on its own can be exercised by hand with the Postman collection in
 `docs/postman/`; [api-testing.md](api-testing.md) walks through it step by step.
 
-Start everything as described in [running.md](running.md), then sign in as
+Start everything as described in [running the system](running/README.md), then sign in as
 `+254700000001` with `Dev!2026`.
 
 ### The live board
@@ -279,7 +279,7 @@ demand.
 
 ### The app, by hand
 
-With the API running and the app started (Guide C in `running.md`), the sequence that
+With the API running and the app started ([running the app](running/app.md)), the sequence that
 exercises everything:
 
 1. Sign in as Grace, `+254700000010`. You get the panic control at the larger type scale.
@@ -340,3 +340,18 @@ because the only thing that would have caught it was a command somebody had to r
 to type. The mobile job builds the design tokens first, because the app reads them as a
 generated Dart package that is not committed, and pins Flutter to the version the app is
 developed on.
+
+**Coverage on the summary page.** The API and console jobs run their unit tests with
+coverage and write the figures (lines, statements, functions, branches) to the run's
+summary page through `scripts/coverage-summary.mjs`, so nobody has to download a report.
+
+**Native builds.** A second workflow, `.github/workflows/native.yml`, compiles what the
+Flutter checks never touch: the Android APK (the Kotlin behind the widget, the quick
+settings tile and the shortcuts) on Linux, and the iOS app without signing (the Swift App
+Intents and Siri phrases) on macOS. It runs only when `frontend/mobile` or the design
+tokens change, because a macOS runner costs about ten times a Linux one, and can be run by
+hand from the Actions tab. The debug APK is kept for a week as an artifact.
+
+**System tests.** `scripts/system-tests/` runs the twelve system tests (TC-01 to TC-12)
+against a running API, PostgreSQL and Redis, as the app calls them, and writes every
+request, response and database snapshot as evidence. See `docs/evidence/` for the runs.
