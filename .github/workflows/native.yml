@@ -72,8 +72,10 @@ jobs:
 
   ios:
     name: iOS build (Swift compiled, unsigned)
-    # Xcode 16, which the App Intents and their iOS 17 phrases need.
-    runs-on: macos-15
+    # Xcode 26 and its iOS 26 SDK. The App Intents need Xcode 16 or later, and
+    # connectivity_plus 7.3 (which livekit_client brings in) reads NWPath.isUltraConstrained,
+    # which only the iOS 26 SDK has: on macos-15's Xcode 16 it does not compile.
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
