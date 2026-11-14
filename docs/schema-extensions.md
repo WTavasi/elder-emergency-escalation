@@ -15,7 +15,7 @@ removed, and no relationship in it changed.
 The weighted severity policy, one row per factor, editable by an administrator. Five
 enabled rows: care level 30, no cancel in the grace window 30, time of day 20, away from
 home 15, recent activity 5. A sixth, caregiver outside cover, is kept switched off (see
-`docs/decisions.md`).
+`docs/decisions/`).
 
 Justification for the report: severity has to come from somewhere defensible. Holding the
 weights as data rather than code means the policy can be shown as a table, changed without

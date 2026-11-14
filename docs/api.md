@@ -82,7 +82,7 @@ against Google's published keys (cached as Google's headers say), for this clien
 from Google's issuer, unexpired, and for a verified address. The address then has to be
 the email on an existing administrator account: nothing is ever created by it, and any
 other role is refused, because every other account belongs in the app, where the phone
-number is the handle. Setting it up: `docs/running.md`, Google sign-in.
+number is the handle. Setting it up: [Google sign-in on the console](running/google-sign-in.md).
 
 ## Emergencies
 
@@ -289,7 +289,7 @@ acknowledged, and it is idempotent, because a retry on a weak signal is not a fa
 "Participants" means the elder, anybody in that elder's care chain, or anybody who was
 actually notified. An administrator is **not** a participant, so the three action
 endpoints refuse an administrator account. That is deliberate and is covered in
-[decisions.md](decisions.md).
+[decisions.md](decisions/README.md).
 
 ### Listing filters
 
@@ -586,4 +586,4 @@ The message is a snapshot: `eventId`, `elderlyId`, `state`, `severity`, `trigger
 `currentTier`, `acknowledgedBy`, `triggeredAt`, `deadlineAt`, `arrivedAt`. It never carries where the elder is.
 Location is disclosed through the REST endpoints, which apply the consent rules for the
 person asking, so a client treats the message as a signal to re-read, not as the data
-to show. See [ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md).
+to show. See [ARCHITECTURE.md](architecture.md).

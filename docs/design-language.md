@@ -343,12 +343,12 @@ principle: the console reads an elder's name and address, so once signed in it m
 third-party request at all. The one exception is
 before sign-in, when Google sign-in is set up: the sign-in page fetches Google's button,
 and the console reloads after signing in so the page that shows anybody's details never
-carries it (`docs/running.md`, Google sign-in on the console).
+carries it ([Google sign-in on the console](running/google-sign-in.md)).
 
 The app bundled its own faces from 30 September to 26 October 2026: Inclusive Sans for the
 elder, Source Sans 3 for everybody else and Atkinson Hyperlegible Mono for figures. The
 console self-hosted Source Sans 3 and Atkinson Hyperlegible Mono until 29 October 2026.
-Why both changed, and what was given up, is in `docs/decisions.md`.
+Why both changed, and what was given up, is in [the decision record](decisions/design.md#the-console-follows-a-mac-app-as-the-app-follows-an-iphone-one).
 
 Until 30 September 2026 this section described a set of fonts that no build ever loaded.
 The tokens named IBM Plex Sans and Archivo, nothing was bundled, and both surfaces fell

@@ -5,7 +5,7 @@
 The durable product record for design work, in the format of the impeccable design
 guidance (https://github.com/pbakaus/impeccable). What the product is, for whom, and
 what must stay true. The visual system is in [DESIGN.md](DESIGN.md); the reasoning
-behind individual decisions is in [docs/decisions.md](docs/decisions.md).
+behind individual decisions is in [the decision record](docs/decisions/README.md).
 
 ## Platform
 

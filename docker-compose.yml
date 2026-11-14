@@ -59,7 +59,7 @@ services:
   #   docker compose --profile routing up -d osrm
   #
   # then run the API with ROUTING_PROVIDER=osrm ROUTING_URL=http://localhost:5050
-  # ROUTING_RATE_PER_SECOND=0. See infra/osrm/Dockerfile and docs/running.md.
+  # ROUTING_RATE_PER_SECOND=0. See infra/osrm/Dockerfile and docs/running/optional-features.md.
   osrm:
     build: ./infra/osrm
     image: mzazicare-osrm

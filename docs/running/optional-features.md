@@ -1,317 +1,8 @@
-# Running the system
+# Trying each feature
 
-Two guides for the same thing. The first uses a plain terminal, the second uses VS
-Code, where the commands are already defined as tasks. Use whichever you prefer; they
-start the same processes.
+Steps 6 to 19 of the app guide. Each is optional and stands alone: do the ones you want to see, after [the app is running](app.md).
 
-Start here if you have just turned the laptop on.
-
-## What has to be running
-
-Four things, in this order. Each one depends on the ones above it.
-
-| | What | Where it ends up |
-| --- | --- | --- |
-| 1 | Docker Desktop | menu bar, says "Engine running" |
-| 2 | Postgres and Redis containers | ports 5433 and 6379 |
-| 3 | The API | http://localhost:3000 |
-| 4 | The dashboard | http://localhost:5173 |
-| 5 | The Flutter app, when you want it | a simulator or a connected phone |
-
-Steps 1 to 4 are the system. Step 5 is optional: the dashboard alone is enough to watch
-an escalation, and the app is what you start when you want to raise one by hand or work
-on a screen. It is Guide C below, and it needs the API already running.
-
----
-
-## Guide A: the regular terminal
-
-### Step 1. Start Docker Desktop
-
-Open it from Applications, or press Cmd + Space, type `Docker`, press Enter.
-
-Wait for the whale icon in the menu bar to stop animating. Click it and check the menu
-says **Engine running**. Nothing below this step works until it does. This usually
-takes twenty to forty seconds from cold.
-
-### Step 2. Open a terminal and go to the project
-
-Press Cmd + Space, type `Terminal`, press Enter.
-
-```bash
-cd ~/Desktop/Mzazicare
-```
-
-Check you are in the right place. This should print the project path and list `apps`,
-`packages` and `docker-compose.yml` among other things:
-
-```bash
-pwd && ls
-```
-
-### Step 3. Start Postgres and Redis
-
-```bash
-docker compose up -d
-```
-
-`-d` means detached, so it returns your prompt rather than filling the terminal with
-logs. Now wait for both to report healthy:
-
-```bash
-docker compose ps
-```
-
-Repeat that until the STATUS column says `healthy` for both rather than `starting`,
-which takes about fifteen seconds. The PORTS column should read:
-
-```
-mzazicare-postgres   0.0.0.0:5433->5432/tcp
-mzazicare-redis      0.0.0.0:6379->6379/tcp
-```
-
-The left number for Postgres must be **5433**, because 5432 is taken by a Homebrew
-Postgres on this machine. If it says 5432, see Troubleshooting below.
-
-### Step 4. Start the API
-
-Still in the same terminal:
-
-```bash
-npm run dev
-```
-
-This one does not finish. It compiles and then watches for changes. Wait for the
-startup lines to stop and for a line naming the port:
-
-```
-[NestApplication] Nest application successfully started
-Listening on http://localhost:3000
-```
-
-Leave this terminal alone from now on. It is where the API's logs appear, and it is
-where you will see an escalation happening.
-
-### Step 5. Start the dashboard
-
-Open a **second** terminal tab with Cmd + T. A new tab starts in your home folder, so
-move to the project again:
-
-```bash
-cd ~/Desktop/Mzazicare
-npm run dev:dashboard
-```
-
-Wait for:
-
-```
-VITE ready in 400 ms
-➜  Local:   http://localhost:5173/
-```
-
-### Step 6. Open it
-
-Cmd-click the `http://localhost:5173/` link, or open a browser and go there yourself.
-
-Sign in with the seeded administrator account:
-
-- Phone: `+254700000001`
-- Password: `Dev!2026`
-
-Or choose **Email** above the field and use `admin@mzazicare.example` with the same
-password. A **Sign in with Google** button appears too, once Google sign-in is set up as
-described under [Google sign-in on the console](#google-sign-in-on-the-console).
-
-You should land on the open emergencies board. If nothing is open, the board says so,
-which is the state the system should usually be in.
-
-### Shutting down
-
-Press **Ctrl + C** in each of the two terminals. Then, if you want the databases
-stopped too:
-
-```bash
-docker compose down
-```
-
-Use `down` and never `down -v`. The `-v` deletes the data volumes, which means
-re-running the migrations and the seed next time.
-
----
-
-## Guide B: VS Code
-
-This does the same thing in one window, with each process in its own pane.
-
-### Step 1. Start Docker Desktop
-
-Exactly as in Guide A. VS Code cannot do this for you.
-
-### Step 2. Open the project
-
-Open VS Code, then **File > Open Folder**, and choose `~/Desktop/Mzazicare`.
-
-Open the folder itself, not `backend` or any subfolder. The tooling resolves from the
-repository root, and opening a subfolder gives you type errors that do not exist and
-tasks that are not there.
-
-The first time you open it, VS Code shows a notification offering the recommended
-extensions. Accept it. If you miss the notification, click the Extensions icon in the
-left bar and type `@recommended` into the search box.
-
-### Step 3. Run the tasks
-
-Press **Shift + Cmd + P**, type `Run Task`, press Enter. Pick these in order, coming
-back to the same menu each time:
-
-1. **Services: start** — brings up Postgres and Redis. This finishes on its own.
-2. **API: run** — opens a dedicated pane and keeps running.
-3. **Dashboard: run** — opens another pane and keeps running.
-
-Each task opens its own terminal pane, so you can see all three at once by clicking
-between them in the terminal panel's dropdown on the right.
-
-### Step 4. Open it
-
-In the Dashboard pane, Cmd-click the `http://localhost:5173/` link. Sign in as above.
-
-### Shutting down
-
-Click the bin icon on each running terminal pane, or press Ctrl + C in each. Then run
-the **Services: stop** task.
-
----
-
-## Guide C: the Flutter app
-
-Only on the Mac. Everything here needs the Flutter toolchain, which is not available
-from anywhere else in this project.
-
-### Step 1. Have the API running
-
-Steps 1 to 4 of Guide A, or the tasks in Guide B. The app is useless without them, and
-the failure it shows you is a network error rather than anything informative.
-
-### Step 2. Pick where it will run
-
-```bash
-cd ~/Desktop/Mzazicare/frontend/mobile
-flutter devices
-```
-
-That lists the simulators and any phone plugged in. If nothing useful appears, open the
-iOS Simulator from Spotlight, or Android Studio's Device Manager, and start one.
-
-### Step 3. Run it
-
-```bash
-flutter run
-```
-
-On the **Android emulator** and the **iOS Simulator** this works with no arguments.
-The app picks the Mac's address for the device it is on: `http://10.0.2.2:3000/api/v1`
-on the Android emulator, which is how it reaches the machine it runs on, and
-`http://localhost:3000/api/v1` on the iOS Simulator, which shares the Mac's network.
-
-On a **real phone**, the phone has to reach your Mac over the same Wi-Fi, so use the
-Mac's address on the network. Find it with `ipconfig getifaddr en0`, then:
-
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.42:3000/api/v1
-```
-
-substituting whatever that command printed. Both devices must be on the same network,
-and a captive or guest network will usually block this.
-
-### Step 4. Sign in
-
-Any seeded account, password `Dev!2026`. Which screen you get is decided by the role:
-
-| Phone | Who | What you see |
-| --- | --- | --- |
-| `+254700000010` | Grace Wanjiru, elder | The panic control, at the larger type scale |
-| `+254700000020` | Mary Otieno, caregiver, tier one for Grace | The alert list and the four actions |
-| `+254700000030` | Aisha Wanjiru, family, tier two for Grace | The same list |
-| `+254700000040` | Kileleshwa Response Unit, the default emergency responder | The same list |
-| `+254700000001` | administrator | A note sending you to the web console |
-| `+254700000050` | Daniel Ochieng, community volunteer, approved, near Grace | Nearby: who near him needs help |
-| `+254700000051` | Faith Akinyi, community volunteer, waiting for approval | Nearby: "Thank you for applying" |
-
-The seed makes more people around them, so the lists look like a real caseload. All sign
-in the same way:
-
-| Phone | Who |
-| --- | --- |
-| `+254700000012` | Samuel Wanjiru, elder, Grace's husband, at the same home |
-| `+254700000011`, `13` | Joseph and Hannah Kimani, elders, a couple in Westlands |
-| `+254700000014` | Esther Muthoni, elder, Lavington |
-| `+254700000015` | Francis Odhiambo, elder, Kilimani |
-| `+254700000016` | Ali Hassan, elder, Kilimani |
-| `+254700000021` | Peter Mwangi, caregiver for Joseph and Hannah |
-| `+254700000022` | Caroline Wafula, caregiver for Ali |
-| `+254700000032` | Brian Wanjiru, family, beside Aisha for both Grace and Samuel |
-| `+254700000031`, `33` | David and Wanjiku Kimani, family for both Joseph and Hannah |
-| `+254700000034`, `35` | Kevin and Lucy Muthoni, family for Esther |
-| `+254700000036`, `37` | Achieng Odhiambo for Francis, and Amina Hassan for Ali |
-| `+254700000052` to `54` | Mercy Wairimu, Omar Abdi and Joyce Chebet, volunteers waiting for approval |
-
-Mary looks after four elders within about two kilometres: Grace, Samuel, Esther and
-Francis. Where a family has two people, both are at tier two and both are asked at the
-same moment, so an alert of Grace's reaches Aisha and Brian together once Mary has not
-answered.
-
-The phone field has a country button in front of it, set to Kenya, so `0700000010`,
-`700000010` and `+254700000010` all sign in as Grace.
-
-Mary at tier one is the account to use when testing acknowledge and decline, because she
-is the one the first dispatch actually asks. An account that was not asked gets a 403
-from decline, which is the system working rather than a fault.
-
-Raising an alert from the elder account and watching it appear on the dashboard board is
-the quickest end-to-end check that everything is wired together.
-
-Note that the app never asks for location permission, and never sends a coordinate.
-Where an emergency is happening is resolved by the server from the elder's own record.
-
-
-**Forgot your password?**, under the password once you have pressed **Continue** on the
-sign-in screen, resets one with a code sent by SMS.
-In development the code is in the API's terminal, on a line ending `password reset code`.
-Try it on an account you made yourself rather than a seeded one, or set the seeded
-password back to `Dev!2026` afterwards.
-
-### Step 5. Try signing up
-
-**Create an account** on the sign-in screen makes a caregiver or family account. In
-development nothing is really sent by SMS: the code is written to the API's terminal, in a
-line like this one, so watch the window running `npm run dev`:
-
-```
-[LoggingSmsProvider] SMS to +254***78: 123456 is your MzaziCare code. It expires in 10 minutes.
-```
-
-Use a number no seeded account has, for example `0712 345 678`. Once signed in, the people
-icon on the alert list opens **People I look after**, where a caregiver can register an
-elder (another unused number, with its own code in the same terminal) and add a family
-member by phone. Finding the elder's home searches OpenStreetMap, so it needs an internet
-connection on the machine running the API.
-
-### Hot reload
-
-While `flutter run` is attached, **r** reloads changed Dart, **R** restarts the app, and
-**q** quits. Changes to `pubspec.yaml` or to anything native need a full **q** and
-`flutter run` again.
-
-### Live updates
-
-Once signed in, the app opens a socket to the API's `/realtime` namespace on the same
-address it uses for everything else, so there is nothing to configure. A screen showing
-an emergency changes within a second of somebody acting on it, on the phone and on the
-console alike. The screens still poll behind the socket, every 30 seconds while it is
-up and at their old pace (5 to 10 seconds) when it is not, so a dropped connection
-makes the app slower, never wrong.
-
-### Step 6 (optional). Reach the API from anywhere: an ngrok tunnel
+## Step 6 (optional). Reach the API from anywhere: an ngrok tunnel
 
 A real phone on the same Wi-Fi as the Mac should use the Mac's address, as in Step 3.
 The tunnel is for when it cannot: a phone on mobile data, a network that keeps devices
@@ -329,7 +20,7 @@ https address.
    something like `quiet-owl-1234.ngrok-free.app`. It stays the same every time, so the
    app can be pointed at it once.
 
-3. With the API running (Guide A), start the tunnel in a new terminal tab:
+3. With the API running ([terminal guide](terminal.md)), start the tunnel in a new terminal tab:
 
    ```bash
    ngrok http --url=quiet-owl-1234.ngrok-free.app 3000
@@ -351,7 +42,7 @@ sees an ngrok warning page first; the app is not a browser and never sees it.
 For the demonstration the API moves to Render instead, which has no such limits (issues
 #78 and #79).
 
-### Step 7 (optional). Push notifications on a phone
+## Step 7 (optional). Push notifications on a phone
 
 Push is what reaches a caregiver whose app is closed. It needs a Firebase project, and
 it is off in any build that was not given one: the app then never asks for notification
@@ -408,7 +99,7 @@ permission, and everything else works.
 Firebase under Cloud Messaging. Without one, the iOS app runs and simply registers no
 push address. Android is enough for the demonstration.
 
-### Step 8 (optional). Share the way there
+## Step 8 (optional). Share the way there
 
 A caregiver who turns on **Share live location** and takes an emergency on shares where
 they are until they arrive. Grace's phone shows "Mary Otieno is coming" with the minutes
@@ -491,7 +182,7 @@ deployment points the app at a tile provider with
 `--dart-define=MAP_TILES_URL=https://<provider>/{z}/{x}/{y}.png` and
 `--dart-define=MAP_TILES_CREDIT="© <provider>, © OpenStreetMap contributors"`.
 
-### Step 9 (optional). Answer an alert by text
+## Step 9 (optional). Answer an alert by text
 
 An alert SMS can end "Reply 1 to go, 2 if you cannot", and the reply takes the
 alert on or declines it, exactly as the app's buttons do. It is off until the API is
@@ -532,7 +223,7 @@ ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.
 
 5. **Start the API with real SMS, the shortcode and the secret**, all for this run only.
    The sandbox username and API key are read from `backend/.env`, as in
-   [testing.md](testing.md):
+   [testing.md](../testing.md):
 
    ```bash
    SMS_PROVIDER=africastalking AT_SHORTCODE=12345 SMS_INBOUND_TOKEN=<the secret> npm run dev
@@ -569,14 +260,14 @@ In the simulator, launch it with Grace's number, `+254700000010`, and send `HELP
 is asked as usual, and Grace is texted back that the people who look after her have been
 told. A second HELP while it is open answers with who is coming rather than raising
 another. Folder **2g** of the Postman collection does the same and checks each step
-([api-testing.md](api-testing.md)).
+([api-testing.md](../api-testing.md)).
 
 Sending from the shortcode is what makes the reply land in the right place: a person who
 answers a message answers the number it came from. Africa's Talking documents the
 sandbox and simulator in [How do I get started on the Africa's Talking
 Sandbox?](https://help.africastalking.com/en/articles/1170660-how-do-i-get-started-on-the-africa-s-talking-sandbox).
 
-### Step 10 (optional). Talk to the elder through the app
+## Step 10 (optional). Talk to the elder through the app
 
 A responder can press **Talk to Grace** on an alert. Grace's phone, if MzaziCare is open
 on it, says "Mary is calling you", buzzes for three seconds and joins on the speaker, so an elder who has fallen does not have to reach the phone and answer it. The
@@ -648,7 +339,7 @@ network (Africa's Talking voice) would cover that case; it needs a purchased voi
 number, because Africa's Talking voice does not work in the sandbox, and is written up
 as future work.
 
-### Step 11 (optional). A daily check-in
+## Step 11 (optional). A daily check-in
 
 Grace can be asked "are you all right?" at times she chooses or agrees to. If she does
 not answer, Mary's chain is alerted as if she had pressed for help, worded as a missed
@@ -684,7 +375,7 @@ the Africa's Talking simulator, from Grace's number, reply `1`.
 
 To stop the clock entirely for a run: `CHECK_INS_ENABLED=false npm run dev`.
 
-### Step 12 (optional). Community volunteers
+## Step 12 (optional). Community volunteers
 
 Daniel Ochieng is a seeded volunteer, approved, available, and about 270 m from Grace's
 home. Faith Akinyi, Mercy Wairimu, Omar Abdi and Joyce Chebet have applied and are
@@ -726,7 +417,7 @@ number.
 
 To stop asking volunteers for a run: `VOLUNTEERS_ENABLED=false npm run dev`.
 
-### Step 13 (optional). Signing in without a password, changing a number, and the notice
+## Step 13 (optional). Signing in without a password, changing a number, and the notice
 
 Nothing to install. To name a data contact in the notice, add these to `backend/.env`
 and restart the API (leave them out and the notice says none is set):
@@ -763,9 +454,7 @@ console's **Privacy and data** panel says the same.
 **Grace's You page** is now a card: her name, number and home, then **Who comes when you
 press for help**, each carer a call away.
 
----
-
-### Step 14 (optional). Say what is happening
+## Step 14 (optional). Say what is happening
 
 The elder can say what kind of emergency it is, and the right service is asked. The seed
 has real Nairobi stations, with made-up phone numbers: four police stations, the Central
@@ -788,7 +477,7 @@ Fire Station and two ambulance services (Step 15 lists them).
 A fall or feeling unwell raises the severity to high and asks the ambulance only when the
 chain reaches its responder step; **Ask for an ambulance** on Mary's screen asks it now.
 
-### Step 15 (optional). Stations, nearest first, and who to go to first
+## Step 15 (optional). Stations, nearest first, and who to go to first
 
 **Asking a service by hand.** On an open emergency, Mary's **Ask for…** button opens
 **Who should we ask?**: the service the emergency needs first, then the others (an
@@ -841,7 +530,7 @@ location** in **Me** and the phone already allows location; the position is sent
 request and never kept. A station is measured from its address instead. With neither, the
 list says how to turn it on.
 
-### Step 16 (optional). Medical details
+## Step 16 (optional). Medical details
 
 Medical details are off until the API has a key to seal them with. Add one line to
 `backend/.env` (any 32 random bytes in base64), then restart the API and seed again:
@@ -868,7 +557,7 @@ aid, hard of hearing, a penicillin allergy and her doctor.
 6. **As Grace, open Me, Medical details, Delete medical details.** They are gone, Mary is
    texted, and the alert shows **No medical details saved.**
 
-### Step 17 (optional). Say it: Siri, the widget and speaking after the press
+## Step 17 (optional). Say it: Siri, the widget and speaking after the press
 
 **"Hey Siri, MzaziCare help fire."** On an iPhone with iOS 17 or later, with the app installed and opened once
 as Grace, say it. The app opens, the countdown starts, and **Your family can see: Fire**
@@ -895,7 +584,7 @@ Say "Msaada, kuna moto jikoni" and press **Done**. A few seconds later the scree
 **You said: "Msaada, kuna moto jikoni"**, Fire is chosen, and Mary's screen shows **What
 Grace said**, with the English under it. The recording is deleted once written down.
 
-### Step 18 (optional). Check-ins through the day, and each elder's rhythm
+## Step 18 (optional). Check-ins through the day, and each elder's rhythm
 
 1. **As Mary**, open Grace's **Daily check-in**, **Change times**. Under **How often**
    choose **Every hour**, set **From** and **Until**, keep **Time to answer** under an
@@ -910,7 +599,7 @@ Grace said**, with the English under it. The recording is deleted once written d
    the four weeks before, or more were missed. Mary is texted, and the API's terminal shows
    `Weekly check-in note`.
 
-### Step 19 (optional). Replies in their own words
+## Step 19 (optional). Replies in their own words
 
 Needs text replies set up (`SMS_INBOUND_TOKEN`, Step 9). Raise an alert as Grace, then
 reply to the alert text as Aisha in her own words. Without a gateway, post the reply the
@@ -936,192 +625,4 @@ Grace's screen shows **About 10 minutes away.**, and the trail says **Aisha Wanj
 the way, by text, in about 10 minutes**. Grace can answer a check-in with **Niko sawa**
 as well as 1.
 
-## The first run on a new machine, or after pulling changes
-
-Steps 1 to 6 assume the project has already been set up on this laptop. If it has not,
-or if you have just pulled a change that touched the database, do this once first.
-
-```bash
-cd ~/Desktop/Mzazicare
-npm install
-```
-
-That installs everything and, through postinstall hooks, also builds the design tokens
-and generates the Prisma client.
-
-```bash
-cp .env.example backend/.env
-```
-
-Then open `backend/.env` and fill in the secrets. Two need generating:
-
-```bash
-openssl rand -base64 48    # paste as JWT_ACCESS_SECRET
-openssl rand -base64 48    # paste as JWT_REFRESH_SECRET
-```
-
-If port 5432 is already taken on the machine, which it is on this one, create the
-Compose environment file and change the port in the API's:
-
-```bash
-printf 'POSTGRES_PORT=5433\nREDIS_PORT=6379\n' > .env
-```
-
-and set `DATABASE_URL=postgresql://mzazicare:mzazicare@localhost:5433/mzazicare` in
-`backend/.env`.
-
-Then bring up the services and create the schema:
-
-```bash
-docker compose up -d
-npm run db:migrate -w @mzazicare/api
-npm run db:seed -w @mzazicare/api
-```
-
-For the Flutter app, once, from `frontend/mobile`:
-
-```bash
-flutter pub get
-```
-
-### After pulling a change that touched the database
-
-Two commands, and the second is the one people forget:
-
-```bash
-npm run db:migrate -w @mzazicare/api    # apply new migrations
-npx prisma generate --schema backend/prisma/schema.prisma
-```
-
-The generated Prisma client is not in the repository, so a pull that added a column
-leaves your client describing the old schema. The symptom is a wall of TypeScript errors
-saying a property does not exist on a type, and `npm test` refusing to run at all
-because the test compiler hits them first. `prisma generate` clears every one of them.
-It runs automatically on `npm install`, so a full reinstall also fixes it.
-
-The seed prints every account it created. All of them sign in with `Dev!2026`, and the
-seed refuses to run against anything that is not a local database.
-
----
-
-## Google sign-in on the console
-
-Optional. Without it the console signs in with a phone number or an email address, and
-shows no Google button. With it, an administrator whose account has a Gmail address can
-sign in with Google instead. It never creates an account, and only works for
-administrators. About ten minutes the first time.
-
-### Step 1. Make an OAuth client in Google Cloud
-
-1. Go to https://console.cloud.google.com and sign in with any Google account.
-2. At the top left, open the project list and choose **New project**. Name it
-   `MzaziCare` and click **Create**. Make sure it is the selected project afterwards.
-3. In the search bar at the top, type **Google Auth Platform** and open it. Click
-   **Get started**.
-4. Fill in the app information: app name `MzaziCare Operations`, and your own email as
-   the support email. Click **Next**.
-5. For **Audience**, choose **External**, then **Next**. For contact information, your
-   email again, then **Next**, tick the agreement, and click **Create**.
-6. In the left menu, open **Audience**. Under **Test users**, click **Add users** and add
-   the Gmail address you will sign in with. While the app is in testing, only addresses
-   listed here can use it, which is exactly right for a project like this.
-7. In the left menu, open **Clients**, then **Create client**.
-   - **Application type:** Web application
-   - **Name:** `MzaziCare console (local)`
-   - **Authorised JavaScript origins:** click **Add URI** and enter
-     `http://localhost:5173`. Add `http://localhost` as well, which Google asks for when
-     testing on localhost.
-   - Leave **Authorised redirect URIs** empty: the console uses a pop-up, not a redirect.
-8. Click **Create**. Copy the **Client ID**, which ends in `.apps.googleusercontent.com`.
-   You do not need the client secret: nothing in MzaziCare uses it.
-
-### Step 2. Give the client ID to the API
-
-Open `backend/.env` and add the line, with your own ID:
-
-```
-GOOGLE_CLIENT_ID=1234567890-abc123.apps.googleusercontent.com
-```
-
-The client ID is not a secret (the console shows it to every browser), but `.env` is where
-the API reads its settings. Restart `npm run dev`.
-
-### Step 3. Put your Gmail address on the administrator account
-
-Google proves an email address, and the API looks for an administrator with that
-address. The seeded administrator's is `admin@mzazicare.example`, so change it to your
-Gmail. In Postman, run **1. Sign in → Administrator**, then send this as the
-administrator (Auth tab, Bearer token `{{adminToken}}`):
-
-```
-PATCH {{apiBase}}/auth/me
-{ "email": "your.name@gmail.com" }
-```
-
-Or with curl, using the administrator's access token:
-
-```bash
-curl -X PATCH http://localhost:3000/api/v1/auth/me \
-  -H "Authorization: Bearer <adminToken>" -H "Content-Type: application/json" \
-  -d '{"email":"your.name@gmail.com"}'
-```
-
-Re-seeding the database puts the old address back.
-
-### Step 4. Try it
-
-Reload the console's sign-in page. **Sign in with Google** appears under the password.
-Choose your Gmail in the pop-up, and you land on the board.
-
-A Gmail address that is on no administrator account is refused with "No administrator
-account uses this Google address". That is the system working.
-
-### What it changes
-
-Google's script is only fetched when the API has a client ID, and only by the sign-in
-page. Once it is in a page it stays there with the console's own access, and the
-screens after sign-in show elders' names and addresses, so the console reloads itself
-after any sign-in on a page where Google's script was loaded. The signed-in page never
-fetches it. A deployment that serves the console with a content security policy has to
-allow `https://accounts.google.com` for scripts, frames and connections on the sign-in
-page.
-
----
-
-## Troubleshooting
-
-**Postgres is published on 5432 rather than 5433.** The root `.env` is missing or does
-not contain `POSTGRES_PORT=5433`. Compose reads that file to fill in the port. Create
-it as shown above and run `docker compose up -d` again, which recreates the container.
-Your data is in a named volume and is not affected.
-
-**`P1010: User was denied access`.** You reached the Homebrew Postgres on 5432 instead
-of the Docker one. Same cause, same fix.
-
-**`ECONNREFUSED 127.0.0.1:5433`.** Nothing is listening. Either Docker Desktop is not
-running, or the containers are not up. Run `docker compose ps`.
-
-**`Cannot find native binding`.** The dependency tree was installed on a different
-platform. Reinstall on this machine:
-
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**`your project still has CocoaPods integration`, or `Unable to load contents of file
-list: Pods-Runner...`.** Only affects the iOS build of the mobile app, on a copy made
-before the app moved to Swift packages. From `frontend/mobile`, run
-`rm -rf ios/Pods ios/Podfile ios/Podfile.lock && flutter clean && flutter pub get`, then
-build again. CocoaPods is no longer needed.
-
-**`Missing script: "dev:dashboard"`.** You are in a subfolder. Run `pwd`; it should
-print `/Users/tavasii/Desktop/Mzazicare` with nothing after it.
-
-**`notify-keyspace-events is ""`.** Redis came up without expiry events. The API sets
-them at boot, so start the API once and try again. If it persists, the container was
-started without the project's compose file.
-
-**The dashboard loads but every request fails.** The API is not running, or it is on a
-different port. Open http://localhost:3000/health directly; it should return JSON
-naming Postgres and Redis separately.
+[Back to running the system](../README.md)

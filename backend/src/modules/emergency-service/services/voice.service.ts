@@ -92,7 +92,7 @@ export class VoiceService implements OnModuleInit {
     if (!this.available) {
       this.logger.warn(
         'Talking in the app is off: set LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET ' +
-          'in backend/.env (docs/running.md, step 10).',
+          'in backend/.env (docs/running/optional-features.md, step 10).',
       );
     }
   }
