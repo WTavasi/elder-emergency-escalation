@@ -496,6 +496,9 @@ export class EnvSchema {
   VERIFICATION_CODE_TTL_SECONDS: number = 600;
 }
 
+/** The text-reply token in .env.example, for local runs only. Refused in production. */
+export const EXAMPLE_SMS_INBOUND_TOKEN = 'local-text-replies-0123456789';
+
 /** Keys whose values must never reach a log line or an error message. */
 const SECRET_KEYS = new Set([
   'DATABASE_URL',
@@ -538,6 +541,18 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
         '',
         'Check backend/.env against .env.example.',
       ].join('\n'),
+    );
+  }
+
+  // The token in .env.example is public, so a server that kept it would take a text reply
+  // from anybody who has read the repository.
+  if (
+    config.NODE_ENV === NodeEnv.Production &&
+    config.SMS_INBOUND_TOKEN === EXAMPLE_SMS_INBOUND_TOKEN
+  ) {
+    throw new Error(
+      'Invalid environment configuration. The API will not start.\n' +
+        '  SMS_INBOUND_TOKEN is the example from .env.example. Generate your own: openssl rand -hex 24',
     );
   }
 

@@ -57,6 +57,7 @@ export class NotificationsProcessor extends WorkerHost {
       trigger: notification.event.trigger,
       reportedType: notification.event.reportedType,
       forService: notification.recipient.role === Role.EMERGENCY_RESPONDER,
+      away: notification.informedOnly,
     });
 
     const attempts = job.opts.attempts ?? 1;

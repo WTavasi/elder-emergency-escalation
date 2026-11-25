@@ -63,6 +63,12 @@ const event = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** A place in the chain, as the dispatch reads it: who, and whether they are away. */
+const assigned = (responderId: string, away: { since?: Date; until?: Date | null } = {}) => ({
+  responderId,
+  responder: { awaySince: away.since ?? null, awayUntil: away.until ?? null },
+});
+
 interface PrismaMock {
   emergencyEvent: {
     findUnique: jest.Mock;
@@ -113,7 +119,7 @@ const buildPrisma = (): PrismaMock => {
     escalationRule: { findMany: jest.fn().mockResolvedValue(STANDARD_RULES) },
     emergencyTypeRule: { findUnique: jest.fn().mockResolvedValue(null) },
     careAssignment: {
-      findMany: jest.fn().mockResolvedValue([{ responderId: 'caregiver-1' }]),
+      findMany: jest.fn().mockResolvedValue([assigned('caregiver-1')]),
       findFirst: jest.fn().mockResolvedValue({ priorityOrder: 1 }),
     },
     user: {
@@ -291,7 +297,7 @@ describe('EscalationService', () => {
       // Tier 1 is empty, tier 2 has someone.
       prisma.careAssignment.findMany
         .mockResolvedValueOnce([])
-        .mockResolvedValue([{ responderId: 'family-1' }]);
+        .mockResolvedValue([assigned('family-1')]);
 
       await build(prisma).dispatchTier('event-1', 1, 'initial');
 
@@ -305,11 +311,88 @@ describe('EscalationService', () => {
       const prisma = buildPrisma();
       prisma.emergencyEvent.findUnique.mockResolvedValue(event({ severity: Severity.CRITICAL }));
       prisma.escalationRule.findMany.mockResolvedValue(CRITICAL_RULES);
-      prisma.careAssignment.findMany.mockResolvedValue([{ responderId: 'someone' }]);
+      prisma.careAssignment.findMany.mockResolvedValue([assigned('someone')]);
 
       await build(prisma).dispatchTier('event-1', 1, 'initial');
 
       expect(notified(prisma).map((notification) => notification.tier)).toEqual([1, 2]);
+    });
+
+    describe('somebody away for a while', () => {
+      const away = { since: new Date(Date.now() - 60_000), until: null };
+
+      it('tells everybody at a step where all are away, and asks the next step now', async () => {
+        const prisma = buildPrisma();
+        const timers = buildTimers();
+        prisma.careAssignment.findMany
+          .mockResolvedValueOnce([assigned('caregiver-1', away)])
+          .mockResolvedValue([assigned('family-1')]);
+
+        await build(prisma, timers).dispatchTier('event-1', 1, 'initial');
+
+        expect(notified(prisma)).toEqual([
+          expect.objectContaining({ recipientId: 'caregiver-1', tier: 1, informedOnly: true }),
+          expect.objectContaining({ recipientId: 'family-1', tier: 2, informedOnly: false }),
+        ]);
+        expect(auditActions(prisma)).toContain(AuditAction.ESCALATED);
+        // Only the step that is waited for has a timer.
+        expect(timers.arm.mock.calls).toEqual([['event-1', 2, 180]]);
+        const dispatched = prisma.auditLog.create.mock.calls
+          .map((call) => (call[0] as { data: { action: string; detail: { away?: number } } }).data)
+          .find((data) => data.action === AuditAction.TIER_DISPATCHED);
+        expect(dispatched?.detail.away).toBe(1);
+        const moved = prisma.auditLog.create.mock.calls
+          .map(
+            (call) => (call[0] as { data: { action: string; detail: { because?: string } } }).data,
+          )
+          .find((data) => data.action === AuditAction.ESCALATED);
+        expect(moved?.detail.because).toBe('away');
+      });
+
+      it('waits for whoever is not away, and only tells the rest', async () => {
+        const prisma = buildPrisma();
+        const timers = buildTimers();
+        prisma.careAssignment.findMany.mockResolvedValue([
+          assigned('caregiver-1', away),
+          assigned('caregiver-2'),
+        ]);
+
+        await build(prisma, timers).dispatchTier('event-1', 1, 'initial');
+
+        expect(notified(prisma)).toEqual([
+          expect.objectContaining({ recipientId: 'caregiver-1', informedOnly: true }),
+          expect.objectContaining({ recipientId: 'caregiver-2', informedOnly: false }),
+        ]);
+        expect(timers.arm).toHaveBeenCalledWith('event-1', 1, 120);
+        expect(auditActions(prisma)).not.toContain(AuditAction.ESCALATED);
+      });
+
+      it('counts somebody whose time away has ended as back', async () => {
+        const prisma = buildPrisma();
+        prisma.careAssignment.findMany.mockResolvedValue([
+          assigned('caregiver-1', {
+            since: new Date(Date.now() - 7200_000),
+            until: new Date(Date.now() - 1000),
+          }),
+        ]);
+
+        await build(prisma).dispatchTier('event-1', 1, 'initial');
+        expect(notified(prisma)).toEqual([
+          expect.objectContaining({ recipientId: 'caregiver-1', informedOnly: false }),
+        ]);
+        expect(auditActions(prisma)).not.toContain(AuditAction.ESCALATED);
+      });
+
+      it('never skips the last step, which has nobody after it', async () => {
+        const prisma = buildPrisma();
+        prisma.careAssignment.findMany.mockResolvedValue([assigned('family-1', away)]);
+
+        await build(prisma).dispatchTier('event-1', 3, 'escalation');
+        expect(notified(prisma)).toEqual([
+          expect.objectContaining({ recipientId: 'family-1', tier: 3, informedOnly: false }),
+        ]);
+        expect(auditActions(prisma)).not.toContain(AuditAction.ESCALATED);
+      });
     });
 
     it('does nothing when the severity band has no rule for that tier', async () => {
@@ -362,7 +445,7 @@ describe('EscalationService', () => {
             coverageRadiusKm: 6,
           },
         ]);
-        prisma.careAssignment.findMany.mockResolvedValue([{ responderId: 'assigned-unit' }]);
+        prisma.careAssignment.findMany.mockResolvedValue([assigned('assigned-unit')]);
 
         await build(prisma).dispatchTier('event-1', 3, 'escalation');
 
@@ -407,7 +490,7 @@ describe('EscalationService', () => {
     it('are asked when no professional responder covers the place', async () => {
       const prisma = buildPrisma();
       prisma.user.findMany.mockResolvedValue([]);
-      prisma.careAssignment.findMany.mockResolvedValue([{ responderId: 'assigned-unit' }]);
+      prisma.careAssignment.findMany.mockResolvedValue([assigned('assigned-unit')]);
       const volunteers = buildVolunteers();
 
       await build(
@@ -483,7 +566,7 @@ describe('EscalationService', () => {
   describe('onTierTimeout', () => {
     it('promotes the event to the next tier', async () => {
       const prisma = buildPrisma();
-      prisma.careAssignment.findMany.mockResolvedValue([{ responderId: 'family-1' }]);
+      prisma.careAssignment.findMany.mockResolvedValue([assigned('family-1')]);
 
       await build(prisma).onTierTimeout('event-1', 1);
 
@@ -1442,6 +1525,19 @@ describe('EscalationService', () => {
         }),
       );
       expect(timers.cancelAll).toHaveBeenCalledWith(event().id);
+    });
+
+    it('does not wait for somebody at the step who was only told, being away', async () => {
+      const prisma = buildPrisma();
+      prisma.notification.findMany.mockResolvedValueOnce(asked()).mockResolvedValueOnce([]);
+
+      await build(prisma).decline(event().id, 'caregiver-1');
+
+      // Who could still answer: the second look, which leaves out the away.
+      expect(prisma.notification.findMany.mock.calls[1][0].where).toMatchObject({
+        declinedAt: null,
+        informedOnly: false,
+      });
     });
 
     it('records the tier and the reason, so the trail explains the jump', async () => {

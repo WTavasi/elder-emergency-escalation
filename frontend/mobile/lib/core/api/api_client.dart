@@ -677,6 +677,23 @@ class ApiClient {
     return PositionResult.fromJson(body);
   }
 
+  /// Whether this person is away for a while, and until when.
+  Future<AwayStatus> away() async => AwayStatus.fromJson(await _send('GET', '/auth/me/away'));
+
+  /// Away from now until [until], or until they turn it off when that is null. Alerts
+  /// still reach them; nobody waits for their answer.
+  Future<AwayStatus> goAway({DateTime? until}) async => AwayStatus.fromJson(
+    await _send(
+      'PUT',
+      '/auth/me/away',
+      body: <String, dynamic>{'until': until?.toUtc().toIso8601String()},
+    ),
+  );
+
+  /// Back: asked and waited for again.
+  Future<AwayStatus> comeBack() async =>
+      AwayStatus.fromJson(await _send('DELETE', '/auth/me/away'));
+
   Future<Preferences> preferences() async =>
       Preferences.fromJson(await _send('GET', '/auth/me/preferences'));
 

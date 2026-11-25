@@ -35,6 +35,7 @@ import {
 } from '../../../shared/utils/event-lifecycle';
 import { EscalationTimerService } from './escalation-timer.service';
 import { StationDispatchService, type RankedStation } from './station-dispatch.service';
+import { isAway } from '../../../shared/utils/away';
 import { SeverityService } from './severity.service';
 import {
   recentEventsWhere,
@@ -133,7 +134,7 @@ export class EscalationService {
       return;
     }
 
-    const { recipients, uncovered, station, waiting } = await this.recipientsFor(event, rule);
+    const { recipients, uncovered, station, waiting, away } = await this.recipientsFor(event, rule);
 
     // Volunteers go out with a critical alert from its first tier, and with any alert
     // that reaches the responder tier where no professional covers the place.
@@ -153,6 +154,11 @@ export class EscalationService {
     const now = new Date();
     const deadline =
       rule.timeoutSeconds === null ? null : new Date(now.getTime() + rule.timeoutSeconds * 1000);
+
+    // Away for a while: told all the same, but nobody waits for their answer. The last
+    // step has no time limit and nothing after it, so there everybody is waited for.
+    const informedOnly = rule.timeoutSeconds === null ? [] : (away ?? []);
+    const everyoneAway = informedOnly.length > 0 && informedOnly.length === recipients.length;
 
     // Created one at a time rather than in bulk because the queue needs their ids, and
     // recorded inside the transaction so a committed dispatch is always in the audit
@@ -177,6 +183,7 @@ export class EscalationService {
         channels,
         now,
         deadline,
+        informedOnly,
       });
     } catch (error) {
       if (!(error instanceof StaleTransitionError)) throw error;
@@ -196,6 +203,15 @@ export class EscalationService {
     // Queued after the transaction commits: a job that ran against uncommitted rows
     // would find nothing to send.
     await this.notifications.enqueue(dispatched.notificationIds);
+
+    if (everyoneAway) {
+      // Nobody here to wait for: the next step is asked now, not when the time runs out.
+      this.logger.log(
+        `Everybody at tier ${tier} of event ${eventId} is away; told, and moving on now`,
+      );
+      await this.escalate(dispatched.updated, tier, 'away');
+      return;
+    }
 
     if (rule.timeoutSeconds !== null) {
       await this.timers.arm(eventId, tier, rule.timeoutSeconds);
@@ -226,10 +242,13 @@ export class EscalationService {
       channels: NotificationChannel[];
       now: Date;
       deadline: Date | null;
+      /** Away for a while: told, and not waited for. */
+      informedOnly?: string[];
     },
   ): Promise<{ updated: EmergencyEvent; notificationIds: string[] }> {
     const eventId = event.id;
     const { target, channels, now, deadline } = plan;
+    const away = new Set(plan.informedOnly ?? []);
 
     return this.prisma.$transaction(async (tx) => {
       const created = await Promise.all(
@@ -242,6 +261,7 @@ export class EscalationService {
                 channel,
                 status: NotificationStatus.QUEUED,
                 tier,
+                informedOnly: away.has(recipientId),
                 createdAt: now,
               },
               select: { id: true },
@@ -273,6 +293,7 @@ export class EscalationService {
             reason,
             responderRole: rule.responderRole,
             recipients: recipients.length,
+            away: away.size,
             channels,
             timeoutSeconds: rule.timeoutSeconds,
           } as unknown as Prisma.InputJsonValue,
@@ -704,8 +725,9 @@ export class EscalationService {
     // two tiers at once, so one person declining is not the same as the tier being
     // exhausted: escalating on the first decline would cut short somebody who is in the
     // middle of accepting.
+    // Somebody away was only told, so they are not waited for here either.
     const remaining = await this.prisma.notification.findMany({
-      where: { eventId, tier: event.currentTier, declinedAt: null },
+      where: { eventId, tier: event.currentTier, declinedAt: null, informedOnly: false },
       select: { recipientId: true },
       distinct: ['recipientId'],
     });
@@ -1200,7 +1222,8 @@ export class EscalationService {
   }
 
   /** Moves an event up one rung and dispatches the tier it lands on. */
-  private async escalate(event: EmergencyEvent, fromTier: number): Promise<void> {
+  /** [because] says why, when it is not that the time ran out or everybody declined. */
+  private async escalate(event: EmergencyEvent, fromTier: number, because?: 'away'): Promise<void> {
     const rules = await this.rulesFor(event);
     const next = rules.find((rule) => rule.tierOrder > fromTier);
 
@@ -1227,7 +1250,11 @@ export class EscalationService {
         action: AuditAction.ESCALATED,
         previousState: event.state,
         newState: EventState.ESCALATED,
-        detail: { fromTier, toTier: next.tierOrder } as unknown as Prisma.InputJsonValue,
+        detail: {
+          fromTier,
+          toTier: next.tierOrder,
+          ...(because ? { because } : {}),
+        } as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -1262,6 +1289,8 @@ export class EscalationService {
     station?: RankedStation;
     /** A station is already asked and waiting: the step is reached, and nobody new is told. */
     waiting?: boolean;
+    /** Those of [recipients] who are away for a while. */
+    away?: string[];
   }> {
     let uncovered = false;
     if (rule.responderRole === Role.EMERGENCY_RESPONDER) {
@@ -1288,10 +1317,16 @@ export class EscalationService {
         priorityOrder: rule.tierOrder,
         responder: { deactivatedAt: null },
       },
-      select: { responderId: true },
+      select: { responderId: true, responder: { select: { awaySince: true, awayUntil: true } } },
     });
 
-    return { recipients: assignments.map((assignment) => assignment.responderId), uncovered };
+    return {
+      recipients: assignments.map((assignment) => assignment.responderId),
+      uncovered,
+      away: assignments
+        .filter((assignment) => isAway(assignment.responder))
+        .map((assignment) => assignment.responderId),
+    };
   }
 
   /** The service an emergency needs: the one already asked, its type's, or a general one. */

@@ -58,6 +58,15 @@ describe('composeNotification', () => {
     expect(message.data.action).toBe('respond');
   });
 
+  it('tells somebody away that others are being asked too, still as a call to act', () => {
+    const message = forState(EventState.NOTIFIED, { away: true, replyByText: true });
+    expect(message.body).toContain("You're marked away, so others are being asked too.");
+    expect(message.data).toMatchObject({ action: 'respond', away: 'true' });
+    expect(message.sms.length).toBeLessThanOrEqual(SMS_LIMIT);
+    // An update that asks nothing of them says nothing about being away.
+    expect(forState(EventState.RESOLVED, { away: true }).body).not.toContain('away');
+  });
+
   it('says plainly that nobody has responded when escalating', () => {
     const message = forState(EventState.ESCALATED);
     expect(message.title).toBe('Grace still needs help');

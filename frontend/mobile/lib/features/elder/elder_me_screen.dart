@@ -8,6 +8,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/confirm_sign_out.dart';
+import '../../core/away/away.dart';
 import '../../core/theme/appearance.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/settings_list.dart';
@@ -220,9 +221,13 @@ class _WhoComesState extends State<_WhoComes> {
               // It rings somebody rather than opening a page, so no chevron.
               chevron: false,
               title: 'Call ${carer.name.trim().split(RegExp(r'\s+')).first}',
-              subtitle: carer.place == 1
-                  ? '${carer.name}, ${_role(carer.role).toLowerCase()}, asked first'
-                  : '${carer.name}, ${_role(carer.role).toLowerCase()}',
+              subtitle: [
+                carer.name,
+                _role(carer.role).toLowerCase(),
+                if (carer.place == 1) 'asked first',
+                // Still there to call, which is what this row is for.
+                if (carer.away) awayLabel(carer.awayUntil).toLowerCase(),
+              ].join(', '),
               onTap: () =>
                   unawaited(CallButton.dial(context, name: carer.name, phone: carer.phone)),
             ),

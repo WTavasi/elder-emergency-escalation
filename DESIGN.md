@@ -199,7 +199,7 @@ rounded solid buttons, and questions as sheets that slide up from the bottom. Ro
 rounded white groups on the grey page, as the Settings app and Health set them out, each
 group under a small-capitals label; the first group on a screen holds what matters most,
 and the rest opens on a page of its own. Every button looks pressable: a filled or grey
-shape, never bare words. Colour is spent
+shape, never bare words, except the few links on the way in. Colour is spent
 on state, and on the way in, where MzaziCare's red fills the top of the screen. Elder
 mode is the same app at a larger size (22pt semibold body, 72pt buttons); it starts on
 for an elder and anybody can switch it. The elder's screen has the help button in the
@@ -387,6 +387,9 @@ the darkest ink with yellow text.
 - **Text:** a smaller grey pill, ink on the sunk grey, so it looks pressable rather than
   like a sentence; the same in the console's quiet buttons and in-text actions. On the
   yellow countdown screen it is an ink outline instead, as grey would not show.
+- **Links on the way in:** the one exception. "Create an account", the privacy notice and
+  the terms are plain words, semibold, in the text-safe red, with no fill and no
+  underline, as Apple sets links on a sign-in screen. Still a 44pt target.
 - **Call buttons:** amber wash with amber ink, because they reach a person.
 - **Focus:** a 3px Focus Blue ring.
 

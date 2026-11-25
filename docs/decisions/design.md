@@ -302,3 +302,16 @@ the guess moved as the page scrolled (918, 834, 700, 929 points while the real h
 up. The pages made of sections (Me, the elder's own Me, an elder's page, an emergency,
 medical details, consent, volunteering) now build every section, which costs nothing at
 their length, so the height is always known. Long lists of similar rows keep the default.
+
+## Links on the way in are plain words in the tint
+
+On 25 November 2026 the links around signing in and up ("Create an account", the privacy
+notice and the terms) lost their grey pill and their underline. They are the words alone,
+semibold, in MzaziCare's text-safe red, and they dim when pressed, as a plain button does
+on an iPhone. In the sign-up small print, "terms of use" and "privacy notice" are set the
+same way inside the sentence.
+
+This is the one exception to "every button looks pressable". On these screens a pill made
+a link weigh as much as the form above it, and Apple's own sign-in screens set such links
+as tinted words. The red is the colour these screens already carry across their top, and
+the touch target is still 44 points.

@@ -54,6 +54,12 @@ describe('the record of an emergency, in sentences', () => {
       'Sent to Aisha Wanjiru and Brian Wanjiru',
     );
     expect(say(entry('TIER_DISPATCHED', { tier: 3, recipients: 2 }))).toBe('Sent to 2 people');
+    expect(say(entry('TIER_DISPATCHED', { tier: 1, recipients: 1, away: 1 }))).toBe(
+      'Sent to Mary Otieno, who is away, so not waited for',
+    );
+    expect(say(entry('TIER_DISPATCHED', { tier: 2, recipients: 2, away: 1 }))).toBe(
+      'Sent to Aisha Wanjiru and Brian Wanjiru. 1 away, so not waited for',
+    );
   });
 
   it('says where it moved on to, or that there was nobody further', () => {
@@ -61,6 +67,9 @@ describe('the record of an emergency, in sentences', () => {
       'No answer in time. Now asking Aisha Wanjiru and Brian Wanjiru',
     );
     expect(say(entry('ESCALATED', {}))).toBe('No answer. No one else to ask');
+    expect(say(entry('ESCALATED', { fromTier: 1, toTier: 2, because: 'away' }))).toBe(
+      'Everyone there is away. Now asking Aisha Wanjiru and Brian Wanjiru',
+    );
   });
 
   it('says how it was scored, and whether the second scoring changed the band', () => {

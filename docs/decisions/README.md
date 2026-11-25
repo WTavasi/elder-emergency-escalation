@@ -20,6 +20,7 @@ How an alert is scored, who is asked, in what order, and when it moves on.
 - [Saying what is happening, and asking the right service](escalation.md#saying-what-is-happening-and-asking-the-right-service)
 - [Stations nearest first, and who to go to first](escalation.md#stations-nearest-first-and-who-to-go-to-first)
 - [The policy editor, who is asked first, and several phones per account](escalation.md#the-policy-editor-who-is-asked-first-and-several-phones-per-account)
+- [Away for a while: told, but not waited for](escalation.md#away-for-a-while-told-but-not-waited-for)
 
 ## [Reaching people: push, texts, calls and live updates](reaching-people.md)
 
@@ -91,6 +92,7 @@ Colour, type, wording and the conventions each screen follows.
 - [The app speaks in short, plain sentences](design.md#the-app-speaks-in-short-plain-sentences)
 - [Rounded groups, the important part first, and buttons that look pressable](design.md#rounded-groups-the-important-part-first-and-buttons-that-look-pressable)
 - [The console is live again, collapses to a rail, and the app's long pages stop jumping](design.md#the-console-is-live-again-collapses-to-a-rail-and-the-apps-long-pages-stop-jumping)
+- [Links on the way in are plain words in the tint](design.md#links-on-the-way-in-are-plain-words-in-the-tint)
 
 ## [The console and running the system](console-and-operations.md)
 
@@ -98,3 +100,4 @@ What the administrator console may do, and how the system is configured.
 
 - [The administrator console is read-only over emergencies](console-and-operations.md#the-administrator-console-is-read-only-over-emergencies)
 - [Two environment files](console-and-operations.md#two-environment-files)
+- [The Postman collection runs from start to finish, as often as you like](console-and-operations.md#the-postman-collection-runs-from-start-to-finish-as-often-as-you-like)

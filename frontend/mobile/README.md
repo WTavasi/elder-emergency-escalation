@@ -162,6 +162,13 @@ emergency services near an elder and the daily check-in fold away until tapped; 
 dark is a pull-down and Elder mode a switch; signing out is last. On the elder's page,
 calling each person in their circle comes first, out in the open.
 
+**Away for a while.** Caregivers and family have an **Away** switch at the top of Me.
+Turning it on asks how long (an hour, four hours, until tomorrow morning, or until they
+turn it off). Away, they still get every alert, but nobody waits for their answer; the
+top of Alerts says so, with **I'm back** beside it, and it ends by itself at the time
+chosen. The elder's list of people to call and the care circle show who is away.
+`lib/core/away/away.dart` holds the state and the wording.
+
 **Light or dark.** The app follows the phone's setting. Anybody can override it under
 **Screen** on their account page: Same as this phone, Light or Dark. The choice is kept
 on the phone. The emergency colours do not change with it: the help button keeps its

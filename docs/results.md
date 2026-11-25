@@ -8,14 +8,15 @@ figure here is in [`evidence/`](evidence).
 | Check | Result |
 | --- | --- |
 | System tests TC-01 to TC-12 | **12 of 12 passed** (9 November 2026) |
-| Backend unit tests | 914 passed, in 74 suites |
+| Backend unit tests | 935 passed, in 77 suites |
 | Backend integration tests, on real PostgreSQL and Redis | 21 passed, in 3 suites |
-| App tests (Flutter) | 388 passed |
+| App tests (Flutter) | 400 passed |
 | Console tests | 94 passed, in 16 files |
-| API collection (Postman, run through Newman) | 75 requests, 109 assertions, none failed |
+| API collection (Postman, run through Newman) | 175 requests, 283 assertions, none failed, in three full runs in a row |
 
-The unit, app and console totals are from 14 November 2026, on the code as it is now. The
-integration and Newman totals are from the system test run.
+All of these are from 25 November 2026, on the code as it is now, except the system tests.
+The Postman collection runs as a whole, with nothing typed in, on a setup made by following
+the [first-run guide](running/first-run.md).
 
 ## The system tests
 

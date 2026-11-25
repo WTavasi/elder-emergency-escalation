@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/theme.dart';
+import '../../core/widgets/plain_link.dart';
 import '../../core/widgets/section_label.dart';
 
 /// The sentence the Kenya Data Protection Act's vital interests ground asks this notice
@@ -272,8 +273,9 @@ class _LegalPageState extends State<_LegalPage> {
 class LegalLinks extends StatelessWidget {
   const LegalLinks({this.quiet = false, super.key});
 
-  /// In small print, in the softer ink: for a screen where few people open them and the
-  /// form above is what matters. Still a full touch target each.
+  /// Small plain links, the words alone in the tint as on an Apple sign-in screen: for a
+  /// screen where few people open them and the form above is what matters. Still a full
+  /// touch target each.
   final bool quiet;
 
   static Future<void> _open(BuildContext context, Widget screen) =>
@@ -281,13 +283,7 @@ class LegalLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ButtonStyle? style = quiet
-        ? TextButton.styleFrom(
-            foregroundColor: theme.colorScheme.onSurfaceVariant,
-            textStyle: theme.textTheme.bodySmall?.copyWith(decoration: TextDecoration.underline),
-          )
-        : null;
+    final ButtonStyle? style = quiet ? plainLinkStyle(context, small: true) : null;
 
     return Wrap(
       spacing: MzaziSpace.s8,

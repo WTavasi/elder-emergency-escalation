@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/away/away.dart';
 import '../../core/live/live_updates.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
@@ -74,6 +75,8 @@ class _AlertListScreenState extends State<AlertListScreen> {
                 subtitle: alerts.openOnly && waiting > 0 ? '$waiting waiting for an answer' : null,
                 subtitleColor: theme.colorScheme.error,
               ),
+              if (AwayController.maybeOf(context) case final AwayController away)
+                _AwayLine(away: away),
               _ViewSwitch(openOnly: alerts.openOnly, onChanged: alerts.setOpenOnly),
               if (!alerts.openOnly) _HistorySearch(alerts: alerts),
               if (alerts.error != null)
@@ -717,5 +720,62 @@ class _AlertRow extends StatelessWidget {
     if (alert.state == EventState.onScene) return '${alert.ownerName} is with them';
     if (alert.isAnswered) return '${alert.ownerName} is on the way';
     return 'Asking group ${alert.currentTier}';
+  }
+}
+
+/// While away, a line above the alerts saying so, with the way back one tap from it. Not
+/// red: being away is a choice, not a problem.
+class _AwayLine extends StatelessWidget {
+  const _AwayLine({required this.away});
+
+  final AwayController away;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return ListenableBuilder(
+      listenable: away,
+      builder: (BuildContext context, Widget? _) {
+        if (!away.away) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: MzaziSpace.s12, bottom: MzaziSpace.s8),
+          child: GroupSurface(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                groupInset,
+                MzaziSpace.s8,
+                MzaziSpace.s4,
+                MzaziSpace.s8,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.do_not_disturb_on_outlined, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: MzaziSpace.s12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          awayUntilLabel(away.status.until).replaceFirst('Until', 'Away until'),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        Text(
+                          "Alerts still reach you. Others are asked first.",
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: away.isSaving ? null : () => unawaited(away.comeBack()),
+                    child: const Text("I'm back"),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

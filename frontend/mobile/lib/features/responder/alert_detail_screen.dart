@@ -1030,12 +1030,16 @@ class _WhatHappened extends StatelessWidget {
         .map((ChainMember m) => m.name)
         .toList();
 
-    if (names.isEmpty) {
-      final int count = entry.recipients ?? 0;
-      return count == 1 ? 'Sent to 1 person' : 'Sent to $count people';
-    }
-    if (names.length == 1) return 'Sent to ${names.first}';
-    return 'Sent to ${names.take(names.length - 1).join(', ')} and ${names.last}';
+    final int count = entry.recipients ?? 0;
+    final String sent = names.isEmpty
+        ? (count == 1 ? 'Sent to 1 person' : 'Sent to $count people')
+        : names.length == 1
+        ? 'Sent to ${names.first}'
+        : 'Sent to ${names.take(names.length - 1).join(', ')} and ${names.last}';
+    final int away = entry.away ?? 0;
+    if (away == 0) return sent;
+    if (away >= count) return '$sent, who ${count == 1 ? 'is' : 'are'} away, so not waited for';
+    return '$sent. $away away, so not waited for';
   }
 
   String _escalated(TimelineEntry entry) {
@@ -1047,9 +1051,10 @@ class _WhatHappened extends StatelessWidget {
         .map((ChainMember m) => m.name)
         .toList();
 
+    final String why = entry.because == 'away' ? 'Everyone there is away' : 'No answer in time';
     return names.isEmpty
-        ? 'No answer in time. Asking the next group'
-        : 'No answer in time. Now asking ${names.join(' and ')}';
+        ? '$why. Asking the next group'
+        : '$why. Now asking ${names.join(' and ')}';
   }
 
   /// Relative to the alert, in units a person reads without counting zeroes.

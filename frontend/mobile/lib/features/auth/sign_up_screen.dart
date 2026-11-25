@@ -12,6 +12,7 @@ import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/password_field.dart';
+import '../../core/widgets/plain_link.dart';
 import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
 import 'auth_frame.dart';
@@ -317,10 +318,7 @@ class _SmallPrintState extends State<_SmallPrint> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final TextStyle? base = theme.textTheme.bodySmall;
-    final TextStyle? link = base?.copyWith(
-      color: theme.colorScheme.onSurface,
-      decoration: TextDecoration.underline,
-    );
+    final TextStyle? link = plainLinkText(context, base);
 
     return Text.rich(
       TextSpan(

@@ -80,7 +80,14 @@ describe('ProfileService', () => {
     expect(profile.record).toBeNull();
     expect(profile.circles).toEqual([]);
     expect(profile.carers).toEqual([
-      { name: 'Mary Otieno', role: Role.CAREGIVER, place: 1, phone: '+254700000020' },
+      {
+        name: 'Mary Otieno',
+        role: Role.CAREGIVER,
+        place: 1,
+        phone: '+254700000020',
+        away: false,
+        awayUntil: null,
+      },
     ]);
     const query = prisma.careAssignment.findMany.mock.calls[0][0] as { where: unknown };
     expect(query.where).toEqual({ elderlyId: 'u1', responder: { deactivatedAt: null } });

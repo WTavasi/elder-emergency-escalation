@@ -7,6 +7,10 @@ interface Detail {
   fromTier?: number;
   toTier?: number;
   recipients?: number;
+  /** How many of those told were away for a while, and so not waited for. */
+  away?: number;
+  /** Why it moved on, when not for want of an answer: everybody there was away. */
+  because?: string;
   via?: string;
   /** Where an alert was raised from: siri, assistant, widget or tile. */
   from?: string;
@@ -141,11 +145,17 @@ function dispatched(detail: Detail, chain: ChainMember[]): string {
   const tier = detail.tier ?? detail.fromTier;
   if (tier === undefined) return 'Sent to group 1';
   const names = chain.filter((member) => member.priorityOrder === tier).map((m) => m.name);
-  if (names.length === 0) {
-    const count = detail.recipients ?? 0;
-    return count === 1 ? 'Sent to 1 person' : `Sent to ${count} people`;
-  }
-  return `Sent to ${list(names)}`;
+  const count = detail.recipients ?? 0;
+  const sent =
+    names.length === 0
+      ? count === 1
+        ? 'Sent to 1 person'
+        : `Sent to ${count} people`
+      : `Sent to ${list(names)}`;
+  const away = detail.away ?? 0;
+  if (away === 0) return sent;
+  if (away >= count) return `${sent}, who ${count === 1 ? 'is' : 'are'} away, so not waited for`;
+  return `${sent}. ${away} away, so not waited for`;
 }
 
 function escalated(detail: Detail, chain: ChainMember[]): string {
@@ -153,9 +163,8 @@ function escalated(detail: Detail, chain: ChainMember[]): string {
   const names = chain
     .filter((member) => member.priorityOrder === detail.toTier)
     .map((member) => member.name);
-  return names.length === 0
-    ? 'No answer in time. Asking the next group'
-    : `No answer in time. Now asking ${list(names)}`;
+  const why = detail.because === 'away' ? 'Everyone there is away' : 'No answer in time';
+  return names.length === 0 ? `${why}. Asking the next group` : `${why}. Now asking ${list(names)}`;
 }
 
 /** "A push to Mary Otieno could not be delivered: no registered device". */

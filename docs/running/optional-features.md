@@ -185,18 +185,15 @@ deployment points the app at a tile provider with
 ## Step 9 (optional). Answer an alert by text
 
 An alert SMS can end "Reply 1 to go, 2 if you cannot", and the reply takes the
-alert on or declines it, exactly as the app's buttons do. It is off until the API is
-given a secret for the address the replies come to.
+alert on or declines it, exactly as the app's buttons do. It is off unless the API has a
+secret for the address the replies come to, `SMS_INBOUND_TOKEN`. A `backend/.env` copied
+from `.env.example` already has a local one, `local-text-replies-0123456789`, which the
+API refuses in production.
 
 **Quickest: without Africa's Talking.** Postman can post a reply the way the gateway
-would. Start the API with the secret the Postman environment already holds:
-
-```bash
-SMS_INBOUND_TOKEN=local-text-replies-0123456789 npm run dev
-```
-
-Then run folder **1. Sign in** and folder **2c. Answering by text**. The texts the
-system sends back appear in the API terminal on lines starting `[LoggingSmsProvider]`.
+would, with the secret its environment already holds. With the API running as usual, run
+folder **1. Sign in** and folder **2c. Answering by text**. The texts the system sends
+back appear in the API terminal on lines starting `[LoggingSmsProvider]`.
 
 **The real thing: the Africa's Talking sandbox and its phone simulator.** This needs the
 ngrok tunnel from Step 6, because Africa's Talking has to reach your Mac.

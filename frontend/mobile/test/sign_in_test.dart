@@ -81,6 +81,34 @@ void main() {
     expect(find.text('Terms of use'), findsOneWidget);
   });
 
+  testWidgets('its links are words in the tint, with no fill and no underline', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester);
+
+    for (final String link in <String>['Create an account', 'Privacy notice', 'Terms of use']) {
+      final TextButton button = tester.widget<TextButton>(find.widgetWithText(TextButton, link));
+      final ButtonStyle style = button.style!;
+      expect(style.backgroundColor!.resolve(<WidgetState>{}), Colors.transparent, reason: link);
+      expect(
+        style.textStyle!.resolve(<WidgetState>{})!.decoration,
+        TextDecoration.none,
+        reason: link,
+      );
+      final BuildContext context = tester.element(find.text(link));
+      expect(
+        style.foregroundColor!.resolve(<WidgetState>{}),
+        Theme.of(context).colorScheme.error,
+        reason: link,
+      );
+      // Still a full touch target.
+      expect(
+        tester.getSize(find.widgetWithText(TextButton, link)).height,
+        greaterThanOrEqualTo(44),
+      );
+    }
+  });
+
   testWidgets('does not move on without a number', (WidgetTester tester) async {
     final ({List<Map<String, dynamic>> bodies, List<Exchange> calls, AuthController auth}) t =
         await pump(tester);

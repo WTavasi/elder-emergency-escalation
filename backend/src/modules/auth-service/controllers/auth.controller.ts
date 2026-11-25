@@ -28,6 +28,8 @@ import { UpdateProfileDto } from '../validation/update-profile.dto';
 import { UpdatePreferencesDto } from '../validation/update-preferences.dto';
 import { PhoneVerificationService } from '../services/phone-verification.service';
 import { PreferencesService, type Preferences } from '../services/preferences.service';
+import { AwayService, type AwayStatus } from '../services/away.service';
+import { SetAwayDto } from '../validation/away.dto';
 import { ProfileService, type Profile } from '../services/profile.service';
 import { CodeSignInDto } from '../validation/code-sign-in.dto';
 import { ChangePhoneDto, StartPhoneChangeDto } from '../validation/change-phone.dto';
@@ -38,6 +40,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly verification: PhoneVerificationService,
     private readonly preferences: PreferencesService,
+    private readonly away: AwayService,
     private readonly profiles: ProfileService,
   ) {}
 
@@ -189,6 +192,29 @@ export class AuthController {
     @Body() dto: UpdatePreferencesDto,
   ): Promise<Preferences> {
     return this.preferences.update(user.userId, dto);
+  }
+
+  /** Whether this person is away, and until when. */
+  @Get('me/away')
+  getAway(@CurrentUser() user: AuthenticatedUser): Promise<AwayStatus> {
+    return this.away.get(user.userId);
+  }
+
+  /**
+   * Away for a while, until a time or until turned off. Alerts still reach this person,
+   * but nobody waits for their answer. Caregivers and family only.
+   */
+  @Throttle(60, 3600)
+  @Put('me/away')
+  setAway(@CurrentUser() user: AuthenticatedUser, @Body() dto: SetAwayDto): Promise<AwayStatus> {
+    return this.away.set(user.userId, user.role, dto.until ? new Date(dto.until) : null);
+  }
+
+  /** Back: asked and waited for again from now. */
+  @Throttle(60, 3600)
+  @Delete('me/away')
+  clearAway(@CurrentUser() user: AuthenticatedUser): Promise<AwayStatus> {
+    return this.away.clear(user.userId);
   }
 
   /** Stop sending this account push notifications, for a phone that turned them off. */

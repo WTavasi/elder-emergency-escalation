@@ -7,9 +7,10 @@
  * times in a row reaches the limit. Waiting works too; this saves the wait without
  * switching the limits off.
  *
- * Clears only counters: the per-route request counts and the sign-up code cooldown and
- * hourly count. Codes already sent, sessions, timers and the delivery queue are left
- * alone. Refuses to touch any Redis that is not on this machine.
+ * Clears only counters: the per-route request counts, the sign-up code cooldown and
+ * hourly count, and the limit on text replies from one phone. Codes already sent,
+ * sessions, timers and the delivery queue are left alone. Refuses to touch any Redis that
+ * is not on this machine.
  *
  * Usage: npm run dev:clear-limits -w @mzazicare/api
  */
@@ -45,7 +46,8 @@ try {
   process.exit(1);
 }
 
-const patterns = ['ratelimit:*', 'verify:cooldown:*', 'verify:count:*'];
+// Kept in step with LIMIT_PATTERNS in src/modules/dev-tools/services/dev-tools.service.ts.
+const patterns = ['ratelimit:*', 'verify:cooldown:*', 'verify:count:*', 'sms-reply:*'];
 let cleared = 0;
 
 for (const pattern of patterns) {

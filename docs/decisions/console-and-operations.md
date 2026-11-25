@@ -30,3 +30,26 @@ read by Docker Compose alone and holds only `POSTGRES_PORT` and `REDIS_PORT`.
 
 They were briefly the same file, which is how the published database port and
 `DATABASE_URL` came to disagree without anything reporting it. One secret has one home.
+
+## The Postman collection runs from start to finish, as often as you like
+
+On 25 November 2026, run as a whole collection on a setup made by following the first-run
+guide, 25 requests failed: answering by text was off, because `.env.example` left its
+secret empty; five folders needed a code copied from the terminal; and repeated runs hit
+the sign-in and code limits.
+
+**A local secret in `.env.example`.** `SMS_INBOUND_TOKEN` now has a value for this machine,
+the one the collection sends, and the API refuses to start in production with it.
+
+**Two endpoints for testing, and only for testing.** `GET /dev/texts` lets an administrator
+read the texts the logging provider printed, which is where the collection finds a code;
+`POST /dev/clear-limits` clears the rate-limit counters, as `npm run dev:clear-limits`
+does. Both answer 404 in production and whenever a real SMS provider is set: with real
+texts, reading a code back would let anybody skip proving they hold the phone.
+
+**Checks that wait for the background.** A decline and a text reply are acted on a moment
+after the request. The checks that read the result look again for up to five seconds
+rather than assuming it is instant.
+
+**New numbers each run.** Signing up uses fresh numbers every time, so a run never meets
+the accounts the last one made. Verified with five full runs in a row.
