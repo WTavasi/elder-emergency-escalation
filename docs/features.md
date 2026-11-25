@@ -166,6 +166,25 @@ Without the app, or without data, the same people get a text message and can ans
 </tr>
 </table>
 
+### Away for a while
+
+<table>
+<tr>
+<td align="center"><img src="images/app/carer-away-choose.png" width="200" alt="How long will you be away?"><br><sub>Away, for how long</sub></td>
+<td align="center"><img src="images/app/carer-away-on.png" width="200" alt="Away until 18:00"><br><sub>Away, on their own page</sub></td>
+<td align="center"><img src="images/app/carer-away-alerts.png" width="200" alt="You're away, on the alerts"><br><sub>On the alerts, one tap from back</sub></td>
+</tr>
+</table>
+
+- A caregiver or family member who cannot help for now turns on **Away** in Me, and
+  chooses for 1 hour, for 4 hours, until tomorrow morning, or until they turn it off.
+- They still get every alert, saying they are marked away, and can still take one on.
+  Nobody waits for their answer: if everyone asked at a step is away, the next people
+  are asked straight away. The emergency services, the last step, are never skipped.
+- If going away leaves an elder with nobody else, the page says so.
+- The elder's list of people to call, and the care circle, show who is away.
+- It ends by itself at the time chosen.
+
 ### Care circles
 
 <table>

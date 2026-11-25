@@ -28,6 +28,9 @@ the REST Client extension and a **Send Request** link appears above each one.
 | POST | `/api/v1/auth/change-password` | bearer | `{ currentPassword, newPassword }`; returns fresh tokens and ends every other session |
 | GET | `/api/v1/auth/me/preferences` | bearer | `{ shareWayThere }`, the defaults until something is changed |
 | PATCH | `/api/v1/auth/me/preferences` | bearer | Change any of them; only the named fields change |
+| GET | `/api/v1/auth/me/away` | bearer | `{ away, since, until }`: whether the caller is away for a while, and until when (`until: null` while away means until they turn it off) |
+| PUT | `/api/v1/auth/me/away` | caregiver, family | `{ until? }`: away from now until that time, or until turned off when it is null or missing. At most 30 days ahead; 400 for a time already past. Also returns `nobodyElseFor`, the elders whose whole circle is now away. 403 for any other role |
+| DELETE | `/api/v1/auth/me/away` | bearer | Back: asked and waited for again from now |
 | POST | `/api/v1/auth/code` | none | `{ phone }`: texts an elder a sign-in code. Only an active elder's number is sent one. Always 202 |
 | POST | `/api/v1/auth/code/verify` | none | `{ phone, code }`: an elder signs in with a texted code or their caregiver's pairing code |
 | POST | `/api/v1/auth/me/phone/code` | bearer | `{ phone, password }`: a code to the number the account is moving to. No password for an elder. 409 if the number is taken |
@@ -83,6 +86,29 @@ from Google's issuer, unexpired, and for a verified address. The address then ha
 the email on an existing administrator account: nothing is ever created by it, and any
 other role is refused, because every other account belongs in the app, where the phone
 number is the handle. Setting it up: [Google sign-in on the console](running/google-sign-in.md).
+
+### Away for a while
+
+A caregiver or family member who cannot help for now marks themselves away, until a time or
+until they turn it off. They are still told about every alert, with "You're marked away, so
+others are being asked too", and they can still take it on. What changes is that nobody
+waits for their answer: their notification is marked `informedOnly`, a step where
+everybody asked is away moves on at once instead of when its time runs out, and a decline
+by the last person who is not away moves it on as before. The last step, the emergency
+services, is never skipped. The trail shows it: `TIER_DISPATCHED` carries `away` (how many
+were told for information only), and the `ESCALATED` that follows carries
+`because: "away"`. Past `until`, a person is simply back; nothing has to clear it.
+
+### For testing on one machine
+
+Two endpoints exist only when `NODE_ENV` is not `production` and texts are printed rather
+than sent (`SMS_PROVIDER=logging`). Anywhere else they answer 404. The Postman collection
+uses them to run from start to finish without anybody typing a code.
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/dev/texts?to=+254…` | administrator | The last texts printed for that number, newest first |
+| POST | `/api/v1/dev/clear-limits` | none | Clears the rate-limit counters, as `npm run dev:clear-limits` does |
 
 ## Emergencies
 
@@ -338,7 +364,7 @@ says the person came back rather than losing that a stay ever happened.
 | GET | `/api/v1/elders` | caregiver, family | The elders the caller looks after, with their own rank |
 | POST | `/api/v1/elders` | caregiver | Register an elder; the caregiver becomes tier one |
 | GET | `/api/v1/elders/address-search?q=` | caregiver, family, administrator, volunteer | Coordinates for an address |
-| GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees |
+| GET | `/api/v1/elders/:id/chain` | care chain, administrator | Who is asked, in order, and places held for invitees. Each person carries `away` and `awayUntil` |
 | POST | `/api/v1/elders/:id/chain` | caregiver in that chain | Add a family member by phone |
 | DELETE | `/api/v1/elders/:id/chain/:entryId` | caregiver in that chain | Remove a family member, or withdraw a held place |
 | PUT | `/api/v1/elders/:id/chain/order` | caregiver in that chain, administrator | `{ entries: [{ id, tier }] }`: who is asked first. Every caregiver, family member and held place exactly once, each at a rank in `personTiers` (1 or 2); somebody with an account at the first. 409 while an emergency is open. Texts the elder and everybody moved |

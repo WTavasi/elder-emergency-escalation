@@ -2,9 +2,27 @@
 
 A Postman collection with every endpoint, already filled in, is in
 [`docs/postman/`](postman/). It signs each test account in for you, saves the tokens, and
-checks every answer, so most of it is a matter of pressing Run.
+checks every answer.
 
-This guide goes in small steps. Do them in order the first time.
+## The quick way: run everything
+
+On your own machine, the whole collection runs from start to finish with one click, as
+often as you like:
+
+1. Start the API (Part 1) and import the collection and environment (Part 2).
+2. Hover over **MzaziCare API**, click the three dots, choose **Run collection**, then
+   click **Run MzaziCare API**.
+
+Every request should be green. Or, from the terminal, see Part 8.
+
+It needs nothing typed in, because on a local API that prints texts instead of sending
+them, the collection reads the sign-up and reset codes itself and clears the sign-in and
+code limits before it starts. That help is switched off in production and whenever a real
+SMS provider is set, and there the parts that need a code (5, 6 and 8c) need it typed in,
+as Parts 5 and 6 describe. Each run signs up with new phone numbers, so a second run never
+meets the first one's accounts.
+
+The rest of this guide goes through it in small steps, for when you want to see each part.
 
 ---
 
@@ -13,8 +31,13 @@ This guide goes in small steps. Do them in order the first time.
 ### 1.1 The API has to be running
 
 Follow [the terminal guide](running/terminal.md), steps 1 to 4: Docker Desktop open, Postgres and
-Redis started, then `npm run dev`. Leave that terminal open; you will read sign-up codes
-from it later.
+Redis started, then `npm run dev`. Leave that terminal open: it shows what the API is
+doing, including every text it would have sent.
+
+`backend/.env` should be a copy of `.env.example` with the two JWT secrets filled in, as in
+[the first run](running/first-run.md). In particular, `SMS_INBOUND_TOKEN` must be
+`local-text-replies-0123456789`, the value the collection sends texts with; with it empty,
+answering and asking by text are off and folders 2c and 2g fail.
 
 Check it in a browser: open http://localhost:3000/health. You should see
 `"status":"ok"`.
@@ -105,11 +128,12 @@ second way is the better one for a demonstration.
 | --- | --- |
 | **2. An emergency, start to finish** | Grace raises an alert, Mary sees it in her list, opens it, takes it on and closes it |
 | **2b. On the way, and arriving** | Mary turns on sharing, takes Grace's alert on, shares a position about 2 km away (an ETA comes back), Grace sees the time but not the position, the family member sees both, Mary reaches the gate and it becomes ON_SCENE with the arrival time, then she closes it and turns sharing off |
-| **2c. Answering by text** | Grace raises an alert and Mary answers it by text with 1, as the SMS gateway would post it; the alert is hers, marked as answered by text; a second 1 changes nothing; a number nobody has gets no reply; a wrong secret finds nothing. Needs the API started with `SMS_INBOUND_TOKEN=local-text-replies-0123456789` (see [running.md](running/README.md), Step 9) |
-| **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([running.md](running/README.md), Step 10); without one the requests check for 503 instead |
-| **2e. Daily check-ins** | Mary sets up a check-in for Grace and it waits for her; only Grace can agree, and does; Mary sees it on with the last answers; Grace says she is all right; four times a day and the console changing it are refused; Grace turns it off herself. To watch one actually asked and missed, see [running.md](running/README.md), Step 11 |
+| **2c. Answering by text** | Grace raises an alert and Mary answers it by text with 1, as the SMS gateway would post it; the alert is hers, marked as answered by text; a second 1 changes nothing; a number nobody has gets no reply; a wrong secret finds nothing. Needs `SMS_INBOUND_TOKEN=local-text-replies-0123456789` in `backend/.env`, as `.env.example` has it |
+| **2d. Talking through the app** | Mary asks to talk to Grace and gets a token for that emergency's room; Grace's alert then says Mary started a call; the console is refused. Needs a LiveKit project in `backend/.env` ([trying each feature](running/optional-features.md), Step 10); without one the requests check for 503 instead |
+| **2e. Daily check-ins** | Mary sets up a check-in for Grace and it waits for her; only Grace can agree, and does; Mary sees it on with the last answers; Grace says she is all right; four times a day and the console changing it are refused; Grace turns it off herself. To watch one actually asked and missed, see [trying each feature](running/optional-features.md), Step 11 |
 | **2f. Community volunteers** | Daniel, a seeded volunteer near Grace, signs in and is available; Mary agrees to volunteers for Grace and Grace confirms; Grace raises an alert, and twelve seconds later, once it is critical, Daniel is asked and told how far but not who or where; he accepts and is told; Mary still has the alert to take; a volunteer cannot open the alert itself; he arrives; Mary closes it and Daniel's view loses Grace's details; the vetting queue shows Faith waiting. Run `npm run db:seed` once after pulling this change, and re-import the environment for `volunteerPhone` |
 | **2g. Asking for help by text** | Grace has no data, so she texts HELP, as the SMS gateway would post it; Mary has an alert for her; its trail says it came by text and that there was no cancel window; Grace texting "msaada" while it is open, and Mary texting "help", raise nothing more; Mary closes it. Needs the same `SMS_INBOUND_TOKEN` as 2c, and Grace with no alert open when it starts |
+| **2h. Away for a while** | Mary marks herself away; Grace's circle shows it; Grace presses for help and it goes straight on to the family, with the trail saying Mary was told but not waited for, and why it moved on; Mary can still take it on, and closes it; then she is back. An elder cannot be away, and a time already past is refused. Folder **1. Sign in** ends by making sure Mary is not away, in case an earlier run stopped half way |
 | **3. Declining moves it on** | Mary cannot come, so tier 2 is asked at once; the family member takes it on, calls in a responder and closes it |
 | **4. Withdrawing and reopening** | Grace withdraws inside the 10 second grace window; Mary reopens it because she could not reach her |
 
@@ -126,7 +150,9 @@ alert, which is easy with Run folder and tight by hand.
 
 ## Part 5. Signing up
 
-This one needs a value you type yourself: the code that would be sent by SMS.
+This one needs the code that would be sent by SMS. On your own machine the collection
+reads it for you: send **Send a code**, then **Create the account**, and that is all.
+Against an API that really sends texts, do it by hand:
 
 1. Open **5. Signing up → Send a code** and click **Send**. The answer is `202 Accepted`
    with nothing in it.
@@ -140,15 +166,15 @@ This one needs a value you type yourself: the code that would be sent by SMS.
 4. Open **Create the account** and click **Send**. `201 Created` means the account exists,
    and its token is saved as `newToken`.
 
-Each phone number can only sign up once. To sign up again, change `newPhone` in the
-environment to another number, for example `+254712345677`.
+Each phone number can only sign up once, so **Send a code** picks new numbers for this
+part, the elder in Part 6 and the relative added there, every time it is sent.
 
 The same number can only be sent one code every 30 seconds, so if nothing appears in the
 terminal, wait half a minute and send again.
 
-To try a forgotten password, run folder **8c. Forgotten password** the same way: send the
-first request, copy the code from the line ending `password reset code` into the
-`resetCode` variable, then send the second.
+To try a forgotten password, run folder **8c. Forgotten password** the same way. By hand:
+send the first request at least 30 seconds after signing up, copy the code from the line
+ending `password reset code` into the `resetCode` variable, then send the second.
 
 ---
 
@@ -163,8 +189,8 @@ This uses the account you made in Part 5, which is a caregiver.
    and it allows one search a second across everybody: do not run it in a loop. Without
    internet it answers `503`, and the next requests use the home the environment already
    has, Kileleshwa.
-3. **Send a code to the elder's phone**, then copy that code from the API terminal into
-   the `elderCode` variable, as in Part 5.
+3. **Send a code to the elder's phone**. On your own machine the code is read for you;
+   otherwise copy it from the API terminal into the `elderCode` variable, as in Part 5.
 4. **Register the elder**. The answer shows `myTier: 1`: the caregiver is first in the
    new elder's chain.
 5. **The elder's chain** lists who is asked, in order.
@@ -210,26 +236,19 @@ API running:
 
 ```bash
 npx newman run docs/postman/MzaziCare.postman_collection.json \
-  -e docs/postman/MzaziCare.local.postman_environment.json \
-  --folder "0. Is it running" \
-  --folder "1. Sign in" \
-  --folder "2. An emergency, start to finish" \
-  --folder "3. Declining moves it on" \
-  --folder "4. Withdrawing and reopening" \
-  --folder "7. Where an elder is staying" \
-  --folder "8. Reporting" \
-  --folder "8d. Accounts (administrator)" \
-  --folder "9. Things that must be refused" \
-  --folder "10. Later additions: medical, order, policy"
+  -e docs/postman/MzaziCare.local.postman_environment.json
 ```
 
-The first time, `npx` asks to install Newman; answer `y`. Folders 5 and 6 are left out
-because they need a code typed in by hand, and 6b, 8b and 8c with them, because they use the
-account and elder made there. The story folders, 2b to 2g, run the same way: add a
-`--folder` line for each, with the API started with `SMS_INBOUND_TOKEN` for 2c and 2g. Clear
-the sign-in limits first (Part 10) if you have already run it a few times.
+The first time, `npx` asks to install Newman; answer `y`. That runs every folder, in
+order, as **Run collection** does in the app: about 160 requests and 260 checks, in under
+half a minute. Run it as often as you like.
 
-At the end it prints a table. Every row in the **failed** column should be 0.
+At the end it prints a table. Every row in the **failed** column should be 0. If not, the
+line under the table names the request; Part 10 says what the usual answers mean.
+
+To run only some folders, add a `--folder "<name>"` for each, for example
+`--folder "1. Sign in" --folder "3. Declining moves it on"`. Folder 1 always comes first,
+because the others use its tokens.
 
 ---
 
@@ -264,9 +283,10 @@ expired token is disconnected straight away.
 | `429 Too Many Requests` | A rate limit. Wait, or see below |
 
 **Rate limits.** Sign-in allows 20 attempts in 5 minutes and sign-up codes 10 an hour from
-one address. A full run of the collection signs in about nine times, and the app and the
-console count too, so running it two or three times in a row reaches the limit and **1.
-Sign in** starts answering `429`. Clear the counters and carry on, with no restart:
+one address, and one phone may send 6 text replies in 10 minutes. On your own machine the
+collection clears these counters itself, in **0. Is it running**. If you run single
+requests or folders over and over, or the app and the console used up the sign-ins, **1.
+Sign in** can start answering `429`. Clear the counters and carry on, with no restart:
 
 ```bash
 npm run dev:clear-limits -w @mzazicare/api

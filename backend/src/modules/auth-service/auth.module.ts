@@ -8,6 +8,7 @@ import { GoogleIdentityService } from './services/google-identity.service';
 import { PasswordService } from './services/password.service';
 import { PhoneVerificationService } from './services/phone-verification.service';
 import { PreferencesService } from './services/preferences.service';
+import { AwayService } from './services/away.service';
 import { ProfileService } from './services/profile.service';
 import { TokenService } from './services/token.service';
 
@@ -24,6 +25,7 @@ import { TokenService } from './services/token.service';
     GoogleIdentityService,
     AccessRevocationService,
     PreferencesService,
+    AwayService,
     ProfileService,
   ],
   exports: [PasswordService, TokenService, PhoneVerificationService, AccessRevocationService],

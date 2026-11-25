@@ -8,6 +8,7 @@ import { DirectSmsService } from './services/direct-sms.service';
 import { NotificationsService } from './services/notifications.service';
 import { AfricasTalkingSmsProvider } from './providers/africas-talking-sms.provider';
 import { FcmPushProvider } from './providers/fcm-push.provider';
+import { DevOutbox } from './providers/dev-outbox';
 import { createFcmMessaging } from './providers/firebase.factory';
 import { LoggingPushProvider, LoggingSmsProvider } from './providers/logging-push.provider';
 import { PUSH_PROVIDER, type PushProvider } from './providers/push.provider';
@@ -59,10 +60,11 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
           : new LoggingPushProvider();
       },
     },
+    DevOutbox,
     {
       provide: SMS_PROVIDER,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService): SmsProvider => {
+      inject: [ConfigService, DevOutbox],
+      useFactory: (config: ConfigService, outbox: DevOutbox): SmsProvider => {
         const choice = config.get<string>('SMS_PROVIDER', 'logging');
         assertUsableInProduction(config, 'SMS_PROVIDER', choice);
 
@@ -80,10 +82,14 @@ function assertUsableInProduction(config: ConfigService, channel: string, provid
           'SMS provider: logging. Texts are printed in this terminal, not sent. To reach the ' +
             "Africa's Talking simulator, restart with SMS_PROVIDER=africastalking.",
         );
-        return new LoggingSmsProvider();
+        // Kept for the development tools only outside production; the logging provider
+        // cannot start in production anyway.
+        return new LoggingSmsProvider(
+          config.get<string>('NODE_ENV') === 'production' ? undefined : outbox,
+        );
       },
     },
   ],
-  exports: [NotificationsService, DirectSmsService, PUSH_PROVIDER],
+  exports: [NotificationsService, DirectSmsService, PUSH_PROVIDER, DevOutbox],
 })
 export class NotificationsModule {}

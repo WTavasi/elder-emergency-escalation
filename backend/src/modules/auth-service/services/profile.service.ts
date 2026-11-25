@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../../../db/prisma.service';
+import { awayOf } from '../../../shared/utils/away';
 import { HELP_WORD } from '../../notification-service/services/notification-content';
 
 /** Where this person sits in one elder's chain. Place 1 is asked first. */
@@ -26,6 +27,9 @@ export interface Carer {
   role: Role;
   place: number;
   phone: string;
+  /** Away for a while: still callable, but not waited for when the elder asks for help. */
+  away: boolean;
+  awayUntil: string | null;
 }
 
 /** Where an elder texts to ask for help when the app cannot reach the server. */
@@ -127,7 +131,9 @@ export class ProfileService {
       orderBy: [{ priorityOrder: 'asc' }, { assignedAt: 'asc' }],
       select: {
         priorityOrder: true,
-        responder: { select: { name: true, role: true, phone: true } },
+        responder: {
+          select: { name: true, role: true, phone: true, awaySince: true, awayUntil: true },
+        },
       },
     });
     return rows.map((row) => ({
@@ -135,6 +141,7 @@ export class ProfileService {
       role: row.responder.role,
       place: row.priorityOrder,
       phone: row.responder.phone,
+      ...awayOf(row.responder),
     }));
   }
 

@@ -77,6 +77,9 @@ after.
 - **Medical details.** With the elder's own consent, the people asked to help see what
   changes what they should do: blood thinners, allergies, conditions. Every look is
   recorded and the elder can see who looked.
+- **Away for a while.** A caregiver or family member who cannot help for now marks
+  themselves away. They are still told about alerts, but nobody waits for them: the next
+  people are asked straight away.
 - **Daily check-ins.** Optional. "Are you all right?" at agreed times. A missed check-in
   becomes an ordinary alert.
 - **Voice.** "Hey Siri, MzaziCare help" raises the alert. After the press, the elder can

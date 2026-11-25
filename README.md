@@ -28,7 +28,7 @@ both. **It is not a medical device** and does not replace emergency services.
 | Measure | Result |
 | --- | --- |
 | **System tests** | All 12 passed (TC-01 to TC-12), from raising an alert to closing it |
-| **Automated tests** | 1,417 passing: 914 server, 21 integration, 388 app, 94 console |
+| **Automated tests** | 1,450 passing: 935 server, 21 integration, 400 app, 94 console |
 | **Escalation speed** | An unanswered alert moved to the next group 57 ms after its time limit |
 | **Two people answering at once** | Exactly one accepted, in 20 of 20 trials |
 | **Live updates** | The elder's circle saw a change in 16 ms, and an outsider saw nothing |

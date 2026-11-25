@@ -47,6 +47,10 @@ enum Role {
   /// Whether this role can be on its way to somebody, and so share its location: those
   /// who take emergencies on, and a community volunteer who said they would go.
   bool get travels => responds || this == Role.communityResponder;
+
+  /// Whether this role can say it is away for a while: the people in a care circle.
+  /// An emergency service is always on duty, and an elder is the one being helped.
+  bool get canBeAway => this == Role.caregiver || this == Role.familyMember;
 }
 
 enum EventState {
@@ -532,6 +536,30 @@ class Preferences {
       Preferences(shareWayThere: json['shareWayThere'] as bool? ?? false);
 }
 
+/// Away for a while: whether this person is, and until when.
+class AwayStatus {
+  const AwayStatus({required this.away, this.until, this.nobodyElseFor = const <String>[]});
+
+  static const AwayStatus here = AwayStatus(away: false);
+
+  final bool away;
+
+  /// When they will be back. Null while away means until they turn it off.
+  final DateTime? until;
+
+  /// The elders who, with this person away, have nobody left who is not: their alerts go
+  /// straight to the emergency services. Only told on going away.
+  final List<String> nobodyElseFor;
+
+  factory AwayStatus.fromJson(Map<String, dynamic> json) => AwayStatus(
+    away: json['away'] as bool? ?? false,
+    until: _date(json['until']),
+    nobodyElseFor: (json['nobodyElseFor'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<String>()
+        .toList(),
+  );
+}
+
 /// One emergency as a row in a responder's list.
 ///
 /// The API projects this for every client, so the fields are the ones a person acting
@@ -712,6 +740,8 @@ class TimelineEntry {
     this.tier,
     this.toTier,
     this.recipients,
+    this.away,
+    this.because,
     this.outcome,
     this.byText = false,
     this.trigger,
@@ -755,6 +785,12 @@ class TimelineEntry {
   final int? tier;
   final int? toTier;
   final int? recipients;
+
+  /// How many of those told were away for a while, and so not waited for.
+  final int? away;
+
+  /// Why it moved on, when not for want of an answer: `away`, everybody there was.
+  final String? because;
   final String? outcome;
 
   /// Answered by replying to the alert SMS rather than in the app.
@@ -789,6 +825,8 @@ class TimelineEntry {
       tier: asInt(d['tier']) ?? asInt(d['fromTier']),
       toTier: asInt(d['toTier']),
       recipients: asInt(d['recipients']),
+      away: asInt(d['away']),
+      because: d['because'] is String ? d['because'] as String : null,
       outcome: d['outcome'] as String?,
       byText: d['via'] == 'sms',
       trigger: d.containsKey('trigger') ? AlertTrigger.parse(d['trigger']) : null,
@@ -986,6 +1024,8 @@ class ChainPlace {
     this.removable = false,
     this.movable = false,
     this.role,
+    this.away = false,
+    this.awayUntil,
   });
 
   /// The care assignment's id, or the invitation's while the place is only held.
@@ -1003,6 +1043,12 @@ class ChainPlace {
   /// services cannot: they are always asked last.
   final bool movable;
 
+  /// Away for a while: told about an alert, but not waited for.
+  final bool away;
+
+  /// When they will be back. Null while away means until they turn it off.
+  final DateTime? awayUntil;
+
   factory ChainPlace.fromJson(Map<String, dynamic> json) {
     final Object? role = json['role'];
     return ChainPlace(
@@ -1014,6 +1060,8 @@ class ChainPlace {
       isInvited: json['status'] == 'invited',
       removable: json['removable'] as bool? ?? false,
       movable: json['movable'] as bool? ?? false,
+      away: json['away'] as bool? ?? false,
+      awayUntil: _date(json['awayUntil']),
     );
   }
 }
@@ -1812,12 +1860,23 @@ class ResponseRecord {
 
 /// One of an elder's carers, in the order they are asked.
 class Carer {
-  const Carer({required this.name, required this.role, required this.place, required this.phone});
+  const Carer({
+    required this.name,
+    required this.role,
+    required this.place,
+    required this.phone,
+    this.away = false,
+    this.awayUntil,
+  });
 
   final String name;
   final Role role;
   final int place;
   final String phone;
+
+  /// Away for a while: still there to call, but not waited for when help is asked.
+  final bool away;
+  final DateTime? awayUntil;
 
   /// First name only, as a person would say it: "Call Mary".
   String get firstName {
@@ -1830,6 +1889,8 @@ class Carer {
     role: Role.parse(json['role'] as String? ?? 'CAREGIVER'),
     place: (json['place'] as num?)?.toInt() ?? 1,
     phone: json['phone'] as String? ?? '',
+    away: json['away'] as bool? ?? false,
+    awayUntil: _date(json['awayUntil']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1837,6 +1898,8 @@ class Carer {
     'role': role.wire,
     'place': place,
     'phone': phone,
+    'away': away,
+    'awayUntil': awayUntil?.toUtc().toIso8601String(),
   };
 }
 

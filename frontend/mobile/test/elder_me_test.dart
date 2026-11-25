@@ -31,6 +31,14 @@ void main() {
                 'place': 1,
                 'phone': '+254700000020',
               },
+              <String, dynamic>{
+                'name': 'Aisha Wanjiru',
+                'role': 'FAMILY_MEMBER',
+                'place': 2,
+                'phone': '+254700000030',
+                'away': true,
+                'awayUntil': null,
+              },
             ],
           })
         else if (request.url.path.endsWith('/services'))
@@ -92,6 +100,8 @@ void main() {
     expect(find.text('CALL YOUR PEOPLE'), findsOneWidget);
     expect(find.text('Call Mary'), findsOneWidget);
     expect(find.text('Mary Otieno, caregiver, asked first'), findsOneWidget);
+    // Somebody away can still be called; the row says they are away.
+    expect(find.text('Aisha Wanjiru, family, away'), findsOneWidget);
     expect(
       tester.getCenter(find.text('Call Mary')).dy,
       lessThan(tester.getCenter(find.text('HELP NEARBY')).dy),
@@ -109,14 +119,8 @@ void main() {
     await tester.tap(find.text('Emergency services near you'));
     await tester.pumpAndSettle();
     expect(find.text('Kileleshwa Response Unit'), findsOneWidget);
-    expect(
-      find.text("Asked if your family can't come. About 5 minutes away"),
-      findsOneWidget,
-    );
-    expect(
-      find.text("Asked if you're not safe. About 4 minutes away by road"),
-      findsOneWidget,
-    );
+    expect(find.text("Asked if your family can't come. About 5 minutes away"), findsOneWidget);
+    expect(find.text("Asked if you're not safe. About 4 minutes away by road"), findsOneWidget);
   });
 
   testWidgets('asks before signing out, and staying changes nothing', (WidgetTester tester) async {

@@ -35,6 +35,7 @@ Map<String, dynamic> chainBody({
   bool withFamily = true,
   bool twoFamily = false,
   bool aishaFirst = false,
+  bool aishaAway = false,
 }) => <String, dynamic>{
   'elderId': 'elder-1',
   'elderName': 'Grace Wanjiru',
@@ -62,6 +63,8 @@ Map<String, dynamic> chainBody({
         'status': 'member',
         'removable': canEdit,
         'movable': canEdit,
+        'away': aishaAway,
+        'awayUntil': null,
       },
     if (twoFamily)
       <String, dynamic>{
@@ -86,6 +89,7 @@ void main() {
     bool atHome = true,
     bool withheld = false,
     bool twoFamily = false,
+    bool aishaAway = false,
   }) async {
     bool removed = false;
     bool reordered = false;
@@ -113,6 +117,7 @@ void main() {
               withFamily: !removed,
               twoFamily: twoFamily,
               aishaFirst: reordered,
+              aishaAway: aishaAway,
             ),
           ),
         ];
@@ -182,6 +187,15 @@ void main() {
     // The caregiver, alone in theirs, is not.
     expect(find.text('Caregiver'), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets('says who is away, so the caregiver knows who will not be waited for', (
+    WidgetTester tester,
+  ) async {
+    await pump(tester, aishaAway: true);
+
+    expect(find.text('Family · Away'), findsOneWidget);
+    expect(find.text('Caregiver'), findsOneWidget);
   });
 
   testWidgets('one family member is simply family', (WidgetTester tester) async {

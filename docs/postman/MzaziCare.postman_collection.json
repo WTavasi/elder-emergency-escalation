@@ -67,6 +67,34 @@
               }
             }
           ]
+        },
+        {
+          "name": "Clear the limits (on this machine only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Starts the sign-in and code limits from zero, so the collection can run again and",
+                  "// again. Only on a local API that prints texts; anywhere else it answers 404, and the",
+                  "// limits stay as they are.",
+                  "pm.test('cleared, or not offered here', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/dev/clear-limits",
+              "host": ["{{apiBase}}"],
+              "path": ["dev", "clear-limits"]
+            },
+            "description": "Development only. Clears the rate-limit counters, as `npm run dev:clear-limits -w @mzazicare/api` does."
+          },
+          "response": []
         }
       ]
     },
@@ -413,6 +441,44 @@
               }
             }
           ]
+        },
+        {
+          "name": "Mary is not away, from an earlier run",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A run stopped in the middle of 2h could leave Mary away, and every story after it",
+                  "// expects her to be asked first.",
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('not away', () => pm.expect(pm.response.json().away).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         }
       ]
     },
@@ -1300,6 +1366,26 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Acting on a text reply happens a moment after the request before it, in the background. Look",
+                  "// again every quarter second, for up to five seconds, before this request reads it.",
+                  "const ready = (b) => Boolean(b.acknowledgedBy);",
+                  "const look = (tries) => pm.sendRequest({",
+                  "  url: pm.variables.replaceIn(pm.request.url.toString()),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.variables.replaceIn(pm.request.auth.parameters().get('token')) },",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200 && ready(res.json())) return;",
+                  "  if (tries > 0) setTimeout(() => look(tries - 1), 250);",
+                  "});",
+                  "look(20);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -3133,6 +3219,26 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Raising an alert from a text happens a moment after the request before it, in the background. Look",
+                  "// again every quarter second, for up to five seconds, before this request reads it.",
+                  "const ready = (list) => list.some((a) => a.elder.name === 'Grace Wanjiru');",
+                  "const look = (tries) => pm.sendRequest({",
+                  "  url: pm.variables.replaceIn(pm.request.url.toString()),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.variables.replaceIn(pm.request.auth.parameters().get('token')) },",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200 && ready(res.json())) return;",
+                  "  if (tries > 0) setTimeout(() => look(tries - 1), 250);",
+                  "});",
+                  "look(20);"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -3352,6 +3458,17 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The two texts before this are handled in the background. Give them a second, so a",
+                  "// second alert, if one were wrongly raised, would be here to find.",
+                  "setTimeout(() => {}, 1000);"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -3411,6 +3528,476 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "2h. Away for a while",
+      "description": "Mary marks herself away. Grace presses for help: Mary is still told, but nobody waits for her, so the family are asked at once, and the trail says why. Mary can still take it on. Then she is back. An elder cannot be away, and a time already past is refused. Grace must have no alert open when it starts.",
+      "item": [
+        {
+          "name": "Mary goes away, until she turns it off",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('away, with no end', () => { pm.expect(body.away).to.eql(true); pm.expect(body.until).to.eql(null); });",
+                  "pm.test('says which elders are left with nobody else', () => pm.expect(body.nobodyElseFor).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Away until she turns it off. Alerts still reach her; nobody waits for her answer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"until\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mary is away",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('away', () => pm.expect(pm.response.json().away).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Grace's circle shows her away",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const mary = pm.response.json().entries.find((e) => e.name === 'Mary Otieno');",
+                  "pm.test('Mary is marked away', () => pm.expect(mary.away).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/elders/{{elderId}}/chain",
+              "host": ["{{apiBase}}"],
+              "path": ["elders", "{{elderId}}", "chain"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Grace raises an alert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('alertId', body.id ?? body.eventId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "It went straight on to the family",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asking the next step happens just after the alert is raised. Look again every quarter",
+                  "// second, for up to five seconds, before this request reads it.",
+                  "const ready = (b) => b.currentTier >= 2;",
+                  "const look = (tries) => pm.sendRequest({",
+                  "  url: pm.variables.replaceIn(pm.request.url.toString()),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.variables.replaceIn(pm.request.auth.parameters().get('token')) },",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200 && ready(res.json())) return;",
+                  "  if (tries > 0) setTimeout(() => look(tries - 1), 250);",
+                  "});",
+                  "look(20);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('the family are being asked', () => pm.expect(body.currentTier).to.be.at.least(2));",
+                  "const sent = body.timeline.find((e) => e.action === 'TIER_DISPATCHED' && e.detail && e.detail.tier === 1);",
+                  "pm.test('Mary was told, and marked away', () => pm.expect(sent.detail.away).to.eql(1));",
+                  "const moved = body.timeline.find((e) => e.action === 'ESCALATED' && e.detail && e.detail.fromTier === 1);",
+                  "pm.test('the trail says it moved on because she is away', () => pm.expect(moved.detail.because).to.eql('away'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Mary can still take it on",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/acknowledge",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "acknowledge"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Away is not out: somebody away can still say they are on their way.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mary closes it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/alerts/{{alertId}}/resolve",
+              "host": ["{{apiBase}}"],
+              "path": ["alerts", "{{alertId}}", "resolve"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"HANDLED_AT_HOME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mary is back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('not away', () => pm.expect(pm.response.json().away).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "An elder cannot be away",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('answers 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{elderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"until\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A time already past is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('answers 400', () => pm.response.to.have.status(400));",
+                  "pm.test('says why', () => pm.expect(pm.response.json().message).to.include('still to come'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiBase}}/auth/me/away",
+              "host": ["{{apiBase}}"],
+              "path": ["auth", "me", "away"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{caregiverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"until\": \"2020-01-01T00:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3536,6 +4123,26 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Moving on after a decline happens a moment after the request before it, in the background. Look",
+                  "// again every quarter second, for up to five seconds, before this request reads it.",
+                  "const ready = (b) => b.currentTier >= 2;",
+                  "const look = (tries) => pm.sendRequest({",
+                  "  url: pm.variables.replaceIn(pm.request.url.toString()),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.variables.replaceIn(pm.request.auth.parameters().get('token')) },",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200 && ready(res.json())) return;",
+                  "  if (tries > 0) setTimeout(() => look(tries - 1), 250);",
+                  "});",
+                  "look(20);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -3925,7 +4532,7 @@
     },
     {
       "name": "5. Signing up",
-      "description": "Needs one value you type yourself: the code. Send the first request, find the code in the terminal running the API (a line ending 'is your MzaziCare code'), put it in the environment's `code` variable, then send the second.",
+      "description": "Signs a new caregiver up. On this machine the code is read for you from the API's development tools. Against any other API, send the first request, find the code in the terminal running the API (a line ending 'is your MzaziCare code'), put it in the environment's `code` variable, then send the second. The phone numbers are new on each run.",
       "item": [
         {
           "name": "Send a code",
@@ -3961,7 +4568,39 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+                "exec": [
+                  "pm.test('answers 202', () => pm.response.to.have.status(202));",
+                  "",
+                  "// Reads the sign-up code the API printed, on this machine only. Elsewhere, type it from the",
+                  "// API's terminal into `code` before the next request.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('apiBase') + '/dev/texts?to=' + encodeURIComponent(pm.environment.get('newPhone')),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.environment.get('adminToken') },",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) {",
+                  "    console.log('Type the sign-up code from the API terminal into `code`.');",
+                  "    return;",
+                  "  }",
+                  "  const latest = res.json()[0];",
+                  "  const found = latest && latest.text.match(/\\b(\\d{6})\\b/);",
+                  "  if (found) pm.environment.set('code', found[1]);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// New numbers on every run, so running the collection again never meets the accounts",
+                  "// the last run made.",
+                  "const fresh = () => '+25471' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0');",
+                  "pm.environment.set('newPhone', fresh());",
+                  "pm.environment.set('newElderPhone', fresh());",
+                  "pm.environment.set('inviteePhone', fresh());"
+                ]
               }
             }
           ]
@@ -4081,7 +4720,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers, or says the search is unavailable offline', () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
                   "// Without internet the search answers 503. Registering the elder still works: it uses",
                   "// the home already in the environment, Kileleshwa, until a search replaces it.",
                   "if (pm.response.code === 200) {",
@@ -4131,7 +4770,25 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+                "exec": [
+                  "pm.test('answers 202', () => pm.response.to.have.status(202));",
+                  "",
+                  "// Reads the code for the elder the API printed, on this machine only. Elsewhere, type it from the",
+                  "// API's terminal into `elderCode` before the next request.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('apiBase') + '/dev/texts?to=' + encodeURIComponent(pm.environment.get('newElderPhone')),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.environment.get('adminToken') },",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) {",
+                  "    console.log('Type the code for the elder from the API terminal into `elderCode`.');",
+                  "    return;",
+                  "  }",
+                  "  const latest = res.json()[0];",
+                  "  const found = latest && latest.text.match(/\\b(\\d{6})\\b/);",
+                  "  if (found) pm.environment.set('elderCode', found[1]);",
+                  "});"
+                ]
               }
             }
           ]
@@ -4653,7 +5310,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"test.caregiver@example.com\"\n}",
+              "raw": "{\n  \"email\": \"{{newEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4673,12 +5330,22 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Its own address on each run, because the last run's account already has one.",
+                  "pm.environment.set('newEmail', 'test.caregiver.' + pm.environment.get('newPhone').replace('+', '') + '@example.com');"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('answers 200', () => pm.response.to.have.status(200));",
-                  "pm.test('saved, in lower case', () => pm.expect(pm.response.json().email).to.eql('test.caregiver@example.com'));"
+                  "pm.test('saved, in lower case', () => pm.expect(pm.response.json().email).to.eql(pm.environment.get('newEmail')));"
                 ]
               }
             }
@@ -4785,7 +5452,7 @@
     },
     {
       "name": "8c. Forgotten password",
-      "description": "Uses the account made in 5. Like signing up, it needs the code from the terminal running the API (a line ending 'password reset code'). Put it in the environment's `resetCode` variable before the second request. The new password is the same as the old one, so nothing else changes.",
+      "description": "Uses the account made in 5. On this machine the code is read for you. Elsewhere it needs the code from the terminal running the API (a line ending 'password reset code') in the environment's `resetCode` variable before the second request, at least 30 seconds after signing up. The new password is the same as the old one, so nothing else changes.",
       "item": [
         {
           "name": "Send a reset code",
@@ -4821,7 +5488,36 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('answers 202', () => pm.response.to.have.status(202));"]
+                "exec": [
+                  "pm.test('answers 202', () => pm.response.to.have.status(202));",
+                  "",
+                  "// Reads the reset code the API printed, on this machine only. Elsewhere, type it from the",
+                  "// API's terminal into `resetCode` before the next request.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('apiBase') + '/dev/texts?to=' + encodeURIComponent(pm.environment.get('newPhone')),",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.environment.get('adminToken') },",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) {",
+                  "    console.log('Type the reset code from the API terminal into `resetCode`.');",
+                  "    return;",
+                  "  }",
+                  "  const latest = res.json()[0];",
+                  "  const found = latest && latest.text.match(/\\b(\\d{6})\\b/);",
+                  "  if (found) pm.environment.set('resetCode', found[1]);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A second code to the same number inside 30 seconds is not sent. On this machine the",
+                  "// limits are cleared first; elsewhere, wait half a minute after signing up.",
+                  "pm.sendRequest({ url: pm.environment.get('apiBase') + '/dev/clear-limits', method: 'POST' }, () => {});"
+                ]
               }
             }
           ]

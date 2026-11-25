@@ -33,7 +33,10 @@ controller with `@Roles(...)`, from `shared/decorators/`.
 | POST | `/code/verify` | anyone with a code | An elder signs in with a texted code or one from their caregiver (`POST /elders/:id/sign-in-code`). 20 per five minutes |
 | POST | `/me/phone/code` | signed in | `{ phone, password }`: a code to the new number. Password needed by everyone but an elder. Says if the number is taken. 5 an hour |
 | POST | `/me/phone` | signed in | `{ phone, code }`: moves the account, texts the old number, returns fresh tokens and ends other sessions. 10 per five minutes |
-| GET | `/me/profile` | signed in | Places in each circle and the response record; for an elder, their carers with numbers and where to text HELP |
+| GET | `/me/profile` | signed in | Places in each circle and the response record; for an elder, their carers with numbers, whether each is away, and where to text HELP |
+| GET | `/me/away` | signed in | Whether they are away for a while, and until when |
+| PUT | `/me/away` | caregiver, family | `{ until? }`: away until that time, or until turned off. Up to 30 days. Names the elders left with nobody else. 60 an hour |
+| DELETE | `/me/away` | signed in | Back. 60 an hour |
 
 ## Sign-up codes
 

@@ -5,6 +5,7 @@ import 'package:mzazicare_tokens/mzazicare_tokens.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/models.dart';
+import '../../core/away/away.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/action_sheet.dart';
@@ -413,7 +414,11 @@ class _ElderScreenState extends State<ElderScreen> {
       Role.emergencyResponder => 'Emergency responder',
       _ => '',
     };
-    return together > 1 && role.isNotEmpty ? '$role · asked together' : role;
+    final String asked = together > 1 && role.isNotEmpty ? '$role · asked together' : role;
+    // Away: still told about an alert, but not waited for.
+    if (!place.away) return asked;
+    final String away = awayLabel(place.awayUntil);
+    return asked.isEmpty ? away : '$asked · $away';
   }
 }
 

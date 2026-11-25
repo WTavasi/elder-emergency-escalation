@@ -1,4 +1,4 @@
-import { validateEnv } from './env.schema';
+import { EXAMPLE_SMS_INBOUND_TOKEN, validateEnv } from './env.schema';
 
 const valid = {
   DATABASE_URL: 'postgresql://mzazicare:mzazicare@localhost:5433/mzazicare',
@@ -8,6 +8,14 @@ const valid = {
 };
 
 describe('validateEnv', () => {
+  it('refuses the example text-reply token in production, and takes it locally', () => {
+    const withExample = { ...valid, SMS_INBOUND_TOKEN: EXAMPLE_SMS_INBOUND_TOKEN };
+    expect(validateEnv(withExample).SMS_INBOUND_TOKEN).toBe(EXAMPLE_SMS_INBOUND_TOKEN);
+    expect(() => validateEnv({ ...withExample, NODE_ENV: 'production' })).toThrow(
+      /SMS_INBOUND_TOKEN is the example/,
+    );
+  });
+
   it('accepts a minimal valid environment and applies defaults', () => {
     const env = validateEnv({ ...valid });
     expect(env.PORT).toBe(3000);

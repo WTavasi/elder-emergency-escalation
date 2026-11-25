@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConsentType, Prisma, Role, Severity } from '@prisma/client';
+import { awayOf } from '../../../shared/utils/away';
 import { OPEN_STATES } from '../../../shared/utils/event-lifecycle';
 import { PrismaService } from '../../../db/prisma.service';
 import { PRIVACY_POLICY_VERSION } from '../../../shared/config/policy';
@@ -51,6 +52,10 @@ export interface ChainEntry {
   removable: boolean;
   /** Whether this place can be moved between the ranks people are asked at. */
   movable: boolean;
+  /** Away for a while: told about an alert, but not waited for. */
+  away: boolean;
+  /** When they will be back. Null while away means until they turn it off. */
+  awayUntil: string | null;
 }
 
 export interface ChainView {
@@ -220,7 +225,16 @@ export class ChainService {
         select: {
           id: true,
           priorityOrder: true,
-          responder: { select: { id: true, name: true, phone: true, role: true } },
+          responder: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              role: true,
+              awaySince: true,
+              awayUntil: true,
+            },
+          },
         },
       }),
       this.prisma.chainInvitation.findMany({
@@ -245,6 +259,7 @@ export class ChainService {
           assignment.responder.id !== userId &&
           ADDABLE_ROLES.includes(assignment.responder.role),
         movable: canReorder && ADDABLE_ROLES.includes(assignment.responder.role),
+        ...awayOf(assignment.responder),
       })),
       ...invitations.map((invitation) => ({
         id: invitation.id,
@@ -255,6 +270,8 @@ export class ChainService {
         status: 'invited' as const,
         removable: canEdit,
         movable: canReorder,
+        away: false,
+        awayUntil: null,
       })),
     ].sort((a, b) => a.tier - b.tier);
 

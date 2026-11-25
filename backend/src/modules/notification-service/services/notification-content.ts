@@ -19,6 +19,8 @@ export interface NotificationContext {
   reportedType?: EmergencyType | null;
   /** Whether the person told is an emergency service, who always needs to know what for. */
   forService?: boolean;
+  /** Told while marked away: for information, with nobody waiting for their answer. */
+  away?: boolean;
 }
 
 /** The type as a word or two at the start of a title: "Fire: Grace needs help now". */
@@ -72,7 +74,22 @@ const firstName = (name: string): string => name.trim().split(/\s+/)[0] || name;
  * what happened and what the reader can do about it.
  */
 export function composeNotification(context: NotificationContext): ComposedNotification {
-  const composed = composeForState(context);
+  const composed = withType(context, composeForState(context));
+  if (!context.away || composed.data.action !== 'respond') return composed;
+  // Still a call they can answer, so it stays one, but it says nobody is waiting on them.
+  return {
+    ...composed,
+    body: `${composed.body} You're marked away, so others are being asked too.`,
+    sms: capSms(`${composed.sms} You're marked away; others are asked too.`, composed.sms),
+    data: { ...composed.data, away: 'true' },
+  };
+}
+
+/** The type at the start of a call to act, where it is safe to show. */
+function withType(
+  context: NotificationContext,
+  composed: ComposedNotification,
+): ComposedNotification {
   const type = context.reportedType;
   // Only on a call to act: an update that needs nothing from the reader stays as it is.
   if (!type || composed.data.action !== 'respond') return composed;

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/api/api_client.dart';
 import 'core/api/models.dart';
 import 'core/auth/auth_controller.dart';
+import 'core/away/away.dart';
 import 'core/live/live_updates.dart';
 import 'core/location/way_there.dart';
 import 'core/theme/appearance.dart';
@@ -91,7 +92,14 @@ class _Home extends StatelessWidget {
           live: LiveUpdates.maybeOf(context),
           whereAmI: WayThere.maybeOf(context)?.fixIfAllowed,
         ),
-        child: HomeShell(api: api, role: auth.account!.role),
+        // Caregivers and family can say they are away for a while; services cannot.
+        child: auth.account!.role.canBeAway
+            ? ChangeNotifierProvider<AwayController>(
+                key: ValueKey<String>('away-${auth.account!.id}'),
+                create: (BuildContext context) => AwayController(api: api)..load(),
+                child: HomeShell(api: api, role: auth.account!.role),
+              )
+            : HomeShell(api: api, role: auth.account!.role),
       ),
       // A volunteer is never in a chain and never takes an emergency on, so their app is
       // their own: who near them needs help, and their application.

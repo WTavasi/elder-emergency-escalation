@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { redactPhone } from '../../../shared/utils/redaction';
+import type { DevOutbox } from './dev-outbox';
 import type { DeliveryResult, PushMessage, PushProvider } from './push.provider';
 
 /**
@@ -35,8 +36,12 @@ export class LoggingSmsProvider {
 
   private readonly logger = new Logger(LoggingSmsProvider.name);
 
+  /** [outbox] keeps what was printed, so a development tool can read a code back. */
+  constructor(private readonly outbox?: DevOutbox) {}
+
   send(message: { phone: string; text: string }): Promise<DeliveryResult> {
     this.logger.log(`SMS to ${redactPhone(message.phone)}: ${message.text}`);
+    this.outbox?.record(message.phone, message.text);
     return Promise.resolve({ delivered: true, providerMessageId: `logging-${Date.now()}` });
   }
 }

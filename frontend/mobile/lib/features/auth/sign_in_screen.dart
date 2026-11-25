@@ -8,6 +8,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/phone/phone_field.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/password_field.dart';
+import '../../core/widgets/plain_link.dart';
 import '../../core/widgets/step_heading.dart';
 import '../legal/legal_screens.dart';
 import 'auth_frame.dart';
@@ -153,6 +154,7 @@ class _SignInScreenState extends State<SignInScreen> {
           children: <Widget>[
             Text('New here?', style: theme.textTheme.bodyLarge),
             TextButton(
+              style: plainLinkStyle(context),
               onPressed: busy ? null : () => unawaited(_createAccount()),
               child: const Text('Create an account'),
             ),

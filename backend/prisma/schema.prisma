@@ -242,6 +242,13 @@ model User {
   /// stay readable: who raised it, who answered it.
   deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
 
+  /// EXTENSION. Away for a while: a caregiver or family member who said they cannot be
+  /// asked. Told about an alert all the same, but not waited for, so the next people are
+  /// asked at once. Away while awaySince is set and awayUntil is empty (until they turn it
+  /// off) or still to come. Past awayUntil they are simply back; nothing has to clear it.
+  awaySince DateTime? @map("away_since") @db.Timestamptz(3)
+  awayUntil DateTime? @map("away_until") @db.Timestamptz(3)
+
   // --- elder-only columns, null for every other role ---
   /// EXTENSION. Severity input. See CareLevel.
   careLevel        CareLevel? @map("care_level")
@@ -625,6 +632,10 @@ model Notification {
   /// reliability figures, which count a delivered message as delivered whatever the
   /// answer turned out to be.
   declinedAt DateTime? @map("declined_at") @db.Timestamptz(3)
+
+  /// EXTENSION. Told for information only: the person was away when this tier was asked,
+  /// so nobody waits for their answer. They may still take the alert on.
+  informedOnly Boolean @default(false) @map("informed_only")
 
   /// EXTENSION. Provider message id and failure reason, needed to explain a failed
   /// push in the report and to avoid double-sending an SMS.

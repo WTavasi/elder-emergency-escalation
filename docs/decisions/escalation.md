@@ -300,3 +300,33 @@ neither platform can be built in the environment this was written in.
 **Also:** coverage on each CI run's summary page (#83), the dependency audit with its
 before, after and accepted risks (`docs/evidence/2026-11-09-dependency-audit`), and the
 later endpoints in the Postman collection.
+
+## Away for a while: told, but not waited for
+
+On 25 November 2026 a caregiver or family member could mark themselves away, until a time
+or until they turn it off.
+
+**Told, not skipped.** An away person still gets every alert, saying they are marked away
+and that others are being asked too, and they can still take it on. Leaving them out
+entirely would mean a nearby person who happens to be free is never told. What changes is
+the waiting: nobody waits for their answer. A step where everybody asked is away moves on
+at once, instead of when its time runs out, which is the time that matters in an
+emergency.
+
+**The last step is never skipped.** Emergency services are asked last and have nobody
+after them, so there everybody is waited for. Being away only ever makes help come sooner
+from somebody else, never later.
+
+**On the person, not each elder.** Somebody away is away for everybody they help, which is
+what being away means. It ends by itself at the time they chose, at most 30 days ahead, so
+a forgotten switch cannot keep anybody out for long; there is no job to clear it, the end
+time is simply read. Going away says which elders are now left with nobody else, so the
+person can decide with that in front of them.
+
+**Explainable afterwards.** The step records how many were told for information only, and
+the move on records that it was because they were away, so the trail never says "no
+answer in time" when nobody was waited for.
+
+**The cover hours left reserved.** The `cover_*` columns on `care_assignments` (see
+"Caregiver cover was dropped as a severity factor" above) stay unread. Recurring shifts
+can come back as a schedule that sets away automatically, using the same rule.

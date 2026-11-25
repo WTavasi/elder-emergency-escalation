@@ -7,11 +7,13 @@ import 'package:provider/provider.dart';
 import '../../core/api/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/confirm_sign_out.dart';
+import '../../core/away/away.dart';
 import '../../core/location/location_permission.dart';
 import '../../core/location/position_source.dart';
 import '../../core/location/way_there.dart';
 import '../../core/theme/appearance.dart';
 import '../../core/theme/theme.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/notice.dart';
 import '../../core/widgets/page_title.dart';
 import '../../core/widgets/password_field.dart';
@@ -51,6 +53,8 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: '${_roleLabel(account.role)} · ${account.phone}',
                     onTap: () => openScreen(context, const AccountDetailsScreen()),
                   ),
+                  if (AwayController.maybeOf(context) case final AwayController away)
+                    AwaySetting(controller: away),
                   const _Standing(),
                   if (account.role.travels && way != null) _WayThereSetting(way: way),
                   if (appearance != null)
@@ -674,4 +678,97 @@ class _StandingState extends State<_Standing> {
       : answered == 1
       ? "You've helped with 1 emergency."
       : "You've helped with $answered emergencies.";
+}
+
+/// "Away", as a switch with what it means under it, for caregivers and family.
+///
+/// Turning it on asks how long, as an iPhone asks how long to silence something, so
+/// nobody is left away by a switch they forgot. Away, alerts still reach them; nobody
+/// waits for their answer.
+class AwaySetting extends StatefulWidget {
+  const AwaySetting({required this.controller, super.key});
+
+  final AwayController controller;
+
+  @override
+  State<AwaySetting> createState() => _AwaySettingState();
+}
+
+class _AwaySettingState extends State<AwaySetting> {
+  /// The elders left with nobody who is not away, said once after going away.
+  List<String> _nobodyElse = const <String>[];
+
+  Future<void> _turn(bool on) async {
+    if (!on) {
+      await widget.controller.comeBack();
+      if (mounted) setState(() => _nobodyElse = const <String>[]);
+      return;
+    }
+    final AwayFor? length = await showActionSheet<AwayFor?>(
+      context,
+      title: 'How long will you be away?',
+      message: "You'll still get alerts, but nobody will wait for your answer.",
+      actions: <SheetAction<AwayFor?>>[
+        for (final AwayFor choice in AwayFor.values)
+          SheetAction<AwayFor?>(choice.label, choice, icon: choice.icon),
+        const SheetAction<AwayFor?>('Go back', null, icon: Icons.close),
+      ],
+    );
+    if (length == null) return;
+    final AwayStatus? status = await widget.controller.goAway(length);
+    if (mounted && status != null) setState(() => _nobodyElse = status.nobodyElseFor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AwayController away = widget.controller;
+    return ListenableBuilder(
+      listenable: away,
+      builder: (BuildContext context, Widget? _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SettingsSection(
+            title: 'Availability',
+            footer:
+                "While you're away, alerts still reach you, but nobody waits for your answer: "
+                'the next people are asked straight away.',
+            children: <Widget>[
+              SettingsSwitchRow(
+                icon: Icons.do_not_disturb_on_outlined,
+                title: 'Away',
+                subtitle: away.away ? awayUntilLabel(away.status.until) : null,
+                value: away.away,
+                onChanged: !away.isLoaded || away.isSaving
+                    ? null
+                    : (bool on) => unawaited(_turn(on)),
+              ),
+            ],
+          ),
+          if (away.problem != null || (away.away && _nobodyElse.isNotEmpty))
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                MzaziLayout.margin(context),
+                MzaziSpace.s8,
+                MzaziLayout.margin(context),
+                0,
+              ),
+              child: away.problem != null
+                  ? Notice(message: away.problem!, isError: true)
+                  : Notice(message: _nobodyElseLine(_nobodyElse)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// "Nobody else is available for Grace, so her alerts go straight to emergency services."
+  static String _nobodyElseLine(List<String> elders) {
+    final List<String> first = elders
+        .map((String n) => n.trim().split(RegExp(r'\s+')).first)
+        .toList();
+    final String who = first.length == 1
+        ? first.single
+        : '${first.sublist(0, first.length - 1).join(', ')} and ${first.last}';
+    return 'Nobody else is available for $who, so alerts go straight to emergency services.';
+  }
 }
