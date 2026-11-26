@@ -54,11 +54,11 @@ export function PageHeader({
   );
 }
 
-/** "(2) Users — MzaziCare": the page, and how many are waiting for an answer. */
+/** "(2) Users | MzaziCare": the page, and how many are waiting for an answer. */
 function useTabTitle(title: string): void {
   const board = useOpenAlertsIfAny();
   const waiting = board?.alerts?.filter((alert) => !alert.acknowledgedBy).length ?? 0;
   useEffect(() => {
-    document.title = `${waiting > 0 ? `(${waiting}) ` : ''}${title} — MzaziCare`;
+    document.title = `${waiting > 0 ? `(${waiting}) ` : ''}${title} | MzaziCare`;
   }, [title, waiting]);
 }
