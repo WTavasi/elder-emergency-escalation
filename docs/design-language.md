@@ -167,8 +167,9 @@ console follows the computer's light or dark setting until the moon or sun in th
 is pressed; "Match this device" in the account menu goes back to following it.
 
 - **A window frame.** A dark sidebar holds the sections, each with its count. The current
-  section is a lighter block, never red, and the sidebar's colours have their own tokens,
-  gated at AAA in both themes, with a lighter focus ring that shows on the dark. A button
+  section is a light block with dark words, a row under the pointer turns a mid grey as the
+  search field does, never red, and the sidebar's colours have their own tokens, gated in
+  both themes, with a lighter focus ring that shows on the dark. A button
   at its top collapses it to a rail of icons; on a phone it is a drawer behind a button in
   the top bar. A white bar across the top of every page holds the search on the left and,
   on the right, the Live status and the account, which opens a small menu downwards. Collapsing it is

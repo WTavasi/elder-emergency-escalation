@@ -28,7 +28,9 @@ colors:
   sidebar: "#0E1418"
   sidebar-text: "#FFFFFF"
   sidebar-text-soft: "#B4C0C5"
-  sidebar-selected: "#2E3B42"
+  sidebar-selected: "#E8EDEF"
+  sidebar-selected-text: "#0E1418"
+  sidebar-hover: "#47565E"
 typography:
   elder-display:
     fontFamily: "SF Pro, system-ui, sans-serif"
@@ -444,7 +446,7 @@ the chosen segment raised on it.
 
 A bottom bar in the app with a sunk-surface pill on the current tab and a red badge
 with the number nobody has answered. In the console, a dark sidebar whose current page is
-a lighter block, never red, with each section's count beside it, and a white bar across
+a light block with dark words and whose rows turn a mid grey under the pointer, never red, with each section's count beside it, and a white bar across
 the top with the search, the Live status and the account.
 
 ## Do's and Don'ts

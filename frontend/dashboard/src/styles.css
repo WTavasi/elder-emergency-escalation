@@ -169,6 +169,10 @@ html {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.shell--rail .nav a[aria-current='page'] .nav__count {
+  background: var(--sidebar-selected-text);
+  color: var(--sidebar-selected);
+}
 .shell--rail .nav__count {
   position: absolute;
   top: 0;
@@ -209,7 +213,7 @@ html {
   color: var(--sidebar-text-soft);
 }
 .sidebar .icon-button:hover:not(:disabled) {
-  background: var(--sidebar-selected);
+  background: var(--sidebar-hover);
   color: var(--sidebar-text);
 }
 
@@ -259,21 +263,34 @@ html {
   font-size: var(--font-size-body);
   text-decoration: none;
 }
-/* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
-   lighter block on the dark sidebar, never red: red is for emergencies. */
+/* A row in the sidebar: an icon, the name, and a count at the end. Under the pointer it
+   takes a lighter grey block, as the search field darkens under it; the current page is a
+   light block with dark words, never red: red is for emergencies. Both colours are gated
+   against the sidebar in light and dark mode. */
 .nav a:hover {
-  background: color-mix(in srgb, var(--sidebar-selected) 60%, transparent);
+  background: var(--sidebar-hover);
   text-decoration: none;
 }
-.nav a[aria-current='page'] {
+.nav a[aria-current='page'],
+.nav a[aria-current='page']:hover {
   background: var(--sidebar-selected);
+  color: var(--sidebar-selected-text);
   font-weight: var(--font-weight-strong);
 }
 .nav a .icon {
   color: var(--sidebar-text-soft);
 }
-.nav a[aria-current='page'] .icon {
+.nav a:hover .icon {
   color: var(--sidebar-text);
+}
+.nav a[aria-current='page'] .icon,
+.nav a[aria-current='page'] .nav__count {
+  color: var(--sidebar-selected-text);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nav a {
+    transition: background-color var(--motion-quick) ease;
+  }
 }
 .nav__text {
   flex: 1;
