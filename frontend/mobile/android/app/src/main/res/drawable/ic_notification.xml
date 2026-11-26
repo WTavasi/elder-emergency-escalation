@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status bar's icon: the M alone in white, as Android draws a notification icon
+     as a shape. Without it a push showed the coloured app icon as a blank square. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M232 732V292h118l162 228 162-228h118v440H682V470L552 650h-80L342 470v262z" />
+</vector>
