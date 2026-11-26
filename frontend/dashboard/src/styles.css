@@ -727,7 +727,10 @@ td.chevron {
   .grid .grid__body {
     overflow-x: visible;
   }
-  .list thead th {
+  /* Only the lists that scroll with the page. A table in a box of its own (the reporting
+     tables, a side panel) scrolls inside that box, where a heading held under the top bar
+     would sit over its rows. */
+  .grid .list thead th {
     position: sticky;
     top: var(--bar-height);
     z-index: 1;
@@ -1086,36 +1089,18 @@ textarea {
 }
 
 /*
-  MzaziCare's red with the care rings spreading from the corner, as the app's sign-in
-  draws them: faint white rings, a fainter wash between every other pair. Its right edge
-  is a long, shallow curve where it meets the form.
+  MzaziCare's red as one flat block with a straight edge where it meets the form, the name
+  set large in white. No rings, no wash and no curve: nothing on it but the words.
 */
 .signin__brand {
-  --ring-step: 72px;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: var(--space-8);
-  padding: var(--space-48) var(--space-64) var(--space-48) var(--space-48);
+  padding: var(--space-48);
   background: var(--emergency);
   color: var(--on-emergency);
-  clip-path: ellipse(100% 140% at 0% 50%);
-}
-.signin__brand::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-radial-gradient(
-    circle at 0% 0%,
-    color-mix(in srgb, var(--on-emergency) 6%, transparent) 0 calc(var(--ring-step) - 1.5px),
-    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) - 1.5px)
-      var(--ring-step),
-    transparent var(--ring-step) calc(var(--ring-step) * 2 - 1.5px),
-    color-mix(in srgb, var(--on-emergency) 18%, transparent) calc(var(--ring-step) * 2 - 1.5px)
-      calc(var(--ring-step) * 2)
-  );
-  pointer-events: none;
 }
 .signin__brand p {
   position: relative;
@@ -1146,7 +1131,7 @@ textarea {
   width: min(380px, 100%);
 }
 
-/* A phone: the red across the top, its lower edge curved, and the form beneath it. */
+/* A phone: the red across the top, its lower edge straight, and the form beneath it. */
 @media (max-width: 760px) {
   .signin {
     grid-template-columns: minmax(0, 1fr);
@@ -1154,8 +1139,7 @@ textarea {
   }
   .signin__brand {
     min-height: 220px;
-    padding: var(--space-48) var(--space-24) var(--space-48);
-    clip-path: ellipse(150% 100% at 50% 0%);
+    padding: var(--space-48) var(--space-24) var(--space-24);
   }
   .signin__name {
     font-size: var(--font-size-large-title);

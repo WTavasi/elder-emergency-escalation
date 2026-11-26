@@ -211,6 +211,24 @@ describe('DashboardService', () => {
       expect(escalation.escalationRatePercent).toBe(20);
     });
 
+    it('counts climbs only among the closed emergencies the rate is out of', async () => {
+      const prisma = buildPrisma();
+      prisma.emergencyEvent.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([{ eventId: 'closed-one' }]);
+
+      const { escalation } = await build(prisma).overview(30);
+
+      // The climbs are looked for among the same emergencies the total counts: raised in
+      // the window and closed. One still open that has climbed waits until it closes.
+      const where = prisma.auditLog.findMany.mock.calls[0][0].where;
+      const total = prisma.emergencyEvent.count.mock.calls
+        .map(([query]) => query.where)
+        .find((query) => query.state?.in?.includes('RESOLVED'));
+      expect(where.action).toBe('ESCALATED');
+      expect(where.event).toEqual({ triggeredAt: total.triggeredAt, state: total.state });
+      expect(escalation.escalationRatePercent).toBe(100);
+    });
+
     it('reports no rate rather than zero when nothing has closed yet', async () => {
       const { escalation } = await build(buildPrisma()).overview();
 

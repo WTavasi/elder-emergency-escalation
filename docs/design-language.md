@@ -34,8 +34,9 @@ countdown ring's empty track is `cautionTrack`. All three are in the contrast ga
 
 One decorative pair, `decorWash` and `decorRing`, a pale tint of the brand red and a
 slightly deeper one, draws the rings behind the app's screens before sign-in. The
-console's sign-in no longer uses it: since 29 October 2026 its rings are faint white over
-MzaziCare's red, as the app's way-in screens draw them. They carry no meaning and are in no contrast pair, which is only
+console's sign-in uses no rings at all: since 26 November 2026 it is a flat block of
+MzaziCare's red with a straight edge, the name in white and nothing behind it, as the
+console's panels are flat. The app's rings carry no meaning and are in no contrast pair, which is only
 acceptable because nothing that has to be read is ever placed on them: the forms sit on
 cards. They are kept out of every screen after sign-in, where the red has to mean an
 emergency and nothing else.

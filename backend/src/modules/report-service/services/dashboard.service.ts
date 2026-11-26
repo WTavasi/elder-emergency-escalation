@@ -226,10 +226,15 @@ export class DashboardService {
         where: { triggeredAt: range, state: { in: CLOSED_STATES } },
       }),
       // An emergency counts as escalated if it ever left tier one, which the audit
-      // trail records even when it was afterwards acknowledged and resolved.
+      // trail records even when it was afterwards acknowledged and resolved. Counted
+      // over the same emergencies as the total, raised in the window and closed, so the
+      // rate can never pass 100%: an open emergency that has climbed is not yet in it.
       this.prisma.auditLog
         .findMany({
-          where: { action: 'ESCALATED', occurredAt: range },
+          where: {
+            action: 'ESCALATED',
+            event: { triggeredAt: range, state: { in: CLOSED_STATES } },
+          },
           select: { eventId: true },
           distinct: ['eventId'],
         })
