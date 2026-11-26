@@ -32,6 +32,14 @@
         android:label="MzaziCare"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- A push's icon in the status bar: the white M, tinted MzaziCare red where the
+             phone shows a colour. Without these, Android drew the app icon as a square. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/help_emergency" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
