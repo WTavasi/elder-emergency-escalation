@@ -333,9 +333,6 @@ export function Reporting() {
 
           <section aria-labelledby="channel-heading" className="stack">
             <h2 id="channel-heading">Delivery reliability</h2>
-            <p className="muted micro">
-              The case for the SMS fallback is whatever the push column says here.
-            </p>
             <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
               <table className="list">
                 <thead>

@@ -115,7 +115,7 @@ html {
   z-index: 10;
   padding: var(--space-8) var(--space-16);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
   transition: none;
 }
@@ -198,7 +198,7 @@ html {
   padding: 0 var(--space-12) var(--space-12);
   background: var(--sidebar);
   color: var(--sidebar-text);
-  border-right: 1px solid var(--sidebar-line);
+  border-right: 1px solid var(--sidebar);
 }
 /* In the dark sidebar the focus ring takes the lighter blue, gated against it. */
 .sidebar :focus-visible {
@@ -240,7 +240,7 @@ html {
 .topbar__kbd,
 .palette kbd {
   padding: 0 var(--space-4);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text-soft);
@@ -317,7 +317,7 @@ html {
   min-height: var(--bar-height);
   padding: 0 var(--space-24);
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--surface);
 }
 /* Looks like a search field and opens the search across the console. */
 .topbar__search {
@@ -327,15 +327,16 @@ html {
   width: min(360px, 100%);
   min-height: var(--control-height);
   padding: 0 var(--space-8) 0 var(--space-12);
-  border: 1px solid var(--control);
+  border: 1px solid var(--surface-sunk);
   border-radius: var(--radius-control);
-  background: var(--surface);
+  background: var(--surface-sunk);
   color: var(--text-soft);
   font-weight: var(--font-weight-body);
   text-align: left;
 }
 .topbar__search:hover:not(:disabled) {
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
+  border-color: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
 }
 .topbar__search-text {
   flex: 1;
@@ -479,7 +480,7 @@ html {
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
   padding: var(--space-16);
 }
@@ -565,38 +566,38 @@ html {
 .pill--triggered {
   background: var(--pill-triggered-bg);
   color: var(--pill-triggered-fg);
-  border-color: var(--pill-triggered-bd);
+  border-color: var(--pill-triggered-bg);
 }
 .pill--notified {
   background: var(--pill-notified-bg);
   color: var(--pill-notified-fg);
-  border-color: var(--pill-notified-bd);
+  border-color: var(--pill-notified-bg);
 }
 .pill--acknowledged {
   background: var(--pill-acknowledged-bg);
   color: var(--pill-acknowledged-fg);
-  border-color: var(--pill-acknowledged-bd);
+  border-color: var(--pill-acknowledged-bg);
 }
 /* Somebody is with the elder: the same reassuring ink as somebody on the way. */
 .pill--on_scene {
   background: var(--pill-acknowledged-bg);
   color: var(--pill-acknowledged-fg);
-  border-color: var(--pill-acknowledged-bd);
+  border-color: var(--pill-acknowledged-bg);
 }
 .pill--escalated {
   background: var(--pill-escalated-bg);
   color: var(--pill-escalated-fg);
-  border-color: var(--pill-escalated-bd);
+  border-color: var(--pill-escalated-bg);
 }
 .pill--resolved {
   background: var(--pill-resolved-bg);
   color: var(--pill-resolved-fg);
-  border-color: var(--pill-resolved-bd);
+  border-color: var(--pill-resolved-bg);
 }
 .pill--cancelled {
   background: var(--pill-cancelled-bg);
   color: var(--pill-cancelled-fg);
-  border-color: var(--pill-cancelled-bd);
+  border-color: var(--pill-cancelled-bg);
 }
 
 .severity {
@@ -895,14 +896,14 @@ textarea {
 .notice {
   padding: var(--space-12) var(--space-16);
   border-radius: var(--radius-control);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface-sunk);
   background: var(--surface-sunk);
 }
 
 .notice--error {
   background: var(--pill-triggered-bg);
   color: var(--pill-triggered-fg);
-  border-color: var(--pill-triggered-bd);
+  border-color: var(--pill-triggered-bg);
 }
 
 /* A countdown is the one number an operator reads under pressure, so its digits keep
@@ -1395,7 +1396,6 @@ textarea {
   background: var(--surface);
   color: var(--text);
   font-weight: var(--font-weight-strong);
-  outline: 1px solid var(--line);
 }
 
 /* Who is signed in, at the right of the top bar, opening a small menu under it. */
@@ -1459,8 +1459,8 @@ textarea {
   z-index: 10;
   min-width: 180px;
   padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--control);
+  background: var(--surface-sunk);
+  border: 1px solid var(--surface-sunk);
   border-radius: var(--radius-control);
 }
 .menu--right {
@@ -1554,15 +1554,15 @@ textarea {
   gap: var(--space-16);
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
 }
 /* The state pill at the start of the banner says what state it is in. While nobody has
-   taken it on, the whole outline turns red as well: red is spent on a person being
-   needed and nothing else. It used to be a thick coloured stripe down the left edge in
-   every state, which is decoration the design guidance rules out. */
+   taken it on, the whole banner takes the pale red wash, its edge the same red as its
+   fill: red is spent on a person being needed and nothing else. */
 .banner--waiting {
-  border-color: var(--emergency-edge);
+  background: var(--pill-escalated-bg);
+  border-color: var(--pill-escalated-bg);
 }
 .banner__main {
   display: flex;
@@ -1571,6 +1571,11 @@ textarea {
 }
 .banner__report {
   margin: 0;
+}
+.banner__raised {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--font-size-callout);
 }
 
 .banner__owner {
@@ -1631,8 +1636,8 @@ textarea {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid var(--line);
-  background: var(--surface);
+  border: 2px solid var(--surface-sunk);
+  background: var(--surface-sunk);
   font-size: var(--font-size-callout);
 }
 .step__name {
@@ -1653,7 +1658,8 @@ textarea {
   font-weight: 600;
 }
 .step--done .step__marker {
-  border-color: var(--pill-acknowledged-fg);
+  border-color: var(--pill-acknowledged-bg);
+  background: var(--pill-acknowledged-bg);
   color: var(--pill-acknowledged-fg);
 }
 .step--later .step__name {
@@ -1778,8 +1784,8 @@ textarea {
   width: max-content;
   max-width: calc(100vw - var(--space-32));
   padding: var(--space-8) var(--space-12) var(--space-8) var(--space-16);
-  background: var(--surface);
-  border: 1px solid var(--control);
+  background: var(--selection);
+  border: 1px solid var(--selection);
   border-radius: var(--radius-control);
   font-size: var(--font-size-callout);
 }
@@ -2035,7 +2041,7 @@ textarea {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--control);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
   animation: sheet-in var(--motion-sheet) var(--easing-decelerate);
 }
@@ -2171,7 +2177,7 @@ textarea {
   margin: var(--space-8) 0 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
 }
 .choices li + li {
@@ -2202,7 +2208,7 @@ legend {
 .fieldset {
   margin: 0 0 var(--space-16);
   padding: var(--space-12);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
 }
 .fieldset legend {
@@ -2224,7 +2230,7 @@ legend {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--space-8);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface-sunk);
   border-radius: var(--radius-control);
   background: var(--surface-sunk);
   color: var(--text-soft);
@@ -2350,7 +2356,7 @@ legend {
   width: min(600px, 100%);
   max-height: 70vh;
   background: var(--surface);
-  border: 1px solid var(--control);
+  border: 1px solid var(--surface);
   border-radius: var(--radius-control);
   overflow: hidden;
 }
@@ -2432,4 +2438,161 @@ legend {
   border-top: 1px solid var(--line);
   color: var(--text-soft);
   font-size: var(--font-size-footnote);
+}
+
+/* ------------------------------------------------------- escalation policy -- */
+
+/* The presets: a grid of tiles, each a button with its name and a sentence. The one the
+   policy matches now says "In use"; one chosen and not saved yet is outlined in ink. Each
+   tile's edge is the colour of its fill, as every panel's is. */
+.presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-12) var(--space-16);
+  border: 2px solid var(--surface-sunk);
+  background: var(--surface-sunk);
+  font-weight: var(--font-weight-body);
+  text-align: left;
+}
+.preset:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
+  background: color-mix(in srgb, var(--surface-sunk) 85%, var(--text));
+}
+.preset[aria-pressed='true'],
+.preset[aria-pressed='true']:hover:not(:disabled) {
+  border-color: var(--selection);
+  background: var(--selection);
+}
+.preset__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  font-weight: var(--font-weight-strong);
+}
+.preset__tag {
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--font-size-footnote);
+}
+.preset__summary {
+  color: var(--text-soft);
+  font-size: var(--font-size-callout);
+  line-height: 1.35;
+}
+
+/* A severity with edits not saved yet: a small dot after its name, and ", edited" read out. */
+.edited-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--space-4);
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+/* A chain as numbered steps: who and when on the left, what can be set on the right. */
+.chain {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chain__step {
+  display: grid;
+  grid-template-columns: 28px minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+  padding: var(--space-12) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.chain__step:last-child {
+  border-bottom: none;
+}
+.chain__step--edited {
+  background: color-mix(in srgb, var(--selection) 50%, transparent);
+}
+.chain__number {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  font-weight: var(--font-weight-strong);
+  font-variant-numeric: tabular-nums;
+}
+.chain__fields {
+  display: grid;
+  grid-template-columns: 9rem 16rem auto;
+  align-items: end;
+  gap: var(--space-12);
+}
+.chain__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+.chain__field select {
+  width: 100%;
+}
+/* Where a group has no choice to make: a word in place of the control, at its height. */
+.chain__field--none > .muted:last-child {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+}
+.chain__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-height);
+  margin: 0;
+  font-weight: var(--font-weight-body);
+}
+.chain__check input {
+  width: var(--space-16);
+  min-height: 0;
+  height: var(--space-16);
+  margin: 0;
+}
+.chain__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
+}
+@media (max-width: 1100px) {
+  .chain__step {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+  .chain__fields {
+    grid-column: 2;
+  }
+}
+@media (max-width: 560px) {
+  .chain__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -89,12 +89,7 @@ export function Volunteers() {
 
   return (
     <>
-      <PageHeader title="Volunteers">
-        <p>
-          Community volunteers are asked to go to an elder near them only once approved here, only
-          while they say they are available, and only for elders who agreed to it.
-        </p>
-      </PageHeader>
+      <PageHeader title="Volunteers" />
 
       {/* Said at the foot of the window, over the page, so it never pushes the list. */}
       {actionError ? (

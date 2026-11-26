@@ -64,6 +64,7 @@ Each screen is a folder under `src/features/`; anything two screens share is und
 | `src/shared/state/` | Who is signed in, and the live list of open emergencies |
 | `src/shared/components/` | The page layout and small shared parts |
 | `src/shared/hooks/` | Loading data, counting down, the time now, keyboard shortcuts |
+| `src/shared/state/theme.ts` | Light, dark or the device's setting, remembered in the browser |
 | `src/shared/navigation.ts` | The sections, their shortcut letters, and telling typing from a shortcut |
 | `src/shared/utils/` | Formatting dates, durations and labels; an emergency's record in sentences |
 
@@ -91,9 +92,11 @@ stylesheet. Tests sit beside the file they test.
   what can be done to the choice in a bar floating at the foot of the window.
 - **Volunteers.** Community volunteers' applications, to approve or not, and the
   approved ones, to suspend.
-- **Escalation policy.** Time limits, severity weights and bands. Edits are gathered and
-  saved together from a bar at the foot of the window; leaving with edits unsaved asks
-  first.
+- **Escalation policy.** Six built-in presets that set every chain and the bands in one
+  press, the one in use marked; each severity's chain as numbered steps, with time limits
+  picked from a list and when emergency services are reached; and the severity weights and
+  bands. Edits are saved together from a bar at the foot of the window; leaving with edits
+  unsaved asks first. The presets are in `src/features/policy/presets.ts`.
 
 A row in any list opens what it shows when pressed anywhere. From the keyboard, the up
 and down arrows move between rows and Return opens one; Command-F or Ctrl+F goes to the

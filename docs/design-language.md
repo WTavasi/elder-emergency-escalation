@@ -157,7 +157,13 @@ Apple's inset grouped lists, as Settings and Health set them out.
 
 An admin console, dense, because it is read at a desk by somebody looking across many
 records at once: a dark sidebar, a white bar across the top, and flat white panels on a
-grey page, each with a 4px corner and a hairline edge. Nothing casts a shadow or glows.
+grey page, each with a 4px corner. Nothing casts a shadow or glows, and no area has an
+outline in a different colour from its fill: a panel's edge is white like the panel, a
+tag's edge is the tag's colour, and the status banner of an emergency nobody has taken on
+is a pale red block with a pale red edge. Input fields alone keep a visible edge, so a
+place to type can be found. There is no explanatory line under a page's title. The
+console follows the computer's light or dark setting until the moon or sun in the top bar
+is pressed; "Match this device" in the account menu goes back to following it.
 
 - **A window frame.** A dark sidebar holds the sections, each with its count. The current
   section is a lighter block, never red, and the sidebar's colours have their own tokens,

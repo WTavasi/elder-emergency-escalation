@@ -347,8 +347,10 @@ button) and hairlines, not shadows.
 Material's elevation tint is switched off, because it would tint every surface with the
 emergency red. In the console nothing casts a shadow or glows: what floats over the page
 (menus, sheets, the search panel, the floating bars) has a control-grey edge instead, and
-the bar across the top is solid white with a hairline under it. No glass, no blur, and no
-halo round the Live dot.
+the bar across the top is solid white. No glass, no blur, and no halo round the Live dot.
+No area has an outline in a different colour from its fill: a panel's edge is white, an
+emergency nobody has taken on is a pale red block with a pale red edge, and a floating bar
+is the selection blue all over. Input fields alone keep a control-grey edge.
 
 ### Named Rules
 
@@ -468,6 +470,12 @@ the top with the search, the Live status and the account.
 - **Don't** add a coloured stripe down the edge of a row, message or banner.
 - **Don't** bundle a face in the app or the console.
 - **Don't** put a gradient, glass, a glow or a decorative shadow on a working screen.
+- **Don't** give a console area an outline in a different colour from its fill. A panel's
+  edge is the colour of the panel, a red area's edge is red, a tag's edge is the tag's
+  colour; areas are told apart by their fill against the page. Input fields keep their
+  control-grey edge, so a place to type can be found, and lines between rows stay.
+- **Don't** put an explanatory line under a page's title or a section's heading in the
+  console. The title says what the page is; detail belongs where it is needed.
 - **Don't** round a console panel, button or field beyond 4px, or make anything but an
   icon fully round.
 - **Don't** show a bare spinner where a sentence could say what is happening.

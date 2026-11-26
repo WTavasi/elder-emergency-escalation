@@ -260,10 +260,29 @@ volunteers.
 ![The escalation policy editor](images/console/policy.png)
 
 How long each group has before the next is asked, the weight of each severity factor,
-and where High and Critical start. Edits are gathered and saved together from a bar at the
-foot of the window, each edited row marked until then. Every change is checked (the last step can have no
-time limit, Critical must stay reachable), recorded with the administrator's name, and
-used from the next alert.
+and where High and Critical start.
+
+- **Presets.** Six built-in presets set every chain and the bands in one press:
+  Recommended (what the system ships with), Faster response, More time for family,
+  Everyone together, Texts straight away and Cautious scoring. The one the policy matches
+  is marked "In use".
+- **One chain at a time.** Standard, High or Critical is chosen above the chain. Each group
+  is a numbered step that says when it is asked, with its time limit picked from a list
+  (from 15 seconds to an hour), whether it waits for the group before, and whether it is
+  texted at once. A line under the chain says when emergency services are reached if
+  nobody answers.
+- **Weights and bands,** with a reset of the weights to the recommended ones.
+
+Nothing is saved until Save changes, in a bar at the foot of the window, and each edited
+row is marked until then. Every change is checked (the last step can have no time limit,
+Critical must stay reachable), recorded with the administrator's name, and used from the
+next alert.
+
+### Light and dark, by choice
+
+The console follows the computer's setting until the moon or sun in the top bar is
+pressed; the choice is remembered in that browser, and "Match this device" in the account
+menu goes back to following the computer.
 
 ### Search and shortcuts
 

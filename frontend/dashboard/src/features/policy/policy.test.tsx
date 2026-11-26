@@ -70,20 +70,35 @@ const policy: PolicyData = {
 afterEach(() => vi.restoreAllMocks());
 
 describe('the escalation policy editor', () => {
-  it('shows each chain, the weights, the bands and who changed what', async () => {
+  it('shows one chain at a time, the weights, the bands and who changed what', async () => {
     vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue(policy);
     render(<Policy />);
 
-    expect(await screen.findByText('Standard alerts')).toBeInTheDocument();
-    expect(screen.getByText('Critical alerts')).toBeInTheDocument();
-    expect(screen.getAllByText('End of the chain')).toHaveLength(3);
+    expect(await screen.findByRole('list', { name: 'Standard alerts' })).toBeInTheDocument();
+    expect(screen.getAllByText('End of the chain')).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Critical' }));
+    expect(screen.getByRole('list', { name: 'Critical alerts' })).toBeInTheDocument();
     expect(screen.getByLabelText('Declared care level of the elder weight')).toHaveValue(30);
     expect(screen.getByLabelText('High from')).toHaveValue(35);
-    expect(screen.getByText('Critical tier 1: time limit 60 s → 45 s')).toBeInTheDocument();
+    expect(screen.getByText('Critical tier 1: time limit 1 min → 45 s')).toBeInTheDocument();
     expect(
       screen.getByText('Declared care level of the elder: weight 30 → 50'),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Asha Njeri/)).toHaveLength(2);
+  });
+
+  it('says when each group is asked, and when the last is reached', async () => {
+    vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue(policy);
+    render(<Policy />);
+
+    await screen.findByRole('list', { name: 'Standard alerts' });
+    expect(screen.getByText('Asked as soon as the alert is raised')).toBeInTheDocument();
+    expect(screen.getByText('Asked after 2 min')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'If nobody answers, emergency services are asked 5 min after a standard alert.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('gathers edits, saves them together from the bar, and says when they apply', async () => {
@@ -91,12 +106,14 @@ describe('the escalation policy editor', () => {
     const update = vi.spyOn(api.escalationPolicy, 'updateRule').mockResolvedValue(policy);
     render(<Policy />);
 
-    const field = await screen.findByLabelText('Critical tier 1 time limit in seconds');
-    await userEvent.clear(field);
-    await userEvent.type(field, '45');
+    await screen.findByRole('list', { name: 'Standard alerts' });
+    await userEvent.click(screen.getByRole('button', { name: 'Critical' }));
+    const field = screen.getByLabelText('Critical tier 1 time limit');
+    await userEvent.selectOptions(field, '45');
 
-    // The edited row says so in words, and the bar counts what is waiting.
-    expect(within(field.closest('tr')!).getByText('Edited')).toBeInTheDocument();
+    // The edited group says so in words, its severity is marked, and the bar counts.
+    expect(within(field.closest('li')!).getByText('Edited')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Critical, edited' })).toBeInTheDocument();
     const bar = screen.getByRole('region', { name: 'Unsaved changes' });
     expect(bar).toHaveTextContent('1 unsaved change');
     await userEvent.click(within(bar).getByRole('button', { name: 'Save changes' }));
@@ -110,6 +127,54 @@ describe('the escalation policy editor', () => {
       'Critical tier 1 saved. They apply from the next alert.',
     );
     expect(screen.queryByRole('region', { name: 'Unsaved changes' })).not.toBeInTheDocument();
+  });
+
+  it('fills every chain and the bands from a preset, and saves it as one', async () => {
+    vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue(policy);
+    const rule = vi.spyOn(api.escalationPolicy, 'updateRule').mockResolvedValue(policy);
+    const bands = vi.spyOn(api.escalationPolicy, 'updateBands').mockResolvedValue(policy);
+    render(<Policy />);
+
+    await userEvent.click(await screen.findByRole('button', { name: /^Cautious scoring/ }));
+    expect(screen.getByLabelText('High from')).toHaveValue(25);
+    expect(screen.getByLabelText('Critical from')).toHaveValue(50);
+    const bar = screen.getByRole('region', { name: 'Unsaved changes' });
+    expect(bar).toHaveTextContent('The Cautious scoring preset');
+
+    await userEvent.click(within(bar).getByRole('button', { name: 'Save changes' }));
+    expect(bands).toHaveBeenCalledWith({ elevatedFrom: 25, criticalFrom: 50 });
+    // Its chains are the recommended ones, which differ from this policy in places.
+    expect(rule).toHaveBeenCalledWith('CRITICAL', 2, {
+      timeoutSeconds: 60,
+      dispatchMode: 'PARALLEL',
+      smsFallbackImmediate: true,
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'The Cautious scoring preset saved. It applies from the next alert.',
+    );
+  });
+
+  it('marks the preset the policy matches as in use', async () => {
+    vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue({
+      ...policy,
+      escalationRules: policy.escalationRules.map((rule) =>
+        rule.severity === 'CRITICAL'
+          ? {
+              ...rule,
+              timeoutSeconds: rule.last ? null : 60,
+              dispatchMode: rule.tier === 2 ? 'PARALLEL' : 'SEQUENTIAL',
+              smsFallbackImmediate: !rule.last,
+            }
+          : rule.severity === 'ELEVATED' && !rule.last
+            ? { ...rule, timeoutSeconds: rule.tier === 1 ? 60 : 120 }
+            : rule,
+      ),
+      bands: { ...policy.bands, elevatedFrom: 35, criticalFrom: 60 },
+    });
+    render(<Policy />);
+
+    const recommended = await screen.findByRole('button', { name: /^Recommended/ });
+    expect(within(recommended).getByText('In use')).toBeInTheDocument();
   });
 
   it('puts every field back on Discard', async () => {
@@ -129,7 +194,7 @@ describe('the escalation policy editor', () => {
     expect(screen.queryByText('Edited')).not.toBeInTheDocument();
   });
 
-  it("shows the server's reason when a change is refused, in its own section", async () => {
+  it("shows the server's reason when a change is refused, where the field is", async () => {
     vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue(policy);
     vi.spyOn(api.escalationPolicy, 'updateBands').mockRejectedValue(
       new ApiError(400, 'High must start below Critical.'),
@@ -141,8 +206,7 @@ describe('the escalation policy editor', () => {
     await userEvent.type(high, '70');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    // Shown in the bands section, where the field is, not at the top; the edit stays.
-    const bands = screen.getByRole('region', { name: /Where each band starts/ });
+    const bands = screen.getByRole('group', { name: /Where each band starts/ });
     expect(
       await within(bands).findByText(
         'The bands could not be saved. High must start below Critical.',
@@ -156,7 +220,7 @@ describe('the escalation policy editor', () => {
     vi.spyOn(api.escalationPolicy, 'get').mockResolvedValue(policy);
     render(<Policy />);
 
-    await screen.findByText('Standard alerts');
+    await screen.findByRole('list', { name: 'Standard alerts' });
     expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
   });
 });

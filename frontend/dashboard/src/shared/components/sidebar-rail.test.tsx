@@ -104,3 +104,23 @@ describe('the top bar', () => {
     );
   });
 });
+
+describe('light and dark', () => {
+  it('switches the page between light and dark, remembers it, and can follow the device again', async () => {
+    renderShell();
+    const root = document.documentElement;
+    expect(root.dataset.theme).toBeUndefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+    expect(root.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('mzazicare.theme')).toBe('dark');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    expect(root.dataset.theme).toBe('light');
+
+    await userEvent.click(screen.getByRole('button', { name: /Asha Njeri/ }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Match this device' }));
+    expect(root.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem('mzazicare.theme')).toBeNull();
+  });
+});

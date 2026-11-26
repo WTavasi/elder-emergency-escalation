@@ -10,6 +10,7 @@ import { commandKey, SECTIONS, typing } from '../navigation';
 import { CommandPalette } from './CommandPalette';
 import { Icon } from './Icon';
 import { LiveStatus } from './parts';
+import { useTheme } from '../state/theme';
 
 /** How long after G the second key of a "go to" shortcut is waited for. */
 const SECOND_KEY_MS = 1200;
@@ -228,6 +229,7 @@ export function Layout() {
               <kbd className="topbar__kbd">{commandKey()}K</kbd>
             </button>
             <div className="topbar__end">
+              <ThemeSwitch />
               <LiveStatus
                 state={connection}
                 health={health}
@@ -251,6 +253,26 @@ export function Layout() {
 }
 
 /**
+ * Light or dark, in one press: the moon offers dark while the page is light, the sun offers
+ * light while it is dark. The choice is remembered in this browser; "Match this device" in
+ * the account menu goes back to following the computer's own setting.
+ */
+function ThemeSwitch() {
+  const { dark, choose } = useTheme();
+  const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+  return (
+    <button
+      type="button"
+      className="icon-button button--quiet"
+      onClick={() => choose(dark ? 'light' : 'dark')}
+      title={label}
+    >
+      <Icon name={dark ? 'lightMode' : 'darkMode'} label={label} />
+    </button>
+  );
+}
+
+/**
  * Who is signed in, and signing out, at the right of the top bar. Sign out sits inside the
  * menu rather than on the page, so it is never pressed on the way to something else. On a
  * phone only the initials show.
@@ -259,6 +281,7 @@ function AccountMenu({ compact }: { compact: boolean }) {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [privacy, setPrivacy] = useState(false);
+  const theme = useTheme();
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -294,6 +317,19 @@ function AccountMenu({ compact }: { compact: boolean }) {
             <Icon name="privacy" size={18} />
             Privacy and data
           </button>
+          {theme.choice !== 'system' ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                theme.choose('system');
+              }}
+            >
+              <Icon name="devices" size={18} />
+              Match this device
+            </button>
+          ) : null}
           <button type="button" role="menuitem" onClick={() => void signOut()}>
             <Icon name="logout" size={18} />
             Sign out

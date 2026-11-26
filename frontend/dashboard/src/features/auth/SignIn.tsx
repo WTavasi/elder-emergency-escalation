@@ -103,9 +103,6 @@ export function SignIn() {
       <div className="signin__side">
         <form className="signin__form" onSubmit={submit} noValidate>
           <h1>Sign in</h1>
-          <p className="muted" style={{ marginTop: 'var(--space-8)' }}>
-            Administrator access to emergency records and reporting.
-          </p>
 
           {error ? (
             <p

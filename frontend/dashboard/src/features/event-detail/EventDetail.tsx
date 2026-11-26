@@ -91,6 +91,17 @@ function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () 
           Both lines are there from the start, so a type reported a few seconds in, or an
           answer, changes what they say and never how tall the banner is.
         */}
+        {/* When and where, said once here rather than as a line under the page's title. */}
+        <p className="banner__raised">
+          Raised {formatClock(alert.triggeredAt)}
+          {alert.trigger === 'MISSED_CHECK_IN'
+            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
+            : ''}
+          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
+          {alert.withheld?.includes('location')
+            ? '. Location withheld at the elder\u2019s request'
+            : ''}
+        </p>
         <p className="banner__report">
           {alert.reportedType ? (
             <>
@@ -203,18 +214,7 @@ export function EventDetail() {
             </span>
           </>
         }
-      >
-        <p>
-          Raised {formatClock(alert.triggeredAt)}
-          {alert.trigger === 'MISSED_CHECK_IN'
-            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
-            : ''}
-          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
-          {alert.withheld?.includes('location')
-            ? '. Location withheld at the elder\u2019s request'
-            : ''}
-        </p>
-      </PageHeader>
+      />
 
       <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
 
@@ -279,7 +279,6 @@ export function EventDetail() {
         <div ref={side} className={`stack detail-side${sideFits ? ' detail-side--sticky' : ''}`}>
           <section className="card stack" aria-labelledby="chain-heading">
             <h2 id="chain-heading">Escalation chain</h2>
-            <p className="muted micro">The order this elder&apos;s contacts are tried in.</p>
             <ol className="steps">
               {alert.chain.map((member) => {
                 const step = stepFor(member, alert);
@@ -661,9 +660,6 @@ function MedicalLooks({ id, version, open }: { id: string; version: number; open
   return (
     <section className="card stack" aria-labelledby="medical-heading">
       <h2 id="medical-heading">Medical details</h2>
-      <p className="micro muted">
-        Only the people asked to help see them. This lists who opened them, not what they say.
-      </p>
       {guardian ? (
         <p>
           Shared because {guardian.by?.name ?? 'a caregiver who has since left'} said this elder
