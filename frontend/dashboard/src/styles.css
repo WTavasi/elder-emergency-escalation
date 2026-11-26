@@ -132,7 +132,7 @@ html {
 .shell {
   --sidebar-width: 240px;
   --sidebar-row: 32px;
-  --bar-height: 52px;
+  --bar-height: 56px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
@@ -176,30 +176,14 @@ html {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
-  background: var(--text-soft);
-  color: var(--surface);
+  border-radius: var(--radius-control);
+  background: var(--sidebar-text);
+  color: var(--sidebar);
   font-size: 11px;
   font-weight: var(--font-weight-strong);
   line-height: 16px;
   text-align: center;
 }
-.shell--rail .account__button {
-  justify-content: center;
-  padding: 0;
-}
-/* The rail is short enough not to scroll, so the account menu can open past its edge, over
-   the page, at its usual width. */
-.shell--rail .sidebar {
-  overflow: visible;
-  z-index: 5;
-}
-.shell--rail .menu--up {
-  right: auto;
-  width: max-content;
-  min-width: 200px;
-}
-
 /* The sidebar stays put while the page scrolls, and scrolls itself only in a window too
    short for it. */
 .sidebar {
@@ -212,8 +196,21 @@ html {
   flex-direction: column;
   gap: var(--space-8);
   padding: 0 var(--space-12) var(--space-12);
-  background: var(--surface-sunk);
-  border-right: 1px solid var(--line);
+  background: var(--sidebar);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--sidebar-line);
+}
+/* In the dark sidebar the focus ring takes the lighter blue, gated against it. */
+.sidebar :focus-visible {
+  outline-color: var(--sidebar-focus);
+}
+.sidebar .icon-button {
+  background: transparent;
+  color: var(--sidebar-text-soft);
+}
+.sidebar .icon-button:hover:not(:disabled) {
+  background: var(--sidebar-selected);
+  color: var(--sidebar-text);
 }
 
 .sidebar__top {
@@ -227,7 +224,7 @@ html {
 .sidebar__brand {
   font-size: var(--font-size-title2);
   font-weight: var(--font-weight-heading);
-  color: var(--text);
+  color: var(--sidebar-text);
   text-decoration: none;
 }
 .sidebar__brand:hover {
@@ -240,43 +237,17 @@ html {
   gap: 2px;
 }
 
-/* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
-   rounded grey highlight, as a Mac sidebar marks it, never red: red is for emergencies. */
-/* Search, above the sections: a field-like button, as Mail's sidebar search looks, that
-   opens the search across the console. Its shortcut is written in it. */
-.sidebar__search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  width: 100%;
-  min-height: var(--sidebar-row);
-  padding: 0 var(--space-8);
-  border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  color: var(--text-soft);
-  font-weight: var(--font-weight-body);
-  text-align: left;
-}
-.sidebar__search .nav__text {
-  flex: 1;
-}
-.sidebar__kbd,
+.topbar__kbd,
 .palette kbd {
   padding: 0 var(--space-4);
   border: 1px solid var(--line);
-  border-radius: var(--space-4);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text-soft);
   font-family: inherit;
   font-size: var(--font-size-footnote);
   line-height: 1.5;
 }
-.shell--rail .sidebar__search {
-  position: relative;
-  justify-content: center;
-  padding: 0;
-}
-
 .nav a {
   display: flex;
   align-items: center;
@@ -284,23 +255,25 @@ html {
   min-height: var(--sidebar-row);
   padding: 0 var(--space-8);
   border-radius: var(--radius-control);
-  color: var(--text);
+  color: var(--sidebar-text);
   font-size: var(--font-size-body);
   text-decoration: none;
 }
+/* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
+   lighter block on the dark sidebar, never red: red is for emergencies. */
 .nav a:hover {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: color-mix(in srgb, var(--sidebar-selected) 60%, transparent);
   text-decoration: none;
 }
 .nav a[aria-current='page'] {
-  background: color-mix(in srgb, var(--text) 12%, transparent);
+  background: var(--sidebar-selected);
   font-weight: var(--font-weight-strong);
 }
 .nav a .icon {
-  color: var(--text-soft);
+  color: var(--sidebar-text-soft);
 }
 .nav a[aria-current='page'] .icon {
-  color: var(--text);
+  color: var(--sidebar-text);
 }
 .nav__text {
   flex: 1;
@@ -309,7 +282,7 @@ html {
   text-overflow: ellipsis;
 }
 .nav__count {
-  color: var(--text-soft);
+  color: var(--sidebar-text-soft);
   font-size: var(--font-size-subheadline);
   font-variant-numeric: tabular-nums;
 }
@@ -322,71 +295,93 @@ html {
   min-width: 0;
 }
 
+/* Everything to the right of the sidebar: the top bar and the page under it. */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 /*
-  A page's own bar: the way back on the left, the page's actions on the right, and its
-  title in the middle once the large title has scrolled away. Translucent over the page,
-  as Apple's bars are, with a hairline only once something is underneath it.
+  The bar across the top of every page, as most admin consoles have one: the search across
+  the console on the left, and the Live status and the account on the right. It stays at
+  the top as the page scrolls. Solid white with a hairline under it: no glass, no blur.
 */
-.pagebar {
+.topbar {
   position: sticky;
   top: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  z-index: 6;
+  display: flex;
   align-items: center;
   gap: var(--space-12);
   min-height: var(--bar-height);
-  margin: 0 calc(var(--space-24) * -1) calc(var(--space-16) * -1);
   padding: 0 var(--space-24);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--motion-quick) ease;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
-.pagebar--scrolled {
-  border-bottom-color: var(--line);
-}
-.pagebar__lead {
+/* Looks like a search field and opens the search across the console. */
+.topbar__search {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  min-width: 0;
+  gap: var(--space-8);
+  width: min(360px, 100%);
+  min-height: var(--control-height);
+  padding: 0 var(--space-8) 0 var(--space-12);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-body);
+  text-align: left;
 }
-.pagebar__back {
+.topbar__search:hover:not(:disabled) {
+  background: var(--surface-sunk);
+}
+.topbar__search-text {
+  flex: 1;
+}
+.topbar__end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  margin-left: auto;
+}
+
+/* The top of a page: the way back, then the title with its actions on the right. */
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-24);
+}
+.page-head__back {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   min-height: var(--control-height);
-  padding-right: var(--space-8);
   margin-left: calc(var(--space-8) * -1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding-right: var(--space-8);
 }
-.pagebar__title {
-  font-weight: var(--font-weight-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0;
-  transition: opacity var(--motion-quick) ease;
-}
-.pagebar--scrolled .pagebar__title {
-  opacity: 1;
-}
-.pagebar__actions {
+.page-head__row {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12) var(--space-24);
+}
+.page-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-8);
 }
 
-/* The large title, under the bar, with anything that belongs beside or beneath it. */
+/* The large title, with anything that belongs beside or beneath it. */
 .page-title {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-top: var(--space-16);
+  min-width: 0;
 }
 .page-title h1 {
   display: flex;
@@ -421,7 +416,7 @@ html {
   display: none;
 }
 
-/* A phone: the sidebar becomes a drawer behind the button in the page's bar. */
+/* A phone: the sidebar becomes a drawer behind the button in the top bar. */
 @media (max-width: 860px) {
   .shell {
     --sidebar-width: 280px;
@@ -448,20 +443,20 @@ html {
   .main {
     padding: 0 var(--space-16) var(--space-24);
   }
-  .pagebar {
-    margin: 0 calc(var(--space-16) * -1) calc(var(--space-16) * -1);
+  .topbar {
+    gap: var(--space-8);
     padding: 0 var(--space-16);
-    grid-template-columns: auto minmax(0, 1fr);
   }
-  .pagebar__title {
+  .topbar__kbd {
     display: none;
+  }
+  .page-head {
+    padding-top: var(--space-16);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar,
-  .pagebar,
-  .pagebar__title {
+  .sidebar {
     transition: none;
   }
 }
@@ -485,7 +480,7 @@ html {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-control);
   padding: var(--space-16);
 }
 
@@ -560,7 +555,7 @@ html {
   align-items: center;
   gap: var(--space-4);
   padding: 2px var(--space-8);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   font-size: var(--font-size-callout);
   font-weight: 600;
@@ -1073,7 +1068,6 @@ textarea {
   color: var(--surface);
   font-size: var(--font-size-subheadline);
   white-space: nowrap;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--text) 20%, transparent);
 }
 .chart__tip-value {
   font-size: var(--font-size-body);
@@ -1327,7 +1321,6 @@ textarea {
 }
 .connection--live .connection__dot {
   background: var(--pill-resolved-fg);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill-resolved-fg) 22%, transparent);
 }
 .connection--offline .connection__dot {
   background: var(--pill-notified-fg);
@@ -1389,7 +1382,7 @@ textarea {
   min-height: calc(var(--control-height) - 4px);
   padding: 0 var(--space-12);
   border: none;
-  border-radius: calc(var(--radius-control) - 2px);
+  border-radius: var(--radius-control);
   background: none;
   font-weight: var(--font-weight-body);
   color: var(--text-soft);
@@ -1402,19 +1395,17 @@ textarea {
   background: var(--surface);
   color: var(--text);
   font-weight: var(--font-weight-strong);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 18%, transparent);
+  outline: 1px solid var(--line);
 }
 
-/* Who is signed in, at the foot of the sidebar, opening a small menu above it. */
+/* Who is signed in, at the right of the top bar, opening a small menu under it. */
 .account {
   position: relative;
-  margin-top: auto;
 }
 .account__button {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  width: 100%;
   min-height: 44px;
   padding: 0 var(--space-8);
   background: none;
@@ -1469,9 +1460,8 @@ textarea {
   min-width: 180px;
   padding: var(--space-4);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--control);
   border-radius: var(--radius-control);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .menu--right {
   right: 0;
@@ -1550,7 +1540,7 @@ textarea {
 .skeleton__bar {
   display: block;
   height: 12px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: var(--surface-sunk);
 }
 
@@ -1565,7 +1555,7 @@ textarea {
   padding: var(--space-16) var(--space-24);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-control);
 }
 /* The state pill at the start of the banner says what state it is in. While nobody has
    taken it on, the whole outline turns red as well: red is spent on a person being
@@ -1789,9 +1779,8 @@ textarea {
   max-width: calc(100vw - var(--space-32));
   padding: var(--space-8) var(--space-12) var(--space-8) var(--space-16);
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-group);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 16%, transparent);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
   font-size: var(--font-size-callout);
 }
 .floating-bar strong {
@@ -1815,8 +1804,7 @@ textarea {
   padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
   background: var(--text);
   color: var(--surface);
-  border-radius: var(--radius-group);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 24%, transparent);
+  border-radius: var(--radius-control);
   font-size: var(--font-size-callout);
 }
 .toast__text {
@@ -1860,7 +1848,7 @@ textarea {
   display: inline-block;
   margin-left: var(--space-4);
   padding: 0 var(--space-8);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: var(--surface-sunk);
   color: var(--text-soft);
   font-size: var(--font-size-footnote);
@@ -2004,7 +1992,7 @@ textarea {
   padding: 0;
   display: inline-grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-soft);
 }
@@ -2047,9 +2035,8 @@ textarea {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sheet);
-  box-shadow: 0 24px 64px color-mix(in srgb, var(--text) 24%, transparent);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
   animation: sheet-in var(--motion-sheet) var(--easing-decelerate);
 }
 .modal__box--wide {
@@ -2363,9 +2350,8 @@ legend {
   width: min(600px, 100%);
   max-height: 70vh;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sheet);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--text) 24%, transparent);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 @media (prefers-reduced-motion: no-preference) {

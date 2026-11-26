@@ -9,6 +9,7 @@ import { humanise } from '../utils/format';
 import { commandKey, SECTIONS, typing } from '../navigation';
 import { CommandPalette } from './CommandPalette';
 import { Icon } from './Icon';
+import { LiveStatus } from './parts';
 
 /** How long after G the second key of a "go to" shortcut is waited for. */
 const SECOND_KEY_MS = 1200;
@@ -55,7 +56,7 @@ function writeCollapsed(collapsed: boolean): void {
  * title and its actions, so nothing is said twice.
  */
 export function Layout() {
-  const { alerts } = useOpenAlerts();
+  const { alerts, connection, health, down, updatedAt } = useOpenAlerts();
   const openCount = alerts?.length ?? null;
   const location = useLocation();
   const narrow = useMediaQuery(NARROW);
@@ -171,19 +172,6 @@ export function Layout() {
             </button>
           </div>
 
-          <button
-            type="button"
-            className="sidebar__search"
-            onClick={() => setSearching(true)}
-            aria-haspopup="dialog"
-            aria-keyshortcuts="Meta+K Control+K"
-            title={rail ? `Search (${commandKey()}K)` : undefined}
-          >
-            <Icon name="search" size={18} />
-            <span className="nav__text">Search</span>
-            {rail ? null : <kbd className="sidebar__kbd">{commandKey()}K</kbd>}
-          </button>
-
           {/* An icon beside each section's name, never instead of it. */}
           <nav className="nav" aria-label="Sections">
             {SECTIONS.map((section) => {
@@ -208,13 +196,53 @@ export function Layout() {
               );
             })}
           </nav>
-
-          <AccountMenu rail={rail} />
         </aside>
 
-        <main className="main" id="main">
-          <Outlet />
-        </main>
+        {/*
+          The bar across the top of every page: the search across the console on the left;
+          whether the console is live, and who is signed in, on the right. On a phone it
+          also holds the button for the sidebar's drawer.
+        */}
+        <div className="workspace">
+          <header className="topbar">
+            {narrow ? (
+              <button
+                type="button"
+                className="icon-button button--quiet"
+                onClick={() => setDrawerFor(location.pathname)}
+                aria-controls="sidebar"
+                aria-expanded={drawerOpen}
+              >
+                <Icon name="sidebar" label="Show the sidebar" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="topbar__search"
+              onClick={() => setSearching(true)}
+              aria-haspopup="dialog"
+              aria-keyshortcuts="Meta+K Control+K"
+            >
+              <Icon name="search" size={18} />
+              <span className="topbar__search-text">Search</span>
+              <kbd className="topbar__kbd">{commandKey()}K</kbd>
+            </button>
+            <div className="topbar__end">
+              <LiveStatus
+                state={connection}
+                health={health}
+                down={down}
+                updatedAt={updatedAt}
+                onRetry={() => window.location.reload()}
+              />
+              <AccountMenu compact={narrow} />
+            </div>
+          </header>
+
+          <main className="main" id="main">
+            <Outlet />
+          </main>
+        </div>
 
         {searching ? <CommandPalette onClose={() => setSearching(false)} /> : null}
       </div>
@@ -223,10 +251,11 @@ export function Layout() {
 }
 
 /**
- * Who is signed in, and signing out, at the foot of the sidebar. Sign out sits inside the
- * menu rather than on the page, so it is never pressed on the way to something else.
+ * Who is signed in, and signing out, at the right of the top bar. Sign out sits inside the
+ * menu rather than on the page, so it is never pressed on the way to something else. On a
+ * phone only the initials show.
  */
-function AccountMenu({ rail }: { rail: boolean }) {
+function AccountMenu({ compact }: { compact: boolean }) {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [privacy, setPrivacy] = useState(false);
@@ -253,7 +282,7 @@ function AccountMenu({ rail }: { rail: boolean }) {
   return (
     <div className="account" ref={box}>
       {open ? (
-        <div className="menu menu--up" role="menu">
+        <div className="menu menu--right" role="menu">
           <button
             type="button"
             role="menuitem"
@@ -276,14 +305,14 @@ function AccountMenu({ rail }: { rail: boolean }) {
         className="account__button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={rail ? `${session.user.name}, ${humanise(session.user.role)}` : undefined}
-        title={rail ? session.user.name : undefined}
+        aria-label={compact ? `${session.user.name}, ${humanise(session.user.role)}` : undefined}
+        title={compact ? session.user.name : undefined}
         onClick={() => setOpen((was) => !was)}
       >
         <span className="account__mark" aria-hidden="true">
           {initials(session.user.name)}
         </span>
-        {rail ? null : (
+        {compact ? null : (
           <>
             <span className="account__who">
               <span className="account__name">{session.user.name}</span>

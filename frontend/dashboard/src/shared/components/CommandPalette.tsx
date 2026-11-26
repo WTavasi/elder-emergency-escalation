@@ -8,6 +8,7 @@ import { SECTIONS } from '../navigation';
 import { useOpenAlertsIfAny } from '../state/OpenAlerts';
 import { formatClock, humanise } from '../utils/format';
 import { Icon, type IconName } from './Icon';
+import { STATE_LABEL } from './parts';
 
 type Group = 'Open emergencies' | 'Go to' | 'People' | 'Past emergencies' | 'Search';
 
@@ -86,7 +87,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         group: 'Open emergencies',
         icon: 'emergency',
         label: alert.elder.name,
-        detail: `${humanise(alert.state)}, raised ${formatClock(alert.triggeredAt)}`,
+        detail: `${STATE_LABEL[alert.state]}, raised ${formatClock(alert.triggeredAt)}`,
         to: `/emergencies/${alert.eventId}`,
       }));
     const sections = SECTIONS.filter(
@@ -117,7 +118,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         group: 'Past emergencies',
         icon: 'history',
         label: alert.elder.name,
-        detail: `${humanise(alert.state)}, raised ${formatClock(alert.triggeredAt)}`,
+        detail: `${STATE_LABEL[alert.state]}, raised ${formatClock(alert.triggeredAt)}`,
         to: `/emergencies/${alert.eventId}`,
       }));
     const everywhere: Item[] = [

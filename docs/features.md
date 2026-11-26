@@ -220,7 +220,7 @@ and cannot act on one: only the people in an elder's circle can do that.
 
 ![The console's board of open emergencies](images/console/board.png)
 
-The board updates as alerts arrive, change and close, with no refresh. The Live dot shows
+The board updates as alerts arrive, change and close, with no refresh. The Live dot, in the bar across the top of every page, shows
 whether the connection is up and says so when the API, the database or Redis is down.
 While the pointer is over the list its order holds still, so the row being reached for
 never jumps; a new emergency is counted in the caption and joins when the pointer leaves.
@@ -269,7 +269,7 @@ used from the next alert.
 
 ![Searching across the console](images/console/search.png)
 
-Command-K (Ctrl+K elsewhere), or Search at the top of the sidebar, finds an open
+Command-K (Ctrl+K elsewhere), or Search in the bar across the top, finds an open
 emergency, a section, a person or a past emergency by part of a name. G and then a
 section's letter goes straight there: B the board, H history, R reporting, U users, V
 volunteers, P the policy.

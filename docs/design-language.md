@@ -155,25 +155,27 @@ Apple's inset grouped lists, as Settings and Health set them out.
 
 ## Layout, in the console
 
-A Mac app, after Mail and System Settings, and dense, because it is read at a desk by
-somebody looking across many records at once.
+An admin console, dense, because it is read at a desk by somebody looking across many
+records at once: a dark sidebar, a white bar across the top, and flat white panels on a
+grey page, each with a 4px corner and a hairline edge. Nothing casts a shadow or glows.
 
-- **A window frame.** A grey sidebar holds the sections, each with its count, and the
-  account at its foot, which opens a small menu upwards. The current section is a rounded
-  grey selection, never red. A button at its top hides it, and the same button in the
-  page's bar brings it back; on a phone it is a drawer behind that button. Collapsing it is
+- **A window frame.** A dark sidebar holds the sections, each with its count. The current
+  section is a lighter block, never red, and the sidebar's colours have their own tokens,
+  gated at AAA in both themes, with a lighter focus ring that shows on the dark. A button
+  at its top collapses it to a rail of icons; on a phone it is a drawer behind a button in
+  the top bar. A white bar across the top of every page holds the search on the left and,
+  on the right, the Live status and the account, which opens a small menu downwards. Collapsing it is
   instant rather than animated, so the page never re-wraps while it moves. No bell: the
-  open count is already on the first section. One search across the console sits at the
-  top of the sidebar, opened there or with Command-K (Ctrl+K elsewhere), as Spotlight is:
+  open count is already on the first section. One search across the console sits in the
+  top bar, opened there or with Command-K (Ctrl+K elsewhere), as Spotlight is:
   part of a name goes straight to an open emergency, a section, a person's account or a
   past emergency. G and then a section's first letter goes to that section, the letters
   shown beside each in the search. History and Users still search their own records. The
   browser tab is named after the page, with the number
   nobody has answered in front, so a background tab still says somebody is needed.
-- **Each page has a bar and a large title.** The bar along the top holds the page's
-  actions and, on an emergency, the way back; it turns translucent, with a hairline, once
-  something scrolls under it, and the page's name appears in its middle once the large
-  title has gone.
+- **Each page has a large title with its actions beside it.** The way back, on an
+  emergency, sits above the title; the page's buttons sit to the right of it. The title
+  scrolls with the page, and the top bar above it stays.
 - **Records are lists.** A whole row opens what it shows, with a chevron at its end; the
   name is the link or button, so the keyboard reaches it, and the up and down arrows move
   between rows. An emergency nobody has answered has a red dot before the name, as an
@@ -306,8 +308,7 @@ The console draws the same Material Icons the app does, copied in as SVG paths (
 An icon that does none of these is decoration, and the design anti-patterns this project
 avoids include icons scattered for texture. Icon-only controls are reserved for secondary
 actions with a universally understood symbol, which in practice are the console's
-refresh, the button that hides and shows its sidebar, and the "…" that opens a row's menu,
-as on a Mac, and every one carries an accessible name.
+refresh, the button that hides and shows its sidebar, and the "…" that opens a row's menu, and every one carries an accessible name.
 
 Glyphs are shared between an action and the state it produces, so they teach each other:
 "I'm on my way" and the "On the way" pill both show a running figure, "Close emergency"

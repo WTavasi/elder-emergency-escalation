@@ -25,6 +25,10 @@ colors:
   page: "#F5F8F9"
   surface: "#FFFFFF"
   surface-sunk: "#E8EDEF"
+  sidebar: "#0E1418"
+  sidebar-text: "#FFFFFF"
+  sidebar-text-soft: "#B4C0C5"
+  sidebar-selected: "#2E3B42"
 typography:
   elder-display:
     fontFamily: "SF Pro, system-ui, sans-serif"
@@ -108,7 +112,7 @@ rounded:
   input: "4px"
   card: "8px"
   sheet: "12px"
-  control: "8px"
+  control: "4px"
   elder-card: "16px"
   pill: "999px"
   app-field: "10px"
@@ -204,8 +208,9 @@ on state, and on the way in, where MzaziCare's red fills the top of the screen. 
 mode is the same app at a larger size (22pt semibold body, 72pt buttons); it starts on
 for an elder and anybody can switch it. The elder's screen has the help button in the
 middle, where what replaces it appears too, and what the elder does next at the bottom,
-under the thumb. The console: the computer's own face, a grey sidebar, a large title on
-each page under a bar that turns translucent as the page scrolls, lists rather than
+under the thumb. The console: the computer's own face, a dark sidebar, a white bar across
+the top with the search, the Live status and the account, a large title on each page with
+its actions beside it, flat white panels with small corners, lists rather than
 spreadsheets, and questions as sheets with their buttons at the bottom right.
 
 **Key Characteristics:**
@@ -326,32 +331,38 @@ the bottom of its screen. On the elder's screen the help button and the countdow
 share one layout and one size, so the ring appears exactly where the button was; what the
 elder does next (stop, text, call, go back) sits at the bottom, in the reach of a thumb.
 Buttons are 50pt tall, 72pt in Elder mode; no touch target is under 48pt (72pt in Elder
-mode), and the console uses 36pt where a mouse is detected. The console is laid out as a Mac
-window: a grey sidebar with the sections, their counts and the account at its foot, which
-collapses to a narrow rail of icons (each named on hover and to a screen reader, the open
-count on its icon), and becomes a drawer on a phone; on each page, a bar that holds its actions
-and shows the page's name once the large title has scrolled under it. Records are lists:
-a whole row opens what it shows, with a chevron at its end.
+mode), and the console uses 36pt where a mouse is detected. The console is laid out as an
+admin console: a dark sidebar with the sections and their counts, which collapses to a
+narrow rail of icons (each named on hover and to a screen reader, the open count on its
+icon) and becomes a drawer on a phone; a white bar across the top that stays as the page
+scrolls, with the search across the console on the left and the Live status and the
+account on the right; and on each page, the way back above a large title, with the page's
+actions to the right of the title. Content sits in flat white panels on the grey page.
+Records are lists: a whole row opens what it shows, with a chevron at its end.
 
 ## Elevation & Depth
 
 Flat. Depth comes from tone (the grey page, the white group on it, the sunk grey of a
 button) and hairlines, not shadows.
 Material's elevation tint is switched off, because it would tint every surface with the
-emergency red. In the console, chart tooltips, menus and sheets carry a single soft
-shadow to show they float above the page, and nothing else does; the bar at the top of a
-page is translucent over what scrolls beneath it, as a Mac window's is.
+emergency red. In the console nothing casts a shadow or glows: what floats over the page
+(menus, sheets, the search panel, the floating bars) has a control-grey edge instead, and
+the bar across the top is solid white with a hairline under it. No glass, no blur, and no
+halo round the Live dot.
 
 ### Named Rules
 
-**The Flat-By-Default Rule.** A surface is separated by tone or a hairline. A shadow is
-only for something that genuinely floats above the page.
+**The Flat-By-Default Rule.** A surface is separated by tone or a hairline. In the app a
+shadow is only for something that genuinely floats above the page; in the console there
+is none.
 
 ## Shapes
 
 Rounded as iOS is in the app: 12px on buttons and grouped blocks, 10px on fields, 16px on
 the top corners of a sheet, fully round for the help button and state pills. The console
-rounds as a Mac does: 8px on buttons, fields and controls, 12px on lists and sheets.
+uses one small corner, 4px (`radius.control`), on everything with a corner: panels,
+figure tiles, lists, the status banner, buttons, fields, tags, menus and sheets. Only
+icons are round: status dots, step markers and the account's initials.
 Borders are hairlines; the only heavier lines are focus rings (3px), the progress steps'
 connector and the help button's dark-mode edge (4px).
 
@@ -430,8 +441,9 @@ the chosen segment raised on it.
 ### Navigation
 
 A bottom bar in the app with a sunk-surface pill on the current tab and a red badge
-with the number nobody has answered. In the console, a grey sidebar whose current page is
-a rounded grey selection, never red, with each section's count beside it.
+with the number nobody has answered. In the console, a dark sidebar whose current page is
+a lighter block, never red, with each section's count beside it, and a white bar across
+the top with the search, the Live status and the account.
 
 ## Do's and Don'ts
 
@@ -455,8 +467,9 @@ a rounded grey selection, never red, with each section's count beside it.
 - **Don't** colour a selected control, a spinner or a caret with the emergency red.
 - **Don't** add a coloured stripe down the edge of a row, message or banner.
 - **Don't** bundle a face in the app or the console.
-- **Don't** put a card, a gradient, glass or a decorative shadow on a working screen. The
-  console's bar at the top of a page is the one translucent thing, as a Mac window's is.
+- **Don't** put a gradient, glass, a glow or a decorative shadow on a working screen.
+- **Don't** round a console panel, button or field beyond 4px, or make anything but an
+  icon fully round.
 - **Don't** show a bare spinner where a sentence could say what is happening.
 - **Don't** add new uses of the red filled button for actions that are not emergencies
   while the filled-button colour is under review.

@@ -10,7 +10,13 @@ vi.mock('../state/AuthContext', () => ({
   }),
 }));
 vi.mock('../state/OpenAlerts', () => ({
-  useOpenAlerts: () => ({ alerts: [{}, {}, {}] }),
+  useOpenAlerts: () => ({
+    alerts: [{}, {}, {}],
+    connection: 'live',
+    health: 'ok',
+    down: [],
+    updatedAt: null,
+  }),
   useOpenAlertsIfAny: () => ({ alerts: [] }),
 }));
 vi.mock('../hooks/useMediaQuery', () => ({ useMediaQuery: () => false }));
@@ -76,7 +82,7 @@ describe('the keyboard', () => {
     expect(field).toHaveValue('gh');
   });
 
-  it('opens the search on Command-K and from the sidebar, and closes it again', async () => {
+  it('opens the search on Command-K and from the top bar, and closes it again', async () => {
     renderShell();
     await userEvent.keyboard('{Meta>}k{/Meta}');
     expect(screen.getByRole('dialog', { name: 'Search' })).toBeInTheDocument();
@@ -85,5 +91,16 @@ describe('the keyboard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Search/ }));
     expect(screen.getByRole('dialog', { name: 'Search' })).toBeInTheDocument();
+  });
+});
+
+describe('the top bar', () => {
+  it('says whether the console is live, and holds the account', () => {
+    renderShell();
+    expect(screen.getByRole('status')).toHaveTextContent('Live');
+    expect(screen.getByRole('button', { name: /Asha Njeri/ })).toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
   });
 });

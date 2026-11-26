@@ -4,7 +4,6 @@ import { useOpenAlerts } from '../../shared/state/OpenAlerts';
 import { PageHeader } from '../../shared/components/PageHeader';
 import {
   AlertRow,
-  LiveStatus,
   moveBetweenRows,
   Empty,
   ErrorNotice,
@@ -40,8 +39,7 @@ export function heldRows(
 const HOLD_WHILE_STILL_MS = 4000;
 
 export function Board() {
-  const { alerts, error, loading, connection, health, down, updatedAt, arrived, reload } =
-    useOpenAlerts();
+  const { alerts, error, loading, connection, arrived, reload } = useOpenAlerts();
   // The order frozen while the list is being pointed at, and every row as it was then,
   // so one closed meanwhile can still be drawn where it was.
   const [held, setHeld] = useState<{ ids: string[]; seen: Map<string, AlertSummary> } | null>(null);
@@ -69,18 +67,7 @@ export function Board() {
 
   return (
     <>
-      <PageHeader
-        title="Open emergencies"
-        actions={
-          <LiveStatus
-            state={connection}
-            health={health}
-            down={down}
-            updatedAt={updatedAt}
-            onRetry={() => window.location.reload()}
-          />
-        }
-      />
+      <PageHeader title="Open emergencies" />
 
       {connection === 'offline' ? (
         <div className="notice" role="status">

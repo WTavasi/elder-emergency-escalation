@@ -115,9 +115,11 @@ retention period the server actually enforces (`GET /api/v1/dashboard/policy`).
 
 ## Design
 
-The console follows a Mac app, as the mobile app follows an iPhone one: the computer's
-own face (`system-ui`, nothing bundled), a grey sidebar, a large title under a bar on
-each page, lists rather than spreadsheets, and sheets for questions. The rules are in
+The console is laid out as an admin console: the computer's own face (`system-ui`,
+nothing bundled), a dark sidebar, a white bar across the top with the search, the Live
+status and the account, a large title on each page with its actions beside it, flat white
+panels with 4px corners and no shadows, lists rather than spreadsheets, and sheets for
+questions. The rules are in
 `docs/design-language.md`, and why in `docs/decisions/design.md`.
 
 Every colour, space, radius and type size comes from `@mzazicare/tokens`. There is
