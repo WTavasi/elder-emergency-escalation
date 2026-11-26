@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Administrator dashboard for the MzaziCare escalation framework",
   "scripts": {
+    "prebuild": "node ../design-tokens/src/build.mjs",
     "build": "tsc --noEmit && vite build",
+    "predev": "node ../design-tokens/src/build.mjs",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest run",

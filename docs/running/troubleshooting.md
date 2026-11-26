@@ -34,6 +34,12 @@ print `/Users/tavasii/Desktop/Mzazicare` with nothing after it.
 them at boot, so start the API once and try again. If it persists, the container was
 started without the project's compose file.
 
+**The console's colours did not change after pulling a design change.** The colours come
+from `frontend/design-tokens/tokens.json`, built into a stylesheet that is not kept in
+git. `npm run dev:dashboard` and the console's build now rebuild it first; on an older
+copy, or if the console was already running, run `npm run tokens:build`, stop the console
+with Ctrl+C and start it again, then reload the page.
+
 **The dashboard loads but every request fails.** The API is not running, or it is on a
 different port. Open http://localhost:3000/health directly; it should return JSON
 naming Postgres and Redis separately.
