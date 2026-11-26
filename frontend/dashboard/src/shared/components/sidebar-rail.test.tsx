@@ -9,7 +9,16 @@ vi.mock('../state/AuthContext', () => ({
     signOut: vi.fn(),
   }),
 }));
-vi.mock('../state/OpenAlerts', () => ({ useOpenAlerts: () => ({ alerts: [{}, {}, {}] }) }));
+vi.mock('../state/OpenAlerts', () => ({
+  useOpenAlerts: () => ({
+    alerts: [{}, {}, {}],
+    connection: 'live',
+    health: 'ok',
+    down: [],
+    updatedAt: null,
+  }),
+  useOpenAlertsIfAny: () => ({ alerts: [] }),
+}));
 vi.mock('../hooks/useMediaQuery', () => ({ useMediaQuery: () => false }));
 
 const { Layout } = await import('./Layout');
@@ -20,6 +29,8 @@ function renderShell() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<p>Board</p>} />
+          <Route path="history" element={<p>History page</p>} />
+          <Route path="policy" element={<input aria-label="A field on the page" />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -51,5 +62,65 @@ describe('the sidebar', () => {
 
     const { container } = renderShell();
     expect(container.querySelector('.shell--rail')).not.toBeNull();
+  });
+});
+
+describe('the keyboard', () => {
+  it('goes to a section on G then its key', async () => {
+    renderShell();
+    await userEvent.keyboard('gh');
+    expect(screen.getByText('History page')).toBeInTheDocument();
+  });
+
+  it('leaves the keys alone while somebody is typing', async () => {
+    renderShell();
+    await userEvent.keyboard('gp');
+    const field = screen.getByLabelText('A field on the page');
+    await userEvent.click(field);
+    await userEvent.keyboard('gh');
+    expect(screen.queryByText('History page')).not.toBeInTheDocument();
+    expect(field).toHaveValue('gh');
+  });
+
+  it('opens the search on Command-K and from the top bar, and closes it again', async () => {
+    renderShell();
+    await userEvent.keyboard('{Meta>}k{/Meta}');
+    expect(screen.getByRole('dialog', { name: 'Search' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Search/ }));
+    expect(screen.getByRole('dialog', { name: 'Search' })).toBeInTheDocument();
+  });
+});
+
+describe('the top bar', () => {
+  it('says whether the console is live, and holds the account', () => {
+    renderShell();
+    expect(screen.getByRole('status')).toHaveTextContent('Live');
+    expect(screen.getByRole('button', { name: /Asha Njeri/ })).toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
+  });
+});
+
+describe('light and dark', () => {
+  it('switches the page between light and dark, remembers it, and can follow the device again', async () => {
+    renderShell();
+    const root = document.documentElement;
+    expect(root.dataset.theme).toBeUndefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+    expect(root.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('mzazicare.theme')).toBe('dark');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    expect(root.dataset.theme).toBe('light');
+
+    await userEvent.click(screen.getByRole('button', { name: /Asha Njeri/ }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Match this device' }));
+    expect(root.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem('mzazicare.theme')).toBeNull();
   });
 });

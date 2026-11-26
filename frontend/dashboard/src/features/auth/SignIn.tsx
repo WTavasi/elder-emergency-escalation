@@ -103,9 +103,6 @@ export function SignIn() {
       <div className="signin__side">
         <form className="signin__form" onSubmit={submit} noValidate>
           <h1>Sign in</h1>
-          <p className="muted" style={{ marginTop: 'var(--space-8)' }}>
-            Administrator access to emergency records and reporting.
-          </p>
 
           {error ? (
             <p
@@ -170,7 +167,12 @@ export function SignIn() {
             />
           </div>
 
-          <button type="submit" className="button--primary signin__submit" disabled={busy}>
+          <button
+            type="submit"
+            className="button--primary signin__submit"
+            disabled={busy}
+            aria-busy={busy}
+          >
             {busy ? 'Signing in' : 'Sign in'}
           </button>
 

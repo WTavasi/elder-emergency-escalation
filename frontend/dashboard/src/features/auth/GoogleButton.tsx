@@ -104,7 +104,12 @@ export function GoogleButton({
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-        const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+        // The console's own choice first, then the device's.
+        const chosen = document.documentElement.dataset.theme;
+        const dark =
+          chosen === 'dark' ||
+          (chosen !== 'light' &&
+            (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false));
         google.accounts.id.renderButton(slot.current, {
           type: 'standard',
           theme: dark ? 'filled_black' : 'outline',

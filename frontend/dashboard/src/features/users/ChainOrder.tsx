@@ -63,6 +63,8 @@ export function ChainOrder({
             type="button"
             className="button--primary"
             disabled={!changed || busy}
+            aria-busy={busy}
+            title={changed ? undefined : 'Move somebody to another group first'}
             onClick={() => void save()}
           >
             {busy ? 'Saving' : 'Save order'}

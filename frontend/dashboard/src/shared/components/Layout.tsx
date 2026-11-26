@@ -1,21 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { useOpenAlerts } from '../state/OpenAlerts';
 import { ShellContext } from '../state/Shell';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PrivacyPanel } from '../../features/privacy/PrivacyPanel';
 import { humanise } from '../utils/format';
-import { Icon, type IconName } from './Icon';
+import { commandKey, SECTIONS, typing } from '../navigation';
+import { CommandPalette } from './CommandPalette';
+import { Icon } from './Icon';
+import { LiveStatus } from './parts';
+import { useTheme } from '../state/theme';
 
-const SECTIONS: { to: string; label: string; icon: IconName }[] = [
-  { to: '/', label: 'Open emergencies', icon: 'emergency' },
-  { to: '/history', label: 'History', icon: 'history' },
-  { to: '/reporting', label: 'Reporting', icon: 'reporting' },
-  { to: '/users', label: 'Users', icon: 'people' },
-  { to: '/volunteers', label: 'Volunteers', icon: 'personAdd' },
-  { to: '/policy', label: 'Escalation policy', icon: 'tune' },
-];
+/** How long after G the second key of a "go to" shortcut is waited for. */
+const SECOND_KEY_MS = 1200;
 
 const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
 
@@ -59,7 +57,7 @@ function writeCollapsed(collapsed: boolean): void {
  * title and its actions, so nothing is said twice.
  */
 export function Layout() {
-  const { alerts } = useOpenAlerts();
+  const { alerts, connection, health, down, updatedAt } = useOpenAlerts();
   const openCount = alerts?.length ?? null;
   const location = useLocation();
   const narrow = useMediaQuery(NARROW);
@@ -78,6 +76,42 @@ export function Layout() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
+
+  // One search across the console, on ⌘K (Ctrl K elsewhere) from anywhere, and the "go
+  // to" shortcuts: G, then a section's key, when nobody is typing.
+  const [searching, setSearching] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    let awaiting = 0;
+    const onKey = (keyEvent: KeyboardEvent) => {
+      const key = keyEvent.key.toLowerCase();
+      if (key === 'k' && (keyEvent.metaKey || keyEvent.ctrlKey) && !keyEvent.altKey) {
+        // Not over another sheet or panel: one thing on top of the page at a time.
+        const other = document.querySelector(
+          '[role="dialog"]:not(.palette__box), [role="alertdialog"]',
+        );
+        if (other) return;
+        keyEvent.preventDefault();
+        setSearching((was) => !was);
+        return;
+      }
+      if (keyEvent.metaKey || keyEvent.ctrlKey || keyEvent.altKey || typing(keyEvent.target)) {
+        return;
+      }
+      if (awaiting && Date.now() - awaiting < SECOND_KEY_MS) {
+        awaiting = 0;
+        const section = SECTIONS.find((candidate) => candidate.key === key);
+        if (section) {
+          keyEvent.preventDefault();
+          void navigate(section.to);
+        }
+        return;
+      }
+      awaiting = key === 'g' ? Date.now() : 0;
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [navigate]);
 
   function toggle() {
     if (narrow) {
@@ -163,26 +197,91 @@ export function Layout() {
               );
             })}
           </nav>
-
-          <AccountMenu rail={rail} />
         </aside>
 
-        <main className="main" id="main">
-          <Outlet />
-        </main>
+        {/*
+          The bar across the top of every page: the search across the console on the left;
+          whether the console is live, and who is signed in, on the right. On a phone it
+          also holds the button for the sidebar's drawer.
+        */}
+        <div className="workspace">
+          <header className="topbar">
+            {narrow ? (
+              <button
+                type="button"
+                className="icon-button button--quiet"
+                onClick={() => setDrawerFor(location.pathname)}
+                aria-controls="sidebar"
+                aria-expanded={drawerOpen}
+              >
+                <Icon name="sidebar" label="Show the sidebar" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="topbar__search"
+              onClick={() => setSearching(true)}
+              aria-haspopup="dialog"
+              aria-keyshortcuts="Meta+K Control+K"
+            >
+              <Icon name="search" size={18} />
+              <span className="topbar__search-text">Search</span>
+              <kbd className="topbar__kbd">{commandKey()}K</kbd>
+            </button>
+            <div className="topbar__end">
+              <ThemeSwitch />
+              <LiveStatus
+                state={connection}
+                health={health}
+                down={down}
+                updatedAt={updatedAt}
+                onRetry={() => window.location.reload()}
+              />
+              <AccountMenu compact={narrow} />
+            </div>
+          </header>
+
+          <main className="main" id="main">
+            <Outlet />
+          </main>
+        </div>
+
+        {searching ? <CommandPalette onClose={() => setSearching(false)} /> : null}
       </div>
     </ShellContext.Provider>
   );
 }
 
 /**
- * Who is signed in, and signing out, at the foot of the sidebar. Sign out sits inside the
- * menu rather than on the page, so it is never pressed on the way to something else.
+ * Light or dark, in one press: the moon offers dark while the page is light, the sun offers
+ * light while it is dark. The choice is remembered in this browser; "Match this device" in
+ * the account menu goes back to following the computer's own setting.
  */
-function AccountMenu({ rail }: { rail: boolean }) {
+function ThemeSwitch() {
+  const { dark, choose } = useTheme();
+  const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+  return (
+    <button
+      type="button"
+      className="icon-button button--quiet"
+      onClick={() => choose(dark ? 'light' : 'dark')}
+      title={label}
+    >
+      <Icon name={dark ? 'lightMode' : 'darkMode'} label={label} />
+    </button>
+  );
+}
+
+/**
+ * Who is signed in, and signing out, at the right of the top bar. Sign out sits inside the
+ * menu rather than on the page, so it is never pressed on the way to something else. On a
+ * phone only the initials show.
+ */
+function AccountMenu({ compact }: { compact: boolean }) {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [privacy, setPrivacy] = useState(false);
+  const theme = useTheme();
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -206,7 +305,7 @@ function AccountMenu({ rail }: { rail: boolean }) {
   return (
     <div className="account" ref={box}>
       {open ? (
-        <div className="menu menu--up" role="menu">
+        <div className="menu menu--right" role="menu">
           <button
             type="button"
             role="menuitem"
@@ -218,6 +317,19 @@ function AccountMenu({ rail }: { rail: boolean }) {
             <Icon name="privacy" size={18} />
             Privacy and data
           </button>
+          {theme.choice !== 'system' ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                theme.choose('system');
+              }}
+            >
+              <Icon name="devices" size={18} />
+              Match this device
+            </button>
+          ) : null}
           <button type="button" role="menuitem" onClick={() => void signOut()}>
             <Icon name="logout" size={18} />
             Sign out
@@ -229,14 +341,14 @@ function AccountMenu({ rail }: { rail: boolean }) {
         className="account__button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={rail ? `${session.user.name}, ${humanise(session.user.role)}` : undefined}
-        title={rail ? session.user.name : undefined}
+        aria-label={compact ? `${session.user.name}, ${humanise(session.user.role)}` : undefined}
+        title={compact ? session.user.name : undefined}
         onClick={() => setOpen((was) => !was)}
       >
         <span className="account__mark" aria-hidden="true">
           {initials(session.user.name)}
         </span>
-        {rail ? null : (
+        {compact ? null : (
           <>
             <span className="account__who">
               <span className="account__name">{session.user.name}</span>

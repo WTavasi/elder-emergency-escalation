@@ -299,11 +299,17 @@ export function AlertRow({
   alert,
   live,
   arrived = false,
+  gone = false,
 }: {
   alert: AlertSummary;
   live: boolean;
   /** Just appeared on the board while it was open: drawn in, so the eye goes to it. */
   arrived?: boolean;
+  /**
+   * No longer open, but kept in its place while the board's order is held: faded, and
+   * said in words, until the pointer leaves the list.
+   */
+  gone?: boolean;
 }) {
   const navigate = useNavigate();
   const to = `/emergencies/${alert.eventId}`;
@@ -311,7 +317,7 @@ export function AlertRow({
 
   return (
     <tr
-      className={arrived ? 'row-link row--arrived' : 'row-link'}
+      className={`row-link${arrived ? ' row--arrived' : ''}${gone ? ' row--gone' : ''}`}
       onClick={(clickEvent) => {
         if (!onControl(clickEvent)) void navigate(to);
       }}
@@ -322,6 +328,7 @@ export function AlertRow({
           <Link className="row-link__name" to={to}>
             {alert.elder.name}
           </Link>
+          {gone ? <span className="micro">No longer open</span> : null}
           <TriggerTag trigger={alert.trigger} />
           <TypeTag type={alert.reportedType} />
         </span>

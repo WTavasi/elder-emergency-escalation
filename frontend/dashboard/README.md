@@ -64,6 +64,8 @@ Each screen is a folder under `src/features/`; anything two screens share is und
 | `src/shared/state/` | Who is signed in, and the live list of open emergencies |
 | `src/shared/components/` | The page layout and small shared parts |
 | `src/shared/hooks/` | Loading data, counting down, the time now, keyboard shortcuts |
+| `src/shared/state/theme.ts` | Light, dark or the device's setting, remembered in the browser |
+| `src/shared/navigation.ts` | The sections, their shortcut letters, and telling typing from a shortcut |
 | `src/shared/utils/` | Formatting dates, durations and labels; an emergency's record in sentences |
 
 `App.tsx` holds the routes, `main.tsx` starts the app, and `styles.css` is the one
@@ -74,21 +76,37 @@ stylesheet. Tests sit beside the file they test.
 - **Open emergencies.** Everything still live, ordered by whoever has been waiting
   longest without an answer, with the time left on the current tier counting down and
   how long ago each was raised. Updated by the socket, refreshed over HTTP when the
-  socket drops; the bar says when it last heard anything.
+  socket drops; the bar says when it last heard anything. While the pointer is over the
+  list the order holds still, and a new emergency waits, counted in the caption.
+- **One emergency.** The record on the left; the chain, who is on the way, what the
+  elder said and who opened their medical details on the right, each in a place of its
+  own from the start. The delivery attempts and the severity breakdown open at the side.
 - **History.** The searchable record, a page at a time, by elder name, state, severity
   and date, with a CSV export. Filters apply as they are chosen, and every one is applied
   by the API, so records nobody asked to see never reach the page.
-- **Reporting.** Each figure for the period with how it moved against the period before,
-  a daily chart, how far emergencies travelled down the chain, and per-channel delivery
-  reliability.
+- **Reporting.** How many nobody has answered yet, first and largest; each figure for the
+  period with how it moved against the period before; a bar a day; how far emergencies
+  travelled down the chain; and per-channel delivery reliability.
 - **Users.** Every account, with adding responders and administrators, editing, and
-  deactivating or reactivating, one at a time or several after pressing **Select**.
+  deactivating or reactivating, one at a time or several after pressing **Select**, with
+  what can be done to the choice in a bar floating at the foot of the window.
 - **Volunteers.** Community volunteers' applications, to approve or not, and the
   approved ones, to suspend.
+- **Escalation policy.** Six built-in presets that set every chain and the bands in one
+  press, the one in use marked; each severity's chain as numbered steps, with time limits
+  picked from a list and when emergency services are reached; and the severity weights and
+  bands. Edits are saved together from a bar at the foot of the window; leaving with edits
+  unsaved asks first. The presets are in `src/features/policy/presets.ts`.
 
 A row in any list opens what it shows when pressed anywhere. From the keyboard, the up
 and down arrows move between rows and Return opens one; Command-F or Ctrl+F goes to the
-search on History and Users.
+search on History and Users. Command-K or Ctrl+K opens the search across the console,
+and G then a letter goes to a section: B the board, H history, R reporting, U users, V
+volunteers, P the policy. A single-letter shortcut never fires while somebody is typing.
+
+Nothing on a page moves to make room for something else: messages after an action appear
+at the foot of the window and go by themselves, and new information has a place kept
+for it.
 
 ## Privacy, in layers
 
@@ -100,9 +118,11 @@ retention period the server actually enforces (`GET /api/v1/dashboard/policy`).
 
 ## Design
 
-The console follows a Mac app, as the mobile app follows an iPhone one: the computer's
-own face (`system-ui`, nothing bundled), a grey sidebar, a large title under a bar on
-each page, lists rather than spreadsheets, and sheets for questions. The rules are in
+The console is laid out as an admin console: the computer's own face (`system-ui`,
+nothing bundled), a dark sidebar, a white bar across the top with the search, the Live
+status and the account, a large title on each page with its actions beside it, flat white
+panels with 4px corners and no shadows, lists rather than spreadsheets, and sheets for
+questions. The rules are in
 `docs/design-language.md`, and why in `docs/decisions/design.md`.
 
 Every colour, space, radius and type size comes from `@mzazicare/tokens`. There is

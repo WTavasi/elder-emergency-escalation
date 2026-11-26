@@ -220,16 +220,20 @@ and cannot act on one: only the people in an elder's circle can do that.
 
 ![The console's board of open emergencies](images/console/board.png)
 
-The board updates as alerts arrive, change and close, with no refresh. The Live dot shows
+The board updates as alerts arrive, change and close, with no refresh. The Live dot, in the bar across the top of every page, shows
 whether the connection is up and says so when the API, the database or Redis is down.
+While the pointer is over the list its order holds still, so the row being reached for
+never jumps; a new emergency is counted in the caption and joins when the pointer leaves.
 
 ### One emergency in full
 
 ![One emergency: state, severity, timeline and chain](images/console/emergency.png)
 
-What happened, step by step, with times; who was asked and when; every message sent and
-whether it was delivered; and "Why this severity?", which lists each factor's share of the
-score.
+What happened, step by step, with times; who was asked and when; who is on the way,
+volunteers and emergency services; every message sent and whether it was delivered; and
+"Why this severity?", which lists each factor's share of the score. Each part has its own
+place from the start, so news arriving never pushes the record out of place, and the
+delivery attempts and the severity breakdown open in a panel at the side.
 
 ### History and reporting
 
@@ -237,9 +241,10 @@ score.
 
 ![Reporting figures](images/console/reporting.png)
 
-History filters by state, severity and time and exports to CSV. Reporting shows what is
-open now, how quickly alerts were answered, how far up the chain they travelled, and the
-share answered within the target time.
+History filters by state, severity and time and exports to CSV. Reporting leads with how
+many emergencies nobody has answered yet, then shows what is open now, how quickly alerts
+were answered, how far up the chain they travelled, and the share answered within the
+target time, each against the period before once there is one.
 
 ### Users and volunteers
 
@@ -255,9 +260,38 @@ volunteers.
 ![The escalation policy editor](images/console/policy.png)
 
 How long each group has before the next is asked, the weight of each severity factor,
-and where High and Critical start. Every change is checked (the last step can have no
-time limit, Critical must stay reachable), recorded with the administrator's name, and
-used from the next alert.
+and where High and Critical start.
+
+- **Presets.** Six built-in presets set every chain and the bands in one press:
+  Recommended (what the system ships with), Faster response, More time for family,
+  Everyone together, Texts straight away and Cautious scoring. The one the policy matches
+  is marked "In use".
+- **One chain at a time.** Standard, High or Critical is chosen above the chain. Each group
+  is a numbered step that says when it is asked, with its time limit picked from a list
+  (from 15 seconds to an hour), whether it waits for the group before, and whether it is
+  texted at once. A line under the chain says when emergency services are reached if
+  nobody answers.
+- **Weights and bands,** with a reset of the weights to the recommended ones.
+
+Nothing is saved until Save changes, in a bar at the foot of the window, and each edited
+row is marked until then. Every change is checked (the last step can have no time limit,
+Critical must stay reachable), recorded with the administrator's name, and used from the
+next alert.
+
+### Light and dark, by choice
+
+The console follows the computer's setting until the moon or sun in the top bar is
+pressed; the choice is remembered in that browser, and "Match this device" in the account
+menu goes back to following the computer.
+
+### Search and shortcuts
+
+![Searching across the console](images/console/search.png)
+
+Command-K (Ctrl+K elsewhere), or Search in the bar across the top, finds an open
+emergency, a section, a person or a past emergency by part of a name. G and then a
+section's letter goes straight there: B the board, H history, R reporting, U users, V
+volunteers, P the policy.
 
 More: [the console's own guide](../frontend/dashboard/README.md).
 

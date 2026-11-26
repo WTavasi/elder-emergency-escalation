@@ -87,27 +87,51 @@ function StatusBanner({ alert, onExplain }: { alert: AlertDetail; onExplain: () 
             </button>
           ) : null}
         </div>
-        {alert.reportedType || alert.serviceRequested ? (
-          <p className="banner__report">
-            {alert.reportedType ? (
-              <>
-                Reported: <strong>{TYPE_LABEL[alert.reportedType]}</strong>
-              </>
-            ) : null}
-            {alert.reportedType && alert.serviceRequested ? '. ' : null}
-            {alert.serviceRequested ? <>Asked: {SERVICE_LABEL[alert.serviceRequested]}</> : null}
-            {alert.confirmedType && alert.confirmedType !== alert.reportedType ? (
-              <>. Confirmed on closing: {TYPE_LABEL[alert.confirmedType]}</>
-            ) : null}
-          </p>
-        ) : null}
+        {/*
+          Both lines are there from the start, so a type reported a few seconds in, or an
+          answer, changes what they say and never how tall the banner is.
+        */}
+        {/* When and where, said once here rather than as a line under the page's title. */}
+        <p className="banner__raised">
+          Raised {formatClock(alert.triggeredAt)}
+          {alert.trigger === 'MISSED_CHECK_IN'
+            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
+            : ''}
+          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
+          {alert.withheld?.includes('location')
+            ? '. Location withheld at the elder\u2019s request'
+            : ''}
+        </p>
+        <p className="banner__report">
+          {alert.reportedType ? (
+            <>
+              Reported: <strong>{TYPE_LABEL[alert.reportedType]}</strong>
+            </>
+          ) : (
+            <span className="muted">No type reported{open ? ' yet' : ''}</span>
+          )}
+          {alert.serviceRequested ? <>. Asked: {SERVICE_LABEL[alert.serviceRequested]}</> : null}
+          {alert.confirmedType && alert.confirmedType !== alert.reportedType ? (
+            <>. Confirmed on closing: {TYPE_LABEL[alert.confirmedType]}</>
+          ) : null}
+        </p>
         <p className="banner__owner">
           <Icon name="person" />
-          {alert.acknowledgedBy
-            ? `${alert.acknowledgedBy.name}, ${humanise(alert.acknowledgedBy.role)}, has taken it on`
-            : open
-              ? 'Nobody has taken it on yet'
-              : 'Nobody took it on'}
+          <span>
+            {alert.acknowledgedBy
+              ? `${alert.acknowledgedBy.name}, ${humanise(alert.acknowledgedBy.role)}, has taken it on`
+              : open
+                ? 'Nobody has taken it on yet'
+                : 'Nobody took it on'}
+            {alert.responseSeconds !== null || alert.resolvedAt ? (
+              <span className="banner__after">
+                {alert.responseSeconds !== null
+                  ? ` · Answered in ${formatDuration(alert.responseSeconds)}`
+                  : ''}
+                {alert.resolvedAt ? ` · Closed ${formatClock(alert.resolvedAt)}` : ''}
+              </span>
+            ) : null}
+          </span>
         </p>
       </div>
       {open && alert.deadlineAt ? (
@@ -152,10 +176,14 @@ export function EventDetail() {
   useRealtime(session?.accessToken ?? null, onUpdate);
 
   const [explaining, setExplaining] = useState(false);
+  const [deliveries, setDeliveries] = useState(false);
+  const side = useRef<HTMLDivElement>(null);
+  const sideFits = useFits(side, alert);
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !alert) return <Skeleton rows={5} />;
 
+  const open = OPEN_STATES.includes(alert.state);
   const factors = alert.severityFactors?.factors ?? [];
   const timeline = firstThingsFirst(alert.timeline);
 
@@ -186,37 +214,15 @@ export function EventDetail() {
             </span>
           </>
         }
-      >
-        <p>
-          Raised {formatClock(alert.triggeredAt)}
-          {alert.trigger === 'MISSED_CHECK_IN'
-            ? `, when ${alert.elder.name.split(' ')[0]} did not answer a daily check-in`
-            : ''}
-          {alert.addressLabel ? ` at ${alert.addressLabel}` : ''}
-          {alert.withheld?.includes('location')
-            ? '. Location withheld at the elder\u2019s request'
-            : ''}
-        </p>
-      </PageHeader>
+      />
 
       <StatusBanner alert={alert} onExplain={() => setExplaining(true)} />
-      {/* Only once there is something the banner does not say: until then it already
-        says nobody has taken it on. */}
-      {alert.responseSeconds !== null || alert.resolvedAt ? (
-        <p className="micro muted" style={{ marginTop: 'calc(var(--space-12) * -1)' }}>
-          {alert.responseSeconds === null
-            ? 'Not answered'
-            : `Answered in ${formatDuration(alert.responseSeconds)}`}
-          {alert.resolvedAt ? `, closed ${formatClock(alert.resolvedAt)}` : ''}
-        </p>
-      ) : null}
 
-      <OnTheWay alert={alert} />
-      <Volunteers alert={alert} />
-      <Said alert={alert} />
-      <Stations alert={alert} />
-      <MedicalLooks id={id} version={alert.timeline.length} />
-
+      {/*
+        Two columns that never push each other: the record on the left grows at its foot,
+        and everything that arrives while the emergency is open has a place of its own on
+        the right, held from the start, so a card appearing never moves what is being read.
+      */}
       <div className="detail-grid">
         <section className="card stack" aria-labelledby="timeline-heading">
           <h2 id="timeline-heading">What happened</h2>
@@ -249,12 +255,30 @@ export function EventDetail() {
               );
             })}
           </ol>
+          {/*
+            The record of every message opens in the panel at the side, as the severity
+            breakdown does, rather than unfolding here and pushing the page down.
+          */}
+          {alert.deliveries.length === 0 ? (
+            <p className="muted micro">Nothing has been dispatched for this emergency.</p>
+          ) : (
+            <p>
+              <button
+                type="button"
+                className="link-button"
+                aria-haspopup="dialog"
+                onClick={() => setDeliveries(true)}
+              >
+                Show {alert.deliveries.length}{' '}
+                {alert.deliveries.length === 1 ? 'delivery attempt' : 'delivery attempts'}
+              </button>
+            </p>
+          )}
         </section>
 
-        <div className="stack">
+        <div ref={side} className={`stack detail-side${sideFits ? ' detail-side--sticky' : ''}`}>
           <section className="card stack" aria-labelledby="chain-heading">
             <h2 id="chain-heading">Escalation chain</h2>
-            <p className="muted micro">The order this elder&apos;s contacts are tried in.</p>
             <ol className="steps">
               {alert.chain.map((member) => {
                 const step = stepFor(member, alert);
@@ -284,57 +308,66 @@ export function EventDetail() {
               })}
             </ol>
           </section>
+          <GettingHelp alert={alert} />
+          <Said alert={alert} />
+          {/* Last, as it is asked for separately and may arrive after the rest. */}
+          <MedicalLooks id={id} version={alert.timeline.length} open={open} />
         </div>
       </div>
 
-      {/*
-        Folded away, as detail somebody opens when they want it: the sentences above already
-        say who was sent what, and this is the record of every message underneath them.
-      */}
-      {alert.deliveries.length === 0 ? (
-        <p className="muted">Nothing has been dispatched for this emergency.</p>
-      ) : (
-        <details className="card disclosure">
-          <summary className="disclosure__summary">
-            <h2 id="delivery-heading">
-              Show {alert.deliveries.length}{' '}
-              {alert.deliveries.length === 1 ? 'delivery attempt' : 'delivery attempts'}
-            </h2>
-          </summary>
-          <div className="disclosure__body">
-            <p className="muted micro">
-              A failed push followed by a text to the same person is the fallback working, not two
-              separate faults.
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Recipient</th>
-                  <th scope="col">Tier</th>
-                  <th scope="col">Channel</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Reason</th>
-                  <th scope="col">Sent</th>
+      {deliveries ? (
+        <Modal
+          side
+          wide
+          title="Delivery attempts"
+          onClose={() => setDeliveries(false)}
+          footer={
+            <button type="button" onClick={() => setDeliveries(false)}>
+              Close
+            </button>
+          }
+        >
+          <p className="muted micro" style={{ marginTop: 0 }}>
+            A failed push followed by a text to the same person is the fallback working, not two
+            separate faults.
+          </p>
+          <table className="list">
+            <thead>
+              <tr>
+                <th scope="col">Recipient</th>
+                <th scope="col" className="num">
+                  Tier
+                </th>
+                <th scope="col">Channel</th>
+                <th scope="col">Status</th>
+                <th scope="col">Sent</th>
+              </tr>
+            </thead>
+            <tbody>
+              {alert.deliveries.map((delivery) => (
+                <tr key={delivery.id}>
+                  <td>
+                    <strong>{delivery.recipient?.name ?? 'unknown'}</strong>
+                  </td>
+                  <td className="figures num" data-label="Tier">
+                    {delivery.tier}
+                  </td>
+                  <td data-label="Channel">{delivery.channel.toLowerCase()}</td>
+                  <td data-label="Status">
+                    {humanise(delivery.status)}
+                    {delivery.failureReason ? (
+                      <div className="micro muted">{delivery.failureReason}</div>
+                    ) : null}
+                  </td>
+                  <td className="figures" data-label="Sent">
+                    {delivery.sentAt ? formatClock(delivery.sentAt) : 'not sent'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {alert.deliveries.map((delivery) => (
-                  <tr key={delivery.id}>
-                    <td>{delivery.recipient?.name ?? 'unknown'}</td>
-                    <td className="figures">{delivery.tier}</td>
-                    <td>{delivery.channel.toLowerCase()}</td>
-                    <td>{humanise(delivery.status)}</td>
-                    <td className="micro">{delivery.failureReason ?? ''}</td>
-                    <td className="figures">
-                      {delivery.sentAt ? formatClock(delivery.sentAt) : 'not sent'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
+              ))}
+            </tbody>
+          </table>
+        </Modal>
+      ) : null}
 
       {explaining ? (
         <Modal
@@ -407,17 +440,52 @@ export function EventDetail() {
 }
 
 /**
- * Everybody on their way, the person who took it on and the volunteer going: how long
- * until they are with the elder and where they are now; or when the owner arrived; and
- * whether anybody has started talking to the elder in the app. Shown only while there is
- * something to show. Positions come from the API for the care circle and the console
- * alike, are a few seconds old at most, and are never stored; the link opens one in a
- * map rather than putting a map on this page.
+ * Everybody coming to help, in three rows that are there from the moment the emergency
+ * opens: the care circle on the way, community volunteers, and the emergency services.
+ * Each row says "nobody yet" until it has something, so news arriving changes a line and
+ * never moves the cards beneath it. Once the emergency is closed nothing changes, so the
+ * empty rows are left out. Positions come from the API, are a few seconds old at most and
+ * are never stored; the link opens one in a map rather than putting a map on this page.
  */
-function OnTheWay({ alert }: { alert: AlertDetail }) {
+function GettingHelp({ alert }: { alert: AlertDetail }) {
+  const open = OPEN_STATES.includes(alert.state);
+  const circle = <CircleOnTheWay alert={alert} />;
+  const volunteers = <VolunteerRow alert={alert} />;
+  const stations = <StationsRow alert={alert} />;
+  const hasCircle = circleHasNews(alert);
+  const hasVolunteer = Boolean(alert.volunteer);
+  const hasStations = (alert.stations ?? []).length > 0;
+  if (!open && !hasCircle && !hasVolunteer && !hasStations) return null;
+
+  return (
+    <section className="card stack" aria-labelledby="help-heading" aria-live="polite">
+      <h2 id="help-heading">Getting help</h2>
+      {open || hasCircle ? (
+        <div className="help-row">
+          <h3>Care circle</h3>
+          {hasCircle ? circle : <p className="muted">Nobody is on the way yet.</p>}
+        </div>
+      ) : null}
+      {open || hasVolunteer ? (
+        <div className="help-row">
+          <h3>Community volunteers</h3>
+          {hasVolunteer ? volunteers : <p className="muted">None asked yet.</p>}
+        </div>
+      ) : null}
+      {open || hasStations ? (
+        <div className="help-row">
+          <h3>Emergency services</h3>
+          {hasStations ? stations : <p className="muted">None asked yet.</p>}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Who in the care circle is travelling, and who has arrived or started a call. */
+function travellersOf(alert: AlertDetail) {
   const open = OPEN_STATES.includes(alert.state);
   const owner = alert.acknowledgedBy?.name.split(' ')[0];
-  const caller = alert.voice?.startedBy ?? null;
   // An API from before several people could share sends the owner's alone.
   const journeys = alert.journeys ?? (alert.journey ? [alert.journey] : []);
   const travellers = open
@@ -431,15 +499,20 @@ function OnTheWay({ alert }: { alert: AlertDetail }) {
         return name ? [{ name, journey }] : [];
       })
     : [];
+  return { open, owner, travellers, caller: alert.voice?.startedBy ?? null };
+}
 
+function circleHasNews(alert: AlertDetail): boolean {
+  const { open, owner, travellers, caller } = travellersOf(alert);
+  return travellers.length > 0 || Boolean(owner && alert.arrivedAt) || Boolean(open && caller);
+}
+
+function CircleOnTheWay({ alert }: { alert: AlertDetail }) {
+  const { open, owner, travellers, caller } = travellersOf(alert);
   const arrived = owner && alert.arrivedAt;
-  if (travellers.length === 0 && !arrived && !(open && caller)) return null;
 
   return (
-    <section className="card stack" aria-labelledby="on-the-way-heading" aria-live="polite">
-      <h2 id="on-the-way-heading">
-        {arrived && travellers.length === 0 ? 'With the elder' : 'On the way'}
-      </h2>
+    <>
       {travellers.map(({ name, journey }) => (
         <Travelling key={journey.userId ?? name} owner={name} journey={journey} />
       ))}
@@ -458,21 +531,20 @@ function OnTheWay({ alert }: { alert: AlertDetail }) {
           {caller} started a call in the app with {alert.elder.name.split(' ')[0]}.
         </p>
       ) : null}
-    </section>
+    </>
   );
 }
 
 /**
  * Community volunteers near the alert, when any were asked: how many, and the one going.
- * They go beside the chain, so this never reads as somebody having taken it on.
+ * They sit apart from the chain, so this never reads as somebody having taken it on.
  */
-function Volunteers({ alert }: { alert: AlertDetail }) {
+function VolunteerRow({ alert }: { alert: AlertDetail }) {
   const volunteer = alert.volunteer ?? null;
   if (!volunteer) return null;
 
   return (
-    <section className="card stack" aria-labelledby="volunteers-heading" aria-live="polite">
-      <h2 id="volunteers-heading">Community volunteers</h2>
+    <>
       <p>
         {volunteer.asked === 0
           ? `Nobody available nearby when asked at ${formatClock(volunteer.askedAt)}.`
@@ -491,7 +563,7 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
       ) : volunteer.asked > 0 && OPEN_STATES.includes(alert.state) ? (
         <p className="micro muted">None has said they will go yet.</p>
       ) : null}
-    </section>
+    </>
   );
 }
 
@@ -499,14 +571,10 @@ function Volunteers({ alert }: { alert: AlertDetail }) {
  * The stations asked, nearest by road first, then any asked after a decline or no
  * answer. The time is from the station, so it is an estimate: the unit may be out.
  */
-function Stations({ alert }: { alert: AlertDetail }) {
-  const stations = alert.stations ?? [];
-  if (stations.length === 0) return null;
-
+function StationsRow({ alert }: { alert: AlertDetail }) {
   return (
-    <section className="card stack" aria-labelledby="stations-heading" aria-live="polite">
-      <h2 id="stations-heading">Emergency services</h2>
-      {stations.map((station) => (
+    <>
+      {(alert.stations ?? []).map((station) => (
         <p key={`${station.name}-${station.askedAt}`}>
           <strong>{station.name}</strong>{' '}
           {station.status === 'declined'
@@ -523,19 +591,23 @@ function Stations({ alert }: { alert: AlertDetail }) {
           </span>
         </p>
       ))}
-    </section>
+    </>
   );
 }
 
 /** What the elder said after pressing help, in their words and in English. */
 function Said({ alert }: { alert: AlertDetail }) {
   const said = (alert.speech ?? []).filter((item) => item.transcript.length > 0);
-  if (said.length === 0) return null;
+  const open = OPEN_STATES.includes(alert.state);
+  // Held open while the emergency is, as words can arrive at any moment; left out of a
+  // closed one where nothing was said.
+  if (said.length === 0 && !open) return null;
   const first = alert.elder.name.split(' ')[0];
 
   return (
-    <section className="card stack" aria-labelledby="said-heading">
+    <section className="card stack" aria-labelledby="said-heading" aria-live="polite">
       <h2 id="said-heading">What {first} said</h2>
+      {said.length === 0 ? <p className="muted">Nothing recorded yet.</p> : null}
       {said.map((item) => (
         <p key={item.at}>
           &ldquo;{item.transcript}&rdquo;
@@ -566,9 +638,9 @@ const ROLE_WORD: Partial<Record<Role, string>> = {
 /**
  * Who opened the elder's medical details during this emergency, and when. Never what
  * they say: the console oversees who saw health data and has no use for the data. Left
- * out when nobody opened them, which is most emergencies.
+ * out of a closed emergency when nobody opened them, which is most.
  */
-function MedicalLooks({ id, version }: { id: string; version: number }) {
+function MedicalLooks({ id, version, open }: { id: string; version: number; open: boolean }) {
   const fetcher = useCallback(() => api.medicalViews(id), [id]);
   const { data: looks, reload } = useLoader<Looks>(fetcher, '');
   // Asked again whenever the emergency moves on, which is when somebody new is asked
@@ -581,14 +653,13 @@ function MedicalLooks({ id, version }: { id: string; version: number }) {
   }, [version, reload]);
   const views = looks?.views ?? [];
   const guardian = looks?.sharing?.byElder ? null : (looks?.sharing?.guardian ?? null);
-  if (views.length === 0 && !guardian) return null;
+  // Held while the emergency is open, so somebody opening them later fills a line in
+  // rather than adding a card.
+  if (views.length === 0 && !guardian && !open) return null;
 
   return (
     <section className="card stack" aria-labelledby="medical-heading">
       <h2 id="medical-heading">Medical details</h2>
-      <p className="micro muted">
-        Only the people asked to help see them. This lists who opened them, not what they say.
-      </p>
       {guardian ? (
         <p>
           Shared because {guardian.by?.name ?? 'a caregiver who has since left'} said this elder
@@ -602,6 +673,9 @@ function MedicalLooks({ id, version }: { id: string; version: number }) {
           {formatClock(view.at)}.
         </p>
       ))}
+      {views.length === 0 && !guardian ? (
+        <p className="muted">Nobody has opened them yet.</p>
+      ) : null}
     </section>
   );
 }
@@ -634,6 +708,28 @@ function Travelling({ owner, journey }: { owner: string; journey: Journey }) {
       ) : null}
     </>
   );
+}
+
+/**
+ * Whether an element is short enough to stay in view under the page's bar, measured as it
+ * and the window change size, and again when what it shows changes.
+ */
+function useFits(element: React.RefObject<HTMLElement | null>, content: unknown): boolean {
+  const [fits, setFits] = useState(false);
+  useEffect(() => {
+    const target = element.current;
+    if (!target || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setFits(target.offsetHeight + 120 <= window.innerHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(target);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [element, content]);
+  return fits;
 }
 
 /**
