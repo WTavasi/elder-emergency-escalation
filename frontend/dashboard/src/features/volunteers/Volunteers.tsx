@@ -7,6 +7,7 @@ import type {
 } from '../../shared/api/types';
 import { Modal } from '../../shared/components/Modal';
 import { PageHeader } from '../../shared/components/PageHeader';
+import { Toast } from '../../shared/components/Toast';
 import { Empty, ErrorNotice, Skeleton } from '../../shared/components/parts';
 import { useLoader } from '../../shared/hooks/useLoader';
 
@@ -95,12 +96,12 @@ export function Volunteers() {
         </p>
       </PageHeader>
 
-      {message ? (
-        <p className="notice" role="status">
-          {message}
-        </p>
+      {/* Said at the foot of the window, over the page, so it never pushes the list. */}
+      {actionError ? (
+        <Toast message={actionError} tone="failed" onClose={() => setActionError(null)} />
+      ) : message ? (
+        <Toast message={message} onClose={() => setMessage(null)} />
       ) : null}
-      {actionError ? <ErrorNotice message={actionError} /> : null}
 
       <div className="card grid">
         <div className="grid__toolbar">
@@ -272,6 +273,7 @@ export function Volunteers() {
                 type="button"
                 className="button--primary"
                 disabled={busy || note.trim().length === 0}
+                aria-busy={busy}
                 onClick={() => void decide(deciding.volunteer, deciding.decision, note.trim())}
               >
                 {deciding.decision === 'reject' ? 'Do not approve' : 'Suspend'}

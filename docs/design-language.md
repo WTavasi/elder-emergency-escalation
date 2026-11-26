@@ -161,9 +161,14 @@ somebody looking across many records at once.
 - **A window frame.** A grey sidebar holds the sections, each with its count, and the
   account at its foot, which opens a small menu upwards. The current section is a rounded
   grey selection, never red. A button at its top hides it, and the same button in the
-  page's bar brings it back; on a phone it is a drawer behind that button. No bell and no
-  global search: the open count is already on the first section, and History and Users
-  each search their own records. The browser tab is named after the page, with the number
+  page's bar brings it back; on a phone it is a drawer behind that button. Collapsing it is
+  instant rather than animated, so the page never re-wraps while it moves. No bell: the
+  open count is already on the first section. One search across the console sits at the
+  top of the sidebar, opened there or with Command-K (Ctrl+K elsewhere), as Spotlight is:
+  part of a name goes straight to an open emergency, a section, a person's account or a
+  past emergency. G and then a section's first letter goes to that section, the letters
+  shown beside each in the search. History and Users still search their own records. The
+  browser tab is named after the page, with the number
   nobody has answered in front, so a background tab still says somebody is needed.
 - **Each page has a bar and a large title.** The bar along the top holds the page's
   actions and, on an emergency, the way back; it turns translucent, with a hairline, once
@@ -174,12 +179,21 @@ somebody looking across many records at once.
   between rows. An emergency nobody has answered has a red dot before the name, as an
   unread message has in Mail. Column headings are small and in title case and stay in
   view as the list scrolls. On a phone a list becomes stacked rows, each value with its
-  heading beside it.
+  heading beside it. While the pointer is over the live board, its order holds still: a
+  row being reached for stays put, and a new emergency is counted in the caption until
+  the pointer leaves, or for a few seconds once it stops moving.
 - **Filters apply as they are chosen.** A search, pop-up menus and a range of dates, with
   no Apply button; Command-F or Ctrl+F puts the cursor in the search. A pager fixed to the
   bottom says how much of the whole is shown. Users can be chosen several at a time only
-  after pressing Select, as in Photos; History cannot, because the console is read-only
-  over emergencies.
+  after pressing Select, as in Photos, and what can be done with the choice floats at the
+  foot of the window rather than pushing the list down; History cannot, because the
+  console is read-only over emergencies.
+- **Nothing moves to make room.** Opening, saving or something arriving never pushes what
+  is being read. Detail opens in a panel at the side; what an action did is said in a
+  small message at the foot of the window that goes by itself (a failure stays until it
+  is closed); edits on the escalation policy are gathered and saved from one bar at the
+  foot of the window, each edited row marked "Edited"; and every card on an open
+  emergency is there from the start, saying "nobody yet" until it has something.
 - **Questions are sheets.** A sheet drops from the top of the window with no close
   button; a form's labels are right-aligned in a column to the left of its fields; the
   buttons are at the bottom right, the one that goes ahead last and in MzaziCare red, the
@@ -187,7 +201,8 @@ somebody looking across many records at once.
   is a segmented control: a grey track with the chosen segment raised on it in white.
 - **What happened is told in sentences.** An emergency's record reads as the app's does,
   "Sent to Aisha Wanjiru and Brian Wanjiru", as numbered steps with the latest filled in.
-  The delivery attempts behind it are hidden under a disclosure until asked for.
+  The delivery attempts behind it open in a panel at the side, as "Why this severity?"
+  does, and the chain beside the record stays in view as it scrolls.
 - **Whether the board is live, as a dot and a word.** "Live" with a green dot while the
   connection is up and the server's database and Redis answer; "Service problem: Redis
   down" or "Offline, reconnecting" in amber when not, never in red. No refresh button: the
@@ -197,7 +212,11 @@ somebody looking across many records at once.
   finger is, chosen by the browser's own pointer media query.
 - **Filled buttons are MzaziCare red**, under review as the app's are (see the governing
   rule); other buttons, quiet ones and actions set in text included, are ink on the sunk
-  grey with no outline, so each looks pressable. A worsening
+  grey with no outline, so each looks pressable. The one action a floating bar leads to,
+  such as Save changes on the escalation policy, is filled in ink rather than red, as
+  saving a setting is not a person being needed. Every button gives slightly when pressed,
+  and one waiting on the server shows a small spinner beside words that say so. A
+  worsening
   trend on the reporting screen is the one other place the warning red appears, and
   always with an arrow and a signed figure beside it.
 - **The parts the browser draws carry the design too.** Text selection takes the

@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { useOpenAlerts } from '../state/OpenAlerts';
 import { ShellContext } from '../state/Shell';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PrivacyPanel } from '../../features/privacy/PrivacyPanel';
 import { humanise } from '../utils/format';
-import { Icon, type IconName } from './Icon';
+import { commandKey, SECTIONS, typing } from '../navigation';
+import { CommandPalette } from './CommandPalette';
+import { Icon } from './Icon';
 
-const SECTIONS: { to: string; label: string; icon: IconName }[] = [
-  { to: '/', label: 'Open emergencies', icon: 'emergency' },
-  { to: '/history', label: 'History', icon: 'history' },
-  { to: '/reporting', label: 'Reporting', icon: 'reporting' },
-  { to: '/users', label: 'Users', icon: 'people' },
-  { to: '/volunteers', label: 'Volunteers', icon: 'personAdd' },
-  { to: '/policy', label: 'Escalation policy', icon: 'tune' },
-];
+/** How long after G the second key of a "go to" shortcut is waited for. */
+const SECOND_KEY_MS = 1200;
 
 const COLLAPSED_KEY = 'mzazicare.sidebar.collapsed';
 
@@ -79,6 +75,42 @@ export function Layout() {
     return () => document.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
+  // One search across the console, on ⌘K (Ctrl K elsewhere) from anywhere, and the "go
+  // to" shortcuts: G, then a section's key, when nobody is typing.
+  const [searching, setSearching] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    let awaiting = 0;
+    const onKey = (keyEvent: KeyboardEvent) => {
+      const key = keyEvent.key.toLowerCase();
+      if (key === 'k' && (keyEvent.metaKey || keyEvent.ctrlKey) && !keyEvent.altKey) {
+        // Not over another sheet or panel: one thing on top of the page at a time.
+        const other = document.querySelector(
+          '[role="dialog"]:not(.palette__box), [role="alertdialog"]',
+        );
+        if (other) return;
+        keyEvent.preventDefault();
+        setSearching((was) => !was);
+        return;
+      }
+      if (keyEvent.metaKey || keyEvent.ctrlKey || keyEvent.altKey || typing(keyEvent.target)) {
+        return;
+      }
+      if (awaiting && Date.now() - awaiting < SECOND_KEY_MS) {
+        awaiting = 0;
+        const section = SECTIONS.find((candidate) => candidate.key === key);
+        if (section) {
+          keyEvent.preventDefault();
+          void navigate(section.to);
+        }
+        return;
+      }
+      awaiting = key === 'g' ? Date.now() : 0;
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [navigate]);
+
   function toggle() {
     if (narrow) {
       setDrawerFor(null);
@@ -139,6 +171,19 @@ export function Layout() {
             </button>
           </div>
 
+          <button
+            type="button"
+            className="sidebar__search"
+            onClick={() => setSearching(true)}
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Meta+K Control+K"
+            title={rail ? `Search (${commandKey()}K)` : undefined}
+          >
+            <Icon name="search" size={18} />
+            <span className="nav__text">Search</span>
+            {rail ? null : <kbd className="sidebar__kbd">{commandKey()}K</kbd>}
+          </button>
+
           {/* An icon beside each section's name, never instead of it. */}
           <nav className="nav" aria-label="Sections">
             {SECTIONS.map((section) => {
@@ -170,6 +215,8 @@ export function Layout() {
         <main className="main" id="main">
           <Outlet />
         </main>
+
+        {searching ? <CommandPalette onClose={() => setSearching(false)} /> : null}
       </div>
     </ShellContext.Provider>
   );

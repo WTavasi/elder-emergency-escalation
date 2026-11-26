@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../../shared/api/client';
 import type { Role, UserQuery, UserRow } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
 import { Modal } from '../../shared/components/Modal';
 import { PageHeader } from '../../shared/components/PageHeader';
+import { Toast } from '../../shared/components/Toast';
 import {
   Empty,
   ErrorNotice,
@@ -74,7 +76,16 @@ type Pending =
  */
 export function Users() {
   const { session } = useAuth();
-  const [search, setSearch] = useState('');
+  // A search can arrive in the address, from the search across the console (⌘K): it
+  // fills the field, here and when it changes while the page is open.
+  const [params] = useSearchParams();
+  const asked = params.get('q') ?? '';
+  const [search, setSearch] = useState(asked);
+  const [lastAsked, setLastAsked] = useState(asked);
+  if (asked !== lastAsked) {
+    setLastAsked(asked);
+    setSearch(asked);
+  }
   const searchField = useRef<HTMLInputElement>(null);
   useFindShortcut(searchField);
   const [role, setRole] = useState<Role | ''>('');
@@ -178,6 +189,8 @@ export function Users() {
               className="button--with-icon"
               onClick={() => void exportCsv()}
               disabled={exporting || total === 0}
+              aria-busy={exporting}
+              title={total === 0 ? 'No accounts to export' : undefined}
             >
               <Icon name="download" size={18} />
               {exporting ? 'Exporting' : 'Export CSV'}
@@ -194,12 +207,12 @@ export function Users() {
         }
       />
 
-      {message ? (
-        <p className="notice" role="status">
-          {message}
-        </p>
+      {/* Said at the foot of the window, over the page, so it never pushes the list. */}
+      {actionError ? (
+        <Toast message={actionError} tone="failed" onClose={() => setActionError(null)} />
+      ) : message ? (
+        <Toast message={message} onClose={() => setMessage(null)} />
       ) : null}
-      {actionError ? <ErrorNotice message={actionError} /> : null}
 
       <div className="card grid">
         <div className="grid__toolbar" role="search">
@@ -258,41 +271,53 @@ export function Users() {
           </button>
         </div>
 
+        {/*
+          While choosing, what can be done with the choice floats at the foot of the
+          window, over the page, rather than as a bar that pushes the list down. Its
+          buttons stay in place and are greyed out, with a reason, until they apply.
+        */}
         {selecting ? (
-          <div className="grid__selection" role="region" aria-label="Selected accounts">
-            <strong>
+          <div className="floating-bar" role="region" aria-label="Selected accounts">
+            <strong aria-live="polite">
               {selectedRows.length === 0 ? 'None selected' : `${selectedRows.length} selected`}
             </strong>
-            {selectedRows.some((row) => !row.deactivatedAt) ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setPending({
-                    kind: 'deactivate',
-                    users: selectedRows.filter((row) => !row.deactivatedAt),
-                  })
-                }
-              >
-                Deactivate
-              </button>
-            ) : null}
-            {selectedRows.some((row) => row.deactivatedAt) ? (
-              <button
-                type="button"
-                onClick={() => reactivate(selectedRows.filter((row) => row.deactivatedAt))}
-              >
-                Reactivate
-              </button>
-            ) : null}
-            {selectedRows.length > 0 ? (
-              <button
-                type="button"
-                className="button--quiet"
-                onClick={() => setSelected(new Set())}
-              >
-                Clear selection
-              </button>
-            ) : null}
+            <button
+              type="button"
+              disabled={!selectedRows.some((row) => !row.deactivatedAt)}
+              title={
+                selectedRows.some((row) => !row.deactivatedAt)
+                  ? undefined
+                  : 'Select an active account to deactivate it'
+              }
+              onClick={() =>
+                setPending({
+                  kind: 'deactivate',
+                  users: selectedRows.filter((row) => !row.deactivatedAt),
+                })
+              }
+            >
+              Deactivate
+            </button>
+            <button
+              type="button"
+              disabled={!selectedRows.some((row) => row.deactivatedAt)}
+              title={
+                selectedRows.some((row) => row.deactivatedAt)
+                  ? undefined
+                  : 'Select a deactivated account to reactivate it'
+              }
+              onClick={() => reactivate(selectedRows.filter((row) => row.deactivatedAt))}
+            >
+              Reactivate
+            </button>
+            <button
+              type="button"
+              className="button--quiet"
+              disabled={selectedRows.length === 0}
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </button>
           </div>
         ) : null}
 
@@ -313,16 +338,20 @@ export function Users() {
             <table className="list">
               <thead>
                 <tr>
-                  {selecting ? (
-                    <th scope="col" className="select-cell">
+                  {/* The column is always there, so ticking boxes appearing never moves the
+                    names along. */}
+                  <th scope="col" className="select-cell">
+                    {selecting ? (
                       <input
                         type="checkbox"
                         aria-label="Select every account on this page"
                         checked={allOnPage}
                         onChange={toggleAll}
                       />
-                    </th>
-                  ) : null}
+                    ) : (
+                      <span className="visually-hidden">Selection</span>
+                    )}
+                  </th>
                   <th scope="col">Name</th>
                   <th scope="col">Phone</th>
                   <th scope="col">Role</th>
@@ -351,16 +380,16 @@ export function Users() {
                       else setPending({ kind: 'form', user: row });
                     }}
                   >
-                    {selecting ? (
-                      <td className="select-cell">
+                    <td className="select-cell">
+                      {selecting ? (
                         <input
                           type="checkbox"
                           aria-label={`Select ${row.name}`}
                           checked={selected.has(row.id)}
                           onChange={() => toggle(row.id)}
                         />
-                      </td>
-                    ) : null}
+                      ) : null}
+                    </td>
                     <td>
                       <span className="row-inline">
                         <button

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ApiError, api, type AlertQuery } from '../../shared/api/client';
 import type { AlertSummary, EventState, Severity } from '../../shared/api/types';
 import { Icon } from '../../shared/components/Icon';
@@ -133,7 +134,15 @@ const COLUMNS: CsvColumn<AlertSummary>[] = [
  * which is what the search and the export are for.
  */
 export function History() {
-  const [form, setForm] = useState<Filters>(NO_FILTERS);
+  // A name can arrive in the address, from the search across the console (⌘K).
+  const [params] = useSearchParams();
+  const asked = params.get('q') ?? '';
+  const [form, setForm] = useState<Filters>({ ...NO_FILTERS, q: asked });
+  const [lastAsked, setLastAsked] = useState(asked);
+  if (asked !== lastAsked) {
+    setLastAsked(asked);
+    setForm({ ...NO_FILTERS, q: asked });
+  }
 
   // Filters apply as they are chosen, as Apple's do, with no button to press. The search
   // waits for the typing to stop, so it is one request rather than one per key.
@@ -209,6 +218,8 @@ export function History() {
             className="button--with-icon"
             onClick={() => void exportCsv()}
             disabled={exporting || total === 0}
+            aria-busy={exporting}
+            title={total === 0 ? 'No emergencies to export' : undefined}
           >
             <Icon name="download" size={18} />
             {exporting ? 'Exporting' : 'Export CSV'}

@@ -55,9 +55,10 @@ h3 {
   line-height: 1.2;
 }
 
-/* A page's title: Apple's large title, bold and slightly tightened. */
+/* A page's title: Apple's large title, bold and slightly tightened. It eases down to the
+   smaller title size on a phone rather than jumping at a breakpoint. */
 h1 {
-  font-size: var(--font-size-large-title);
+  font-size: clamp(var(--font-size-title1), 2.4vw + var(--space-12), var(--font-size-large-title));
   font-weight: var(--font-weight-heading);
   letter-spacing: -0.01em;
 }
@@ -146,11 +147,8 @@ html {
 .shell--rail {
   --sidebar-width: 64px;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .shell {
-    transition: grid-template-columns 0.18s ease;
-  }
-}
+/* The change is instant, never animated: sliding the column would re-wrap every table and
+   card on the page for the length of the animation, and the page would seem to move. */
 .shell--rail .sidebar {
   padding-inline: var(--space-12);
 }
@@ -244,6 +242,41 @@ html {
 
 /* A row in the sidebar: an icon, the name, and a count at the end. The current page is a
    rounded grey highlight, as a Mac sidebar marks it, never red: red is for emergencies. */
+/* Search, above the sections: a field-like button, as Mail's sidebar search looks, that
+   opens the search across the console. Its shortcut is written in it. */
+.sidebar__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: var(--sidebar-row);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-body);
+  text-align: left;
+}
+.sidebar__search .nav__text {
+  flex: 1;
+}
+.sidebar__kbd,
+.palette kbd {
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--space-4);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: var(--font-size-footnote);
+  line-height: 1.5;
+}
+.shell--rail .sidebar__search {
+  position: relative;
+  justify-content: center;
+  padding: 0;
+}
+
 .nav a {
   display: flex;
   align-items: center;
@@ -364,6 +397,15 @@ html {
 .page-title p {
   margin: 0;
   color: var(--text-soft);
+  max-width: 70ch;
+}
+
+/* Running text is easiest to follow at 45 to 75 characters a line, however wide the
+   window. Applied to paragraphs of explanation, never to tables or figures. */
+.measure,
+.card > p.muted,
+.modal__body > p {
+  max-width: 70ch;
 }
 
 /* A heading with its own control beside it, inside a section. */
@@ -731,9 +773,24 @@ td.chevron {
     grid-row: 1 / span 9;
     align-self: center;
   }
+  .list th[scope='row'] {
+    display: block;
+    grid-column: 1;
+    padding: 0 0 var(--space-4);
+    border: none;
+  }
   .list td[data-label]::before {
     content: attr(data-label) ': ';
     color: var(--text-soft);
+  }
+  /* A tick box stays on the line of its name, rather than below it at full width. */
+  .list td[data-label] input[type='checkbox'] {
+    display: inline-block;
+    width: var(--space-24);
+    height: var(--space-24);
+    min-height: 0;
+    margin: 0 0 0 var(--space-4);
+    vertical-align: middle;
   }
   .list td:empty {
     display: none;
@@ -763,6 +820,49 @@ button:hover:not(:disabled) {
 button:disabled {
   color: var(--text-disabled);
   cursor: not-allowed;
+}
+
+/* Every press answers at once: the fill eases on hover, and the button gives a little
+   under the finger, as a physical one would. Kept between 100 and 200 ms. */
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition:
+      background-color var(--motion-quick) ease,
+      transform var(--motion-state) ease;
+  }
+  button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+/* Waiting on the server: a small spinner before the words, which also change ("Saving"),
+   and the button cannot be pressed twice. */
+button[aria-busy='true'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  cursor: progress;
+}
+button[aria-busy='true']::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button[aria-busy='true']::before {
+    animation-duration: 2.4s;
+  }
 }
 
 label {
@@ -821,18 +921,55 @@ textarea {
   color: var(--timer);
 }
 
+/* Tiles at least 240px wide, so a tablet gets two to a row rather than three thin ones. */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: var(--space-12);
 }
 
+/* "Right now" leads with the one figure that needs somebody: a tile twice the width,
+   then the rest, however many bands are open. On a narrower screen the lead goes across
+   the top with the rest beneath it. */
+.metrics--lead {
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+}
+.metrics--lead > .metric--lead {
+  grid-column: span 2;
+}
+@media (max-width: 1100px) {
+  .metrics--lead > .metric--lead {
+    grid-column: 1 / -1;
+  }
+}
+/* A phone: the smaller figures three to a row under the lead, rather than two and one. */
+@media (max-width: 640px) {
+  .metrics--lead {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+}
+
 /* A figure as Health and Fitness show one: a short grey label over a large bold number,
-   and anything more in small type beneath. */
+   and anything more in small type beneath. Tiles in a row are the same height, with
+   what is beneath the number held to their foot. */
 .metric {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  height: 100%;
+}
+.metric__foot {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.metric--lead .metric__value {
+  font-size: clamp(var(--font-size-large-title), 5vw, calc(var(--font-size-large-title) * 2));
+}
+.metric__value--needed {
+  color: var(--emergency);
 }
 
 .metric__value {
@@ -850,7 +987,6 @@ textarea {
 }
 
 .metric__note {
-  margin-top: var(--space-4);
   color: var(--text-soft);
   font-size: var(--font-size-footnote);
 }
@@ -893,6 +1029,13 @@ textarea {
 .chart__axis {
   fill: var(--text-faint);
   font-size: var(--font-size-subheadline);
+}
+.chart__bar {
+  fill: currentColor;
+  transition: opacity var(--motion-quick) ease;
+}
+.chart__bar--quiet {
+  opacity: 0.35;
 }
 .chart__line {
   fill: none;
@@ -1075,6 +1218,37 @@ textarea {
   }
 }
 
+/* Beside a long timeline the right-hand column stays in view under the page's bar, when
+   it fits in the window (see useFits); a taller one scrolls with the page, so nothing in
+   it is ever out of reach. */
+@media (min-width: 901px) {
+  .detail-side--sticky {
+    position: sticky;
+    top: calc(var(--bar-height) + var(--space-16));
+  }
+}
+
+/* One kind of help in "Getting help": a small heading and a line or two. Each row keeps
+   room for two lines, so a "nobody yet" becoming a name rarely changes its height. */
+.help-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: calc(var(--font-size-subheadline) * 1.4 + 2 * 1.5em);
+}
+.help-row + .help-row {
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--line-soft);
+}
+.help-row h3 {
+  margin: 0;
+  font-size: var(--font-size-subheadline);
+  color: var(--text-soft);
+}
+.help-row p {
+  margin: 0;
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -1187,6 +1361,14 @@ textarea {
 }
 .row--arrived > td {
   animation: row-arrive 3s ease-out;
+}
+.row--gone > td {
+  opacity: 0.55;
+}
+/* The count of new emergencies held back while the list is pointed at. */
+.list__waiting {
+  font-weight: var(--font-weight-strong);
+  color: var(--text);
 }
 @media (prefers-reduced-motion: reduce) {
   .row--arrived > td {
@@ -1408,6 +1590,10 @@ textarea {
   margin: 0;
   font-weight: 600;
 }
+.banner__after {
+  font-weight: normal;
+  color: var(--text-soft);
+}
 .banner__timer {
   display: flex;
   align-items: center;
@@ -1586,14 +1772,114 @@ textarea {
   margin: var(--space-12);
 }
 
-.grid__selection {
+/* What can be done with a selection, floating at the foot of the window over the page,
+   as Photos and Files show it, so it never pushes the list. */
+.floating-bar {
+  position: fixed;
+  bottom: var(--space-24);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  width: max-content;
+  max-width: calc(100vw - var(--space-32));
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-16);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-group);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 16%, transparent);
+  font-size: var(--font-size-callout);
+}
+.floating-bar strong {
+  margin-right: var(--space-8);
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+}
+/* What an action did, in the same place: a confirmation goes by itself, a failure stays.
+   Above the selection bar when both are showing. */
+.toast {
+  position: fixed;
+  bottom: var(--space-24);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 13;
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  background: var(--surface-sunk);
-  border-bottom: 1px solid var(--line);
+  width: max-content;
+  max-width: min(560px, calc(100vw - var(--space-32)));
+  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+  background: var(--text);
+  color: var(--surface);
+  border-radius: var(--radius-group);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 24%, transparent);
   font-size: var(--font-size-callout);
+}
+.toast__text {
+  flex: 1;
+}
+.toast .icon-button {
+  color: inherit;
+  background: transparent;
+}
+.toast .icon-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface) 16%, transparent);
+}
+/* A failure is said in words and with the warning mark, never by the colour alone. */
+.toast--failed {
+  background: var(--danger);
+  color: var(--on-emergency);
+}
+.main:has(.floating-bar) .toast {
+  bottom: calc(var(--space-24) + var(--space-64));
+}
+@media (min-width: 861px) {
+  .toast {
+    left: calc(50% + var(--sidebar-width) / 2);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .floating-bar,
+  .toast {
+    animation: bar-in var(--motion-state) ease-out;
+  }
+}
+@keyframes bar-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-8);
+  }
+}
+
+/* A row edited and not saved yet: a word beside its name and a faint tint behind it. */
+.edited {
+  display: inline-block;
+  margin-left: var(--space-4);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunk);
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-body);
+  vertical-align: middle;
+}
+.policy-row--edited > * {
+  background: color-mix(in srgb, var(--selection) 50%, transparent);
+}
+
+/* Room under the last row, so the bar never sits over it. */
+.main:has(.floating-bar) {
+  padding-bottom: calc(var(--space-64) + var(--space-32));
+}
+@media (min-width: 861px) {
+  /* Centred on the page rather than the window, beside the sidebar. */
+  .floating-bar {
+    left: calc(50% + var(--sidebar-width) / 2);
+  }
 }
 
 /* A search field with its magnifier inside, at the front. */
@@ -1647,6 +1933,16 @@ textarea {
 
 /* The smaller buttons keep the grey shape of every button, so each reads as something
    to press, as the round grey buttons in Apple's toolbars do. */
+/* The one action a bar leads to, in ink rather than red: red is kept for a person being
+   needed, and saving a setting is not that. */
+.button--ink {
+  background: var(--text);
+  color: var(--surface);
+}
+.button--ink:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 85%, var(--surface));
+}
+
 .button--quiet {
   background: var(--surface-sunk);
   color: var(--text);
@@ -1786,6 +2082,9 @@ textarea {
   border-radius: 0;
   border-width: 0 0 0 1px;
   animation: panel-in var(--motion-sheet) ease-out;
+}
+.modal--side .modal__box--wide {
+  width: min(640px, 100%);
 }
 .modal--side .modal__body {
   flex: 1;
@@ -2044,4 +2343,107 @@ legend {
   padding: 0;
   display: grid;
   gap: var(--space-8);
+}
+
+/* The search across the console: a panel near the top of the window, as Spotlight sits,
+   with the field, the results in groups, and a line saying how to move through them. */
+.palette {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: 12vh var(--space-16) var(--space-16);
+}
+.palette__box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(600px, 100%);
+  max-height: 70vh;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sheet);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--text) 24%, transparent);
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .palette__box {
+    animation: sheet-in var(--motion-sheet) ease-out;
+  }
+}
+.palette__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 var(--space-16);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-soft);
+}
+.palette__field input {
+  flex: 1;
+  min-height: calc(var(--space-48) + var(--space-4));
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--font-size-title2);
+}
+/* The field is the only thing in the panel that takes focus, and its caret says so. */
+.palette__field input:focus-visible {
+  outline: none;
+}
+.palette__results {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-8);
+}
+.palette__group + .palette__group {
+  margin-top: var(--space-8);
+}
+.palette__group-name {
+  padding: var(--space-4) var(--space-8);
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-strong);
+}
+.palette__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: var(--min-touch-target);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.palette__option[aria-selected='true'] {
+  background: var(--selection);
+}
+.palette__label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.palette__detail {
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
+}
+.palette__keys {
+  display: inline-flex;
+  gap: var(--space-4);
+}
+.palette__none {
+  margin: 0;
+  padding: var(--space-16) var(--space-8);
+  color: var(--text-soft);
+}
+.palette__foot {
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border-top: 1px solid var(--line);
+  color: var(--text-soft);
+  font-size: var(--font-size-footnote);
 }

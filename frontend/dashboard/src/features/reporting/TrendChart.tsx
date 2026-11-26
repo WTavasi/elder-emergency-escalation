@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { DailyPoint } from '../../shared/api/types';
 import { formatDuration } from '../../shared/utils/format';
 
@@ -32,11 +32,13 @@ function format(value: number, series: Series): string {
 }
 
 /**
- * One line over the window, a day per point: emergencies raised, or the median time to
- * an answer. One series at a time and one colour, the ink, with a faint fill beneath it;
- * the grid is dashed and quiet so the line is the only thing that reads first.
+ * The window a day at a time: emergencies raised as a bar per day, since a count is a
+ * separate figure for each day and a line between them would suggest values in between;
+ * or the median time to an answer as a line, a value that carries on from day to day.
+ * One series at a time and one colour, the ink; the grid is dashed and quiet so the
+ * figures are the only thing that reads first.
  *
- * Drawn in SVG rather than with a charting library: one line chart does not justify a
+ * Drawn in SVG rather than with a charting library: one small chart does not justify a
  * dependency in a console that loads nothing it does not need. Hovering, or the arrow
  * keys once the chart has focus, shows the exact figure for a day. A table of the same
  * figures sits underneath for a screen reader, since a picture of a line says nothing
@@ -50,7 +52,6 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
   const frame = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const [active, setActive] = useState<number | null>(null);
-  const gradientId = useId();
 
   useLayoutEffect(() => {
     const element = frame.current;
@@ -66,16 +67,15 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
   const top = axisTop(Math.max(0, ...values.map((value) => value ?? 0)), series);
   const plotWidth = width - PAD.left - PAD.right;
   const plotHeight = HEIGHT - PAD.top - PAD.bottom;
+  const bars = series === 'raised';
+  // Bars sit in the middle of a slot each; a line's points run edge to edge.
+  const slot = plotWidth / Math.max(1, points.length);
   const step = points.length > 1 ? plotWidth / (points.length - 1) : 0;
-  const x = (index: number) => PAD.left + index * step;
+  const x = (index: number) => (bars ? PAD.left + slot * (index + 0.5) : PAD.left + index * step);
+  const barWidth = Math.max(2, Math.min(28, slot * 0.6));
   const y = (value: number) => PAD.top + plotHeight - (value / top) * plotHeight;
 
   const known = values.flatMap((value, index) => (value === null ? [] : [{ index, value }]));
-  const line = known.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.index)},${y(p.value)}`).join(' ');
-  const area =
-    known.length > 1
-      ? `${line} L${x(known.at(-1)!.index)},${y(0)} L${x(known[0]!.index)},${y(0)} Z`
-      : '';
   // Pairs of neighbouring known days with a day or more missing between them.
   const bridges = known.slice(1).flatMap((p, i) => {
     const before = known[i]!;
@@ -87,7 +87,8 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
 
   function pick(clientX: number) {
     const left = frame.current?.getBoundingClientRect().left ?? 0;
-    const index = Math.round((clientX - left - PAD.left) / (step || 1));
+    const offset = clientX - left - PAD.left;
+    const index = bars ? Math.floor(offset / slot) : Math.round(offset / (step || 1));
     setActive(Math.min(points.length - 1, Math.max(0, index)));
   }
 
@@ -118,13 +119,6 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
           );
         }}
       >
-        <defs>
-          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.14" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
         {ticks.map((tick) => (
           <g key={tick}>
             <line
@@ -154,9 +148,20 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
           ) : null,
         )}
 
-        {series === 'raised' && area ? <path d={area} fill={`url(#${gradientId})`} /> : null}
-        {series === 'raised' ? (
-          <path className="chart__line" d={line} />
+        {bars ? (
+          known.map((p) =>
+            p.value > 0 ? (
+              <rect
+                key={p.index}
+                className={`chart__bar${active !== null && active !== p.index ? ' chart__bar--quiet' : ''}`}
+                x={x(p.index) - barWidth / 2}
+                y={y(p.value)}
+                width={barWidth}
+                height={y(0) - y(p.value)}
+                rx={Math.min(3, barWidth / 4)}
+              />
+            ) : null,
+          )
         ) : (
           <>
             {known
@@ -198,7 +203,7 @@ export function TrendChart({ points, series }: { points: DailyPoint[]; series: S
               y1={PAD.top}
               y2={PAD.top + plotHeight}
             />
-            {shownValue !== null ? (
+            {shownValue !== null && !bars ? (
               <circle className="chart__point" cx={x(active)} cy={y(shownValue)} r={4} />
             ) : null}
           </g>

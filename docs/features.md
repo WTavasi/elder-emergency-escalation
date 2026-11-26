@@ -222,14 +222,18 @@ and cannot act on one: only the people in an elder's circle can do that.
 
 The board updates as alerts arrive, change and close, with no refresh. The Live dot shows
 whether the connection is up and says so when the API, the database or Redis is down.
+While the pointer is over the list its order holds still, so the row being reached for
+never jumps; a new emergency is counted in the caption and joins when the pointer leaves.
 
 ### One emergency in full
 
 ![One emergency: state, severity, timeline and chain](images/console/emergency.png)
 
-What happened, step by step, with times; who was asked and when; every message sent and
-whether it was delivered; and "Why this severity?", which lists each factor's share of the
-score.
+What happened, step by step, with times; who was asked and when; who is on the way,
+volunteers and emergency services; every message sent and whether it was delivered; and
+"Why this severity?", which lists each factor's share of the score. Each part has its own
+place from the start, so news arriving never pushes the record out of place, and the
+delivery attempts and the severity breakdown open in a panel at the side.
 
 ### History and reporting
 
@@ -237,9 +241,10 @@ score.
 
 ![Reporting figures](images/console/reporting.png)
 
-History filters by state, severity and time and exports to CSV. Reporting shows what is
-open now, how quickly alerts were answered, how far up the chain they travelled, and the
-share answered within the target time.
+History filters by state, severity and time and exports to CSV. Reporting leads with how
+many emergencies nobody has answered yet, then shows what is open now, how quickly alerts
+were answered, how far up the chain they travelled, and the share answered within the
+target time, each against the period before once there is one.
 
 ### Users and volunteers
 
@@ -255,9 +260,19 @@ volunteers.
 ![The escalation policy editor](images/console/policy.png)
 
 How long each group has before the next is asked, the weight of each severity factor,
-and where High and Critical start. Every change is checked (the last step can have no
+and where High and Critical start. Edits are gathered and saved together from a bar at the
+foot of the window, each edited row marked until then. Every change is checked (the last step can have no
 time limit, Critical must stay reachable), recorded with the administrator's name, and
 used from the next alert.
+
+### Search and shortcuts
+
+![Searching across the console](images/console/search.png)
+
+Command-K (Ctrl+K elsewhere), or Search at the top of the sidebar, finds an open
+emergency, a section, a person or a past emergency by part of a name. G and then a
+section's letter goes straight there: B the board, H history, R reporting, U users, V
+volunteers, P the policy.
 
 More: [the console's own guide](../frontend/dashboard/README.md).
 

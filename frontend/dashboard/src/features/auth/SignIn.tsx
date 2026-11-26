@@ -170,7 +170,12 @@ export function SignIn() {
             />
           </div>
 
-          <button type="submit" className="button--primary signin__submit" disabled={busy}>
+          <button
+            type="submit"
+            className="button--primary signin__submit"
+            disabled={busy}
+            aria-busy={busy}
+          >
             {busy ? 'Signing in' : 'Sign in'}
           </button>
 

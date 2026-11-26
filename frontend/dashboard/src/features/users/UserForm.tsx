@@ -132,6 +132,7 @@ export function UserForm({
             className="button--primary"
             onClick={() => void save()}
             disabled={busy}
+            aria-busy={busy}
           >
             {busy ? 'Saving' : editing ? 'Save changes' : 'Add user'}
           </button>

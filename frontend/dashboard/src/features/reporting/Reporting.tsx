@@ -35,9 +35,11 @@ function Trend({
   windowDays: number;
 }) {
   const versus = `vs previous ${windowDays} days`;
-  if (now === null || before === null || (!points && before === 0)) {
+  if (!comparable(now, before, points)) {
     return <span className="trend trend--none">No earlier figure to compare</span>;
   }
+  // Narrowed by comparable() above.
+  if (now === null || before === null) return null;
 
   const change = points ? now - before : ((now - before) / before) * 100;
   const rounded = Math.round(change * 10) / 10;
@@ -57,6 +59,10 @@ function Trend({
       </span>
     </span>
   );
+}
+
+function comparable(now: number | null, before: number | null, points = false): boolean {
+  return now !== null && before !== null && (points || before !== 0);
 }
 
 /**
@@ -79,6 +85,26 @@ export function Reporting() {
   } = useLoader(fetcher, 'Could not load the reporting figures.');
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
+
+  const anyComparable = overview
+    ? comparable(overview.raised, overview.previous.raised) ||
+      comparable(
+        overview.responseTimes.medianSeconds,
+        overview.previous.responseTimes.medianSeconds,
+      ) ||
+      comparable(
+        overview.responseTimes.withinTargetPercent,
+        overview.previous.responseTimes.withinTargetPercent,
+        true,
+      ) ||
+      comparable(
+        overview.escalation.escalationRatePercent,
+        overview.previous.escalationRatePercent,
+        true,
+      )
+    : false;
+  const trend = (props: Parameters<typeof Trend>[0]) =>
+    anyComparable ? <Trend {...props} /> : null;
 
   return (
     <>
@@ -108,14 +134,29 @@ export function Reporting() {
         <>
           <section aria-labelledby="live-heading" className="stack">
             <h2 id="live-heading">Right now</h2>
-            <div className="metrics">
+            {/*
+              The figure that needs somebody leads, larger and first, so the page answers
+              "is anyone waiting?" at a glance; red only while someone is.
+            */}
+            <div className="metrics metrics--lead">
+              <div className="card metric metric--lead">
+                <div className="metric__label">Not answered yet</div>
+                <div
+                  className={`metric__value${overview.live.unacknowledged > 0 ? ' metric__value--needed' : ''}`}
+                >
+                  {overview.live.unacknowledged}
+                </div>
+                <div className="metric__foot">
+                  <div className="metric__note">
+                    {overview.live.unacknowledged === 0
+                      ? 'Every open emergency has somebody on it.'
+                      : `Waiting for somebody to take ${overview.live.unacknowledged === 1 ? 'it' : 'them'} on, of ${overview.live.open} open.`}
+                  </div>
+                </div>
+              </div>
               <div className="card metric">
                 <div className="metric__label">Emergencies open</div>
                 <div className="metric__value">{overview.live.open}</div>
-              </div>
-              <div className="card metric">
-                <div className="metric__label">Not answered yet</div>
-                <div className="metric__value">{overview.live.unacknowledged}</div>
               </div>
               {Object.entries(overview.live.bySeverity).map(([band, count]) => (
                 <div className="card metric" key={band}>
@@ -128,16 +169,24 @@ export function Reporting() {
 
           <section aria-labelledby="window-heading" className="stack">
             <h2 id="window-heading">The last {days} days</h2>
+            {/* Said once here, rather than on every tile, when nothing can be compared. */}
+            {anyComparable ? null : (
+              <p className="muted micro" style={{ marginTop: 0 }}>
+                No earlier {days} days to compare with yet.
+              </p>
+            )}
             <div className="metrics">
               <div className="card metric">
                 <div className="metric__label">Emergencies raised</div>
                 <div className="metric__value">{overview.raised}</div>
-                <Trend
-                  now={overview.raised}
-                  before={overview.previous.raised}
-                  better="neither"
-                  windowDays={days}
-                />
+                <div className="metric__foot">
+                  {trend({
+                    now: overview.raised,
+                    before: overview.previous.raised,
+                    better: 'neither',
+                    windowDays: days,
+                  })}
+                </div>
               </div>
               <div className="card metric">
                 <div className="metric__label">Median time to an answer</div>
@@ -146,19 +195,21 @@ export function Reporting() {
                     ? 'none'
                     : formatDuration(overview.responseTimes.medianSeconds)}
                 </div>
-                <Trend
-                  now={overview.responseTimes.medianSeconds}
-                  before={overview.previous.responseTimes.medianSeconds}
-                  better="lower"
-                  windowDays={days}
-                />
-                <div className="metric__note">
-                  From <span className="figures">{overview.responseTimes.sampleSize}</span>{' '}
-                  answered. Mean{' '}
-                  {overview.responseTimes.meanSeconds === null
-                    ? 'none'
-                    : formatDuration(overview.responseTimes.meanSeconds)}
-                  , which one long wait distorts.
+                <div className="metric__foot">
+                  {trend({
+                    now: overview.responseTimes.medianSeconds,
+                    before: overview.previous.responseTimes.medianSeconds,
+                    better: 'lower',
+                    windowDays: days,
+                  })}
+                  <div className="metric__note">
+                    From <span className="figures">{overview.responseTimes.sampleSize}</span>{' '}
+                    answered. Mean{' '}
+                    {overview.responseTimes.meanSeconds === null
+                      ? 'none'
+                      : formatDuration(overview.responseTimes.meanSeconds)}
+                    , which one long wait distorts.
+                  </div>
                 </div>
               </div>
               <div className="card metric">
@@ -170,13 +221,15 @@ export function Reporting() {
                     ? 'none'
                     : `${overview.responseTimes.withinTargetPercent}%`}
                 </div>
-                <Trend
-                  now={overview.responseTimes.withinTargetPercent}
-                  before={overview.previous.responseTimes.withinTargetPercent}
-                  better="higher"
-                  points
-                  windowDays={days}
-                />
+                <div className="metric__foot">
+                  {trend({
+                    now: overview.responseTimes.withinTargetPercent,
+                    before: overview.previous.responseTimes.withinTargetPercent,
+                    better: 'higher',
+                    points: true,
+                    windowDays: days,
+                  })}
+                </div>
               </div>
               <div className="card metric">
                 <div className="metric__label">Climbed past tier one</div>
@@ -185,16 +238,18 @@ export function Reporting() {
                     ? 'none'
                     : `${overview.escalation.escalationRatePercent}%`}
                 </div>
-                <Trend
-                  now={overview.escalation.escalationRatePercent}
-                  before={overview.previous.escalationRatePercent}
-                  better="lower"
-                  points
-                  windowDays={days}
-                />
-                <div className="metric__note">
-                  <span className="figures">{overview.escalation.escalatedCount}</span> of{' '}
-                  <span className="figures">{overview.escalation.total}</span> closed.
+                <div className="metric__foot">
+                  {trend({
+                    now: overview.escalation.escalationRatePercent,
+                    before: overview.previous.escalationRatePercent,
+                    better: 'lower',
+                    points: true,
+                    windowDays: days,
+                  })}
+                  <div className="metric__note">
+                    <span className="figures">{overview.escalation.escalatedCount}</span> of{' '}
+                    <span className="figures">{overview.escalation.total}</span> closed.
+                  </div>
                 </div>
               </div>
             </div>
@@ -282,7 +337,7 @@ export function Reporting() {
               The case for the SMS fallback is whatever the push column says here.
             </p>
             <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-              <table>
+              <table className="list">
                 <thead>
                   <tr>
                     <th scope="col">Channel</th>
@@ -302,11 +357,19 @@ export function Reporting() {
                   ) : (
                     overview.channels.map((row) => (
                       <tr key={row.channel}>
-                        <td>{humanise(row.channel)}</td>
-                        <td className="figures">{row.attempted}</td>
-                        <td className="figures">{row.delivered}</td>
-                        <td className="figures">{row.failed}</td>
-                        <td className="figures">
+                        <td>
+                          <strong>{humanise(row.channel)}</strong>
+                        </td>
+                        <td className="figures" data-label="Attempted">
+                          {row.attempted}
+                        </td>
+                        <td className="figures" data-label="Delivered">
+                          {row.delivered}
+                        </td>
+                        <td className="figures" data-label="Failed">
+                          {row.failed}
+                        </td>
+                        <td className="figures" data-label="Success">
                           {row.successRatePercent === null ? 'none' : `${row.successRatePercent}%`}
                         </td>
                       </tr>
